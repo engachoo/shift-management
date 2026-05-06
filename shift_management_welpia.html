@@ -56,7 +56,7 @@
     .badge-partner{background:#e8f5e2;color:#004063;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700}
 
     /* ===== ナビタブ ===== */
-    .nav-tabs{display:flex;gap:4px;margin-bottom:24px;border-bottom:2px solid #e2e8f0;flex-wrap:wrap}
+    .nav-tabs{display:flex;gap:4px;margin-bottom:24px;border-bottom:2px solid #e2e8f0;flex-wrap:wrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
     .nav-tab{padding:10px 16px;border-radius:8px 8px 0 0;font-size:13px;font-weight:600;cursor:pointer;color:#888;border:2px solid transparent;border-bottom:none;transition:all .2s;white-space:nowrap}
     .nav-tab.active{background:#fff;color:#87c177;border-color:#e2e8f0;margin-bottom:-2px}
     .tab-content{display:none}
@@ -244,21 +244,26 @@
       .logo .brand{font-size:28px}
       .logo h1{font-size:17px}
       .logo p{font-size:12px}
-      .demo-accounts{font-size:12px;padding:10px}
-      .demo-accounts table td{padding:2px 4px}
+      .demo-accounts{font-size:11px;padding:8px}
+      .demo-accounts table{width:100%}
+      .demo-accounts table td:first-child{white-space:nowrap;font-weight:600;padding-right:6px;vertical-align:top;width:1%;}
+      .demo-accounts table td:last-child{word-break:break-all;font-size:10px}
 
       /* ===== ヘッダー ===== */
-      #header{padding:0 12px;height:52px}
+      #header{padding:0 10px;height:50px}
+      .hl{overflow:hidden;flex:1;min-width:0}
+      .hl .brand-sm{font-size:12px;white-space:nowrap}
+      .hl .sys-name{display:none}
       .hl .brand-sm{font-size:13px}
       .hl .sys-name{font-size:16px}
       .user-badge{font-size:13px;padding:3px 10px}
       .btn-logout{font-size:13px;padding:6px 12px}
 
       /* ===== ナビゲーションタブ ===== */
-      #navTabs{display:flex;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;
-               scrollbar-width:none;padding-bottom:2px;gap:4px}
-      #navTabs::-webkit-scrollbar{display:none}
-      .nav-tab{padding:10px 14px;font-size:13px;white-space:nowrap;flex-shrink:0}
+      .nav-tabs{flex-wrap:nowrap!important;overflow-x:auto;-webkit-overflow-scrolling:touch;
+               scrollbar-width:none;padding-bottom:2px;gap:4px;padding-left:4px}
+      .nav-tabs::-webkit-scrollbar{display:none}
+      .nav-tab{padding:9px 12px;font-size:12px;white-space:nowrap;flex-shrink:0}
 
       /* ===== メインコンテンツ ===== */
       #mainContent{padding:10px 8px}
