@@ -1611,7 +1611,71 @@ function renderTop(){
         </div>
         ${todayEvItems()}
       </div>
-    </div>`;
+    </div>
+    ${renderTopWeek(s)}`;
+}
+
+function renderTopWeek(s){
+  const today = todayStr();
+  const days = getWeekDays(new Date());
+  const rawEvents = load('events',[]);
+  const startDs = dateStr(days[0]), endDs = dateStr(days[6]);
+  const events = expandEvents(rawEvents, startDs, endDs);
+  const uid = s.userId;
+
+  const DOW_JP=['日','月','火','水','木','金','土'];
+
+  let html = `<div class="top-today" style="margin-top:14px">
+    <div class="top-today-hdr">
+      <span>📅</span> 今週の予定
+      <button onclick="showMod('schedule','gw')" style="margin-left:auto;background:#e8f0fe;color:#1a56db;border:1px solid #b3ccf5;padding:3px 10px;border-radius:4px;cursor:pointer;font-size:11px">グループ週を開く →</button>
+    </div>
+    <div style="overflow-x:auto">
+    <table style="width:100%;border-collapse:collapse;min-width:700px">
+      <thead><tr>`;
+
+  days.forEach(d=>{
+    const ds=dateStr(d);
+    const holi=HOLIDAYS[ds];
+    const isToday=ds===today;
+    const isSun=d.getDay()===0, isSat=d.getDay()===6;
+    let bg=isToday?'#fffde7':holi||isSun?'#fff5f5':isSat?'#f0f4ff':'#f5f7fb';
+    let color=holi||isSun?'#c53030':isSat?'#1a56db':'#1a2b4a';
+    if(isToday) color='#7c4f00';
+    html+=`<th style="background:${bg};color:${color};padding:6px 8px;border:1px solid #dde3ec;text-align:center;font-size:12px;min-width:110px;white-space:nowrap">
+      ${d.getMonth()+1}/${d.getDate()}（${DOW_JP[d.getDay()]}）${isToday?'<br><span style="font-size:10px;background:#f59e0b;color:#fff;border-radius:3px;padding:0 4px">今日</span>':''}${holi?`<br><small style="font-size:9px">${holi}</small>`:''}
+    </th>`;
+  });
+  html+='</tr></thead><tbody><tr>';
+
+  days.forEach(d=>{
+    const ds=dateStr(d);
+    const holi=HOLIDAYS[ds];
+    const isToday=ds===today;
+    const isSun=d.getDay()===0;
+    const offEv=events.find(e=>e.memberIds&&e.memberIds.includes(uid)&&e.date===ds&&e.memo==='off');
+    let bg=isToday?'#fffef0':holi||isSun?'#fff8f8':'';
+    html+=`<td style="vertical-align:top;padding:5px 6px;border:1px solid #dde3ec;min-height:70px;background:${bg}">`;
+    if(offEv){
+      html+='<span style="font-size:11px;background:#e5e7eb;border-radius:3px;padding:1px 6px;color:#6b7280">休み</span>';
+    } else {
+      const dayEvs=events.filter(e=>e.memberIds&&e.memberIds.includes(uid)&&e.date===ds&&e.memo!=='off')
+        .sort((a,b)=>(a.startTime||'99:99').localeCompare(b.startTime||'99:99'));
+      dayEvs.forEach(ev=>{
+        const et=EV_TYPES[ev.type]||EV_TYPES.task;
+        const ts=ev.startTime?(ev.startTime+(ev.endTime?'-'+ev.endTime:''))+' ':'';
+        const recIcon=ev._recurring?'🔁':'';
+        html+=`<div onclick="openEvDetail('${ev.id}')" title="${esc(ev.title)}" style="cursor:pointer;margin-bottom:3px">
+          <span class="ev ${et.cls}" style="display:block;white-space:normal;font-size:11px;line-height:1.4">
+            ${ts?`<span class="ev-time">${esc(ts)}</span>`:''}${recIcon}<span style="font-size:9px;background:rgba(0,0,0,.1);border-radius:2px;padding:0 3px;margin-right:2px">${et.label}</span>${esc(ev.title)}
+          </span>
+        </div>`;
+      });
+    }
+    html+='</td>';
+  });
+  html+='</tr></tbody></table></div></div>';
+  return html;
 }
 
 function updateBadges(){
