@@ -1622,17 +1622,20 @@ function renderTop(){
 
 function renderTopWeek(s){
   const today = todayStr();
-  const days = getWeekDays(new Date());
+  // 今日から7日間
+  const todayD = new Date();
+  const days = Array.from({length:7},(_,i)=>{ const d=new Date(todayD); d.setDate(d.getDate()+i); return d; });
   const rawEvents = load('events',[]);
   const startDs = dateStr(days[0]), endDs = dateStr(days[6]);
   const events = expandEvents(rawEvents, startDs, endDs);
   const uid = s.userId;
 
   const DOW_JP=['日','月','火','水','木','金','土'];
+  const endLabel = `${days[6].getMonth()+1}/${days[6].getDate()}`;
 
   let html = `<div class="top-today" style="margin-top:14px">
     <div class="top-today-hdr">
-      <span>📅</span> 今週の予定
+      <span>📅</span> 今後7日間の予定（〜${endLabel}）
       <button onclick="showMod('schedule','gw')" style="margin-left:auto;background:#e8f0fe;color:#1a56db;border:1px solid #b3ccf5;padding:3px 10px;border-radius:4px;cursor:pointer;font-size:11px">グループ週を開く →</button>
     </div>
     <div style="overflow-x:auto">
