@@ -2289,9 +2289,9 @@ function renderUserTable(){
       </td>
       <td>
         <div class="inline-pw-wrap">
-          <input class="inline-input" id="pw-${u.id}" type="password" value="${esc(u.password)}"
+          <input class="inline-input" id="pw-${u.id}" type="text" value="${esc(u.password)}"
             onkeydown="if(event.key==='Enter'){event.preventDefault();saveInlineRow('${u.id}')}">
-          <button class="inline-eye" type="button" onclick="toggleInlinePw('${u.id}')" title="表示/非表示">🐵</button>
+          <button class="inline-eye" type="button" onclick="toggleInlinePw('${u.id}')" title="表示/非表示">🙈</button>
         </div>
       </td>
       <td>${esc(deptPath(u.deptId))}</td>
@@ -2339,7 +2339,7 @@ function toggleInlinePw(uid){
   inp.type = show ? 'text' : 'password';
   // ボタンのラベルを更新
   const btn = inp.parentElement && inp.parentElement.querySelector('.inline-eye');
-  if(btn) btn.textContent = show ? '🙈' : '🐵';
+  if(btn) btn.textContent = show ? '🐵' : '🙈';
 }
 function toggleUserActive(id){
   const users=load('users',[]);
