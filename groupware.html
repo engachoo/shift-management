@@ -448,7 +448,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
         <div class="ci-filter">
           <button class="active" id="cf-pending" onclick="filterCi('pending')">未承認<span class="ci-filter-cnt" id="cnt-pending"></span></button>
           <button id="cf-checking" onclick="filterCi('checking')">保留中<span class="ci-filter-cnt" id="cnt-checking"></span></button>
-          <button id="cf-done" onclick="filterCi('done')">承認済<span class="ci-filter-cnt" id="cnt-done"></span></button>
+          <button id="cf-done" onclick="filterCi('done')">承認済</button>
         </div>
         <div class="ci-items" id="ciItems"></div>
       </div>
@@ -1806,7 +1806,7 @@ function renderCiList(){
   const cntCheck=all.filter(c=>{const r=c.responses[myId()];return r&&r.status==='checking';}).length;
   const cntDone=all.filter(c=>{const r=c.responses[myId()];return r&&r.status==='confirmed';}).length;
   const setCnt=(id,n)=>{const el=document.getElementById(id);if(el){el.textContent=n>0?n:'';el.style.display=n>0?'':'none';}};
-  setCnt('cnt-pending',cntPend); setCnt('cnt-checking',cntCheck); setCnt('cnt-done',cntDone);
+  setCnt('cnt-pending',cntPend); setCnt('cnt-checking',cntCheck);
 
   let list=[...all];
   if(ciFilter==='pending') list=list.filter(c=>{const r=c.responses[myId()];return !r||r.status==='pending';});
