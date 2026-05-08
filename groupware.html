@@ -1471,7 +1471,7 @@ function showMod(mod,sub){
 // =========================================================
 function renderTop(){
   const s = getS(); if(!s) return;
-  const uid = s.loginId;
+  const uid = s.userId;
   const prevLoginStr = load('lastLogin_'+uid, null);
   const prevLogin = prevLoginStr ? new Date(prevLoginStr) : null;
 
@@ -1494,8 +1494,8 @@ function renderTop(){
   // ---- ToDo：未完了・期日が近い ----
   const todos = load('todos',[]).filter(t=>t.userId===myId()&&!t.done);
   const urgentTodos = todos.filter(t=>{
-    if(!t.dueDate) return false;
-    const diff=(new Date(t.dueDate)-now)/(1000*60*60*24);
+    if(!t.due) return false;
+    const diff=(new Date(t.due)-now)/(1000*60*60*24);
     return diff<=3;
   });
 
@@ -1546,8 +1546,8 @@ function renderTop(){
       return `<div class="top-empty">期限が迫っているToDoはありません<br><span style="font-size:11px">（未完了: ${todos.length}件）</span></div>`;
     }
     return urgentTodos.slice(0,5).map(t=>{
-      const diff = t.dueDate ? Math.ceil((new Date(t.dueDate)-now)/(1000*60*60*24)) : null;
-      const label = diff===null?'':'期限: '+t.dueDate+(diff<=0?' 【期限切れ】':diff===0?' 【今日】':' (あと'+diff+'日)');
+      const diff = t.due ? Math.ceil((new Date(t.due)-now)/(1000*60*60*24)) : null;
+      const label = diff===null?'':'期限: '+t.due+(diff<=0?' 【期限切れ】':diff===0?' 【今日】':' (あと'+diff+'日)');
       return `<div class="top-item" onclick="showMod('todo')">
         <div class="top-item-icon">${diff<=0?'🔴':'🟡'}</div>
         <div class="top-item-body">
@@ -2673,7 +2673,7 @@ function startApp(){
     document.getElementById('adminMenu').style.display='block';
   }
   // 前回ログイン時刻を保存してからTOPへ
-  const uid = s.loginId;
+  const uid = s.userId;
   const prevLogin = load('lastLogin_'+uid, null);
   save('lastLogin_'+uid, new Date().toISOString());
   showMod('top');
