@@ -332,6 +332,14 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
 .act-btn.danger{border-color:#fca5a5;color:#e53e3e}
 .act-btn.danger:hover{background:#fef2f2}
 .pw-cell{font-family:monospace;font-size:12px;color:#334;letter-spacing:1px}
+/* インライン編集 */
+.inline-input{border:1px solid #d1d5db;border-radius:4px;padding:4px 7px;font-size:12px;font-family:inherit;width:100%;min-width:110px;color:#2d3748;background:#fff;transition:border-color .15s,box-shadow .15s}
+.inline-input:focus{outline:none;border-color:#1a56db;box-shadow:0 0 0 2px rgba(26,86,219,.15)}
+.inline-input.saved{border-color:#059669;background:#f0fdf4}
+.inline-pw-wrap{display:flex;align-items:center;gap:4px}
+.inline-pw-wrap .inline-input{min-width:100px}
+.inline-eye{background:none;border:none;cursor:pointer;font-size:15px;color:#9ca3af;padding:0 2px;line-height:1}
+.inline-eye:hover{color:#374151}
 
 /* 部署ツリー */
 .dept-tree{font-size:13px}
@@ -2275,49 +2283,54 @@ function switchAdminTab(tab){
 function renderUserTable(){
   const users=load('users',[]);
   document.getElementById('userTbody').innerHTML=users.map(u=>`
-    <tr>
+    <tr id="urow-${u.id}">
       <td><strong>${esc(u.name)}</strong></td>
-      <td>${esc(u.loginId)}</td>
-      <td><span class="pw-cell" id="pw-cell-${u.id}">●●●●●●</span>
-          <button class="act-btn" style="margin-left:4px" onclick="togglePwView('${u.id}','${esc(u.password)}')" id="pw-eye-${u.id}">表示</button></td>
+      <td>
+        <input class="inline-input" id="lid-${u.id}" value="${esc(u.loginId)}"
+          onblur="saveInlineField('${u.id}','loginId',this)"
+          onkeydown="if(event.key==='Enter'){this.blur();event.preventDefault()}">
+      </td>
+      <td>
+        <div class="inline-pw-wrap">
+          <input class="inline-input" id="pw-${u.id}" type="password" value="${esc(u.password)}"
+            onblur="saveInlineField('${u.id}','password',this)"
+            onkeydown="if(event.key==='Enter'){this.blur();event.preventDefault()}">
+          <button class="inline-eye" type="button" onclick="toggleInlinePw('${u.id}')" title="表示/非表示">👁</button>
+        </div>
+      </td>
       <td>${esc(deptPath(u.deptId))}</td>
       <td>${u.role==='admin'?'<span class="tag-admin">管理者</span>':'<span class="tag-user">一般</span>'}</td>
       <td>${u.active?'<span class="tag-active">有効</span>':'<span class="tag-inactive">無効</span>'}</td>
       <td>
         <button class="act-btn" onclick="openUserModal('${u.id}')">編集</button>
-        <button class="act-btn" style="background:#e8f0fe;color:#1a56db;border-color:#b3ccf5" onclick="openPwModal('${u.id}')">PW変更</button>
         ${u.id!=='admin'?`<button class="act-btn danger" onclick="toggleUserActive('${u.id}')">${u.active?'無効化':'有効化'}</button>`:''}
       </td>
     </tr>`).join('');
 }
-function togglePwView(id, pw){
-  const cell=document.getElementById('pw-cell-'+id);
-  const btn=document.getElementById('pw-eye-'+id);
-  if(!cell)return;
-  if(cell.textContent==='●●●●●●'){cell.textContent=pw;btn.textContent='隠す';}
-  else{cell.textContent='●●●●●●';btn.textContent='表示';}
+
+function saveInlineField(uid, field, inputEl){
+  const val = inputEl.value.trim();
+  if(!val){ inputEl.classList.add('saved'); setTimeout(()=>inputEl.classList.remove('saved'),1000); return; }
+  const users = load('users',[]);
+  const u = users.find(x=>x.id===uid);
+  if(!u) return;
+  // loginId重複チェック
+  if(field==='loginId' && val!==u.loginId){
+    if(users.some(x=>x.id!==uid && x.loginId===val)){
+      alert('そのログインIDはすでに使われています');
+      inputEl.value = u.loginId; return;
+    }
+  }
+  u[field] = val;
+  save('users', users);
+  inputEl.classList.add('saved');
+  setTimeout(()=>inputEl.classList.remove('saved'), 1200);
 }
 
-let _pwTargetId=null;
-function openPwModal(id){
-  _pwTargetId=id;
-  const u=load('users',[]).find(x=>x.id===id);
-  if(!u)return;
-  document.getElementById('pw-target-name').textContent='👤 '+u.name+' のパスワードを変更';
-  document.getElementById('pw-new').value='';
-  document.getElementById('pwModal').classList.add('open');
-}
-function savePw(){
-  const pw=document.getElementById('pw-new').value;
-  if(!pw){alert('パスワードを入力してください');return;}
-  const users=load('users',[]);
-  const u=users.find(x=>x.id===_pwTargetId);
-  if(!u){alert('ユーザーが見つかりません');return;}
-  u.password=pw;
-  save('users',users);
-  closeModal('pwModal');
-  renderUserTable();
-  alert('✅ '+u.name+' のパスワードを変更しました');
+function toggleInlinePw(uid){
+  const inp = document.getElementById('pw-'+uid);
+  if(!inp) return;
+  inp.type = inp.type==='password' ? 'text' : 'password';
 }
 function toggleUserActive(id){
   const users=load('users',[]);
