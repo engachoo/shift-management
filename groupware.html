@@ -86,14 +86,14 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
 
 /* グループ週 */
 .gw-wrap{background:#fff;border-radius:6px;box-shadow:0 1px 3px rgba(0,0,0,.08);overflow:auto}
-.gw-wrap table{width:100%;border-collapse:collapse;min-width:860px}
-.gw-wrap th{background:#f5f7fb;padding:6px 8px;text-align:center;font-size:12px;border:1px solid #dde3ec;white-space:nowrap}
-.gw-wrap th.th-member{background:#eef2f7;text-align:left;min-width:110px}
+.gw-wrap table{width:100%;border-collapse:collapse;min-width:860px;table-layout:fixed}
+.gw-wrap th{background:#f5f7fb;padding:6px 4px;text-align:center;font-size:11px;border:1px solid #dde3ec;word-break:break-all}
+.gw-wrap th.th-member{background:#eef2f7;text-align:left;width:110px}
 .gw-wrap th.th-today{background:#fffde7}
 .gw-wrap th.th-holiday{color:#c53030}
 .gw-wrap th.th-sat{color:#1a56db}
-.gw-wrap td{vertical-align:top;padding:4px 5px;border:1px solid #dde3ec;min-height:72px;min-width:120px}
-.gw-wrap td.td-member{background:#f9fafb;vertical-align:middle;padding:6px 10px}
+.gw-wrap td{vertical-align:top;padding:4px 5px;border:1px solid #dde3ec;min-height:72px}
+.gw-wrap td.td-member{background:#f9fafb;vertical-align:middle;padding:6px 10px;width:110px}
 .td-member .m-name{font-size:12px;font-weight:600;color:#1a2b4a}
 .td-member .m-dept{font-size:10px;color:#8899aa}
 .gw-wrap td.td-today{background:#fffef5}
@@ -103,7 +103,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
 .dept-row td{background:#f0f4fa !important;font-size:11px;font-weight:700;color:#445;padding:3px 8px !important}
 
 /* イベント */
-.ev{display:block;border-radius:3px;padding:2px 5px;margin:2px 0;font-size:11px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.ev{display:block;border-radius:3px;padding:2px 5px;margin:2px 0;font-size:11px;cursor:pointer;white-space:normal;word-break:break-all;overflow-wrap:break-word;max-width:100%}
 .ev:hover{opacity:.8}
 .ev-visitor{background:#d1fae5;color:#065f46;border-left:3px solid #10b981}
 .ev-outing{background:#fff3cd;color:#856404;border-left:3px solid #f59e0b}
@@ -142,7 +142,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
 .month-wrap{background:#fff;border-radius:6px;box-shadow:0 1px 3px rgba(0,0,0,.08);overflow:hidden}
 .month-wrap table{width:100%;border-collapse:collapse}
 .month-wrap th{background:#f5f7fb;padding:8px;text-align:center;font-size:12px;font-weight:600;border:1px solid #dde3ec}
-.month-wrap td{vertical-align:top;padding:4px 6px;border:1px solid #dde3ec;height:88px}
+.month-wrap td{vertical-align:top;padding:4px 6px;border:1px solid #dde3ec;height:88px;overflow:hidden;word-break:break-all}
 .month-wrap td.other-mo{background:#f9fafb;opacity:.55}
 .month-wrap td.td-today{background:#fffde7}
 .month-wrap td.td-holi{background:#fff0f0}
@@ -1642,7 +1642,7 @@ function renderTopWeek(s){
       <button onclick="showMod('schedule','gw')" style="margin-left:auto;background:#e8f0fe;color:#1a56db;border:1px solid #b3ccf5;padding:3px 10px;border-radius:4px;cursor:pointer;font-size:11px">グループ週を開く →</button>
     </div>
     <div style="overflow-x:auto">
-    <table style="width:100%;border-collapse:collapse;min-width:700px">
+    <table style="width:100%;border-collapse:collapse;min-width:700px;table-layout:fixed">
       <thead><tr>`;
 
   days.forEach(d=>{
@@ -1677,7 +1677,7 @@ function renderTopWeek(s){
         const ts=ev.startTime?(ev.startTime+(ev.endTime?'-'+ev.endTime:''))+' ':'';
         const recIcon=ev._recurring?'🔁':'';
         html+=`<div onclick="openEvDetail('${ev.id}')" title="${esc(ev.title)}" style="cursor:pointer;margin-bottom:3px">
-          <span class="ev ${et.cls}" style="display:block;white-space:normal;font-size:11px;line-height:1.4">
+          <span class="ev ${et.cls}" style="display:block;white-space:normal;word-break:break-all;overflow-wrap:break-word;font-size:11px;line-height:1.4">
             ${ts?`<span class="ev-time">${esc(ts)}</span>`:''}${recIcon}<span style="font-size:9px;background:rgba(0,0,0,.1);border-radius:2px;padding:0 3px;margin-right:2px">${et.label}</span>${esc(ev.title)}
           </span>
         </div>`;
