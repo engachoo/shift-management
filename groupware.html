@@ -343,6 +343,41 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
 .update-btn{background:#1a56db;color:#fff;border-color:#1a56db;font-weight:600}
 .update-btn:hover{background:#1339a8;color:#fff;border-color:#1339a8}
 
+/* ===== ホーム(TOP) ===== */
+.top-header{background:linear-gradient(90deg,#1a2b4a 0%,#1a3a6b 100%);color:#fff;border-radius:10px;padding:16px 22px;display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+.top-header-title{font-size:17px;font-weight:700;display:flex;align-items:center;gap:10px}
+.top-header-sub{font-size:12px;opacity:.75;margin-top:3px}
+.top-header-btns{display:flex;gap:8px}
+.top-hdr-btn{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.35);color:#fff;padding:5px 13px;border-radius:5px;cursor:pointer;font-size:12px;display:flex;align-items:center;gap:5px}
+.top-hdr-btn:hover{background:rgba(255,255,255,.28)}
+.top-cols{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:900px){.top-cols{grid-template-columns:1fr}}
+.top-card{background:#fff;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,.08);overflow:hidden}
+.top-card-hdr{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:2px solid #eef2f7;font-weight:700;font-size:13px;color:#1a2b4a}
+.top-card-hdr .tc-icon{font-size:16px}
+.top-card-hdr .tc-count{margin-left:auto;background:#e53e3e;color:#fff;border-radius:10px;padding:1px 8px;font-size:11px;font-weight:700}
+.top-card-hdr .tc-count.blue{background:#1a56db}
+.top-card-hdr .tc-count.green{background:#059669}
+.top-card-hdr .tc-count.gray{background:#6b7280}
+.top-item{display:flex;align-items:flex-start;gap:10px;padding:10px 14px;border-bottom:1px solid #f0f4fa;cursor:pointer;transition:background .15s}
+.top-item:last-child{border-bottom:none}
+.top-item:hover{background:#f5f8ff}
+.top-item-icon{font-size:18px;margin-top:1px;flex-shrink:0}
+.top-item-body{flex:1;min-width:0}
+.top-item-title{font-size:13px;font-weight:600;color:#2d3748;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.top-item-meta{font-size:11px;color:#8899aa;margin-top:2px}
+.top-item-badge{flex-shrink:0;font-size:10px;font-weight:700;padding:2px 7px;border-radius:8px;margin-top:2px}
+.top-item-badge.new{background:#fef2f2;color:#dc2626;border:1px solid #fca5a5}
+.top-item-badge.info{background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe}
+.top-empty{padding:18px 14px;text-align:center;color:#a0aec0;font-size:13px}
+.top-today{background:#fff;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,.08);margin-top:14px}
+.top-today-hdr{padding:10px 14px;border-bottom:2px solid #eef2f7;font-weight:700;font-size:13px;color:#1a2b4a;display:flex;align-items:center;gap:8px}
+.top-ev-row{display:flex;align-items:center;gap:10px;padding:8px 14px;border-bottom:1px solid #f0f4fa}
+.top-ev-row:last-child{border-bottom:none}
+.top-ev-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.top-ev-time{font-size:11px;color:#6b7280;min-width:90px;flex-shrink:0}
+.top-ev-title{font-size:13px;font-weight:500;color:#2d3748}
+
 /* 部署ツリー */
 .dept-tree{font-size:13px}
 .dept-node{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:4px;margin-bottom:2px}
@@ -429,6 +464,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
 
   <!-- サイドバー -->
   <div id="sidebar">
+    <div class="side-item" id="m-top" onclick="showMod('top')"><span class="si-icon">🏠</span>ホーム<span class="side-badge" id="badge-top" style="display:none"></span></div>
     <div class="side-group">スケジュール</div>
     <div class="side-item" id="m-sgw" onclick="showMod('schedule','gw')"><span class="si-icon">📅</span>グループ週</div>
     <div class="side-item" id="m-spm" onclick="showMod('schedule','pm')"><span class="si-icon">🗓️</span>個人月</div>
@@ -446,6 +482,11 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
 
   <!-- メインコンテンツ -->
   <div id="mainArea">
+
+    <!-- ホーム(TOP) -->
+    <div id="topView" style="display:none;padding:16px">
+      <div id="topContent"></div>
+    </div>
 
     <!-- スケジュール -->
     <div id="scheduleView" style="display:none">
@@ -1391,7 +1432,11 @@ function showMod(mod,sub){
   curMod=mod;
   document.querySelectorAll('#mainArea>div').forEach(d=>d.style.display='none');
   document.querySelectorAll('.side-item').forEach(d=>d.classList.remove('active'));
-  if(mod==='schedule'){
+  if(mod==='top'){
+    document.getElementById('topView').style.display='block';
+    document.getElementById('m-top').classList.add('active');
+    renderTop();
+  } else if(mod==='schedule'){
     document.getElementById('scheduleView').style.display='block';
     if(sub) calSub=sub;
     document.getElementById('m-s'+calSub).classList.add('active');
@@ -1419,6 +1464,154 @@ function showMod(mod,sub){
     switchAdminTab(adminTab);
   }
   updateBadges();
+}
+
+// =========================================================
+// TOP（ホーム）
+// =========================================================
+function renderTop(){
+  const s = getS(); if(!s) return;
+  const uid = s.loginId;
+  const prevLoginStr = load('lastLogin_'+uid, null);
+  const prevLogin = prevLoginStr ? new Date(prevLoginStr) : null;
+
+  const today = dateStr(new Date());
+  const now = new Date();
+
+  // ---- 承認申請：自分宛で未対応 ----
+  const cis = load('circulars',[]);
+  const pendingCis = cis.filter(c=>{
+    if(!c.recipients||!c.recipients.includes(myId())) return false;
+    const r = c.responses[myId()];
+    return !r || r.status==='pending';
+  });
+  const newCis = prevLogin ? pendingCis.filter(c=>new Date(c.createdAt)>prevLogin) : pendingCis;
+
+  // ---- 掲示板：新着 ----
+  const bulletins = load('bulletins',[]);
+  const newBls = prevLogin ? bulletins.filter(b=>new Date(b.createdAt)>prevLogin) : bulletins.slice(0,3);
+
+  // ---- ToDo：未完了・期日が近い ----
+  const todos = load('todos',[]).filter(t=>t.userId===myId()&&!t.done);
+  const urgentTodos = todos.filter(t=>{
+    if(!t.dueDate) return false;
+    const diff=(new Date(t.dueDate)-now)/(1000*60*60*24);
+    return diff<=3;
+  });
+
+  // ---- 今日の予定 ----
+  const events = load('events',[]);
+  const todayEvs = events.filter(e=>e.memberIds&&e.memberIds.includes(myId())&&e.date===today&&e.memo!=='off')
+    .sort((a,b)=>(a.startTime||'99:99').localeCompare(b.startTime||'99:99'));
+
+  // ---- バッジ更新 ----
+  const totalNew = newCis.length + newBls.length + urgentTodos.length;
+  const badge = document.getElementById('badge-top');
+  if(badge){ badge.textContent=totalNew||''; badge.style.display=totalNew?'':'none'; }
+
+  // ---- HTML生成 ----
+  const prevLoginLabel = prevLogin
+    ? prevLogin.toLocaleDateString('ja-JP',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})+'のログイン以降'
+    : '最新情報';
+
+  function ciItems(){
+    if(!pendingCis.length) return `<div class="top-empty">未対応の申請はありません</div>`;
+    return pendingCis.slice(0,5).map(c=>`
+      <div class="top-item" onclick="showMod('circular')">
+        <div class="top-item-icon">📝</div>
+        <div class="top-item-body">
+          <div class="top-item-title">${esc(c.title)}</div>
+          <div class="top-item-meta">${esc(getUser(c.author).name)} ・ ${c.createdAt}</div>
+        </div>
+        ${newCis.includes(c)?'<div class="top-item-badge new">NEW</div>':'<div class="top-item-badge info">未対応</div>'}
+      </div>`).join('');
+  }
+
+  function blItems(){
+    if(!bulletins.length) return `<div class="top-empty">掲示板への投稿はありません</div>`;
+    return bulletins.slice(0,5).map(b=>`
+      <div class="top-item" onclick="showMod('bulletin')">
+        <div class="top-item-icon">📌</div>
+        <div class="top-item-body">
+          <div class="top-item-title">${esc(b.title)}</div>
+          <div class="top-item-meta">${esc(getUser(b.author).name)} ・ ${b.createdAt}</div>
+        </div>
+        ${newBls.includes(b)?'<div class="top-item-badge new">NEW</div>':''}
+      </div>`).join('');
+  }
+
+  function todoItems(){
+    if(!urgentTodos.length){
+      if(!todos.length) return `<div class="top-empty">未完了のToDoはありません</div>`;
+      return `<div class="top-empty">期限が迫っているToDoはありません<br><span style="font-size:11px">（未完了: ${todos.length}件）</span></div>`;
+    }
+    return urgentTodos.slice(0,5).map(t=>{
+      const diff = t.dueDate ? Math.ceil((new Date(t.dueDate)-now)/(1000*60*60*24)) : null;
+      const label = diff===null?'':'期限: '+t.dueDate+(diff<=0?' 【期限切れ】':diff===0?' 【今日】':' (あと'+diff+'日)');
+      return `<div class="top-item" onclick="showMod('todo')">
+        <div class="top-item-icon">${diff<=0?'🔴':'🟡'}</div>
+        <div class="top-item-body">
+          <div class="top-item-title">${esc(t.title)}</div>
+          <div class="top-item-meta">${label}</div>
+        </div>
+        <div class="top-item-badge new">${diff<=0?'期限切れ':'期限間近'}</div>
+      </div>`;
+    }).join('');
+  }
+
+  function todayEvItems(){
+    if(!todayEvs.length) return `<div class="top-empty">今日の予定はありません</div>`;
+    return todayEvs.map(ev=>{
+      const et = EV_TYPES[ev.type]||EV_TYPES.task;
+      const time = ev.startTime ? ev.startTime+(ev.endTime?' 〜 '+ev.endTime:'') : '終日';
+      return `<div class="top-ev-row">
+        <div class="top-ev-dot" style="background:${et.color}"></div>
+        <div class="top-ev-time">${time}</div>
+        <div class="top-ev-title">${esc(ev.title)}</div>
+      </div>`;
+    }).join('');
+  }
+
+  document.getElementById('topContent').innerHTML = `
+    <div class="top-header">
+      <div>
+        <div class="top-header-title">🏠 ${esc(s.name)}さんの最新情報</div>
+        <div class="top-header-sub">${prevLoginLabel}</div>
+      </div>
+      <div class="top-header-btns">
+        <button class="top-hdr-btn" onclick="showMod('schedule','gw')">📅 グループ週を開く</button>
+      </div>
+    </div>
+    <div class="top-cols">
+      <div class="top-card">
+        <div class="top-card-hdr">
+          <span class="tc-icon">📝</span>未対応の承認申請
+          ${pendingCis.length?`<span class="tc-count">${pendingCis.length}件</span>`:''}
+        </div>
+        ${ciItems()}
+      </div>
+      <div class="top-card">
+        <div class="top-card-hdr">
+          <span class="tc-icon">📌</span>掲示板
+          ${newBls.length?`<span class="tc-count blue">${newBls.length}件 NEW</span>`:''}
+        </div>
+        ${blItems()}
+      </div>
+      <div class="top-card">
+        <div class="top-card-hdr">
+          <span class="tc-icon">✅</span>期限が迫っているToDo
+          ${urgentTodos.length?`<span class="tc-count">${urgentTodos.length}件</span>`:''}
+        </div>
+        ${todoItems()}
+      </div>
+      <div class="top-card">
+        <div class="top-card-hdr">
+          <span class="tc-icon">📅</span>今日の予定（${today}）
+          ${todayEvs.length?`<span class="tc-count green">${todayEvs.length}件</span>`:''}
+        </div>
+        ${todayEvItems()}
+      </div>
+    </div>`;
 }
 
 function updateBadges(){
@@ -2479,7 +2672,11 @@ function startApp(){
     document.getElementById('hdrRole').style.display='inline';
     document.getElementById('adminMenu').style.display='block';
   }
-  showMod('circular');
+  // 前回ログイン時刻を保存してからTOPへ
+  const uid = s.loginId;
+  const prevLogin = load('lastLogin_'+uid, null);
+  save('lastLogin_'+uid, new Date().toISOString());
+  showMod('top');
 }
 
 initData();
