@@ -896,8 +896,8 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
         <div>
           <label class="f-label">パスワード *</label>
           <div class="pass-wrap">
-            <input class="f-input" id="u-pass" type="password" placeholder="パスワード" style="padding-right:40px">
-            <button class="pass-eye" type="button" onclick="toggleEye('u-pass',this)" tabindex="-1">🐵</button>
+            <input class="f-input" id="u-pass" type="text" placeholder="パスワード" style="padding-right:40px">
+            <button class="pass-eye" type="button" onclick="toggleEye('u-pass',this)" tabindex="-1">🙈</button>
           </div>
           <div class="pass-note" id="u-pass-note"></div>
         </div>
@@ -2368,8 +2368,12 @@ function openUserModal(id){
   document.getElementById('userModalTitle').textContent=u?'ユーザー編集':'新規ユーザー登録';
   document.getElementById('u-name').value=u?u.name:'';
   document.getElementById('u-loginid').value=u?u.loginId:'';
-  document.getElementById('u-pass').value='';
-  document.getElementById('u-pass-note').textContent=u?'空白の場合はパスワードを変更しません':'';
+  const passEl=document.getElementById('u-pass');
+  passEl.value=u?u.password:'';
+  passEl.type='text';
+  const eyeBtn=passEl.parentElement&&passEl.parentElement.querySelector('.pass-eye');
+  if(eyeBtn) eyeBtn.textContent='🙈';
+  document.getElementById('u-pass-note').textContent='';
   document.getElementById('u-role').value=u?u.role:'user';
   document.getElementById('u-active').value=u?(u.active?'1':'0'):'1';
   buildDeptSelect('u-dept',u?u.deptId:'','');
