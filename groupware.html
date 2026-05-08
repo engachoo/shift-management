@@ -403,7 +403,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
       <label>パスワード</label>
       <div class="pass-wrap">
         <input id="loginPass" type="password" placeholder="パスワードを入力" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
-        <button class="pass-eye" type="button" onclick="toggleEye('loginPass',this)" tabindex="-1">👁</button>
+        <button class="pass-eye" type="button" onclick="toggleEye('loginPass',this)" tabindex="-1">表示</button>
       </div>
     </div>
     <div class="login-error" id="loginError"></div>
@@ -899,7 +899,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
           <label class="f-label">パスワード *</label>
           <div class="pass-wrap">
             <input class="f-input" id="u-pass" type="password" placeholder="パスワード" style="padding-right:40px">
-            <button class="pass-eye" type="button" onclick="toggleEye('u-pass',this)" tabindex="-1">👁</button>
+            <button class="pass-eye" type="button" onclick="toggleEye('u-pass',this)" tabindex="-1">表示</button>
           </div>
           <div class="pass-note" id="u-pass-note"></div>
         </div>
@@ -931,7 +931,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
         <label class="f-label">新しいパスワード <span style="color:#e53e3e">*</span></label>
         <div class="pass-wrap">
           <input class="f-input" id="pw-new" type="password" placeholder="新しいパスワードを入力" style="padding-right:40px">
-          <button class="pass-eye" type="button" onclick="toggleEye('pw-new',this)" tabindex="-1">👁</button>
+          <button class="pass-eye" type="button" onclick="toggleEye('pw-new',this)" tabindex="-1">表示</button>
         </div>
       </div>
     </div>
@@ -1025,7 +1025,7 @@ function toggleEye(inputId, btn){
   if(!inp) return;
   const show = inp.type === 'password';
   inp.type = show ? 'text' : 'password';
-  btn.textContent = show ? '🙈' : '👁';
+  btn.textContent = show ? '非表示' : '表示';
 }
 
 // データリセット（ログイン画面から呼ぶ）
@@ -2295,7 +2295,7 @@ function renderUserTable(){
           <input class="inline-input" id="pw-${u.id}" type="password" value="${esc(u.password)}"
             onblur="saveInlineField('${u.id}','password',this)"
             onkeydown="if(event.key==='Enter'){this.blur();event.preventDefault()}">
-          <button class="inline-eye" type="button" onclick="toggleInlinePw('${u.id}')" title="表示/非表示">👁</button>
+          <button class="inline-eye" type="button" onclick="toggleInlinePw('${u.id}')" title="表示/非表示">表示</button>
         </div>
       </td>
       <td>${esc(deptPath(u.deptId))}</td>
@@ -2330,7 +2330,11 @@ function saveInlineField(uid, field, inputEl){
 function toggleInlinePw(uid){
   const inp = document.getElementById('pw-'+uid);
   if(!inp) return;
-  inp.type = inp.type==='password' ? 'text' : 'password';
+  const show = inp.type==='password';
+  inp.type = show ? 'text' : 'password';
+  // ボタンのラベルを更新
+  const btn = inp.parentElement && inp.parentElement.querySelector('.inline-eye');
+  if(btn) btn.textContent = show ? '非表示' : '表示';
 }
 function toggleUserActive(id){
   const users=load('users',[]);
