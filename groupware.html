@@ -9,8 +9,21 @@
 body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef2f7;color:#2d3748;min-height:100vh;font-size:13px}
 
 /* ===== ログイン画面 ===== */
-#loginScreen{display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,#0f2044 0%,#1a3a6b 50%,#0f2044 100%);position:fixed;inset:0;z-index:9999}
-.login-card{background:#fff;border-radius:12px;padding:40px 36px;width:360px;box-shadow:0 20px 60px rgba(0,0,0,.4)}
+#loginScreen{display:flex;align-items:center;justify-content:center;min-height:100vh;position:fixed;inset:0;z-index:9999;overflow:hidden;background:#0a1428}
+/* スライドショー */
+.login-slides{position:absolute;inset:0;z-index:0}
+.login-slide{position:absolute;inset:0;background-size:cover;background-position:center;opacity:0;transition:opacity 1.8s ease-in-out;transform:scale(1.08)}
+.login-slide.active{opacity:1;animation:loginKenBurns 8s ease-in-out forwards}
+.login-slide.prev{opacity:0}
+@keyframes loginKenBurns{from{transform:scale(1.08)}to{transform:scale(1.0)}}
+/* オーバーレイ（グラデーション） */
+.login-overlay{position:absolute;inset:0;z-index:1;background:linear-gradient(135deg,rgba(5,15,40,.72) 0%,rgba(5,15,40,.45) 60%,rgba(5,15,40,.65) 100%)}
+/* ドットインジケーター */
+.login-dots{position:absolute;bottom:28px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:3}
+.login-dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.4);border:1px solid rgba(255,255,255,.6);cursor:pointer;transition:background .3s}
+.login-dot.active{background:#fff}
+/* ログインカード */
+.login-card{background:rgba(255,255,255,.97);border-radius:14px;padding:40px 36px;width:360px;box-shadow:0 24px 64px rgba(0,0,0,.55);position:relative;z-index:2;backdrop-filter:blur(2px)}
 .login-logo{text-align:center;margin-bottom:28px}
 .login-logo .co-name{font-size:22px;font-weight:800;color:#0f2044;letter-spacing:2px}
 .login-logo .sys-name{font-size:13px;color:#6b7280;margin-top:4px;letter-spacing:1px}
@@ -358,6 +371,16 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
 
 <!-- ===== ログイン画面 ===== -->
 <div id="loginScreen">
+  <!-- スライドショー背景 -->
+  <div class="login-slides">
+    <div class="login-slide active" id="ls0" style="background-image:url('https://block47.jp/wp-content/themes/amnk/images/main2.jpg')"></div>
+    <div class="login-slide" id="ls1" style="background-image:url('https://block47.jp/wp-content/uploads/cycle.jpg');background-position:center 30%"></div>
+  </div>
+  <div class="login-overlay"></div>
+  <div class="login-dots">
+    <div class="login-dot active" id="dot0" onclick="goSlide(0)"></div>
+    <div class="login-dot" id="dot1" onclick="goSlide(1)"></div>
+  </div>
   <div class="login-card">
     <div class="login-logo">
       <span class="logo-icon">🏢</span>
@@ -929,6 +952,43 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
 </div>
 
 <script>
+// =========================================================
+// ログインスライドショー
+// =========================================================
+(function(){
+  const SLIDES = ['ls0','ls1'];
+  const DOTS   = ['dot0','dot1'];
+  const INTERVAL = 6000; // 6秒ごとに切替
+  let cur = 0, timer = null;
+
+  function goSlide(idx){
+    SLIDES.forEach((id,i)=>{
+      const el = document.getElementById(id);
+      if(!el) return;
+      if(i === idx){ el.classList.add('active'); el.classList.remove('prev'); }
+      else { el.classList.remove('active'); el.classList.add('prev'); }
+    });
+    DOTS.forEach((id,i)=>{
+      const d = document.getElementById(id);
+      if(d) d.classList.toggle('active', i===idx);
+    });
+    cur = idx;
+  }
+  window.goSlide = goSlide;
+
+  function nextSlide(){
+    goSlide((cur + 1) % SLIDES.length);
+  }
+
+  function startSlider(){
+    if(timer) clearInterval(timer);
+    timer = setInterval(nextSlide, INTERVAL);
+  }
+
+  // DOMロード後に開始
+  document.addEventListener('DOMContentLoaded', startSlider);
+})();
+
 // =========================================================
 // データ層（localStorage + メモリフォールバック）
 // =========================================================
