@@ -1527,16 +1527,21 @@ function renderTop(){
       </div>`).join('');
   }
 
+  // 既読掲示板IDを取得
+  const readBls = load('blRead_'+uid, []);
+  const unreadBls = bulletins.filter(b=>!readBls.includes(b.id));
+
   function blItems(){
-    if(!bulletins.length) return `<div class="top-empty">掲示板への投稿はありません</div>`;
-    return bulletins.slice(0,5).map(b=>`
-      <div class="top-item" onclick="showMod('bulletin')">
+    if(!unreadBls.length) return `<div class="top-empty">未確認の掲示板投稿はありません</div>`;
+    return unreadBls.slice(0,5).map(b=>`
+      <div class="top-item" id="bl-row-${b.id}">
         <div class="top-item-icon">📌</div>
-        <div class="top-item-body">
+        <div class="top-item-body" onclick="showMod('bulletin')" style="cursor:pointer">
           <div class="top-item-title">${esc(b.title)}</div>
           <div class="top-item-meta">${esc(getUser(b.author).name)} ・ ${b.createdAt}</div>
         </div>
-        ${newBls.includes(b)?'<div class="top-item-badge new">NEW</div>':''}
+        ${newBls.includes(b)?'<div class="top-item-badge new" style="margin-right:6px">NEW</div>':''}
+        <button onclick="confirmBl('${b.id}')" style="flex-shrink:0;background:#ecfdf5;color:#065f46;border:1px solid #6ee7b7;padding:3px 8px;border-radius:4px;cursor:pointer;font-size:11px;white-space:nowrap">✓ 確認しました</button>
       </div>`).join('');
   }
 
@@ -1676,6 +1681,23 @@ function renderTopWeek(s){
   });
   html+='</tr></tbody></table></div></div>';
   return html;
+}
+
+function confirmBl(blId){
+  const uid = getS()?.userId; if(!uid) return;
+  const key = 'blRead_'+uid;
+  const read = load(key, []);
+  if(!read.includes(blId)){
+    read.push(blId);
+    save(key, read);
+  }
+  // 該当行をフェードアウトして消す
+  const row = document.getElementById('bl-row-'+blId);
+  if(row){
+    row.style.transition='opacity .4s';
+    row.style.opacity='0';
+    setTimeout(()=>{ row.remove(); }, 420);
+  }
 }
 
 function updateBadges(){
