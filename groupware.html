@@ -340,6 +340,8 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
 .inline-pw-wrap .inline-input{min-width:100px}
 .inline-eye{background:none;border:none;cursor:pointer;font-size:15px;color:#9ca3af;padding:0 2px;line-height:1}
 .inline-eye:hover{color:#374151}
+.update-btn{background:#1a56db;color:#fff;border-color:#1a56db;font-weight:600}
+.update-btn:hover{background:#1339a8;color:#fff;border-color:#1339a8}
 
 /* 部署ツリー */
 .dept-tree{font-size:13px}
@@ -2283,14 +2285,12 @@ function renderUserTable(){
       <td><strong>${esc(u.name)}</strong></td>
       <td>
         <input class="inline-input" id="lid-${u.id}" value="${esc(u.loginId)}"
-          onblur="saveInlineField('${u.id}','loginId',this)"
-          onkeydown="if(event.key==='Enter'){this.blur();event.preventDefault()}">
+          onkeydown="if(event.key==='Enter'){event.preventDefault();saveInlineRow('${u.id}')}">
       </td>
       <td>
         <div class="inline-pw-wrap">
           <input class="inline-input" id="pw-${u.id}" type="password" value="${esc(u.password)}"
-            onblur="saveInlineField('${u.id}','password',this)"
-            onkeydown="if(event.key==='Enter'){this.blur();event.preventDefault()}">
+            onkeydown="if(event.key==='Enter'){event.preventDefault();saveInlineRow('${u.id}')}">
           <button class="inline-eye" type="button" onclick="toggleInlinePw('${u.id}')" title="表示/非表示">🐵</button>
         </div>
       </td>
@@ -2298,29 +2298,38 @@ function renderUserTable(){
       <td>${u.role==='admin'?'<span class="tag-admin">管理者</span>':'<span class="tag-user">一般</span>'}</td>
       <td>${u.active?'<span class="tag-active">有効</span>':'<span class="tag-inactive">無効</span>'}</td>
       <td>
+        <button class="act-btn update-btn" id="upd-${u.id}" onclick="saveInlineRow('${u.id}')">更新</button>
         <button class="act-btn" onclick="openUserModal('${u.id}')">編集</button>
         ${u.id!=='admin'?`<button class="act-btn danger" onclick="toggleUserActive('${u.id}')">${u.active?'無効化':'有効化'}</button>`:''}
       </td>
     </tr>`).join('');
 }
 
-function saveInlineField(uid, field, inputEl){
-  const val = inputEl.value.trim();
-  if(!val){ inputEl.classList.add('saved'); setTimeout(()=>inputEl.classList.remove('saved'),1000); return; }
+function saveInlineRow(uid){
+  const lidEl = document.getElementById('lid-'+uid);
+  const pwEl  = document.getElementById('pw-'+uid);
+  const updBtn= document.getElementById('upd-'+uid);
+  if(!lidEl||!pwEl) return;
+  const newLid = lidEl.value.trim();
+  const newPw  = pwEl.value;
+  if(!newLid){ alert('ログインIDを入力してください'); lidEl.focus(); return; }
+  if(!newPw) { alert('パスワードを入力してください'); pwEl.focus();  return; }
   const users = load('users',[]);
   const u = users.find(x=>x.id===uid);
   if(!u) return;
   // loginId重複チェック
-  if(field==='loginId' && val!==u.loginId){
-    if(users.some(x=>x.id!==uid && x.loginId===val)){
-      alert('そのログインIDはすでに使われています');
-      inputEl.value = u.loginId; return;
-    }
+  if(newLid !== u.loginId && users.some(x=>x.id!==uid && x.loginId===newLid)){
+    alert('そのログインIDはすでに使われています'); lidEl.focus(); return;
   }
-  u[field] = val;
+  u.loginId  = newLid;
+  u.password = newPw;
   save('users', users);
-  inputEl.classList.add('saved');
-  setTimeout(()=>inputEl.classList.remove('saved'), 1200);
+  // 更新ボタンを一時的に「✅ 保存済」表示
+  if(updBtn){
+    updBtn.textContent='✅ 保存済';
+    updBtn.style.background='#d1fae5'; updBtn.style.color='#065f46'; updBtn.style.borderColor='#6ee7b7';
+    setTimeout(()=>{updBtn.textContent='更新';updBtn.style.background='';updBtn.style.color='';updBtn.style.borderColor='';},1800);
+  }
 }
 
 function toggleInlinePw(uid){
