@@ -309,7 +309,11 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
 .td-item{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid #eef2f7}
 .td-item.done .td-title{text-decoration:line-through;color:#aaa}
 .td-check{width:16px;height:16px;cursor:pointer;accent-color:#1a56db;flex-shrink:0}
-.td-title{flex:1;font-size:13px}
+.td-body{flex:1;min-width:0}
+.td-title{font-size:13px;font-weight:500}
+.td-meta{font-size:11px;color:#8899aa;margin-top:2px;display:flex;gap:8px;flex-wrap:wrap}
+.td-assignee-badge{background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:600}
+.td-requester-badge{background:#fef9c3;color:#854d0e;border:1px solid #fde68a;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:600}
 .td-due{font-size:11px;color:#8899aa;white-space:nowrap}
 .td-pri-high{border-left:4px solid #e53e3e}
 .td-pri-med{border-left:4px solid #f59e0b}
@@ -546,6 +550,11 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
       <div class="page-hdr" style="position:static;margin-bottom:12px">
         <h2>✅ ToDo</h2>
         <button class="btn-new" onclick="openTdModal()">＋ 追加</button>
+      </div>
+      <div class="ci-filter" style="margin-bottom:12px">
+        <button class="active" id="td-tab-mine"    onclick="switchTdTab('mine')">自分のToDo<span class="ci-filter-cnt" id="td-cnt-mine"></span></button>
+        <button id="td-tab-requested" onclick="switchTdTab('requested')">依頼された<span class="ci-filter-cnt" id="td-cnt-req"></span></button>
+        <button id="td-tab-delegated" onclick="switchTdTab('delegated')">依頼した<span class="ci-filter-cnt" id="td-cnt-del"></span></button>
       </div>
       <div class="td-list" id="tdList"></div>
     </div>
@@ -910,15 +919,19 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
 <!-- ToDo -->
 <div class="modal-bg" id="tdModal">
   <div class="modal sm">
-    <div class="modal-hdr"><h3>ToDo 追加</h3><button class="modal-close" onclick="closeModal('tdModal')">×</button></div>
+    <div class="modal-hdr"><h3 id="tdModalTitle">ToDo 追加</h3><button class="modal-close" onclick="closeModal('tdModal')">×</button></div>
     <div class="modal-body">
       <div class="f-row"><label class="f-label">タスク名 *</label><input class="f-input" id="td-title" placeholder="タスク名"></div>
+      <div class="f-row"><label class="f-label">担当者</label>
+        <select class="f-select" id="td-assignee"></select>
+      </div>
       <div class="f-row-2">
         <div><label class="f-label">優先度</label>
           <select class="f-select" id="td-pri"><option value="med">中</option><option value="high">高</option><option value="low">低</option></select>
         </div>
         <div><label class="f-label">期日</label><input class="f-input" id="td-due" type="date"></div>
       </div>
+      <div class="f-row"><label class="f-label">メモ</label><input class="f-input" id="td-memo" placeholder="任意"></div>
     </div>
     <div class="modal-foot">
       <button class="btn-secondary" onclick="closeModal('tdModal')">キャンセル</button>
@@ -1716,7 +1729,8 @@ function updateBadges(){
     return !r||r.status==='pending'||r.status==='checking';
   }).length;
   document.getElementById('badge-ci').textContent=pending||'';
-  const tds=load('todos',[]).filter(t=>t.userId===myId()&&!t.done).length;
+  const me=myId();
+  const tds=load('todos',[]).filter(t=>!t.done&&(t.userId===me)).length;
   document.getElementById('badge-td').textContent=tds||'';
 }
 
@@ -2529,26 +2543,93 @@ function saveBl(){
 // =========================================================
 // ToDo
 // =========================================================
+let _tdTab='mine';
+function switchTdTab(tab){
+  _tdTab=tab;
+  ['mine','requested','delegated'].forEach(t=>{
+    document.getElementById('td-tab-'+t).classList.toggle('active',t===tab);
+  });
+  renderTd();
+}
+
 function renderTd(){
   updateBadges();
-  const tds=load('todos',[]).filter(t=>t.userId===myId());
-  document.getElementById('tdList').innerHTML=tds.length?tds.map(t=>`
-    <div class="td-item ${t.done?'done':''} td-pri-${t.priority||'med'}">
-      <input type="checkbox" class="td-check" ${t.done?'checked':''} onchange="toggleTd('${t.id}',this.checked)">
-      <div class="td-title">${esc(t.title)}</div>
-      <div class="td-due">${t.due||''}</div>
-      <button onclick="delTd('${t.id}')" style="background:none;border:none;color:#c53030;cursor:pointer;font-size:16px">×</button>
-    </div>`).join(''):'<div style="padding:20px;text-align:center;color:#8899aa">ToDoはありません</div>';
+  const all=load('todos',[]);
+  const me=myId();
+
+  // タブ別フィルタ
+  const mine      =all.filter(t=>t.userId===me && (!t.assignedBy||t.assignedBy===me));
+  const requested =all.filter(t=>t.userId===me && t.assignedBy && t.assignedBy!==me);
+  const delegated =all.filter(t=>t.assignedBy===me && t.userId!==me);
+
+  // バッジ更新
+  const setCnt=(id,n)=>{const el=document.getElementById(id);if(el){el.textContent=n>0?n:'';el.style.display=n>0?'':'none';}};
+  setCnt('td-cnt-mine', mine.filter(t=>!t.done).length);
+  setCnt('td-cnt-req',  requested.filter(t=>!t.done).length);
+  setCnt('td-cnt-del',  delegated.filter(t=>!t.done).length);
+
+  const list = _tdTab==='mine'?mine : _tdTab==='requested'?requested : delegated;
+
+  function tdRow(t){
+    const assigneeName = t.userId!==me ? getUser(t.userId).name : '';
+    const requesterName= t.assignedBy && t.assignedBy!==me ? getUser(t.assignedBy).name : '';
+    const canCheck = t.userId===me; // 担当者のみチェック可
+    const canDel   = t.assignedBy===me||!t.assignedBy; // 依頼者か自分のみ削除可
+    return `<div class="td-item ${t.done?'done':''} td-pri-${t.priority||'med'}">
+      <input type="checkbox" class="td-check" ${t.done?'checked':''} ${canCheck?'':'disabled style="opacity:.4"'} onchange="toggleTd('${t.id}',this.checked)">
+      <div class="td-body">
+        <div class="td-title">${esc(t.title)}</div>
+        <div class="td-meta">
+          ${t.due?`<span>📅 ${t.due}</span>`:''}
+          ${t.memo?`<span>📝 ${esc(t.memo)}</span>`:''}
+          ${assigneeName?`<span class="td-assignee-badge">👤 担当: ${esc(assigneeName)}</span>`:''}
+          ${requesterName?`<span class="td-requester-badge">📨 依頼: ${esc(requesterName)}</span>`:''}
+        </div>
+      </div>
+      ${canDel?`<button onclick="delTd('${t.id}')" style="background:none;border:none;color:#c53030;cursor:pointer;font-size:16px;flex-shrink:0">×</button>`:''}
+    </div>`;
+  }
+
+  document.getElementById('tdList').innerHTML=list.length
+    ?list.map(tdRow).join('')
+    :'<div style="padding:20px;text-align:center;color:#8899aa">ToDoはありません</div>';
 }
+
 function toggleTd(id,done){const tds=load('todos',[]);const t=tds.find(x=>x.id===id);if(t)t.done=done;save('todos',tds);renderTd();}
 function delTd(id){save('todos',load('todos',[]).filter(t=>t.id!==id));renderTd();}
-function openTdModal(){document.getElementById('td-title').value='';document.getElementById('td-due').value='';document.getElementById('td-pri').value='med';document.getElementById('tdModal').classList.add('open');}
+
+function openTdModal(){
+  document.getElementById('tdModalTitle').textContent='ToDo 追加';
+  document.getElementById('td-title').value='';
+  document.getElementById('td-due').value='';
+  document.getElementById('td-pri').value='med';
+  document.getElementById('td-memo').value='';
+  // 担当者ドロップダウン構築
+  const users=normalUsers();
+  document.getElementById('td-assignee').innerHTML=
+    `<option value="${myId()}">自分（${esc(getUser(myId()).name)}）</option>`+
+    users.filter(u=>u.id!==myId()).map(u=>`<option value="${u.id}">${esc(u.name)}</option>`).join('');
+  document.getElementById('tdModal').classList.add('open');
+}
+
 function saveTd(){
   const title=document.getElementById('td-title').value.trim();
   if(!title){alert('タスク名を入力してください');return;}
+  const assigneeId=document.getElementById('td-assignee').value;
   const tds=load('todos',[]);
-  tds.unshift({id:uid(),title,done:false,priority:document.getElementById('td-pri').value,due:document.getElementById('td-due').value,userId:myId()});
-  save('todos',tds);closeModal('tdModal');renderTd();
+  const entry={
+    id:uid(),title,done:false,
+    priority:document.getElementById('td-pri').value,
+    due:document.getElementById('td-due').value,
+    memo:document.getElementById('td-memo').value.trim(),
+    userId:assigneeId,
+    assignedBy:myId()
+  };
+  tds.unshift(entry);
+  save('todos',tds);closeModal('tdModal');
+  // 依頼先が自分以外なら依頼タブへ
+  if(assigneeId!==myId()) switchTdTab('delegated'); else switchTdTab('mine');
+  renderTd();
 }
 
 // =========================================================
