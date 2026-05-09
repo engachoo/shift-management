@@ -1461,6 +1461,7 @@ function showMod(mod,sub){
     document.getElementById('m-td').classList.add('active');
     renderTd();
   } else if(mod==='admin'){
+    if(getS()?.userId!=='admin') return; // システム管理者のみ
     document.getElementById('adminView').style.display='block';
     document.getElementById('m-a'+(sub==='depts'?'d':'u')).classList.add('active');
     adminTab=sub||'users';
@@ -2762,6 +2763,9 @@ function startApp(){
   document.getElementById('hdrDept').textContent=dept.name||'';
   if(s.role==='admin'){
     document.getElementById('hdrRole').style.display='inline';
+  }
+  // ユーザー管理・部署管理はシステム管理者（admin）のみ
+  if(s.userId==='admin'){
     document.getElementById('adminMenu').style.display='block';
   }
   // 前回ログイン時刻を保存してからTOPへ
