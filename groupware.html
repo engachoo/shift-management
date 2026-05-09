@@ -306,18 +306,28 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
 /* ===== ToDo ===== */
 #todoView{padding:12px}
 .td-list{background:#fff;border-radius:6px;box-shadow:0 1px 3px rgba(0,0,0,.08);overflow:hidden}
-.td-item{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid #eef2f7}
+.td-item{display:flex;align-items:center;gap:12px;padding:11px 14px;border-bottom:1px solid #eef2f7;transition:background .15s}
+.td-item:hover{background:#f9fafb}
+.td-item.done{background:#f9fafa}
 .td-item.done .td-title{text-decoration:line-through;color:#aaa}
-.td-check{width:16px;height:16px;cursor:pointer;accent-color:#1a56db;flex-shrink:0}
+.td-status-btn{width:28px;height:28px;border-radius:50%;border:2.5px solid #d1d5db;background:#fff;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:15px;transition:all .2s}
+.td-status-btn.done{background:#059669;border-color:#059669;color:#fff}
+.td-status-btn:not(.done):hover{border-color:#1a56db;background:#eff6ff}
+.td-status-label{font-size:10px;font-weight:700;text-align:center;margin-top:2px;flex-shrink:0;width:28px}
+.td-status-label.done{color:#059669}
+.td-status-label.undone{color:#9ca3af}
 .td-body{flex:1;min-width:0}
 .td-title{font-size:13px;font-weight:500}
-.td-meta{font-size:11px;color:#8899aa;margin-top:2px;display:flex;gap:8px;flex-wrap:wrap}
+.td-meta{font-size:11px;color:#8899aa;margin-top:3px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .td-assignee-badge{background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:600}
 .td-requester-badge{background:#fef9c3;color:#854d0e;border:1px solid #fde68a;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:600}
 .td-due{font-size:11px;color:#8899aa;white-space:nowrap}
 .td-pri-high{border-left:4px solid #e53e3e}
 .td-pri-med{border-left:4px solid #f59e0b}
 .td-pri-low{border-left:4px solid #10b981}
+/* カレンダー上のToDo */
+.ev-todo{display:block;border-radius:3px;padding:2px 5px;margin:2px 0;font-size:11px;cursor:pointer;white-space:normal;word-break:break-all;max-width:100%;background:#f0fdf4;color:#166534;border-left:3px dashed #10b981}
+.ev-todo.todo-done{background:#f1f5f9;color:#94a3b8;border-left-color:#cbd5e1;text-decoration:line-through}
 
 /* ===== 管理者パネル ===== */
 #adminView{padding:12px}
@@ -1767,6 +1777,7 @@ function renderGW(){
   const rawEvents=load('events',[]);
   const days_=getWeekDays(calDate);
   const events=expandEvents(rawEvents, dateStr(days_[0]), dateStr(days_[6]));
+  const allTodos=load('todos',[]);
   const deptId=document.getElementById('deptFilterSel').value;
   let users=normalUsers();
   if(deptId) users=users.filter(u=>u.deptId===deptId||isDeptChild(u.deptId,deptId));
@@ -1814,6 +1825,11 @@ function renderGW(){
             html+=`<span class="ev ${et.cls}" onclick="openEvDetail('${ev.id}')" title="${esc(ev.title)}">`;
             if(ts) html+=`<span class="ev-time">${esc(ts)}</span>`;
             html+=`${recIcon}${spanIcon}${reactIcon}${lbl}${esc(ev.title)}</span>`;
+          });
+          // ToDo（期日が一致するもの・完了済みも表示）
+          allTodos.filter(t=>t.userId===u.id&&t.due===ds).forEach(t=>{
+            const icon=t.done?'✓ ':'☐ ';
+            html+=`<span class="ev-todo ${t.done?'todo-done':''}" onclick="switchTdTab&&showMod('todo')" title="ToDo: ${esc(t.title)}">${icon}${esc(t.title)}</span>`;
           });
         }
         html+=`<div class="add-btn-wrap"><button onclick="openEvModal(null,'${u.id}','${ds}')" title="予定追加">＋</button></div></td>`;
@@ -1899,6 +1915,10 @@ function renderPM(){
       const ts=ev.startTime?(ev.startTime+(ev.endTime?'-'+ev.endTime:''))+' ':'';
       const recIcon=ev._recurring?'🔁':''; const reactIcon=ev.reaction?.enabled&&ev.reaction?.responses?.[myId()]?.reacted?'✓':'';
       html+=`<span class="ev ${et.cls}" onclick="openEvDetail('${ev.id}')"><span class="ev-time">${esc(ts)}</span>${recIcon}${reactIcon}${esc(ev.title)}</span>`;
+    });
+    // ToDo（期日一致、完了済みも表示）
+    load('todos',[]).filter(t=>t.userId===myId()&&t.due===ds).forEach(t=>{
+      html+=`<span class="ev-todo ${t.done?'todo-done':''}" onclick="showMod('todo')" title="ToDo">${t.done?'✓ ':'☐ '}${esc(t.title)}</span>`;
     });
     html+=`<div class="add-btn-wrap"><button onclick="openEvModal(null,'${myId()}','${ds}')">＋</button></div></td>`;
     col++;
@@ -2573,10 +2593,17 @@ function renderTd(){
   function tdRow(t){
     const assigneeName = t.userId!==me ? getUser(t.userId).name : '';
     const requesterName= t.assignedBy && t.assignedBy!==me ? getUser(t.assignedBy).name : '';
-    const canCheck = t.userId===me; // 担当者のみチェック可
-    const canDel   = t.assignedBy===me||!t.assignedBy; // 依頼者か自分のみ削除可
+    const canCheck = t.userId===me;
+    const canDel   = t.assignedBy===me||!t.assignedBy;
+    const statusIcon = t.done ? '✓' : '';
+    const statusLbl  = t.done ? '完了' : '未着手';
     return `<div class="td-item ${t.done?'done':''} td-pri-${t.priority||'med'}">
-      <input type="checkbox" class="td-check" ${t.done?'checked':''} ${canCheck?'':'disabled style="opacity:.4"'} onchange="toggleTd('${t.id}',this.checked)">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex-shrink:0">
+        <button class="td-status-btn ${t.done?'done':''}"
+          ${canCheck?`onclick="toggleTd('${t.id}',${!t.done})"`:' disabled style="cursor:default;opacity:.5"'}
+          title="${t.done?'未着手に戻す':'完了にする'}">${statusIcon}</button>
+        <span class="td-status-label ${t.done?'done':'undone'}">${statusLbl}</span>
+      </div>
       <div class="td-body">
         <div class="td-title">${esc(t.title)}</div>
         <div class="td-meta">
@@ -2586,7 +2613,7 @@ function renderTd(){
           ${requesterName?`<span class="td-requester-badge">📨 依頼: ${esc(requesterName)}</span>`:''}
         </div>
       </div>
-      ${canDel?`<button onclick="delTd('${t.id}')" style="background:none;border:none;color:#c53030;cursor:pointer;font-size:16px;flex-shrink:0">×</button>`:''}
+      ${canDel?`<button onclick="delTd('${t.id}')" style="background:none;border:none;color:#c53030;cursor:pointer;font-size:18px;flex-shrink:0" title="削除">×</button>`:''}
     </div>`;
   }
 
@@ -2595,7 +2622,7 @@ function renderTd(){
     :'<div style="padding:20px;text-align:center;color:#8899aa">ToDoはありません</div>';
 }
 
-function toggleTd(id,done){const tds=load('todos',[]);const t=tds.find(x=>x.id===id);if(t)t.done=done;save('todos',tds);renderTd();}
+function toggleTd(id,done){const tds=load('todos',[]);const t=tds.find(x=>x.id===id);if(t){t.done=!!done;if(done&&!t.doneAt)t.doneAt=dateStr(new Date());if(!done)t.doneAt=null;}save('todos',tds);renderTd();renderSchedule&&curMod==='schedule'&&renderSchedule();}
 function delTd(id){save('todos',load('todos',[]).filter(t=>t.id!==id));renderTd();}
 
 function openTdModal(){
