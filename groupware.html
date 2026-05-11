@@ -299,9 +299,9 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
 .bl-body{font-size:12px;color:#445;line-height:1.6;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical}
 .bl-author{font-size:11px;color:#8899aa;margin-top:6px}
 .bl-footer{display:flex;align-items:center;gap:8px;margin-top:10px;padding-top:8px;border-top:1px solid #eef2f7;flex-wrap:wrap}
-.bl-react-btn{padding:4px 12px;border-radius:4px;border:1px solid #ccd;cursor:pointer;font-size:12px;font-weight:600;background:#fff;color:#445;transition:all .15s}
-.bl-react-btn.reacted{background:#d1fae5;border-color:#6ee7b7;color:#065f46}
-.bl-react-btn:hover{background:#e8f0fe}
+.bl-react-btn{padding:5px 14px;border-radius:20px;border:1.5px solid #a5b4fc;cursor:pointer;font-size:12px;font-weight:700;background:linear-gradient(135deg,#ede9fe,#dbeafe);color:#4338ca;transition:all .2s;box-shadow:0 1px 4px rgba(99,102,241,.15)}
+.bl-react-btn.reacted{background:linear-gradient(135deg,#d1fae5,#a7f3d0);border-color:#6ee7b7;color:#065f46;box-shadow:0 1px 4px rgba(16,185,129,.2)}
+.bl-react-btn:hover{transform:translateY(-1px);box-shadow:0 3px 8px rgba(99,102,241,.25)}
 .bl-react-count{font-size:11px;color:#6b7280}
 .bl-react-names{font-size:10px;color:#8899aa;flex:1}
 .bl-attach-row{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}
@@ -984,7 +984,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
     <div class="modal-body" id="blDetailBody"></div>
     <div class="modal-foot">
       <button class="btn-secondary" onclick="closeModal('blDetailModal')">閉じる</button>
-      <button class="btn-primary" id="blDetailReactBtn" onclick="reactBlFromDetail()">👁 確認しました</button>
+      <button class="btn-primary" id="blDetailReactBtn" onclick="reactBlFromDetail()">🔔 確認しました</button>
     </div>
   </div>
 </div>
@@ -1752,7 +1752,7 @@ function renderTop(){
           <div class="top-item-meta">${esc(getUser(b.author).name)} ・ ${b.createdAt}</div>
         </div>
         ${newBls.includes(b)?'<div class="top-item-badge new" style="margin-right:6px">NEW</div>':''}
-        <button onclick="confirmBl('${b.id}')" style="flex-shrink:0;background:#ecfdf5;color:#065f46;border:1px solid #6ee7b7;padding:3px 8px;border-radius:4px;cursor:pointer;font-size:11px;white-space:nowrap">✓ 確認しました</button>
+        <button onclick="confirmBl('${b.id}')" style="flex-shrink:0;background:linear-gradient(135deg,#ede9fe,#dbeafe);color:#4338ca;border:1.5px solid #a5b4fc;padding:4px 10px;border-radius:20px;cursor:pointer;font-size:11px;font-weight:700;white-space:nowrap;box-shadow:0 1px 3px rgba(99,102,241,.15)">🔔 確認しました</button>
       </div>`).join('');
   }
 
@@ -2832,7 +2832,7 @@ function renderBl(){
       <div class="bl-author">投稿者: ${esc(getUser(b.author).name)}</div>
       <div class="bl-footer" onclick="event.stopPropagation()">
         <button class="bl-react-btn ${myReacted?'reacted':''}" onclick="reactBl('${b.id}')">
-          ${myReacted?'✅ 確認済み':'👁 確認しました'}
+          ${myReacted?'🌟 確認済み':'🔔 確認しました'}
         </button>
         <span class="bl-react-count">${count}/${totalUsers}名確認</span>
         ${count>0?`<span class="bl-react-names">${esc(names)}</span>`:''}
@@ -2863,8 +2863,8 @@ function openBlDetail(id){
     ${filesHtml}
     <div style="margin-top:12px;font-size:12px;color:#6b7280">${count}/${totalUsers}名確認${count>0?'：'+esc(names):''}</div>`;
   const btn=document.getElementById('blDetailReactBtn');
-  if(myReacted){btn.textContent='✅ 確認済み';btn.className='btn-primary';btn.style.background='#059669';}
-  else{btn.textContent='👁 確認しました';btn.className='btn-primary';btn.style.background='';}
+  if(myReacted){btn.textContent='🌟 確認済み';btn.className='btn-primary';btn.style.background='#059669';}
+  else{btn.textContent='🔔 確認しました';btn.className='btn-primary';btn.style.background='';}
   document.getElementById('blDetailModal').classList.add('open');
 }
 function reactBlFromDetail(){
