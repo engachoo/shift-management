@@ -1251,6 +1251,20 @@ function initData(){
   defaultUsers.forEach(du=>{
     if(!users.find(u=>u.id===du.id)){ users.push(du); usersChanged=true; }
   });
+
+  // ---- パスワードリセット（BLOCK47以外を元の値に戻す・一回限り） ----
+  if(load('migrated_pw_reset','')!=='1'){
+    const pwDefaults = {
+      admin:'admin123', iwashimizu:'pass123', hayashi:'pass123',
+      onda:'pass123', matsubara:'pass123', hanamura:'pass123',
+      noguchi:'pass123', owari:'pass123', yamashita:'pass123',
+      sasagihara:'pass123', taki:'pass123', miura:'pass123',
+    };
+    users.forEach(u=>{ if(pwDefaults[u.id]) u.password=pwDefaults[u.id]; });
+    save('migrated_pw_reset','1');
+    usersChanged=true;
+  }
+
   if(usersChanged || !users.length) save('users', users);
 
   const events = [
