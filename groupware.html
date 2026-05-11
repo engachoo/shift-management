@@ -7,9 +7,16 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>大日産業 グループウェア</title>
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef2f7;color:#2d3748;min-height:100vh;font-size:13px}
+@keyframes spin{to{transform:rotate(360deg)}}
+#loadingScreen{display:flex;position:fixed;inset:0;z-index:99999;background:#0a1428;align-items:center;justify-content:center;flex-direction:column;gap:16px}
+.loading-spinner{width:44px;height:44px;border:4px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;animation:spin .9s linear infinite}
+.loading-text{color:rgba(255,255,255,.8);font-size:13px;letter-spacing:.05em}
 
 /* ===== ログイン画面 ===== */
 #loginScreen{display:flex;align-items:center;justify-content:center;min-height:100vh;position:fixed;inset:0;z-index:9999;overflow:hidden;background:#0a1428}
@@ -437,7 +444,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
 <body>
 
 <!-- ===== ログイン画面 ===== -->
-<div id="loginScreen">
+<div id="loginScreen" style="display:none">
   <!-- スライドショー背景 -->
   <div class="login-slides">
     <div class="login-slide active" id="ls0" style="background-image:url('https://block47.jp/wp-content/themes/amnk/images/main2.jpg')"></div>
@@ -468,6 +475,12 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
     <div class="login-error" id="loginError"></div>
     <button class="login-btn" onclick="doLogin()">ログイン</button>
   </div>
+</div>
+
+<!-- ===== ローディング画面 ===== -->
+<div id="loadingScreen">
+  <div class="loading-spinner"></div>
+  <div class="loading-text">データを読み込んでいます...</div>
 </div>
 
 <!-- ===== メインアプリ ===== -->
@@ -1115,20 +1128,49 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
 })();
 
 // =========================================================
-// データ層（localStorage + メモリフォールバック）
 // =========================================================
-const _mem = {}; // localStorageが使えない環境のフォールバック
+// Firebase 初期化
+// =========================================================
+const _fbConfig = {
+  apiKey: "AIzaSyBCnMxxITE3rqp2x9r3hJ6Av_H3AIsyMng",
+  authDomain: "dainichi-001.firebaseapp.com",
+  projectId: "dainichi-001",
+  storageBucket: "dainichi-001.firebasestorage.app",
+  messagingSenderId: "442645577881",
+  appId: "1:442645577881:web:d03af912e3aa1953c9b808"
+};
+firebase.initializeApp(_fbConfig);
+const _db = firebase.firestore();
+const _COL = 'gw2data'; // Firestoreコレクション名
 
-function load(k, d){
-  try {
-    const v = localStorage.getItem('gw2_' + k);
-    if(v !== null){ const p = JSON.parse(v); return (p !== null && p !== undefined) ? p : d; }
-  } catch(e){}
-  return _mem.hasOwnProperty(k) ? _mem[k] : d;
+// =========================================================
+// データ層（Firestoreキャッシュ + メモリ）
+// =========================================================
+const _cache = {}; // インメモリキャッシュ（Firestoreと同期）
+let _fbReady = false;
+
+function load(k, d=null){
+  return _cache.hasOwnProperty(k) ? _cache[k] : d;
 }
 function save(k, v){
-  _mem[k] = v; // 常にメモリにも保存
-  try { localStorage.setItem('gw2_' + k, JSON.stringify(v)); } catch(e){}
+  _cache[k] = v;
+  if(_fbReady){
+    _db.collection(_COL).doc(k).set({ v: JSON.stringify(v) })
+      .catch(e => console.warn('Firestore書き込みエラー:', k, e));
+  }
+}
+async function loadAllFromFirestore(){
+  try {
+    const snap = await _db.collection(_COL).get();
+    snap.forEach(doc => {
+      try { _cache[doc.id] = JSON.parse(doc.data().v); } catch(e){}
+    });
+    _fbReady = true;
+    return true;
+  } catch(e) {
+    console.warn('Firestore読み込みエラー:', e);
+    return false;
+  }
 }
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
@@ -1146,12 +1188,15 @@ function toggleEye(inputId, btn){
 }
 
 // データリセット（ログイン画面から呼ぶ）
-function resetData(){
+async function resetData(){
   if(!confirm('全データを初期化します。よろしいですか？\n（登録ユーザー・予定・承認申請などがすべてリセットされます）')) return;
   try{
-    Object.keys(localStorage).filter(k=>k.startsWith('gw2_')).forEach(k=>localStorage.removeItem(k));
-  }catch(e){}
-  Object.keys(_mem).forEach(k=>delete _mem[k]);
+    const snap = await _db.collection(_COL).get();
+    const batch = _db.batch();
+    snap.forEach(doc => batch.delete(doc.ref));
+    await batch.commit();
+  }catch(e){ console.warn('Firestoreリセットエラー:', e); }
+  Object.keys(_cache).forEach(k=>delete _cache[k]);
   location.reload();
 }
 
@@ -3276,9 +3321,33 @@ function startApp(){
   showMod('top');
 }
 
-initData();
-// セッション復元
-if(getS()) startApp();
+// =========================================================
+// アプリ起動（Firestore読み込み後に初期化）
+// =========================================================
+(async function boot(){
+  // ローディング表示
+  document.getElementById('loadingScreen').style.display = 'flex';
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('app').style.display = 'none';
+
+  const ok = await loadAllFromFirestore();
+  if(!ok){
+    document.getElementById('loadingScreen').innerHTML =
+      '<div style="color:#f87171;font-size:14px;text-align:center;padding:20px">⚠️ データベースへの接続に失敗しました。<br>ネットワーク接続を確認してください。</div>';
+    return;
+  }
+
+  initData(); // デフォルトデータ投入（未存在キーのみ）
+
+  document.getElementById('loadingScreen').style.display = 'none';
+
+  // セッション復元またはログイン画面表示
+  if(getS()){
+    startApp();
+  } else {
+    document.getElementById('loginScreen').style.display = 'flex';
+  }
+})();
 </script>
 </body>
 </html>
