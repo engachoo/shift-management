@@ -1316,7 +1316,7 @@ function deptPath(id){
 // =========================================================
 // モジュール切替
 // =========================================================
-let curMod='', calSub='gw', calDate=new Date(2026,4,8), ciFilter='pending', ciSelId=null, ciTab='content', editEvId=null, editUserId=null, editDeptId=null, adminTab='users';
+let curMod='', calSub='gw', calDate=new Date(), ciFilter='pending', ciSelId=null, ciTab='content', editEvId=null, editUserId=null, editDeptId=null, adminTab='users';
 // 予定モーダル状態
 let _evTab='normal', _evParts=[], _evFacs=[], _viewEvId=null;
 
@@ -1884,8 +1884,8 @@ function isDeptChild(childId,parentId){
 }
 
 function getWeekDays(anchor){
-  const d=new Date(anchor);const dow=d.getDay();const sun=new Date(d.getTime()-dow*86400000);
-  return Array.from({length:7},(_,i)=>new Date(sun.getTime()+i*86400000));
+  const d=new Date(anchor);
+  return Array.from({length:7},(_,i)=>new Date(d.getTime()+i*86400000));
 }
 
 function renderPM(){
