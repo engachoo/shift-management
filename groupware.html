@@ -488,7 +488,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
     <div class="side-item" id="m-spy" onclick="showMod('schedule','py')"><span class="si-icon">📆</span>個人年</div>
     <div class="side-group">コミュニケーション</div>
     <div class="side-item" id="m-ci" onclick="showMod('circular')"><span class="si-icon">📝</span>承認申請<span class="side-badge" id="badge-ci">0</span></div>
-    <div class="side-item" id="m-bl" onclick="showMod('bulletin')"><span class="si-icon">📌</span>掲示板</div>
+    <div class="side-item" id="m-bl" onclick="showMod('bulletin')"><span class="si-icon">📌</span>連絡事項</div>
     <div class="side-item" id="m-td" onclick="showMod('todo')"><span class="si-icon">✅</span>ToDo<span class="side-badge gray" id="badge-td">0</span></div>
     <div id="adminMenu" style="display:none">
       <div class="side-group">管理者メニュー</div>
@@ -549,7 +549,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
     <!-- 掲示板 -->
     <div id="bulletinView" style="display:none;padding:12px">
       <div class="page-hdr" style="position:static;margin-bottom:12px">
-        <h2>📌 掲示板</h2>
+        <h2>📌 連絡事項</h2>
         <button class="btn-new" onclick="openBlModal()">＋ 新規投稿</button>
       </div>
       <div class="bl-grid" id="blGrid"></div>
@@ -914,10 +914,23 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
 <!-- 掲示板 -->
 <div class="modal-bg" id="blModal">
   <div class="modal">
-    <div class="modal-hdr"><h3>掲示板 投稿</h3><button class="modal-close" onclick="closeModal('blModal')">×</button></div>
+    <div class="modal-hdr"><h3>連絡事項 投稿</h3><button class="modal-close" onclick="closeModal('blModal')">×</button></div>
     <div class="modal-body">
       <div class="f-row"><label class="f-label">タイトル *</label><input class="f-input" id="bl-title" placeholder="タイトル"></div>
-      <div class="f-row"><label class="f-label">本文 *</label><textarea class="f-input" id="bl-body" rows="6" placeholder="内容を入力"></textarea></div>
+      <div class="f-row"><label class="f-label">本文 *</label><textarea class="f-input" id="bl-body" rows="5" placeholder="内容を入力"></textarea></div>
+      <div class="f-row">
+        <label class="f-label">宛先 *</label>
+        <select class="f-select" id="bl-target" onchange="blTargetChange()">
+          <option value="all">全体一斉</option>
+          <option value="dept">所属別（部署を選択）</option>
+          <option value="hierarchy">階層別（上位部署を選択）</option>
+          <option value="individual">個別（メンバーを選択）</option>
+        </select>
+      </div>
+      <div class="f-row" id="bl-target-sub" style="display:none">
+        <label class="f-label" id="bl-target-sub-label">部署</label>
+        <select class="f-select" id="bl-target-id"></select>
+      </div>
     </div>
     <div class="modal-foot">
       <button class="btn-secondary" onclick="closeModal('blModal')">キャンセル</button>
@@ -1144,7 +1157,38 @@ function doLoginRetry(lid, lp, errEl){
   startApp();
 }
 
+// ===== 自動ログアウト（非管理者：30分無操作） =====
+let _autoLogoutTimer=null;
+const AUTO_LOGOUT_MS=30*60*1000; // 30分
+function resetActivityTimer(){
+  if(!_autoLogoutTimer) return; // 管理者or未ログイン
+  clearTimeout(_autoLogoutTimer);
+  _autoLogoutTimer=setTimeout(()=>{
+    const s=getS();
+    if(s && s.userId!=='admin'){
+      alert('30分間操作がなかったため、自動的にログアウトしました。');
+      doLogout();
+    }
+  }, AUTO_LOGOUT_MS);
+}
+function startActivityTimer(){
+  const s=getS();
+  if(!s||s.userId==='admin') return; // 管理者は対象外
+  if(_autoLogoutTimer) clearTimeout(_autoLogoutTimer);
+  _autoLogoutTimer=setTimeout(()=>{
+    alert('30分間操作がなかったため、自動的にログアウトしました。');
+    doLogout();
+  }, AUTO_LOGOUT_MS);
+  ['mousemove','mousedown','keydown','scroll','touchstart'].forEach(ev=>{
+    document.addEventListener(ev, resetActivityTimer, {passive:true});
+  });
+}
+function stopActivityTimer(){
+  if(_autoLogoutTimer){ clearTimeout(_autoLogoutTimer); _autoLogoutTimer=null; }
+}
+
 function doLogout(){
+  stopActivityTimer();
   clearS();
   document.getElementById('app').style.display='none';
   document.getElementById('loginScreen').style.display='flex';
@@ -1514,8 +1558,8 @@ function renderTop(){
   });
   const newCis = prevLogin ? pendingCis.filter(c=>new Date(c.createdAt)>prevLogin) : pendingCis;
 
-  // ---- 掲示板：新着 ----
-  const bulletins = load('bulletins',[]);
+  // ---- 連絡事項：新着 ----
+  const bulletins = load('bulletins',[]).filter(b=>blVisibleToMe(b));
   const newBls = prevLogin ? bulletins.filter(b=>new Date(b.createdAt)>prevLogin) : bulletins.slice(0,3);
 
   // ---- ToDo：未完了・期日が近い ----
@@ -1559,7 +1603,7 @@ function renderTop(){
   const unreadBls = bulletins.filter(b=>!readBls.includes(b.id));
 
   function blItems(){
-    if(!unreadBls.length) return `<div class="top-empty">未確認の掲示板投稿はありません</div>`;
+    if(!unreadBls.length) return `<div class="top-empty">未確認の連絡事項はありません</div>`;
     return unreadBls.slice(0,5).map(b=>`
       <div class="top-item" id="bl-row-${b.id}">
         <div class="top-item-icon">📌</div>
@@ -1624,7 +1668,7 @@ function renderTop(){
       </div>
       <div class="top-card">
         <div class="top-card-hdr">
-          <span class="tc-icon">📌</span>掲示板
+          <span class="tc-icon">📌</span>連絡事項
           ${newBls.length?`<span class="tc-count blue">${newBls.length}件 NEW</span>`:''}
         </div>
         ${blItems()}
@@ -2512,12 +2556,20 @@ function saveCi(){
 }
 
 // =========================================================
-// 掲示板
+// 連絡事項
 // =========================================================
+function blTargetLabel(b){
+  const t=b.target||'all';
+  if(t==='all') return '<span style="background:#e0f2fe;color:#0369a1;padding:1px 7px;border-radius:10px;font-size:11px">全体一斉</span>';
+  if(t==='dept'){const d=getDept(b.targetId);return `<span style="background:#fef9c3;color:#854d0e;padding:1px 7px;border-radius:10px;font-size:11px">所属別: ${esc(d.name||b.targetId)}</span>`;}
+  if(t==='hierarchy'){const d=getDept(b.targetId);return `<span style="background:#ede9fe;color:#5b21b6;padding:1px 7px;border-radius:10px;font-size:11px">階層別: ${esc(d.name||b.targetId)}配下</span>`;}
+  if(t==='individual'){const u=getUser(b.targetId);return `<span style="background:#dcfce7;color:#166534;padding:1px 7px;border-radius:10px;font-size:11px">個別: ${esc(u.name||b.targetId)}</span>`;}
+  return '';
+}
 function renderBl(){
-  const bls=load('bulletins',[]);
+  const bls=load('bulletins',[]).filter(b=>blVisibleToMe(b));
   const users=normalUsers();
-  document.getElementById('blGrid').innerHTML=bls.map(b=>{
+  document.getElementById('blGrid').innerHTML=bls.length?bls.map(b=>{
     const reactions=b.reactions||{};
     const confirmed=Object.entries(reactions).filter(([,v])=>v?.confirmed);
     const myReacted=reactions[myId()]?.confirmed;
@@ -2525,7 +2577,7 @@ function renderBl(){
     const names=confirmed.map(([id])=>getUser(id).name).join('，');
     const totalUsers=users.length;
     return `<div class="bl-card">
-      <div class="bl-date">${b.createdAt}</div>
+      <div class="bl-date" style="display:flex;align-items:center;gap:8px">${b.createdAt} ${blTargetLabel(b)}</div>
       <div class="bl-title">${esc(b.title)}</div>
       <div class="bl-body">${esc(b.body)}</div>
       <div class="bl-author">投稿者: ${esc(getUser(b.author).name)}</div>
@@ -2537,7 +2589,7 @@ function renderBl(){
         ${count>0?`<span class="bl-react-names">${esc(names)}</span>`:''}
       </div>
     </div>`;
-  }).join('');
+  }).join(''):'<div style="text-align:center;color:#9ca3af;padding:40px 0">連絡事項はありません</div>';
 }
 
 function reactBl(id){
@@ -2555,14 +2607,49 @@ function reactBl(id){
   renderBl();
 }
 
-function openBlModal(){ document.getElementById('bl-title').value=''; document.getElementById('bl-body').value=''; document.getElementById('blModal').classList.add('open'); }
+function blTargetChange(){
+  const t=document.getElementById('bl-target').value;
+  const sub=document.getElementById('bl-target-sub');
+  const subSel=document.getElementById('bl-target-id');
+  const subLabel=document.getElementById('bl-target-sub-label');
+  if(t==='all'){sub.style.display='none';return;}
+  sub.style.display='';
+  subSel.innerHTML='';
+  if(t==='individual'){
+    subLabel.textContent='メンバー';
+    normalUsers().forEach(u=>{subSel.innerHTML+=`<option value="${u.id}">${esc(u.name)}</option>`;});
+  } else {
+    subLabel.textContent='部署';
+    load('depts',[]).forEach(d=>{subSel.innerHTML+=`<option value="${d.id}">${esc(d.name)}</option>`;});
+  }
+}
+function openBlModal(){
+  document.getElementById('bl-title').value='';
+  document.getElementById('bl-body').value='';
+  document.getElementById('bl-target').value='all';
+  document.getElementById('bl-target-sub').style.display='none';
+  document.getElementById('blModal').classList.add('open');
+}
 function saveBl(){
   const title=document.getElementById('bl-title').value.trim();
   const body=document.getElementById('bl-body').value.trim();
   if(!title||!body){alert('タイトルと本文を入力してください');return;}
+  const target=document.getElementById('bl-target').value;
+  const targetId=target!=='all'?document.getElementById('bl-target-id').value:'';
   const bls=load('bulletins',[]);
-  bls.unshift({id:uid(),title,body,author:myId(),createdAt:new Date().toISOString().slice(0,16).replace('T',' '),reactions:{}});
+  bls.unshift({id:uid(),title,body,author:myId(),createdAt:new Date().toISOString().slice(0,16).replace('T',' '),reactions:{},target,targetId});
   save('bulletins',bls);closeModal('blModal');renderBl();
+}
+function blVisibleToMe(b){
+  const s=getS(); if(!s) return false;
+  // 投稿者本人は常に見える
+  if(b.author===s.userId) return true;
+  const t=b.target||'all';
+  if(t==='all') return true;
+  if(t==='dept') return s.deptId===b.targetId;
+  if(t==='hierarchy') return s.deptId===b.targetId||isDeptChild(s.deptId,b.targetId);
+  if(t==='individual') return s.userId===b.targetId;
+  return true;
 }
 
 // =========================================================
@@ -2885,6 +2972,7 @@ function startApp(){
   const uid = s.userId;
   const prevLogin = load('lastLogin_'+uid, null);
   save('lastLogin_'+uid, new Date().toISOString());
+  startActivityTimer(); // 自動ログアウトタイマー開始（管理者以外）
   showMod('top');
 }
 
