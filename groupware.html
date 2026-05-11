@@ -297,6 +297,10 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
 .bl-react-btn:hover{background:#e8f0fe}
 .bl-react-count{font-size:11px;color:#6b7280}
 .bl-react-names{font-size:10px;color:#8899aa;flex:1}
+.bl-attach-row{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}
+.bl-attach-tag{display:inline-flex;align-items:center;gap:4px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:4px;padding:3px 9px;font-size:11px;color:#1d4ed8;cursor:pointer}
+.bl-attach-tag:hover{background:#dbeafe}
+.bl-detail-body{white-space:pre-wrap;font-size:13px;color:#334;line-height:1.7;max-height:300px;overflow-y:auto;padding:10px;background:#f8fafc;border-radius:4px;border:1px solid #e2e8f0}
 .ap-file-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
 .ap-file-tag{display:inline-flex;align-items:center;gap:4px;background:#f0f4fa;border:1px solid #c3d3e8;border-radius:3px;padding:3px 8px;font-size:11px}
 .ap-file-tag a{color:#1a56db;text-decoration:none;cursor:pointer}
@@ -942,10 +946,30 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
           <option value="user">一般ユーザーのみ</option>
         </select>
       </div>
+      <div class="f-row">
+        <label class="f-label">参考資料</label>
+        <div style="flex:1">
+          <input type="file" id="bl-files" multiple style="display:none" onchange="onBlFileChange()">
+          <button class="btn-secondary" style="font-size:12px;padding:4px 12px" onclick="document.getElementById('bl-files').click()">📎 ファイルを選択</button>
+          <div id="bl-file-list" class="ap-file-row" style="margin-top:6px"></div>
+        </div>
+      </div>
     </div>
     <div class="modal-foot">
       <button class="btn-secondary" onclick="closeModal('blModal')">キャンセル</button>
       <button class="btn-primary" onclick="saveBl()">投稿</button>
+    </div>
+  </div>
+</div>
+
+<!-- 連絡事項 詳細モーダル -->
+<div class="modal-bg" id="blDetailModal">
+  <div class="modal">
+    <div class="modal-hdr"><h3 id="blDetailTitle">連絡事項</h3><button class="modal-close" onclick="closeModal('blDetailModal')">×</button></div>
+    <div class="modal-body" id="blDetailBody"></div>
+    <div class="modal-foot">
+      <button class="btn-secondary" onclick="closeModal('blDetailModal')">閉じる</button>
+      <button class="btn-primary" id="blDetailReactBtn" onclick="reactBlFromDetail()">👁 確認しました</button>
     </div>
   </div>
 </div>
@@ -2699,12 +2723,14 @@ function renderBl(){
     const count=confirmed.length;
     const names=confirmed.map(([id])=>getUser(id).name).join('，');
     const totalUsers=users.length;
-    return `<div class="bl-card">
+    const filesHtml=b.files&&b.files.length?`<div class="bl-attach-row">${b.files.map((f,i)=>`<span class="bl-attach-tag" onclick="downloadBlFile('${b.id}',${i})">📎 ${esc(f.name)}</span>`).join('')}</div>`:'';
+    return `<div class="bl-card" onclick="openBlDetail('${b.id}')">
       <div class="bl-date" style="display:flex;align-items:center;gap:8px">${b.createdAt} ${blTargetLabel(b)}</div>
       <div class="bl-title">${esc(b.title)}</div>
       <div class="bl-body">${esc(b.body)}</div>
+      ${filesHtml}
       <div class="bl-author">投稿者: ${esc(getUser(b.author).name)}</div>
-      <div class="bl-footer">
+      <div class="bl-footer" onclick="event.stopPropagation()">
         <button class="bl-react-btn ${myReacted?'reacted':''}" onclick="reactBl('${b.id}')">
           ${myReacted?'✅ 確認済み':'👁 確認しました'}
         </button>
@@ -2713,6 +2739,38 @@ function renderBl(){
       </div>
     </div>`;
   }).join(''):'<div style="text-align:center;color:#9ca3af;padding:40px 0">連絡事項はありません</div>';
+}
+
+let _blDetailId=null;
+function openBlDetail(id){
+  const bls=load('bulletins',[]);
+  const b=bls.find(x=>x.id===id);
+  if(!b)return;
+  _blDetailId=id;
+  document.getElementById('blDetailTitle').textContent=b.title;
+  const reactions=b.reactions||{};
+  const confirmed=Object.entries(reactions).filter(([,v])=>v?.confirmed);
+  const myReacted=reactions[myId()]?.confirmed;
+  const count=confirmed.length;
+  const totalUsers=normalUsers().length;
+  const names=confirmed.map(([uid])=>getUser(uid).name).join('，');
+  const filesHtml=b.files&&b.files.length
+    ?`<div style="margin-top:14px"><div style="font-weight:600;font-size:12px;color:#555;margin-bottom:6px">📎 参考資料</div><div class="bl-attach-row">${b.files.map((f,i)=>`<span class="bl-attach-tag" onclick="downloadBlFile('${b.id}',${i})">📄 ${esc(f.name)} <span style="color:#6b7280;font-size:10px">(${Math.round(f.size/1024)}KB)</span></span>`).join('')}</div></div>`
+    :'';
+  document.getElementById('blDetailBody').innerHTML=`
+    <div style="font-size:11px;color:#8899aa;margin-bottom:8px">${b.createdAt} ${blTargetLabel(b)} ／ 投稿者: ${esc(getUser(b.author).name)}</div>
+    <div class="bl-detail-body">${esc(b.body)}</div>
+    ${filesHtml}
+    <div style="margin-top:12px;font-size:12px;color:#6b7280">${count}/${totalUsers}名確認${count>0?'：'+esc(names):''}</div>`;
+  const btn=document.getElementById('blDetailReactBtn');
+  if(myReacted){btn.textContent='✅ 確認済み';btn.className='btn-primary';btn.style.background='#059669';}
+  else{btn.textContent='👁 確認しました';btn.className='btn-primary';btn.style.background='';}
+  document.getElementById('blDetailModal').classList.add('open');
+}
+function reactBlFromDetail(){
+  if(!_blDetailId)return;
+  reactBl(_blDetailId);
+  openBlDetail(_blDetailId); // 状態更新
 }
 
 function reactBl(id){
@@ -2749,6 +2807,41 @@ function blTargetChange(){
     load('depts',[]).forEach(d=>{subSel.innerHTML+=`<option value="${d.id}">${esc(d.name)}</option>`;});
   }
 }
+let _blFiles=[];
+function onBlFileChange(){
+  const input=document.getElementById('bl-files');
+  if(!input)return;
+  const files=[...input.files];
+  const MAX=5*1024*1024; // 5MB per file
+  files.forEach(f=>{
+    if(f.size>MAX){alert(f.name+' はファイルサイズが大きすぎます（最大5MB）');return;}
+    const reader=new FileReader();
+    reader.onload=(e)=>{
+      _blFiles.push({name:f.name,type:f.type,size:f.size,data:e.target.result});
+      renderBlFileList();
+    };
+    reader.readAsDataURL(f);
+  });
+  input.value='';
+}
+function renderBlFileList(){
+  const el=document.getElementById('bl-file-list');
+  if(!el)return;
+  el.innerHTML=_blFiles.map((f,i)=>
+    `<span class="ap-file-tag">📎 ${esc(f.name)} <span style="color:#888;font-size:10px">(${Math.round(f.size/1024)}KB)</span><button onclick="removeBlFile(${i})">×</button></span>`
+  ).join('');
+}
+function removeBlFile(idx){
+  _blFiles.splice(idx,1);
+  renderBlFileList();
+}
+function downloadBlFile(blId,fileIdx){
+  const b=load('bulletins',[]).find(x=>x.id===blId);
+  if(!b||!b.files||!b.files[fileIdx])return;
+  const f=b.files[fileIdx];
+  const a=document.createElement('a');
+  a.href=f.data; a.download=f.name; a.click();
+}
 function openBlModal(){
   document.getElementById('bl-title').value='';
   document.getElementById('bl-body').value='';
@@ -2756,6 +2849,8 @@ function openBlModal(){
   document.getElementById('bl-target-sub').style.display='none';
   document.getElementById('bl-target-role-row').style.display='none';
   document.getElementById('bl-target-role').value='all';
+  _blFiles=[];
+  renderBlFileList();
   document.getElementById('blModal').classList.add('open');
 }
 function saveBl(){
@@ -2766,7 +2861,7 @@ function saveBl(){
   const targetId=target!=='all'?document.getElementById('bl-target-id').value:'';
   const targetRole=target==='hierarchy'?document.getElementById('bl-target-role').value:'all';
   const bls=load('bulletins',[]);
-  bls.unshift({id:uid(),title,body,author:myId(),createdAt:new Date().toISOString().slice(0,16).replace('T',' '),reactions:{},target,targetId,targetRole});
+  bls.unshift({id:uid(),title,body,author:myId(),createdAt:new Date().toISOString().slice(0,16).replace('T',' '),reactions:{},target,targetId,targetRole,files:[..._blFiles]});
   save('bulletins',bls);closeModal('blModal');renderBl();
 }
 function blVisibleToMe(b){
