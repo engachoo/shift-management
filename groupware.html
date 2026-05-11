@@ -578,8 +578,9 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
       </div>
       <div class="admin-card">
         <div id="adminUsers">
-          <div style="display:flex;align-items:center;margin-bottom:12px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
             <span style="font-size:14px;font-weight:700;flex:1">登録ユーザー一覧</span>
+            <button id="bulkUpdBtn" class="btn-secondary" onclick="saveAllInlineRows()" style="font-weight:700;background:#fef9c3;border:1px solid #ca8a04;color:#78350f;padding:5px 14px;border-radius:5px;cursor:pointer">⬆ 一括更新</button>
             <button class="btn-new" onclick="openUserModal(null)">＋ 新規ユーザー</button>
           </div>
           <table class="data-table" id="userTable"><thead><tr><th>名前</th><th>ログインID</th><th>パスワード</th><th>部署</th><th>権限</th><th>状態</th><th>操作</th></tr></thead><tbody id="userTbody"></tbody></table>
@@ -2840,6 +2841,12 @@ function switchAdminTab(tab){
   else renderDeptTree();
 }
 
+function markRowDirty(uid){
+  const row=document.getElementById('urow-'+uid);
+  if(row) row.style.background='#fefce8';
+  const btn=document.getElementById('bulkUpdBtn');
+  if(btn&&btn.textContent.includes('一括更新')) btn.style.boxShadow='0 0 0 2px #f59e0b';
+}
 function renderUserTable(){
   const users=load('users',[]);
   document.getElementById('userTbody').innerHTML=users.map(u=>`
@@ -2847,11 +2854,13 @@ function renderUserTable(){
       <td><strong>${esc(u.name)}</strong></td>
       <td>
         <input class="inline-input" id="lid-${u.id}" value="${esc(u.loginId)}"
+          oninput="markRowDirty('${u.id}')"
           onkeydown="if(event.key==='Enter'){event.preventDefault();saveInlineRow('${u.id}')}">
       </td>
       <td>
         <div class="inline-pw-wrap">
           <input class="inline-input" id="pw-${u.id}" type="text" value="${esc(u.password)}"
+            oninput="markRowDirty('${u.id}')"
             onkeydown="if(event.key==='Enter'){event.preventDefault();saveInlineRow('${u.id}')}">
           <button class="inline-eye" type="button" onclick="toggleInlinePw('${u.id}')" title="表示/非表示">🙈</button>
         </div>
@@ -2865,6 +2874,41 @@ function renderUserTable(){
         ${u.id!=='admin'?`<button class="act-btn danger" onclick="toggleUserActive('${u.id}')">${u.active?'無効化':'有効化'}</button>`:''}
       </td>
     </tr>`).join('');
+}
+
+function saveAllInlineRows(){
+  const users = load('users',[]);
+  let errors = [];
+  let changed = 0;
+  users.forEach(u=>{
+    const lidEl = document.getElementById('lid-'+u.id);
+    const pwEl  = document.getElementById('pw-'+u.id);
+    if(!lidEl||!pwEl) return;
+    const newLid = lidEl.value.trim();
+    const newPw  = pwEl.value;
+    if(!newLid){ errors.push(u.name+': ログインIDが空です'); return; }
+    if(!newPw) { errors.push(u.name+': パスワードが空です'); return; }
+    // 重複チェック（他ユーザーと照合）
+    if(newLid!==u.loginId && users.some(x=>x.id!==u.id&&x.loginId===newLid)){
+      errors.push(u.name+': ログインID「'+newLid+'」は重複しています'); return;
+    }
+    if(u.loginId!==newLid||u.password!==newPw){
+      u.loginId=newLid; u.password=newPw; changed++;
+    }
+  });
+  if(errors.length){ alert('以下のエラーがあります：\n\n'+errors.join('\n')); return; }
+  save('users', users);
+  const btn = document.getElementById('bulkUpdBtn');
+  if(btn){
+    btn.textContent='✅ '+changed+'件 更新完了';
+    btn.style.background='#d1fae5'; btn.style.color='#065f46'; btn.style.borderColor='#6ee7b7';
+    setTimeout(()=>{
+      btn.textContent='⬆ 一括更新';
+      btn.style.background='#fef9c3'; btn.style.color='#78350f'; btn.style.borderColor='#ca8a04';
+      btn.style.boxShadow='';
+    }, 2000);
+  }
+  renderUserTable();
 }
 
 function saveInlineRow(uid){
