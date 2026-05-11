@@ -932,6 +932,14 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
         <label class="f-label" id="bl-target-sub-label">部署</label>
         <select class="f-select" id="bl-target-id"></select>
       </div>
+      <div class="f-row" id="bl-target-role-row" style="display:none">
+        <label class="f-label">対象権限</label>
+        <select class="f-select" id="bl-target-role">
+          <option value="all">全員</option>
+          <option value="manager">責任者のみ</option>
+          <option value="user">一般ユーザーのみ</option>
+        </select>
+      </div>
     </div>
     <div class="modal-foot">
       <button class="btn-secondary" onclick="closeModal('blModal')">キャンセル</button>
@@ -1207,31 +1215,35 @@ function doLogout(){
 // =========================================================
 function initData(){
   // バージョン管理：変更時はキーを更新してリセット
-  const VER = 'v5';
+  const VER = 'v6';
   if(load('inited','') === VER) return;
   save('inited', VER);
 
   const depts = [
-    {id:'d1', name:'大日産業',   parentId:null, order:0},
-    {id:'d2', name:'AMUSE JAPAN',parentId:null, order:1},
-    {id:'d3', name:'ウェルピア', parentId:null, order:2},
+    {id:'d1',  name:'大日産業',   parentId:null, order:0},
+    {id:'d1a', name:'本部',       parentId:'d1', order:0},
+    {id:'d1b', name:'BLOCK47',   parentId:'d1', order:1},
+    {id:'d2',  name:'AMUSE JAPAN',parentId:null, order:1},
+    {id:'d3',  name:'ウェルピア', parentId:null, order:2},
   ];
   save('depts', depts);
 
   // パスワードは平文保存（ローカル専用ツール）
   const users = [
-    {id:'admin',       loginId:'admin',       password:'admin123', name:'システム管理者', deptId:'d1', role:'admin', active:true},
-    {id:'iwashimizu',  loginId:'iwashimizu',  password:'pass123',  name:'岩清水 克尚',   deptId:'d1', role:'admin', active:true},
-    {id:'hayashi',     loginId:'hayashi',     password:'pass123',  name:'林 幹根',       deptId:'d1', role:'user',  active:true},
-    {id:'onda',        loginId:'onda',        password:'pass123',  name:'恩田 賢一',     deptId:'d1', role:'user',  active:true},
-    {id:'matsubara',   loginId:'matsubara',   password:'pass123',  name:'松原',          deptId:'d1', role:'user',  active:true},
-    {id:'hanamura',    loginId:'hanamura',    password:'pass123',  name:'花村 現太',     deptId:'d2', role:'user',  active:true},
-    {id:'noguchi',     loginId:'noguchi',     password:'pass123',  name:'野口',          deptId:'d2', role:'user',  active:true},
-    {id:'owari',       loginId:'owari',       password:'pass123',  name:'尾張',          deptId:'d2', role:'user',  active:true},
-    {id:'yamashita',   loginId:'yamashita',   password:'pass123',  name:'山下',          deptId:'d3', role:'user',  active:true},
-    {id:'sasagihara',  loginId:'sasagihara',  password:'pass123',  name:'笹木原',        deptId:'d3', role:'user',  active:true},
-    {id:'taki',        loginId:'taki',        password:'pass123',  name:'滝',            deptId:'d3', role:'user',  active:true},
-    {id:'miura',       loginId:'miura',       password:'pass123',  name:'三浦',          deptId:'d3', role:'user',  active:true},
+    {id:'admin',       loginId:'admin',       password:'admin123', name:'システム管理者', deptId:'d1a', role:'admin',   active:true},
+    {id:'iwashimizu',  loginId:'iwashimizu',  password:'pass123',  name:'岩清水 克尚',   deptId:'d1a', role:'admin',   active:true},
+    {id:'hayashi',     loginId:'hayashi',     password:'pass123',  name:'林 幹根',       deptId:'d1a', role:'user',    active:true},
+    {id:'onda',        loginId:'onda',        password:'pass123',  name:'恩田 賢一',     deptId:'d1a', role:'user',    active:true},
+    {id:'matsubara',   loginId:'matsubara',   password:'pass123',  name:'松原',          deptId:'d1a', role:'user',    active:true},
+    {id:'narita',      loginId:'narita',      password:'BL001',    name:'成田',          deptId:'d1b', role:'user',    active:true},
+    {id:'nakasima',    loginId:'nakasima',    password:'BL002',    name:'中島',          deptId:'d1b', role:'user',    active:true},
+    {id:'hanamura',    loginId:'hanamura',    password:'pass123',  name:'花村 現太',     deptId:'d2',  role:'user',    active:true},
+    {id:'noguchi',     loginId:'noguchi',     password:'pass123',  name:'野口',          deptId:'d2',  role:'user',    active:true},
+    {id:'owari',       loginId:'owari',       password:'pass123',  name:'尾張',          deptId:'d2',  role:'user',    active:true},
+    {id:'yamashita',   loginId:'yamashita',   password:'pass123',  name:'山下',          deptId:'d3',  role:'user',    active:true},
+    {id:'sasagihara',  loginId:'sasagihara',  password:'pass123',  name:'笹木原',        deptId:'d3',  role:'user',    active:true},
+    {id:'taki',        loginId:'taki',        password:'pass123',  name:'滝',            deptId:'d3',  role:'user',    active:true},
+    {id:'miura',       loginId:'miura',       password:'pass123',  name:'三浦',          deptId:'d3',  role:'user',    active:true},
   ];
   save('users', users);
 
@@ -2567,7 +2579,7 @@ function blTargetLabel(b){
   const t=b.target||'all';
   if(t==='all') return '<span style="background:#e0f2fe;color:#0369a1;padding:1px 7px;border-radius:10px;font-size:11px">全体一斉</span>';
   if(t==='dept'){const d=getDept(b.targetId);return `<span style="background:#fef9c3;color:#854d0e;padding:1px 7px;border-radius:10px;font-size:11px">所属別: ${esc(d.name||b.targetId)}</span>`;}
-  if(t==='hierarchy'){const d=getDept(b.targetId);return `<span style="background:#ede9fe;color:#5b21b6;padding:1px 7px;border-radius:10px;font-size:11px">階層別: ${esc(d.name||b.targetId)}配下</span>`;}
+  if(t==='hierarchy'){const d=getDept(b.targetId);const rl=b.targetRole==='manager'?'・責任者':b.targetRole==='user'?'・一般':'';return `<span style="background:#ede9fe;color:#5b21b6;padding:1px 7px;border-radius:10px;font-size:11px">階層別: ${esc(d.name||b.targetId)}配下${rl}</span>`;}
   if(t==='individual'){const u=getUser(b.targetId);return `<span style="background:#dcfce7;color:#166534;padding:1px 7px;border-radius:10px;font-size:11px">個別: ${esc(u.name||b.targetId)}</span>`;}
   return '';
 }
@@ -2617,9 +2629,12 @@ function blTargetChange(){
   const sub=document.getElementById('bl-target-sub');
   const subSel=document.getElementById('bl-target-id');
   const subLabel=document.getElementById('bl-target-sub-label');
-  if(t==='all'){sub.style.display='none';return;}
+  const roleRow=document.getElementById('bl-target-role-row');
+  if(t==='all'){sub.style.display='none';roleRow.style.display='none';return;}
   sub.style.display='';
   subSel.innerHTML='';
+  // 階層別のみ権限フィルタを表示
+  roleRow.style.display=(t==='hierarchy')?'':'none';
   if(t==='individual'){
     subLabel.textContent='メンバー';
     normalUsers().forEach(u=>{subSel.innerHTML+=`<option value="${u.id}">${esc(u.name)}</option>`;});
@@ -2633,6 +2648,8 @@ function openBlModal(){
   document.getElementById('bl-body').value='';
   document.getElementById('bl-target').value='all';
   document.getElementById('bl-target-sub').style.display='none';
+  document.getElementById('bl-target-role-row').style.display='none';
+  document.getElementById('bl-target-role').value='all';
   document.getElementById('blModal').classList.add('open');
 }
 function saveBl(){
@@ -2641,18 +2658,24 @@ function saveBl(){
   if(!title||!body){alert('タイトルと本文を入力してください');return;}
   const target=document.getElementById('bl-target').value;
   const targetId=target!=='all'?document.getElementById('bl-target-id').value:'';
+  const targetRole=target==='hierarchy'?document.getElementById('bl-target-role').value:'all';
   const bls=load('bulletins',[]);
-  bls.unshift({id:uid(),title,body,author:myId(),createdAt:new Date().toISOString().slice(0,16).replace('T',' '),reactions:{},target,targetId});
+  bls.unshift({id:uid(),title,body,author:myId(),createdAt:new Date().toISOString().slice(0,16).replace('T',' '),reactions:{},target,targetId,targetRole});
   save('bulletins',bls);closeModal('blModal');renderBl();
 }
 function blVisibleToMe(b){
   const s=getS(); if(!s) return false;
-  // 投稿者本人は常に見える
   if(b.author===s.userId) return true;
   const t=b.target||'all';
   if(t==='all') return true;
   if(t==='dept') return s.deptId===b.targetId;
-  if(t==='hierarchy') return s.deptId===b.targetId||isDeptChild(s.deptId,b.targetId);
+  if(t==='hierarchy'){
+    const inHierarchy=s.deptId===b.targetId||isDeptChild(s.deptId,b.targetId);
+    if(!inHierarchy) return false;
+    const tr=b.targetRole||'all';
+    if(tr==='all') return true;
+    return s.role===tr;
+  }
   if(t==='individual') return s.userId===b.targetId;
   return true;
 }
