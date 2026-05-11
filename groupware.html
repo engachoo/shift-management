@@ -657,8 +657,8 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
       <div class="f-row" id="ev-time-wrap">
         <label class="f-label">時刻</label>
         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-          <select class="f-select" id="ev-start-h" style="width:80px"></select>
-          <select class="f-select" id="ev-start-m" style="width:72px"></select>
+          <select class="f-select" id="ev-start-h" style="width:80px" onchange="autoSetEndTime()"></select>
+          <select class="f-select" id="ev-start-m" style="width:72px" onchange="autoSetEndTime()"></select>
           <span style="padding:0 4px">〜</span>
           <select class="f-select" id="ev-end-h" style="width:80px"></select>
           <select class="f-select" id="ev-end-m" style="width:72px"></select>
@@ -2363,6 +2363,26 @@ function getTimeVal(prefix){
   const m=document.getElementById(prefix+'-m')?.value;
   if(!h||!m) return '';
   return h+':'+m;
+}
+// 開始時間変更時に終了時間を1時間後に自動設定
+function autoSetEndTime(){
+  const sh=document.getElementById('ev-start-h')?.value;
+  const sm=document.getElementById('ev-start-m')?.value;
+  if(!sh||!sm) return;
+  // 終了時間がすでに入力されている場合はスキップ
+  const eh=document.getElementById('ev-end-h')?.value;
+  const em=document.getElementById('ev-end-m')?.value;
+  if(eh&&em) return;
+  // 1時間後を計算
+  let totalMin=parseInt(sh)*60+parseInt(sm)+60;
+  const endH=Math.floor(totalMin/60)%24;
+  const endM=totalMin%60;
+  const endHStr=String(endH).padStart(2,'0');
+  const endMStr=String(endM).padStart(2,'0');
+  const endHSel=document.getElementById('ev-end-h');
+  const endMSel=document.getElementById('ev-end-m');
+  if(endHSel) endHSel.value=endHStr;
+  if(endMSel) endMSel.value=endMStr;
 }
 
 function openEvModal(evId, memberId, ds){
