@@ -800,15 +800,18 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
 
 <!-- 予定詳細モーダル -->
 <div class="modal-bg" id="evDetailModal">
-  <div class="modal sm" style="width:420px">
+  <div class="modal sm" style="width:440px">
     <div class="modal-hdr">
       <h3 id="evDtTitle" style="font-size:14px"></h3>
       <button class="modal-close" onclick="closeModal('evDetailModal')">×</button>
     </div>
     <div class="modal-body ev-detail-info" id="evDtBody"></div>
-    <div class="modal-foot">
+    <div class="modal-foot" style="flex-wrap:wrap;gap:6px">
       <button class="btn-secondary" onclick="closeModal('evDetailModal')">閉じる</button>
-      <button class="btn-primary" id="evDtEditBtn" onclick="editFromDetail()" style="display:none">編集</button>
+      <button class="btn-primary" id="evDtEditBtn" onclick="editFromDetail()" style="display:none">✏️ 変更する</button>
+      <button class="btn-danger"   id="evDtDelBtn"  onclick="deleteFromDetail()" style="display:none;background:#ef4444;color:#fff;border:none;padding:6px 14px;border-radius:5px;cursor:pointer;font-size:12px;font-weight:600">🗑️ 削除する</button>
+      <button class="btn-secondary" id="evDtLeaveBtn" onclick="leaveFromDetail()" style="display:none">🚪 予定から抜ける</button>
+      <button class="btn-primary"   id="evDtJoinBtn"  onclick="joinFromDetail()"  style="display:none">➕ 予定に参加する</button>
     </div>
   </div>
 </div>
@@ -2444,14 +2447,44 @@ function openEvDetail(evId){
       <div class="react-tally">${reactCount}/${total} 名がリアクション済み</div>
     </div>`:''}
   `;
-  const canEdit=ev.memberIds?.includes(myId())||isAdmin();
-  document.getElementById('evDtEditBtn').style.display=canEdit?'inline-block':'none';
+  const isMember=ev.memberIds?.includes(myId());
+  const canEdit=isMember||isAdmin();
+  const canDelete=ev.author===myId()||isAdmin();
+  const show=id=>document.getElementById(id).style.display='inline-block';
+  const hide=id=>document.getElementById(id).style.display='none';
+  canEdit   ? show('evDtEditBtn')  : hide('evDtEditBtn');
+  canDelete ? show('evDtDelBtn')   : hide('evDtDelBtn');
+  isMember  ? show('evDtLeaveBtn') : hide('evDtLeaveBtn');
+  isMember  ? hide('evDtJoinBtn')  : show('evDtJoinBtn');
   document.getElementById('evDetailModal').classList.add('open');
 }
 
 function editFromDetail(){
   closeModal('evDetailModal');
   openEvModal(_viewEvId,null,null);
+}
+function deleteFromDetail(){
+  if(!confirm('この予定を削除しますか？')) return;
+  save('events', load('events',[]).filter(e=>e.id!==_viewEvId));
+  closeModal('evDetailModal'); renderSchedule();
+}
+function leaveFromDetail(){
+  if(!confirm('この予定から抜けますか？')) return;
+  const events=load('events',[]);
+  const ev=events.find(e=>e.id===_viewEvId);
+  if(!ev) return;
+  ev.memberIds=(ev.memberIds||[]).filter(id=>id!==myId());
+  save('events',events);
+  closeModal('evDetailModal'); renderSchedule();
+}
+function joinFromDetail(){
+  const events=load('events',[]);
+  const ev=events.find(e=>e.id===_viewEvId);
+  if(!ev) return;
+  if(!ev.memberIds) ev.memberIds=[];
+  if(!ev.memberIds.includes(myId())) ev.memberIds.push(myId());
+  save('events',events);
+  closeModal('evDetailModal'); renderSchedule();
 }
 
 function doReaction(evId){
