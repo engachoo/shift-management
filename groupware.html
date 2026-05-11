@@ -1211,25 +1211,26 @@ function doLogout(){
 }
 
 // =========================================================
-// 初期データ
+// 初期データ（差分追加型：既存データを消さない）
 // =========================================================
 function initData(){
-  // バージョン管理：変更時はキーを更新してリセット
-  const VER = 'v6';
-  if(load('inited','') === VER) return;
-  save('inited', VER);
-
-  const depts = [
-    {id:'d1',  name:'大日産業',   parentId:null, order:0},
-    {id:'d1a', name:'本部',       parentId:'d1', order:0},
-    {id:'d1b', name:'BLOCK47',   parentId:'d1', order:1},
-    {id:'d2',  name:'AMUSE JAPAN',parentId:null, order:1},
-    {id:'d3',  name:'ウェルピア', parentId:null, order:2},
+  // ---- 部署：不足分だけ追加 ----
+  const defaultDepts = [
+    {id:'d1',  name:'大日産業',    parentId:null, order:0},
+    {id:'d1a', name:'本部',        parentId:'d1', order:0},
+    {id:'d1b', name:'BLOCK47',    parentId:'d1', order:1},
+    {id:'d2',  name:'AMUSE JAPAN', parentId:null, order:1},
+    {id:'d3',  name:'ウェルピア',  parentId:null, order:2},
   ];
-  save('depts', depts);
+  let depts = load('depts',[]);
+  let deptsChanged = false;
+  defaultDepts.forEach(dd=>{
+    if(!depts.find(d=>d.id===dd.id)){ depts.push(dd); deptsChanged=true; }
+  });
+  if(deptsChanged || !depts.length) save('depts', depts);
 
-  // パスワードは平文保存（ローカル専用ツール）
-  const users = [
+  // ---- ユーザー：不足分だけ追加 ----
+  const defaultUsers = [
     {id:'admin',       loginId:'admin',       password:'admin123', name:'システム管理者', deptId:'d1a', role:'admin',   active:true},
     {id:'iwashimizu',  loginId:'iwashimizu',  password:'pass123',  name:'岩清水 克尚',   deptId:'d1a', role:'admin',   active:true},
     {id:'hayashi',     loginId:'hayashi',     password:'pass123',  name:'林 幹根',       deptId:'d1a', role:'user',    active:true},
@@ -1245,7 +1246,12 @@ function initData(){
     {id:'taki',        loginId:'taki',        password:'pass123',  name:'滝',            deptId:'d3',  role:'user',    active:true},
     {id:'miura',       loginId:'miura',       password:'pass123',  name:'三浦',          deptId:'d3',  role:'user',    active:true},
   ];
-  save('users', users);
+  let users = load('users',[]);
+  let usersChanged = false;
+  defaultUsers.forEach(du=>{
+    if(!users.find(u=>u.id===du.id)){ users.push(du); usersChanged=true; }
+  });
+  if(usersChanged || !users.length) save('users', users);
 
   const events = [
     {id:'e1', memberIds:['iwashimizu'],date:'2026-05-08',startTime:'09:00',endTime:'10:30',type:'visitor',title:'位田会計',memo:''},
@@ -1266,53 +1272,81 @@ function initData(){
     {id:'e16',memberIds:['onda'],date:'2026-05-12',startTime:'',endTime:'',type:'task',title:'休み',memo:'off'},
     {id:'e17',memberIds:['hayashi'],date:'2026-05-08',startTime:'09:00',endTime:'10:30',type:'visitor',title:'位田会計',memo:''},
   ];
-  save('events', events);
+  // events・circulars・bulletins・todos・facilitiesは存在しない場合だけ初期化
+  if(!load('events',null)){
+    save('events',[
+      {id:'e1', memberIds:['iwashimizu'],date:'2026-05-08',startTime:'09:00',endTime:'10:30',type:'visitor',title:'位田会計',memo:''},
+      {id:'e2', memberIds:['iwashimizu'],date:'2026-05-10',startTime:'',endTime:'',type:'task',title:'ブリックスデータ/十六契約書 送信',memo:''},
+      {id:'e3', memberIds:['iwashimizu'],date:'2026-05-10',startTime:'',endTime:'',type:'task',title:'JDL 位田会計データ送信',memo:''},
+      {id:'e4', memberIds:['iwashimizu'],date:'2026-05-11',startTime:'10:00',endTime:'11:30',type:'task',title:'理念研修',memo:''},
+      {id:'e5', memberIds:['iwashimizu'],date:'2026-05-13',startTime:'13:00',endTime:'14:30',type:'meeting',title:'福祉月例会',memo:''},
+      {id:'e6', memberIds:['iwashimizu'],date:'2026-05-13',startTime:'15:00',endTime:'16:30',type:'meeting',title:'AJ月例会',memo:''},
+      {id:'e7', memberIds:['iwashimizu'],date:'2026-05-14',startTime:'14:00',endTime:'15:00',type:'alert',title:'Eats 振込期限',memo:''},
+      {id:'e8', memberIds:['iwashimizu'],date:'2026-05-14',startTime:'14:00',endTime:'15:00',type:'alert',title:'給与振込送信',memo:''},
+      {id:'e9', memberIds:['iwashimizu'],date:'2026-05-07',startTime:'09:00',endTime:'12:00',type:'meeting',title:'正例会 定例幹部会',memo:''},
+      {id:'e10',memberIds:['iwashimizu'],date:'2026-05-01',startTime:'09:00',endTime:'10:00',type:'visitor',title:'尾張さん 面談',memo:''},
+      {id:'e11',memberIds:['onda'],date:'2026-05-08',startTime:'10:00',endTime:'11:00',type:'mtg',title:'B47MTG',memo:''},
+      {id:'e12',memberIds:['onda'],date:'2026-05-08',startTime:'11:00',endTime:'12:00',type:'visitor',title:'三田防災 田島さん 2F現調',memo:''},
+      {id:'e13',memberIds:['onda'],date:'2026-05-08',startTime:'13:00',endTime:'13:30',type:'field',title:'キラキラッキー B47現調',memo:''},
+      {id:'e14',memberIds:['onda'],date:'2026-05-08',startTime:'14:00',endTime:'16:00',type:'field',title:'B47現場確認',memo:''},
+      {id:'e15',memberIds:['onda'],date:'2026-05-09',startTime:'11:30',endTime:'13:00',type:'mtg',title:'ランチMTG AJ関係',memo:''},
+      {id:'e16',memberIds:['onda'],date:'2026-05-12',startTime:'',endTime:'',type:'task',title:'休み',memo:'off'},
+      {id:'e17',memberIds:['hayashi'],date:'2026-05-08',startTime:'09:00',endTime:'10:30',type:'visitor',title:'位田会計',memo:''},
+    ]);
+  }
 
-  const circulars = [
-    {id:'c1',title:'クロロ スロッター×ワールド取材企画開催',priority:'high',deadline:'2026-04-15',
-     addToSchedule:false,routeSequential:false,visibility:'public',
-     customButtons:['確認中','確認済'],
-     author:'hanamura',createdAt:'2026-04-01 20:42',
-     body:'表題の事後稟議案件になります。\n\n4月閑散期と入替が後半の月末となっており対策の一環でクロロのスロッター×ワールド取材を計画\n日程は4月12日(日)、4月24日(金)としております。\nご確認のほど宜しくお願い致します。',
-     recipients:['hayashi','iwashimizu','onda','matsubara','hanamura','noguchi','owari'],
-     responses:{hanamura:{status:'confirmed',statusLabel:'確認済',comment:'',updatedAt:'2026-04-01 20:42'},iwashimizu:{status:'confirmed',statusLabel:'確認済',comment:'',updatedAt:'2026-04-09 10:28'},matsubara:{status:'confirmed',statusLabel:'確認済',comment:'',updatedAt:'2026-04-15 15:42'},hayashi:{status:'pending',statusLabel:'未回答',comment:''},onda:{status:'checking',statusLabel:'確認中',comment:''},noguchi:{status:'pending',statusLabel:'未回答',comment:''},owari:{status:'pending',statusLabel:'未回答',comment:''}}},
-    {id:'c2',title:'2月合同抽選会 承認申請',priority:'high',deadline:'2026-02-06',
-     addToSchedule:false,routeSequential:true,visibility:'public',
-     customButtons:['確認中','確認済','承認'],
-     author:'hanamura',createdAt:'2026-02-21 00:00',
-     body:'2月合同抽選会についてご確認ください。',
-     recipients:['hayashi','iwashimizu','onda','matsubara','hanamura','noguchi','owari'],
-     responses:{hanamura:{status:'confirmed',statusLabel:'確認済',comment:''},iwashimizu:{status:'pending',statusLabel:'未回答',comment:''},matsubara:{status:'pending',statusLabel:'未回答',comment:''},hayashi:{status:'pending',statusLabel:'未回答',comment:''},onda:{status:'pending',statusLabel:'未回答',comment:''},noguchi:{status:'pending',statusLabel:'未回答',comment:''},owari:{status:'pending',statusLabel:'未回答',comment:''}}},
-    {id:'c3',title:'4月空取材 代案景品企画',priority:'normal',deadline:'2025-04-07',
-     addToSchedule:false,routeSequential:false,visibility:'public',
-     customButtons:['確認中','確認済'],
-     author:'hanamura',createdAt:'2025-04-07 00:00',
-     body:'4月空取材に関する代案景品企画についてご確認ください。',
-     recipients:['hayashi','iwashimizu','onda','matsubara','hanamura','noguchi','owari'],
-     responses:{hanamura:{status:'confirmed',statusLabel:'確認済',comment:''},iwashimizu:{status:'confirmed',statusLabel:'確認済',comment:''},matsubara:{status:'pending',statusLabel:'未回答',comment:''},hayashi:{status:'pending',statusLabel:'未回答',comment:''},onda:{status:'pending',statusLabel:'未回答',comment:''},noguchi:{status:'pending',statusLabel:'未回答',comment:''},owari:{status:'pending',statusLabel:'未回答',comment:''}}},
-  ];
-  save('circulars', circulars);
+  if(!load('circulars',null)){
+    save('circulars',[
+      {id:'c1',title:'クロロ スロッター×ワールド取材企画開催',priority:'high',deadline:'2026-04-15',
+       addToSchedule:false,routeSequential:false,visibility:'public',
+       customButtons:['確認中','確認済'],
+       author:'hanamura',createdAt:'2026-04-01 20:42',
+       body:'表題の事後稟議案件になります。\n\n4月閑散期と入替が後半の月末となっており対策の一環でクロロのスロッター×ワールド取材を計画\n日程は4月12日(日)、4月24日(金)としております。\nご確認のほど宜しくお願い致します。',
+       recipients:['hayashi','iwashimizu','onda','matsubara','hanamura','noguchi','owari'],
+       responses:{hanamura:{status:'confirmed',statusLabel:'確認済',comment:'',updatedAt:'2026-04-01 20:42'},iwashimizu:{status:'confirmed',statusLabel:'確認済',comment:'',updatedAt:'2026-04-09 10:28'},matsubara:{status:'confirmed',statusLabel:'確認済',comment:'',updatedAt:'2026-04-15 15:42'},hayashi:{status:'pending',statusLabel:'未回答',comment:''},onda:{status:'checking',statusLabel:'確認中',comment:''},noguchi:{status:'pending',statusLabel:'未回答',comment:''},owari:{status:'pending',statusLabel:'未回答',comment:''}}},
+      {id:'c2',title:'2月合同抽選会 承認申請',priority:'high',deadline:'2026-02-06',
+       addToSchedule:false,routeSequential:true,visibility:'public',
+       customButtons:['確認中','確認済','承認'],
+       author:'hanamura',createdAt:'2026-02-21 00:00',
+       body:'2月合同抽選会についてご確認ください。',
+       recipients:['hayashi','iwashimizu','onda','matsubara','hanamura','noguchi','owari'],
+       responses:{hanamura:{status:'confirmed',statusLabel:'確認済',comment:''},iwashimizu:{status:'pending',statusLabel:'未回答',comment:''},matsubara:{status:'pending',statusLabel:'未回答',comment:''},hayashi:{status:'pending',statusLabel:'未回答',comment:''},onda:{status:'pending',statusLabel:'未回答',comment:''},noguchi:{status:'pending',statusLabel:'未回答',comment:''},owari:{status:'pending',statusLabel:'未回答',comment:''}}},
+      {id:'c3',title:'4月空取材 代案景品企画',priority:'normal',deadline:'2025-04-07',
+       addToSchedule:false,routeSequential:false,visibility:'public',
+       customButtons:['確認中','確認済'],
+       author:'hanamura',createdAt:'2025-04-07 00:00',
+       body:'4月空取材に関する代案景品企画についてご確認ください。',
+       recipients:['hayashi','iwashimizu','onda','matsubara','hanamura','noguchi','owari'],
+       responses:{hanamura:{status:'confirmed',statusLabel:'確認済',comment:''},iwashimizu:{status:'confirmed',statusLabel:'確認済',comment:''},matsubara:{status:'pending',statusLabel:'未回答',comment:''},hayashi:{status:'pending',statusLabel:'未回答',comment:''},onda:{status:'pending',statusLabel:'未回答',comment:''},noguchi:{status:'pending',statusLabel:'未回答',comment:''},owari:{status:'pending',statusLabel:'未回答',comment:''}}},
+    ]);
+  }
 
-  save('facilities',[
-    {id:'fac1',name:'会長室',type:'room'},
-    {id:'fac2',name:'本社2階会議室',type:'room'},
-    {id:'fac3',name:'本社1階来客用テーブル',type:'room'},
-    {id:'fac4',name:'B47 DIYルーム',type:'room'},
-    {id:'fac5',name:'プロジェクター',type:'equipment'},
-    {id:'fac6',name:'マイクセット',type:'equipment'},
-    {id:'fac7',name:'ホワイトボード',type:'equipment'},
-  ]);
+  if(!load('facilities',null)){
+    save('facilities',[
+      {id:'fac1',name:'会長室',type:'room'},
+      {id:'fac2',name:'本社2階会議室',type:'room'},
+      {id:'fac3',name:'本社1階来客用テーブル',type:'room'},
+      {id:'fac4',name:'B47 DIYルーム',type:'room'},
+      {id:'fac5',name:'プロジェクター',type:'equipment'},
+      {id:'fac6',name:'マイクセット',type:'equipment'},
+      {id:'fac7',name:'ホワイトボード',type:'equipment'},
+    ]);
+  }
 
-  save('bulletins',[
-    {id:'b1',title:'5月の営業時間変更について',body:'GW期間中（5月3日〜6日）は営業時間を変更いたします。詳細はスケジュールをご確認ください。',author:'hanamura',createdAt:'2026-04-28 10:00',reactions:{}},
-    {id:'b2',title:'社内研修のご案内',body:'5月11日（月）10:00〜11:30 理念研修を実施します。全スタッフ参加をお願いします。',author:'iwashimizu',createdAt:'2026-04-25 14:00',reactions:{}},
-  ]);
+  if(!load('bulletins',null)){
+    save('bulletins',[
+      {id:'b1',title:'5月の営業時間変更について',body:'GW期間中（5月3日〜6日）は営業時間を変更いたします。詳細はスケジュールをご確認ください。',author:'hanamura',createdAt:'2026-04-28 10:00',reactions:{},target:'all',targetId:'',targetRole:'all'},
+      {id:'b2',title:'社内研修のご案内',body:'5月11日（月）10:00〜11:30 理念研修を実施します。全スタッフ参加をお願いします。',author:'iwashimizu',createdAt:'2026-04-25 14:00',reactions:{},target:'all',targetId:'',targetRole:'all'},
+    ]);
+  }
 
-  save('todos',[
-    {id:'t1',title:'ブリックスデータ送信確認',done:false,priority:'high',due:'2026-05-10',userId:'iwashimizu'},
-    {id:'t2',title:'給与データ提出',done:false,priority:'high',due:'2026-05-05',userId:'iwashimizu'},
-    {id:'t3',title:'福祉月例会 資料準備',done:false,priority:'med',due:'2026-05-13',userId:'iwashimizu'},
-  ]);
+  if(!load('todos',null)){
+    save('todos',[
+      {id:'t1',title:'ブリックスデータ送信確認',done:false,priority:'high',due:'2026-05-10',userId:'iwashimizu'},
+      {id:'t2',title:'給与データ提出',done:false,priority:'high',due:'2026-05-05',userId:'iwashimizu'},
+      {id:'t3',title:'福祉月例会 資料準備',done:false,priority:'med',due:'2026-05-13',userId:'iwashimizu'},
+    ]);
+  }
 }
 
 // =========================================================
