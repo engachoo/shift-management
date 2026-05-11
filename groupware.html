@@ -1635,9 +1635,9 @@ function renderTop(){
     return diff<=3;
   });
 
-  // ---- 今日の予定 ----
-  const events = load('events',[]);
-  const todayEvs = events.filter(e=>e.memberIds&&e.memberIds.includes(myId())&&e.date===today&&e.memo!=='off')
+  // ---- 今日の予定（繰り返し予定含む） ----
+  const todayEvs = expandEvents(load('events',[]), today, today)
+    .filter(e=>e.memberIds&&e.memberIds.includes(myId())&&e.date===today&&e.memo!=='off')
     .sort((a,b)=>(a.startTime||'99:99').localeCompare(b.startTime||'99:99'));
 
   // ---- バッジ更新 ----
@@ -1924,13 +1924,13 @@ function renderGW(){
       html+=`<tr><td class="td-member"><div class="m-name">${esc(u.name)}${u.id===myId()?'<span style="font-size:10px;color:#1a56db;margin-left:4px">（自分）</span>':''}</div><div class="m-dept">${esc(getDept(u.deptId).name)}</div></td>`;
       days.forEach(d=>{
         const ds=dateStr(d); const holi=HOLIDAYS[ds]; const isToday=ds===today; const isSun=d.getDay()===0;
-        const offEv=events.find(e=>e.memberIds.includes(u.id)&&e.date===ds&&e.memo==='off');
+        const offEv=events.find(e=>e.memberIds&&e.memberIds.includes(u.id)&&e.date===ds&&e.memo==='off');
         let cls=isToday?'td-today':holi||isSun?'td-holiday':'';
         if(offEv) cls='td-off';
         html+=`<td class="${cls}">`;
         if(offEv){ html+='<span class="off-lbl">休み</span>'; }
         else {
-          events.filter(e=>e.memberIds.includes(u.id)&&e.date===ds&&e.memo!=='off').forEach(ev=>{
+          events.filter(e=>e.memberIds&&e.memberIds.includes(u.id)&&e.date===ds&&e.memo!=='off').forEach(ev=>{
             const et=EV_TYPES[ev.type]||EV_TYPES.task;
             const ts=ev.startTime?(ev.startTime+(ev.endTime?'-'+ev.endTime:''))+' ':'';
             const lbl=et.label?`<span style="font-size:9px;background:rgba(0,0,0,.1);border-radius:2px;padding:0 3px;margin-right:2px">${et.label}</span>`:'';
@@ -2024,11 +2024,11 @@ function renderPM(){
     html+=`<td class="${cls}" style="${isSun?'color:#c53030':isSat?'color:#1a56db':''}">`;
     html+=`<div class="day-num">${isToday?`<span class="today-circle">${day}</span>`:day}</div>`;
     if(HOLIDAYS[ds]) html+=`<div style="font-size:10px;color:#c53030">${HOLIDAYS[ds]}</div>`;
-    events.filter(e=>e.memberIds.includes(myId())&&e.date===ds&&e.memo!=='off').forEach(ev=>{
+    events.filter(e=>e.memberIds&&e.memberIds.includes(myId())&&e.date===ds&&e.memo!=='off').forEach(ev=>{
       const et=EV_TYPES[ev.type]||EV_TYPES.task;
       const ts=ev.startTime?(ev.startTime+(ev.endTime?'-'+ev.endTime:''))+' ':'';
       const recIcon=ev._recurring?'🔁':''; const reactIcon=ev.reaction?.enabled&&ev.reaction?.responses?.[myId()]?.reacted?'✓':'';
-      html+=`<span class="ev ${et.cls}" onclick="openEvDetail('${ev.id}')"><span class="ev-time">${esc(ts)}</span>${recIcon}${reactIcon}${esc(ev.title)}</span>`;
+      html+=`<span class="ev ${et.cls}" onclick="openEvModal('${ev.id}',null,null)"><span class="ev-time">${esc(ts)}</span>${recIcon}${reactIcon}${esc(ev.title)}</span>`;
     });
     // ToDo（期日一致、完了済みも表示）
     load('todos',[]).filter(t=>t.userId===myId()&&t.due===ds).forEach(t=>{
@@ -2055,7 +2055,7 @@ function renderPY(){
   const _startDs=y+'-01-01';
   const _endDs=y+'-12-31';
   const allEvents=expandEvents(load('events',[]),_startDs,_endDs);
-  const myEv=allEvents.filter(e=>e.memberIds.includes(myId())&&e.memo!=='off');
+  const myEv=allEvents.filter(e=>e.memberIds&&e.memberIds.includes(myId())&&e.memo!=='off');
   // 色マップ
   const dotColor=Object.fromEntries(EV_TYPE_LIST.map(t=>[t.value,t.color]));
 
