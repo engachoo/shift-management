@@ -1690,7 +1690,7 @@ function renderTopWeek(s){
     const isSun=d.getDay()===0;
     const offEv=events.find(e=>e.memberIds&&e.memberIds.includes(uid)&&e.date===ds&&e.memo==='off');
     let bg=isToday?'#fffef0':holi||isSun?'#fff8f8':'';
-    html+=`<td style="vertical-align:top;padding:5px 6px;border:1px solid #dde3ec;min-height:70px;background:${bg}">`;
+    html+=`<td style="vertical-align:top;padding:5px 6px;border:1px solid #dde3ec;min-height:80px;background:${bg}">`;
     if(offEv){
       html+='<span style="font-size:11px;background:#e5e7eb;border-radius:3px;padding:1px 6px;color:#6b7280">休み</span>';
     } else {
@@ -1700,13 +1700,18 @@ function renderTopWeek(s){
         const et=EV_TYPES[ev.type]||EV_TYPES.task;
         const ts=ev.startTime?(ev.startTime+(ev.endTime?'-'+ev.endTime:''))+' ':'';
         const recIcon=ev._recurring?'🔁':'';
-        html+=`<div onclick="openEvDetail('${ev.id}')" title="${esc(ev.title)}" style="cursor:pointer;margin-bottom:3px">
+        html+=`<div onclick="openEvModal('${ev.id}',null,null)" title="${esc(ev.title)}" style="cursor:pointer;margin-bottom:3px">
           <span class="ev ${et.cls}" style="display:block;white-space:normal;word-break:break-all;overflow-wrap:break-word;font-size:11px;line-height:1.4">
             ${ts?`<span class="ev-time">${esc(ts)}</span>`:''}${recIcon}<span style="font-size:9px;background:rgba(0,0,0,.1);border-radius:2px;padding:0 3px;margin-right:2px">${et.label}</span>${esc(ev.title)}
           </span>
         </div>`;
       });
+      // ToDo表示
+      load('todos',[]).filter(t=>t.userId===uid&&t.due===ds).forEach(t=>{
+        html+=`<span class="ev-todo ${t.done?'todo-done':''}" onclick="showMod('todo')" title="ToDo">${t.done?'✓ ':'☐ '}${esc(t.title)}</span>`;
+      });
     }
+    html+=`<div class="add-btn-wrap"><button onclick="openEvModal(null,'${uid}','${ds}')" title="予定を追加" style="background:#e8f0fe;border:1px solid #b3ccf5;color:#1a56db;border-radius:3px;cursor:pointer;padding:1px 6px;font-size:13px;margin-top:2px">＋</button></div>`;
     html+='</td>';
   });
   html+='</tr></tbody></table></div></div>';
