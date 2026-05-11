@@ -304,6 +304,8 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
 .bl-react-btn:hover{transform:translateY(-1px);box-shadow:0 3px 8px rgba(99,102,241,.25)}
 .bl-react-count{font-size:11px;color:#6b7280}
 .bl-react-names{font-size:10px;color:#8899aa;flex:1}
+.notif-dismiss{background:none;border:1px solid #d1d5db;border-radius:12px;padding:2px 8px;font-size:10px;color:#6b7280;cursor:pointer;white-space:nowrap;flex-shrink:0}
+.notif-dismiss:hover{background:#f3f4f6}
 .bl-attach-row{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}
 .bl-attach-tag{display:inline-flex;align-items:center;gap:4px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:4px;padding:3px 9px;font-size:11px;color:#1d4ed8;cursor:pointer}
 .bl-attach-tag:hover{background:#dbeafe}
@@ -1718,9 +1720,12 @@ function renderTop(){
     .filter(e=>e.memberIds&&e.memberIds.includes(myId())&&e.date===today&&e.memo!=='off')
     .sort((a,b)=>(a.startTime||'99:99').localeCompare(b.startTime||'99:99'));
 
+  // ---- 予定通知 ----
+  const evNotifs = load('evNotifs',[]).filter(n=>n.targetUserIds?.includes(uid)&&!n.readBy?.includes(uid));
+
   // ---- バッジ更新（unreadBlsはこの後計算されるが、bulletinsから直接算出）----
   const unreadBlsCount = bulletins.filter(b=>!(b.reactions&&b.reactions[uid]?.confirmed)).length;
-  const totalNew = newCis.length + unreadBlsCount + urgentTodos.length;
+  const totalNew = newCis.length + unreadBlsCount + urgentTodos.length + evNotifs.length;
   const badge = document.getElementById('badge-top');
   if(badge){ badge.textContent=totalNew||''; badge.style.display=totalNew?'':'none'; }
 
@@ -1801,6 +1806,21 @@ function renderTop(){
         <button class="top-hdr-btn" onclick="showMod('schedule','gw')">📅 グループ週を開く</button>
       </div>
     </div>
+    ${evNotifs.length?`<div class="top-card" style="margin-bottom:12px">
+      <div class="top-card-hdr">
+        <span class="tc-icon">🔔</span>予定のお知らせ
+        <span class="tc-count" style="background:#fef2f2;color:#dc2626;border:1px solid #fca5a5">${evNotifs.length}件</span>
+      </div>
+      ${evNotifs.slice(0,5).map(n=>`
+        <div class="top-item" id="evnotif-${n.id}">
+          <div class="top-item-icon">${n.icon||'📅'}</div>
+          <div class="top-item-body">
+            <div class="top-item-title">${esc(n.message)}</div>
+            <div class="top-item-meta">${esc(n.actorName)} ・ ${n.createdAt}</div>
+          </div>
+          <button class="notif-dismiss" onclick="dismissEvNotif('${n.id}')">閉じる</button>
+        </div>`).join('')}
+    </div>`:''}
     <div class="top-cols">
       <div class="top-card">
         <div class="top-card-hdr">
@@ -1961,6 +1981,16 @@ function updateBadges(){
     const unread=bls.filter(b=>!(b.reactions&&b.reactions[me]?.confirmed)).length;
     blBadge.textContent=unread||'';
     blBadge.style.display=unread?'':'none';
+  }
+  // ホームバッジに予定通知を加算
+  const evNotifCount=load('evNotifs',[]).filter(n=>n.targetUserIds?.includes(me)&&!n.readBy?.includes(me)).length;
+  const topBadge=document.getElementById('badge-top');
+  if(topBadge){
+    const cis=load('circulars',[]).filter(c=>{if(!c.recipients?.includes(me))return false;const r=c.responses[me];return !r||r.status==='pending'||r.status==='checking';}).length;
+    const bls2=load('bulletins',[]).filter(b=>blVisibleToMe(b)&&!(b.reactions&&b.reactions[me]?.confirmed)).length;
+    const todos2=load('todos',[]).filter(t=>!t.done&&t.userId===me&&t.due&&Math.ceil((new Date(t.due)-new Date())/(1000*60*60*24))<=3).length;
+    const total=cis+bls2+todos2+evNotifCount;
+    topBadge.textContent=total||''; topBadge.style.display=total?'':'none';
   }
 }
 
@@ -2405,8 +2435,12 @@ function saveEvent(){
     recurrence
   };
   const events=load('events',[]);
-  if(editEvId){const i=events.findIndex(e=>e.id===editEvId);if(i>=0)events[i]=newEv;else events.push(newEv);}
-  else events.push(newEv);
+  if(editEvId){
+    const i=events.findIndex(e=>e.id===editEvId);
+    if(i>=0)events[i]=newEv;else events.push(newEv);
+    // 変更通知
+    sendEvNotif(newEv.memberIds||[], '✏️', `「${newEv.title}」の予定が変更されました`);
+  } else events.push(newEv);
   save('events',events);
   closeModal('evModal');
   renderSchedule();
@@ -2459,13 +2493,41 @@ function openEvDetail(evId){
   document.getElementById('evDetailModal').classList.add('open');
 }
 
+// 予定通知を送信
+function sendEvNotif(targetUserIds, icon, message){
+  const notifs=load('evNotifs',[]);
+  const actor=getUser(myId());
+  notifs.unshift({
+    id:uid(), icon, message,
+    actorId:myId(), actorName:actor.name||myId(),
+    targetUserIds: targetUserIds.filter(id=>id!==myId()), // 自分以外に通知
+    createdAt:new Date().toISOString().slice(0,16).replace('T',' '),
+    readBy:[]
+  });
+  // 古い通知は100件まで
+  save('evNotifs', notifs.slice(0,100));
+}
+// 通知を既読（閉じる）
+function dismissEvNotif(notifId){
+  const notifs=load('evNotifs',[]);
+  const n=notifs.find(x=>x.id===notifId);
+  if(n){ if(!n.readBy) n.readBy=[]; if(!n.readBy.includes(myId())) n.readBy.push(myId()); }
+  save('evNotifs',notifs);
+  const row=document.getElementById('evnotif-'+notifId);
+  if(row){ row.style.transition='opacity .3s'; row.style.opacity='0'; setTimeout(()=>{ row.remove(); updateBadges(); },320); }
+  updateBadges();
+}
+
 function editFromDetail(){
   closeModal('evDetailModal');
   openEvModal(_viewEvId,null,null);
 }
 function deleteFromDetail(){
   if(!confirm('この予定を削除しますか？')) return;
-  save('events', load('events',[]).filter(e=>e.id!==_viewEvId));
+  const events=load('events',[]);
+  const ev=events.find(e=>e.id===_viewEvId);
+  if(ev) sendEvNotif(ev.memberIds||[], '🗑️', `「${ev.title}」が削除されました`);
+  save('events', events.filter(e=>e.id!==_viewEvId));
   closeModal('evDetailModal'); renderSchedule();
 }
 function leaveFromDetail(){
@@ -2473,6 +2535,7 @@ function leaveFromDetail(){
   const events=load('events',[]);
   const ev=events.find(e=>e.id===_viewEvId);
   if(!ev) return;
+  sendEvNotif(ev.memberIds||[], '🚪', `「${ev.title}」から${getUser(myId()).name}が抜けました`);
   ev.memberIds=(ev.memberIds||[]).filter(id=>id!==myId());
   save('events',events);
   closeModal('evDetailModal'); renderSchedule();
@@ -2482,6 +2545,7 @@ function joinFromDetail(){
   const ev=events.find(e=>e.id===_viewEvId);
   if(!ev) return;
   if(!ev.memberIds) ev.memberIds=[];
+  sendEvNotif(ev.memberIds, '➕', `「${ev.title}」に${getUser(myId()).name}が参加しました`);
   if(!ev.memberIds.includes(myId())) ev.memberIds.push(myId());
   save('events',events);
   closeModal('evDetailModal'); renderSchedule();
