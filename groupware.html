@@ -1754,7 +1754,7 @@ function renderTop(){
         ${todayEvItems()}
       </div>
     </div>
-    ${renderTopWeek(s)}`;
+    ${(()=>{ try{ return renderTopWeek(s); }catch(e){ return `<div style="color:red;padding:10px">週間カレンダーエラー: ${e.message}</div>`; } })()}`;
 }
 
 function renderTopWeek(s){
@@ -1766,13 +1766,16 @@ function renderTopWeek(s){
   const startDs = dateStr(days[0]), endDs = dateStr(days[6]);
   const events = expandEvents(rawEvents, startDs, endDs);
   const uid = s.userId;
+  // デバッグ：全イベントから自分のものを確認
+  const myAllEvs = rawEvents.filter(e=>e.memberIds&&e.memberIds.includes(uid));
+  const noEvInfo = myAllEvs.length===0 ? ` <span style="font-size:11px;color:#9ca3af">（${uid} の予定: ${rawEvents.length}件中0件）</span>` : '';
 
   const DOW_JP=['日','月','火','水','木','金','土'];
   const endLabel = `${days[6].getMonth()+1}/${days[6].getDate()}`;
 
   let html = `<div class="top-today" style="margin-top:14px">
     <div class="top-today-hdr">
-      <span>📅</span> 今後7日間の予定（〜${endLabel}）
+      <span>📅</span> 今後7日間の予定（〜${endLabel}）${noEvInfo}
       <button onclick="showMod('schedule','gw')" style="margin-left:auto;background:#e8f0fe;color:#1a56db;border:1px solid #b3ccf5;padding:3px 10px;border-radius:4px;cursor:pointer;font-size:11px">グループ週を開く →</button>
     </div>
     <div style="overflow-x:auto">
