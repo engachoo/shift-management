@@ -509,6 +509,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
     <div class="side-group">コミュニケーション</div>
     <div class="side-item" id="m-ci" onclick="showMod('circular')"><span class="si-icon">📝</span>承認申請<span class="side-badge" id="badge-ci">0</span></div>
     <div class="side-item" id="m-bl" onclick="showMod('bulletin')"><span class="si-icon">📌</span>連絡事項<span class="side-badge" id="badge-bl" style="display:none"></span></div>
+    <div class="side-item" id="m-en" onclick="showMod('evnotif')"><span class="si-icon">🔔</span>予定変更のお知らせ<span class="side-badge" id="badge-en" style="display:none"></span></div>
     <div class="side-item" id="m-td" onclick="showMod('todo')"><span class="si-icon">✅</span>ToDo<span class="side-badge gray" id="badge-td">0</span></div>
     <div id="adminMenu" style="display:none">
       <div class="side-group">管理者メニュー</div>
@@ -577,6 +578,15 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
     </div>
 
     <!-- ToDo -->
+    <!-- 予定変更のお知らせ -->
+    <div id="evnotifView" style="display:none;padding:12px">
+      <div class="page-hdr" style="position:static;margin-bottom:12px">
+        <h2>🔔 予定変更のお知らせ</h2>
+        <button class="btn-secondary" onclick="dismissAllEvNotifs()" style="font-size:12px;padding:4px 12px">すべて既読にする</button>
+      </div>
+      <div id="evnotifList"></div>
+    </div>
+
     <div id="todoView" style="display:none;padding:12px">
       <div class="page-hdr" style="position:static;margin-bottom:12px">
         <h2>✅ ToDo</h2>
@@ -1668,6 +1678,10 @@ function showMod(mod,sub){
     document.getElementById('bulletinView').style.display='block';
     document.getElementById('m-bl').classList.add('active');
     renderBl();
+  } else if(mod==='evnotif'){
+    document.getElementById('evnotifView').style.display='block';
+    document.getElementById('m-en').classList.add('active');
+    renderEvNotif();
   } else if(mod==='todo'){
     document.getElementById('todoView').style.display='block';
     document.getElementById('m-td').classList.add('active');
@@ -1982,8 +1996,11 @@ function updateBadges(){
     blBadge.textContent=unread||'';
     blBadge.style.display=unread?'':'none';
   }
-  // ホームバッジに予定通知を加算
+  // 予定変更のお知らせバッジ
   const evNotifCount=load('evNotifs',[]).filter(n=>n.targetUserIds?.includes(me)&&!n.readBy?.includes(me)).length;
+  const enBadge=document.getElementById('badge-en');
+  if(enBadge){ enBadge.textContent=evNotifCount||''; enBadge.style.display=evNotifCount?'':'none'; }
+  // ホームバッジに予定通知を加算
   const topBadge=document.getElementById('badge-top');
   if(topBadge){
     const cis=load('circulars',[]).filter(c=>{if(!c.recipients?.includes(me))return false;const r=c.responses[me];return !r||r.status==='pending'||r.status==='checking';}).length;
@@ -2515,6 +2532,48 @@ function dismissEvNotif(notifId){
   save('evNotifs',notifs);
   const row=document.getElementById('evnotif-'+notifId);
   if(row){ row.style.transition='opacity .3s'; row.style.opacity='0'; setTimeout(()=>{ row.remove(); updateBadges(); },320); }
+  updateBadges();
+}
+
+// 予定変更のお知らせ一覧を描画
+function renderEvNotif(){
+  const me=myId();
+  const allNotifs=load('evNotifs',[]);
+  // 自分宛の通知のみ（既読含む）
+  const mine=allNotifs.filter(n=>n.targetUserIds?.includes(me));
+  const el=document.getElementById('evnotifList');
+  if(!el) return;
+  if(!mine.length){
+    el.innerHTML='<div style="color:#9ca3af;text-align:center;padding:32px 0;font-size:14px">お知らせはありません</div>';
+    return;
+  }
+  el.innerHTML=mine.map(n=>{
+    const isRead=n.readBy?.includes(me);
+    return `<div id="evnotif-${n.id}" style="display:flex;align-items:flex-start;gap:10px;padding:12px 14px;margin-bottom:8px;background:${isRead?'#f9fafb':'#fffbea'};border:1px solid ${isRead?'#e5e7eb':'#fcd34d'};border-radius:8px;transition:opacity .3s">
+      <span style="font-size:22px;line-height:1.2">${n.icon||'🔔'}</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:14px;color:#1f2937;margin-bottom:2px">${esc(n.message)}</div>
+        <div style="font-size:11px;color:#6b7280">${esc(n.actorName)} ・ ${n.createdAt}</div>
+      </div>
+      ${isRead
+        ? '<span style="font-size:11px;color:#9ca3af;white-space:nowrap;align-self:center">既読</span>'
+        : `<button onclick="dismissEvNotif('${n.id}')" style="white-space:nowrap;background:#f3f4f6;border:1px solid #d1d5db;border-radius:6px;padding:3px 10px;font-size:12px;cursor:pointer;color:#374151;align-self:center">✓ 既読にする</button>`
+      }
+    </div>`;
+  }).join('');
+}
+// すべて既読にする
+function dismissAllEvNotifs(){
+  const me=myId();
+  const notifs=load('evNotifs',[]);
+  notifs.forEach(n=>{
+    if(n.targetUserIds?.includes(me)){
+      if(!n.readBy) n.readBy=[];
+      if(!n.readBy.includes(me)) n.readBy.push(me);
+    }
+  });
+  save('evNotifs',notifs);
+  renderEvNotif();
   updateBadges();
 }
 
