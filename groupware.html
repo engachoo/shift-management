@@ -493,7 +493,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
     <div class="side-item" id="m-spy" onclick="showMod('schedule','py')"><span class="si-icon">📆</span>個人年</div>
     <div class="side-group">コミュニケーション</div>
     <div class="side-item" id="m-ci" onclick="showMod('circular')"><span class="si-icon">📝</span>承認申請<span class="side-badge" id="badge-ci">0</span></div>
-    <div class="side-item" id="m-bl" onclick="showMod('bulletin')"><span class="si-icon">📌</span>連絡事項</div>
+    <div class="side-item" id="m-bl" onclick="showMod('bulletin')"><span class="si-icon">📌</span>連絡事項<span class="side-badge" id="badge-bl" style="display:none"></span></div>
     <div class="side-item" id="m-td" onclick="showMod('todo')"><span class="si-icon">✅</span>ToDo<span class="side-badge gray" id="badge-td">0</span></div>
     <div id="adminMenu" style="display:none">
       <div class="side-group">管理者メニュー</div>
@@ -1668,8 +1668,9 @@ function renderTop(){
     .filter(e=>e.memberIds&&e.memberIds.includes(myId())&&e.date===today&&e.memo!=='off')
     .sort((a,b)=>(a.startTime||'99:99').localeCompare(b.startTime||'99:99'));
 
-  // ---- バッジ更新 ----
-  const totalNew = newCis.length + newBls.length + urgentTodos.length;
+  // ---- バッジ更新（unreadBlsはこの後計算されるが、bulletinsから直接算出）----
+  const unreadBlsCount = bulletins.filter(b=>!(b.reactions&&b.reactions[uid]?.confirmed)).length;
+  const totalNew = newCis.length + unreadBlsCount + urgentTodos.length;
   const badge = document.getElementById('badge-top');
   if(badge){ badge.textContent=totalNew||''; badge.style.display=totalNew?'':'none'; }
 
@@ -1691,9 +1692,8 @@ function renderTop(){
       </div>`).join('');
   }
 
-  // 既読掲示板IDを取得
-  const readBls = load('blRead_'+uid, []);
-  const unreadBls = bulletins.filter(b=>!readBls.includes(b.id));
+  // 未確認（reactions で confirmed でないもの）
+  const unreadBls = bulletins.filter(b=>!(b.reactions&&b.reactions[uid]?.confirmed));
 
   function blItems(){
     if(!unreadBls.length) return `<div class="top-empty">未確認の連絡事項はありません</div>`;
@@ -1761,8 +1761,8 @@ function renderTop(){
       </div>
       <div class="top-card">
         <div class="top-card-hdr">
-          <span class="tc-icon">📌</span>連絡事項
-          ${newBls.length?`<span class="tc-count blue">${newBls.length}件 NEW</span>`:''}
+          <span class="tc-icon">📌</span>連絡事項（未確認）
+          ${unreadBls.length?`<span class="tc-count" style="background:#fef2f2;color:#dc2626;border:1px solid #fca5a5">${unreadBls.length}件</span>`:''}
         </div>
         ${blItems()}
       </div>
@@ -1859,20 +1859,37 @@ function renderTopWeek(s){
 }
 
 function confirmBl(blId){
-  const uid = getS()?.userId; if(!uid) return;
-  const key = 'blRead_'+uid;
-  const read = load(key, []);
-  if(!read.includes(blId)){
-    read.push(blId);
-    save(key, read);
+  const s=getS(); if(!s) return;
+  const uid=s.userId;
+  // blRead_ キーにも記録（ホーム画面既読管理）
+  const key='blRead_'+uid;
+  const read=load(key,[]);
+  if(!read.includes(blId)){ read.push(blId); save(key,read); }
+  // bulletins の reactions にも確認済みとして記録
+  const bls=load('bulletins',[]);
+  const b=bls.find(x=>x.id===blId);
+  if(b){
+    if(!b.reactions) b.reactions={};
+    b.reactions[uid]={confirmed:true,at:new Date().toISOString().slice(0,16).replace('T',' ')};
+    save('bulletins',bls);
   }
   // 該当行をフェードアウトして消す
-  const row = document.getElementById('bl-row-'+blId);
+  const row=document.getElementById('bl-row-'+blId);
   if(row){
     row.style.transition='opacity .4s';
     row.style.opacity='0';
-    setTimeout(()=>{ row.remove(); }, 420);
+    setTimeout(()=>{
+      row.remove();
+      // 残り0件なら「未確認なし」メッセージ表示
+      const cont=document.querySelector('.top-card:nth-child(2) .top-item');
+      if(!cont){
+        const card=document.querySelector('.top-card:nth-child(2)');
+        if(card&&!card.querySelector('.top-item'))
+          card.insertAdjacentHTML('beforeend','<div class="top-empty">未確認の連絡事項はありません</div>');
+      }
+    }, 420);
   }
+  updateBadges();
 }
 
 function updateBadges(){
@@ -1887,6 +1904,14 @@ function updateBadges(){
   const me=myId();
   const tds=load('todos',[]).filter(t=>!t.done&&(t.userId===me)).length;
   document.getElementById('badge-td').textContent=tds||'';
+  // 連絡事項：未確認（reactionsで未確認＋自分宛て）
+  const blBadge=document.getElementById('badge-bl');
+  if(blBadge){
+    const bls=load('bulletins',[]).filter(b=>blVisibleToMe(b));
+    const unread=bls.filter(b=>!(b.reactions&&b.reactions[me]?.confirmed)).length;
+    blBadge.textContent=unread||'';
+    blBadge.style.display=unread?'':'none';
+  }
 }
 
 // =========================================================
@@ -2786,6 +2811,7 @@ function reactBl(id){
   }
   save('bulletins',bls);
   renderBl();
+  updateBadges();
 }
 
 function blTargetChange(){
