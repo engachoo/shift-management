@@ -3121,7 +3121,7 @@ function renderUserTable(){
       <td><input class="inline-input" id="name-${u.id}" value="${esc(u.name)}" oninput="markRowDirty('${u.id}')" style="min-width:80px"></td>
       <td><input class="inline-input" id="lid-${u.id}" value="${esc(u.loginId)}" oninput="markRowDirty('${u.id}')"></td>
       <td><div class="inline-pw-wrap">
-        <input class="inline-input" id="pw-${u.id}" type="password" value="${esc(u.password)}" oninput="markRowDirty('${u.id}')" style="min-width:90px">
+        <input class="inline-input" id="pw-${u.id}" type="text" value="${esc(u.password)}" oninput="markRowDirty('${u.id}')" style="min-width:90px">
         <button class="inline-eye" type="button" onclick="toggleInlinePw('${u.id}')" title="表示/非表示">🙈</button>
       </div></td>
       <td>${deptSel}</td>
