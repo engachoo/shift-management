@@ -519,6 +519,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
           <button class="view-btn" id="vb-py" onclick="switchCalView('py')">個人年</button>
         </div>
         <select class="dept-filter" id="deptFilterSel" onchange="renderSchedule()" style="display:none"></select>
+        <select class="dept-filter" id="pmMemberSel" onchange="renderSchedule()" style="display:none;max-width:160px"></select>
         <button class="btn-new" onclick="openEvModal(null,null,null)" style="margin-left:8px">＋ 予定登録</button>
       </div>
       <div id="gwView" class="gw-wrap"></div>
@@ -1579,7 +1580,9 @@ function showMod(mod,sub){
     document.querySelectorAll('.view-btn').forEach(b=>b.classList.remove('active'));
     document.getElementById('vb-'+calSub).classList.add('active');
     document.getElementById('deptFilterSel').style.display = calSub==='gw'?'inline-block':'none';
+    document.getElementById('pmMemberSel').style.display = calSub==='pm'?'inline-block':'none';
     buildDeptFilter();
+    if(calSub==='pm') buildPmMemberSel();
     renderSchedule();
   } else if(mod==='circular'){
     document.getElementById('circularView').style.display='flex';
@@ -1870,7 +1873,9 @@ function switchCalView(v){
   document.querySelectorAll('.view-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('vb-'+v).classList.add('active');
   document.getElementById('deptFilterSel').style.display=v==='gw'?'inline-block':'none';
+  document.getElementById('pmMemberSel').style.display=v==='pm'?'inline-block':'none';
   if(v==='gw') buildDeptFilter();
+  if(v==='pm') buildPmMemberSel();
   renderSchedule();
 }
 function calNav(d){
@@ -1885,6 +1890,22 @@ function buildDeptFilter(){
   const sel=document.getElementById('deptFilterSel');
   const depts=load('depts',[]);
   sel.innerHTML='<option value="">全部署</option>'+depts.map(d=>`<option value="${d.id}">${esc(deptPath(d.id))}</option>`).join('');
+}
+
+function buildPmMemberSel(){
+  const sel=document.getElementById('pmMemberSel');
+  if(!sel) return;
+  const me=myId();
+  let users=normalUsers().filter(u=>u.active!==false);
+  // ログインユーザーを先頭に
+  const meUser=users.find(u=>u.id===me);
+  const others=users.filter(u=>u.id!==me);
+  const sorted=meUser?[meUser,...others]:others;
+  const prev=sel.value;
+  sel.innerHTML=sorted.map(u=>`<option value="${u.id}"${u.id===me&&!prev?'selected':''}>${esc(u.name)}</option>`).join('');
+  // 以前の選択を維持
+  if(prev && sorted.find(u=>u.id===prev)) sel.value=prev;
+  else if(meUser) sel.value=me;
 }
 
 function renderGW(){
@@ -1916,9 +1937,9 @@ function renderGW(){
   });
   html+='</tr></thead><tbody>';
 
-  // 部署でグルーピング
+  // 部署でグルーピング（ログインユーザー・所属部署を先頭に）
   const depts=load('depts',[]);
-  const groups=groupByDept(users,depts,deptId);
+  const groups=groupByDept(users,depts,deptId,myId());
 
   groups.forEach(g=>{
     if(g.type==='header'){
@@ -1959,12 +1980,36 @@ function renderGW(){
   gw.innerHTML=html;
 }
 
-function groupByDept(users,depts,filterDeptId){
+function getTopDeptId(deptId){
+  // 部署を遡って最上位の親を返す
+  const depts=load('depts',[]);
+  let cur=deptId;
+  for(let i=0;i<10;i++){
+    const d=depts.find(x=>x.id===cur);
+    if(!d||!d.parentId) return cur;
+    cur=d.parentId;
+  }
+  return cur;
+}
+function groupByDept(users,depts,filterDeptId,priorityUserId){
   const result=[];
-  const topDepts=depts.filter(d=>!d.parentId).sort((a,b)=>a.order-b.order);
+  // ログインユーザーの最上位部署IDを特定して先頭に
+  let topDepts=depts.filter(d=>!d.parentId).sort((a,b)=>a.order-b.order);
+  if(priorityUserId){
+    const pu=users.find(u=>u.id===priorityUserId);
+    if(pu){
+      const topId=getTopDeptId(pu.deptId);
+      topDepts=[...topDepts.filter(d=>d.id===topId),...topDepts.filter(d=>d.id!==topId)];
+    }
+  }
   function walk(deptId,depth){
     const dept=depts.find(d=>d.id===deptId);if(!dept)return;
-    const deptUsers=users.filter(u=>u.deptId===deptId);
+    let deptUsers=users.filter(u=>u.deptId===deptId);
+    // ログインユーザーを先頭に
+    if(priorityUserId){
+      const me=deptUsers.find(u=>u.id===priorityUserId);
+      if(me) deptUsers=[me,...deptUsers.filter(u=>u.id!==priorityUserId)];
+    }
     const children=depts.filter(d=>d.parentId===deptId).sort((a,b)=>a.order-b.order);
     if(deptUsers.length||children.length){
       result.push({type:'header',name:dept.name,depth});
@@ -1976,7 +2021,6 @@ function groupByDept(users,depts,filterDeptId){
     walk(filterDeptId,0);
   } else {
     topDepts.forEach(d=>walk(d.id,0));
-    // 部署未設定ユーザー
     const assignedIds=new Set(users.filter(u=>depts.find(d=>d.id===u.deptId)).map(u=>u.id));
     const unassigned=users.filter(u=>!assignedIds.has(u.id));
     if(unassigned.length){ result.push({type:'header',name:'未設定',depth:0}); unassigned.forEach(u=>result.push({type:'user',user:u})); }
@@ -2005,7 +2049,13 @@ function renderPM(){
   const gw=document.getElementById('gwView'); const pm=document.getElementById('pmView'); const py=document.getElementById('pyView');
   gw.style.display='none'; pm.style.display='block'; py.style.display='none';
   const y=calDate.getFullYear(),mo=calDate.getMonth();
-  document.getElementById('calTitle').textContent=y+'年'+(mo+1)+'月';
+  // 表示対象メンバー（セレクトで選択、なければ自分）
+  const selEl=document.getElementById('pmMemberSel');
+  const targetId=selEl&&selEl.value?selEl.value:myId();
+  const targetUser=normalUsers().find(u=>u.id===targetId);
+  const targetName=targetUser?targetUser.name:'';
+  const isMe=targetId===myId();
+  document.getElementById('calTitle').textContent=y+'年'+(mo+1)+'月'+(targetName&&!isMe?' - '+targetName:'');
   const today=todayStr();
   const _startDs=y+'-'+String(mo+1).padStart(2,'0')+'-01';
   const _endDs=y+'-'+String(mo+1).padStart(2,'0')+'-'+String(new Date(y,mo+1,0).getDate()).padStart(2,'0');
@@ -2028,17 +2078,21 @@ function renderPM(){
     html+=`<td class="${cls}" style="${isSun?'color:#c53030':isSat?'color:#1a56db':''}">`;
     html+=`<div class="day-num">${isToday?`<span class="today-circle">${day}</span>`:day}</div>`;
     if(HOLIDAYS[ds]) html+=`<div style="font-size:10px;color:#c53030">${HOLIDAYS[ds]}</div>`;
-    events.filter(e=>e.memberIds&&e.memberIds.includes(myId())&&e.date===ds&&e.memo!=='off').forEach(ev=>{
+    events.filter(e=>e.memberIds&&e.memberIds.includes(targetId)&&e.date===ds&&e.memo!=='off').forEach(ev=>{
       const et=EV_TYPES[ev.type]||EV_TYPES.task;
       const ts=ev.startTime?(ev.startTime+(ev.endTime?'-'+ev.endTime:''))+' ':'';
       const recIcon=ev._recurring?'🔁':''; const reactIcon=ev.reaction?.enabled&&ev.reaction?.responses?.[myId()]?.reacted?'✓':'';
       html+=`<span class="ev ${et.cls}" onclick="openEvModal('${ev.id}',null,null)"><span class="ev-time">${esc(ts)}</span>${recIcon}${reactIcon}${esc(ev.title)}</span>`;
     });
-    // ToDo（期日一致、完了済みも表示）
-    load('todos',[]).filter(t=>t.userId===myId()&&t.due===ds).forEach(t=>{
-      html+=`<span class="ev-todo ${t.done?'todo-done':''}" onclick="showMod('todo')" title="ToDo">${t.done?'✓ ':'☐ '}${esc(t.title)}</span>`;
-    });
-    html+=`<div class="add-btn-wrap"><button onclick="openEvModal(null,'${myId()}','${ds}')">＋</button></div></td>`;
+    // ToDo（自分のみ表示）
+    if(isMe){
+      load('todos',[]).filter(t=>t.userId===myId()&&t.due===ds).forEach(t=>{
+        html+=`<span class="ev-todo ${t.done?'todo-done':''}" onclick="showMod('todo')" title="ToDo">${t.done?'✓ ':'☐ '}${esc(t.title)}</span>`;
+      });
+    }
+    // 予定追加ボタンは自分のみ
+    if(isMe) html+=`<div class="add-btn-wrap"><button onclick="openEvModal(null,'${myId()}','${ds}')">＋</button></div>`;
+    html+=`</td>`;
     col++;
     if(col%7===0&&day<last.getDate()) html+='</tr><tr>';
   }
