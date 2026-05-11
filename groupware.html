@@ -644,10 +644,12 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
       <!-- 時刻 -->
       <div class="f-row" id="ev-time-wrap">
         <label class="f-label">時刻</label>
-        <div style="display:flex;align-items:center;gap:8px">
-          <select class="f-select" id="ev-start" style="width:110px"></select>
-          <span>〜</span>
-          <select class="f-select" id="ev-end" style="width:110px"></select>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+          <select class="f-select" id="ev-start-h" style="width:80px"></select>
+          <select class="f-select" id="ev-start-m" style="width:72px"></select>
+          <span style="padding:0 4px">〜</span>
+          <select class="f-select" id="ev-end-h" style="width:80px"></select>
+          <select class="f-select" id="ev-end-m" style="width:72px"></select>
         </div>
       </div>
 
@@ -2285,17 +2287,30 @@ document.addEventListener('click',function(e){
 });
 
 // ===== 予定モーダル =====
-function buildTimeSelect(selId, val){
-  const sel=document.getElementById(selId);
-  if(!sel) return;
-  let opts='<option value="">--:--</option>';
+function buildTimeSelects(prefix, val){
+  // val例: "09:30" or ""
+  const hPart=val?val.split(':')[0]:'';
+  const mPart=val?val.split(':')[1]:'';
+  const hSel=document.getElementById(prefix+'-h');
+  const mSel=document.getElementById(prefix+'-m');
+  if(!hSel||!mSel) return;
+  let hOpts='<option value="">--時</option>';
   for(let h=0;h<24;h++){
-    for(let m=0;m<60;m+=15){
-      const t=String(h).padStart(2,'0')+':'+String(m).padStart(2,'0');
-      opts+=`<option value="${t}"${t===val?' selected':''}>${t}</option>`;
-    }
+    const v=String(h).padStart(2,'0');
+    hOpts+=`<option value="${v}"${v===hPart?' selected':''}>${h}時</option>`;
   }
-  sel.innerHTML=opts;
+  hSel.innerHTML=hOpts;
+  let mOpts='<option value="">--分</option>';
+  ['00','15','30','45'].forEach(m=>{
+    mOpts+=`<option value="${m}"${m===mPart?' selected':''}>${m}分</option>`;
+  });
+  mSel.innerHTML=mOpts;
+}
+function getTimeVal(prefix){
+  const h=document.getElementById(prefix+'-h')?.value;
+  const m=document.getElementById(prefix+'-m')?.value;
+  if(!h||!m) return '';
+  return h+':'+m;
 }
 
 function openEvModal(evId, memberId, ds){
@@ -2315,8 +2330,8 @@ function openEvModal(evId, memberId, ds){
   // フィールド設定
   document.getElementById('ev-date').value=ev?ev.date:(ds||dateStr(calDate));
   document.getElementById('ev-enddate').value=ev?.endDate||'';
-  buildTimeSelect('ev-start', ev?.startTime||'');
-  buildTimeSelect('ev-end', ev?.endTime||'');
+  buildTimeSelects('ev-start', ev?.startTime||'');
+  buildTimeSelects('ev-end', ev?.endTime||'');
   setEvTypeSilent(ev?.type||'task');
   document.getElementById('ev-title').value=ev?.title||'';
   document.getElementById('ev-memo').value=(ev?.memo&&ev.memo!=='off')?ev.memo:'';
@@ -2376,8 +2391,8 @@ function saveEvent(){
     memberIds:_evParts, facilities:_evFacs,
     date:document.getElementById('ev-date').value,
     endDate:document.getElementById('ev-enddate').value||'',
-    startTime:document.getElementById('ev-start').value,
-    endTime:document.getElementById('ev-end').value,
+    startTime:getTimeVal('ev-start'),
+    endTime:getTimeVal('ev-end'),
     type:document.getElementById('ev-type').value, title,
     memo:document.getElementById('ev-memo').value,
     visibility:vis,
