@@ -3102,56 +3102,77 @@ function markRowDirty(uid){
 }
 function renderUserTable(){
   const users=load('users',[]);
-  document.getElementById('userTbody').innerHTML=users.map(u=>`
-    <tr id="urow-${u.id}">
-      <td><strong>${esc(u.name)}</strong></td>
-      <td>
-        <input class="inline-input" id="lid-${u.id}" value="${esc(u.loginId)}"
-          oninput="markRowDirty('${u.id}')"
-          onkeydown="if(event.key==='Enter'){event.preventDefault();saveInlineRow('${u.id}')}">
-      </td>
-      <td>
-        <div class="inline-pw-wrap">
-          <input class="inline-input" id="pw-${u.id}" type="text" value="${esc(u.password)}"
-            oninput="markRowDirty('${u.id}')"
-            onkeydown="if(event.key==='Enter'){event.preventDefault();saveInlineRow('${u.id}')}">
-          <button class="inline-eye" type="button" onclick="toggleInlinePw('${u.id}')" title="表示/非表示">🙈</button>
-        </div>
-      </td>
-      <td>${esc(deptPath(u.deptId))}</td>
-      <td>${u.role==='admin'?'<span class="tag-admin">システム管理者</span>':u.role==='manager'?'<span class="tag-manager">責任者</span>':'<span class="tag-user">一般</span>'}</td>
-      <td>${u.active?'<span class="tag-active">有効</span>':'<span class="tag-inactive">無効</span>'}</td>
-      <td>
-        <button class="act-btn update-btn" id="upd-${u.id}" onclick="saveInlineRow('${u.id}')">更新</button>
-        <button class="act-btn" onclick="openUserModal('${u.id}')">編集</button>
-        ${u.id!=='admin'?`<button class="act-btn danger" onclick="toggleUserActive('${u.id}')">${u.active?'無効化':'有効化'}</button>`:''}
-      </td>
-    </tr>`).join('');
+  const depts=load('depts',[]);
+  const deptOpts=depts.map(d=>`<option value="${d.id}">${esc(deptPath(d.id))}</option>`).join('');
+  document.getElementById('userTbody').innerHTML=users.map(u=>{
+    const deptSel=`<select class="inline-input" id="dept-${u.id}" oninput="markRowDirty('${u.id}')" style="min-width:100px">
+      <option value="">未設定</option>${depts.map(d=>`<option value="${d.id}"${d.id===u.deptId?' selected':''}>${esc(deptPath(d.id))}</option>`).join('')}
+    </select>`;
+    const roleSel=`<select class="inline-input" id="role-${u.id}" oninput="markRowDirty('${u.id}')">
+      <option value="user"${u.role==='user'?' selected':''}>一般</option>
+      <option value="manager"${u.role==='manager'?' selected':''}>責任者</option>
+      <option value="admin"${u.role==='admin'?' selected':''}>管理者</option>
+    </select>`;
+    const activeSel=`<select class="inline-input" id="active-${u.id}" oninput="markRowDirty('${u.id}')">
+      <option value="1"${u.active!==false?' selected':''}>有効</option>
+      <option value="0"${u.active===false?' selected':''}>無効</option>
+    </select>`;
+    return `<tr id="urow-${u.id}">
+      <td><input class="inline-input" id="name-${u.id}" value="${esc(u.name)}" oninput="markRowDirty('${u.id}')" style="min-width:80px"></td>
+      <td><input class="inline-input" id="lid-${u.id}" value="${esc(u.loginId)}" oninput="markRowDirty('${u.id}')"></td>
+      <td><div class="inline-pw-wrap">
+        <input class="inline-input" id="pw-${u.id}" type="password" value="${esc(u.password)}" oninput="markRowDirty('${u.id}')" style="min-width:90px">
+        <button class="inline-eye" type="button" onclick="toggleInlinePw('${u.id}')" title="表示/非表示">🙈</button>
+      </div></td>
+      <td>${deptSel}</td>
+      <td>${roleSel}</td>
+      <td>${activeSel}</td>
+      <td><button class="act-btn update-btn" id="upd-${u.id}" onclick="saveInlineRow('${u.id}')">更新</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function _readInlineRow(uid, users){
+  const nameEl  = document.getElementById('name-'+uid);
+  const lidEl   = document.getElementById('lid-'+uid);
+  const pwEl    = document.getElementById('pw-'+uid);
+  const deptEl  = document.getElementById('dept-'+uid);
+  const roleEl  = document.getElementById('role-'+uid);
+  const activeEl= document.getElementById('active-'+uid);
+  if(!nameEl||!lidEl||!pwEl) return null;
+  const newName = nameEl.value.trim();
+  const newLid  = lidEl.value.trim();
+  const newPw   = pwEl.value;
+  const newDept = deptEl?.value||'';
+  const newRole = roleEl?.value||'user';
+  const newActive = activeEl?.value!=='0';
+  const u = users.find(x=>x.id===uid);
+  if(!u) return null;
+  // バリデーション
+  if(!newName) return {err: (u.name||uid)+': 名前が空です'};
+  if(!newLid)  return {err: newName+': ログインIDが空です'};
+  if(!newPw)   return {err: newName+': パスワードが空です'};
+  if(newLid!==u.loginId && users.some(x=>x.id!==uid&&x.loginId===newLid))
+    return {err: newName+': ログインID「'+newLid+'」は重複しています'};
+  return {u, newName, newLid, newPw, newDept, newRole, newActive};
 }
 
 function saveAllInlineRows(){
   const users = load('users',[]);
-  let errors = [];
-  let changed = 0;
+  let errors=[], changed=0;
   users.forEach(u=>{
-    const lidEl = document.getElementById('lid-'+u.id);
-    const pwEl  = document.getElementById('pw-'+u.id);
-    if(!lidEl||!pwEl) return;
-    const newLid = lidEl.value.trim();
-    const newPw  = pwEl.value;
-    if(!newLid){ errors.push(u.name+': ログインIDが空です'); return; }
-    if(!newPw) { errors.push(u.name+': パスワードが空です'); return; }
-    // 重複チェック（他ユーザーと照合）
-    if(newLid!==u.loginId && users.some(x=>x.id!==u.id&&x.loginId===newLid)){
-      errors.push(u.name+': ログインID「'+newLid+'」は重複しています'); return;
-    }
-    if(u.loginId!==newLid||u.password!==newPw){
-      u.loginId=newLid; u.password=newPw; changed++;
+    const r=_readInlineRow(u.id, users);
+    if(!r) return;
+    if(r.err){ errors.push(r.err); return; }
+    if(u.name!==r.newName||u.loginId!==r.newLid||u.password!==r.newPw||u.deptId!==r.newDept||u.role!==r.newRole||u.active!==r.newActive){
+      u.name=r.newName; u.loginId=r.newLid; u.password=r.newPw;
+      u.deptId=r.newDept; u.role=r.newRole; u.active=r.newActive;
+      changed++;
     }
   });
   if(errors.length){ alert('以下のエラーがあります：\n\n'+errors.join('\n')); return; }
   save('users', users);
-  const btn = document.getElementById('bulkUpdBtn');
+  const btn=document.getElementById('bulkUpdBtn');
   if(btn){
     btn.textContent='✅ '+changed+'件 更新完了';
     btn.style.background='#d1fae5'; btn.style.color='#065f46'; btn.style.borderColor='#6ee7b7';
@@ -3165,25 +3186,14 @@ function saveAllInlineRows(){
 }
 
 function saveInlineRow(uid){
-  const lidEl = document.getElementById('lid-'+uid);
-  const pwEl  = document.getElementById('pw-'+uid);
-  const updBtn= document.getElementById('upd-'+uid);
-  if(!lidEl||!pwEl) return;
-  const newLid = lidEl.value.trim();
-  const newPw  = pwEl.value;
-  if(!newLid){ alert('ログインIDを入力してください'); lidEl.focus(); return; }
-  if(!newPw) { alert('パスワードを入力してください'); pwEl.focus();  return; }
-  const users = load('users',[]);
-  const u = users.find(x=>x.id===uid);
-  if(!u) return;
-  // loginId重複チェック
-  if(newLid !== u.loginId && users.some(x=>x.id!==uid && x.loginId===newLid)){
-    alert('そのログインIDはすでに使われています'); lidEl.focus(); return;
-  }
-  u.loginId  = newLid;
-  u.password = newPw;
+  const users=load('users',[]);
+  const r=_readInlineRow(uid, users);
+  if(!r) return;
+  if(r.err){ alert(r.err); return; }
+  r.u.name=r.newName; r.u.loginId=r.newLid; r.u.password=r.newPw;
+  r.u.deptId=r.newDept; r.u.role=r.newRole; r.u.active=r.newActive;
   save('users', users);
-  // 更新ボタンを一時的に「✅ 保存済」表示
+  const updBtn=document.getElementById('upd-'+uid);
   if(updBtn){
     updBtn.textContent='✅ 保存済';
     updBtn.style.background='#d1fae5'; updBtn.style.color='#065f46'; updBtn.style.borderColor='#6ee7b7';
