@@ -2841,7 +2841,10 @@ function openEvModal(evId, memberId, ds){
 }
 
 function saveEvent(){
-  const title=document.getElementById('ev-title').value.trim();
+  const evType=document.getElementById('ev-type').value;
+  let title=document.getElementById('ev-title').value.trim();
+  // 「休み」はタイトル省略可（自動で「休み」を補完）
+  if(!title && evType==='holiday') title='休み';
   if(!title){alert('タイトルを入力してください');return;}
   if(!_evParts.length){alert('参加者を1名以上選択してください');return;}
 
