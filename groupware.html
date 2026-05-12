@@ -552,7 +552,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
     <div class="side-group">コミュニケーション</div>
     <div class="side-item" id="m-ci" onclick="showMod('circular')"><span class="si-icon">📝</span>承認申請<span class="side-badge" id="badge-ci">0</span></div>
     <div class="side-item" id="m-bl" onclick="showMod('bulletin')"><span class="si-icon">📌</span>連絡事項<span class="side-badge" id="badge-bl" style="display:none"></span></div>
-    <div class="side-item" id="m-en" onclick="showMod('evnotif')"><span class="si-icon">🔔</span>予定変更のお知らせ<span class="side-badge" id="badge-en" style="display:none"></span></div>
+    <div class="side-item" id="m-en" onclick="showMod('evnotif')"><span class="si-icon">🔔</span>更新・変更の通知<span class="side-badge" id="badge-en" style="display:none"></span></div>
     <div class="side-item" id="m-td" onclick="showMod('todo')"><span class="si-icon">✅</span>ToDo<span class="side-badge gray" id="badge-td">0</span></div>
     <div id="adminMenu" style="display:none">
       <div class="side-group">システム設定</div>
@@ -625,7 +625,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
     <!-- 予定変更のお知らせ -->
     <div id="evnotifView" style="display:none;padding:12px">
       <div class="page-hdr" style="position:static;margin-bottom:12px">
-        <h2>🔔 予定変更のお知らせ</h2>
+        <h2>🔔 更新・変更の通知</h2>
         <button class="btn-secondary" onclick="dismissAllEvNotifs()" style="font-size:12px;padding:4px 12px">すべて既読にする</button>
       </div>
       <div id="evnotifList"></div>
@@ -2868,11 +2868,23 @@ function renderEvNotif(){
     el.innerHTML='<div style="color:#9ca3af;text-align:center;padding:32px 0;font-size:14px">お知らせはありません</div>';
     return;
   }
+  // アイコンで種別ラベルを判定
+  const CI_ICONS = new Set(['📝']);
+  const EV_ICONS = new Set(['✏️','🗑️','🚪','➕']);
+  function _notifTypeLabel(n){
+    if(CI_ICONS.has(n.icon)) return {label:'申請リアクション', color:'#ede9fe', border:'#a78bfa'};
+    if(EV_ICONS.has(n.icon)) return {label:'スケジュール', color:'#dbeafe', border:'#60a5fa'};
+    return {label:'お知らせ', color:'#fffbea', border:'#fcd34d'};
+  }
   el.innerHTML=mine.map(n=>{
     const isRead=n.readBy?.includes(me);
-    return `<div id="evnotif-${n.id}" style="display:flex;align-items:flex-start;gap:10px;padding:12px 14px;margin-bottom:8px;background:${isRead?'#f9fafb':'#fffbea'};border:1px solid ${isRead?'#e5e7eb':'#fcd34d'};border-radius:8px;transition:opacity .3s">
+    const tl=_notifTypeLabel(n);
+    const bg=isRead?'#f9fafb':tl.color;
+    const bd=isRead?'#e5e7eb':tl.border;
+    return `<div id="evnotif-${n.id}" style="display:flex;align-items:flex-start;gap:10px;padding:12px 14px;margin-bottom:8px;background:${bg};border:1px solid ${bd};border-radius:8px;transition:opacity .3s">
       <span style="font-size:22px;line-height:1.2">${n.icon||'🔔'}</span>
       <div style="flex:1;min-width:0">
+        <div style="margin-bottom:3px"><span style="font-size:10px;font-weight:700;color:#6b7280;background:#f3f4f6;border:1px solid #e5e7eb;border-radius:4px;padding:1px 6px">${tl.label}</span></div>
         <div style="font-size:14px;color:#1f2937;margin-bottom:2px">${esc(n.message)}</div>
         <div style="font-size:11px;color:#6b7280">${esc(n.actorName)} ・ ${n.createdAt}</div>
       </div>
@@ -3081,6 +3093,11 @@ function respondCi(id, status, label){
   c.responses[myId()].comment=comment;
   c.responses[myId()].updatedAt=new Date().toISOString().slice(0,16).replace('T',' ');
   save('circulars',cis);
+  // 申請者に通知（自分が申請者の場合は不要なので sendEvNotif 内でフィルタ済み）
+  if(c.author && c.author !== myId()){
+    const responderName = getUser(myId())?.name || myId();
+    sendEvNotif([c.author], '📝', `「${c.title}」に${responderName}さんが${label||status}しました`);
+  }
   renderCiList(); renderCiDetail();
 }
 
