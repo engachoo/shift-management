@@ -410,9 +410,11 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
   .month-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
   .month-wrap table{min-width:560px;table-layout:fixed}
   .month-wrap th{padding:6px 2px;font-size:11px}
-  .month-wrap td{min-height:72px;padding:3px 4px;font-size:12px}
-  .month-wrap .ev{font-size:10px;padding:1px 3px;margin-bottom:1px;white-space:normal;word-break:break-all;overflow:visible;max-width:100%;display:block;line-height:1.4}
-  .month-wrap .ev-todo{font-size:10px;padding:1px 3px;margin-bottom:1px;white-space:normal;word-break:break-all;overflow:visible;max-width:100%;display:block;line-height:1.4}
+  .month-wrap td{min-height:72px;padding:3px 4px;font-size:12px;overflow:hidden;word-break:break-all}
+  .month-wrap .ev{font-size:10px;padding:1px 3px;margin-bottom:2px;white-space:normal;word-break:break-all;overflow:hidden;max-width:100%;display:block;line-height:1.4}
+  .month-wrap .ev-time{display:block;font-size:10px;font-weight:700;margin-bottom:1px;letter-spacing:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .month-wrap .ev-badge{font-size:8px;padding:0 3px;letter-spacing:0;white-space:normal;word-break:break-all}
+  .month-wrap .ev-todo{font-size:10px;padding:1px 3px;margin-bottom:1px;white-space:normal;word-break:break-all;overflow:hidden;max-width:100%;display:block;line-height:1.4}
   .month-wrap .today-circle{width:18px;height:18px;font-size:10px}
   .modal{width:98vw!important;max-width:98vw!important}
   .ci-detail,.ci-list{min-width:0}
