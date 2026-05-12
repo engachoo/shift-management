@@ -2375,7 +2375,7 @@ function renderGW(){
             html+=`<span class="ev-todo ${t.done?'todo-done':''}" onclick="switchTdTab&&showMod('todo')" title="ToDo: ${esc(t.title)}">${icon}${esc(t.title)}</span>`;
           });
         }
-        html+=`<div class="add-btn-wrap"><button onclick="openEvModal(null,'${u.id}','${ds}')" title="予定追加">＋</button></div></td>`;
+        html+=`<div class="add-btn-wrap"><button onclick="openEvModal(null,'${u.id}','${ds}')" title="予定を追加" style="background:#e8f0fe;border:1px solid #b3ccf5;color:#1a56db;border-radius:3px;cursor:pointer;padding:1px 6px;font-size:13px;margin-top:2px">＋</button></div></td>`;
       });
       html+='</tr>';
     }
@@ -2495,7 +2495,7 @@ function renderPM(){
       });
     }
     // 予定追加ボタンは自分のみ
-    if(isMe) html+=`<div class="add-btn-wrap"><button onclick="openEvModal(null,'${myId()}','${ds}')">＋</button></div>`;
+    if(isMe) html+=`<div class="add-btn-wrap"><button onclick="openEvModal(null,'${myId()}','${ds}')" title="予定を追加" style="background:#e8f0fe;border:1px solid #b3ccf5;color:#1a56db;border-radius:3px;cursor:pointer;padding:1px 6px;font-size:13px;margin-top:2px">＋</button></div>`;
     html+=`</td>`;
     col++;
     if(col%7===0&&day<last.getDate()) html+='</tr><tr>';
