@@ -1048,9 +1048,10 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
         </div>
         <div><label class="f-label">権限</label>
           <select class="f-select" id="u-role">
-            <option value="user">一般ユーザー</option>
+            <option value="user">一般</option>
             <option value="manager">責任者</option>
-            <option value="admin">システム管理者</option>
+            <option value="admin">管理者</option>
+            <option value="system">システム</option>
           </select>
         </div>
       </div>
@@ -1253,7 +1254,12 @@ function getS(){ if(_sess) return _sess; try{const s=sessionStorage.getItem('gw2
 function setS(s){ _sess=s; sessionStorage.setItem('gw2_s',JSON.stringify(s)); }
 function clearS(){ _sess=null; sessionStorage.removeItem('gw2_s'); }
 function myId(){ return getS()?.userId||''; }
-function isAdmin(){ return getS()?.role==='admin'; }
+// 権限ヘルパー
+// system > admin > manager > user
+function isSystem(){ return getS()?.role==='system'; }
+function isAdmin(){ return ['system','admin'].includes(getS()?.role); }
+function isManager(){ return ['system','admin','manager'].includes(getS()?.role); }
+const ROLE_LABEL = {system:'システム', admin:'管理者', manager:'責任者', user:'一般'};
 
 function doLogin(){
   const lid = document.getElementById('loginId').value.trim();
@@ -1294,7 +1300,7 @@ function resetActivityTimer(){
   clearTimeout(_autoLogoutTimer);
   _autoLogoutTimer=setTimeout(()=>{
     const s=getS();
-    if(s && s.userId!=='admin'){
+    if(s && s.role!=='system'){
       alert('30分間操作がなかったため、自動的にログアウトしました。');
       doLogout();
     }
@@ -1302,7 +1308,7 @@ function resetActivityTimer(){
 }
 function startActivityTimer(){
   const s=getS();
-  if(!s||s.userId==='admin') return; // 管理者は対象外
+  if(!s||s.role==='system') return; // システムは自動ログアウト対象外
   if(_autoLogoutTimer) clearTimeout(_autoLogoutTimer);
   _autoLogoutTimer=setTimeout(()=>{
     alert('30分間操作がなかったため、自動的にログアウトしました。');
@@ -1347,7 +1353,7 @@ function initData(){
 
   // ---- ユーザー：不足分だけ追加 ----
   const defaultUsers = [
-    {id:'admin',       loginId:'admin',       password:'admin123', name:'システム管理者', deptId:'d1a', role:'admin',   active:true},
+    {id:'admin',       loginId:'admin',       password:'admin123', name:'システム管理者', deptId:'d1a', role:'system',  active:true},
     {id:'iwashimizu',  loginId:'iwashimizu',  password:'pass123',  name:'岩清水 克尚',   deptId:'d1a', role:'admin',   active:true},
     {id:'hayashi',     loginId:'hayashi',     password:'pass123',  name:'林 幹根',       deptId:'d1a', role:'user',    active:true},
     {id:'onda',        loginId:'onda',        password:'pass123',  name:'恩田 賢一',     deptId:'d1a', role:'user',    active:true},
@@ -1367,6 +1373,16 @@ function initData(){
   defaultUsers.forEach(du=>{
     if(!users.find(u=>u.id===du.id)){ users.push(du); usersChanged=true; }
   });
+
+  // ---- ロール再構築マイグレーション（一回限り） ----
+  // admin loginId ユーザーを system に、それ以外の role=admin を admin のまま維持
+  if(load('migrated_role_v2','')!=='1'){
+    users.forEach(u=>{
+      if(u.loginId==='admin' && u.role==='admin') u.role='system';
+    });
+    save('migrated_role_v2','1');
+    usersChanged=true;
+  }
 
   // ---- パスワードリセット（BLOCK47以外を元の値に戻す・一回限り） ----
   if(load('migrated_pw_reset','')!=='1'){
@@ -1561,10 +1577,10 @@ function getUserDeptGroup(userId){
 function getScheduleGroup(userId){
   const u=getUser(userId);
   if(!u) return null;
-  // admin は常に制限なし
-  if(u.role==='admin') return null;
+  // system・admin は常に全グループ閲覧可
+  if(u.role==='system'||u.role==='admin') return null;
   // manager（責任者）はウェルピア所属のみ制限なし
-  // AMUSE・BLOCK47の責任者は一般メンバーと同じグループ制限
+  // AMUSE・BLOCK47の責任者は一般と同じグループ制限
   if(u.role==='manager' && getUserDeptGroup(userId)==='welpia') return null;
   return getUserDeptGroup(userId);
 }
@@ -1761,7 +1777,7 @@ function showMod(mod,sub){
     document.getElementById('m-td').classList.add('active');
     renderTd();
   } else if(mod==='admin'){
-    if(getS()?.userId!=='admin') return; // システム管理者のみ
+    if(!isAdmin()) return; // system・admin のみ
     document.getElementById('adminView').style.display='block';
     document.getElementById('m-a'+(sub==='depts'?'d':'u')).classList.add('active');
     adminTab=sub||'users';
@@ -3364,6 +3380,7 @@ function renderUserTable(){
       <option value="user"${u.role==='user'?' selected':''}>一般</option>
       <option value="manager"${u.role==='manager'?' selected':''}>責任者</option>
       <option value="admin"${u.role==='admin'?' selected':''}>管理者</option>
+      <option value="system"${u.role==='system'?' selected':''}>システム</option>
     </select>`;
     const activeSel=`<select class="inline-input" id="active-${u.id}" oninput="markRowDirty('${u.id}')">
       <option value="1"${u.active!==false?' selected':''}>有効</option>
@@ -3596,13 +3613,14 @@ function startApp(){
   document.getElementById('hdrName').textContent=s.name;
   const dept=getDept(s.deptId);
   document.getElementById('hdrDept').textContent=dept.name||'';
-  if(s.role==='admin'||s.role==='manager'){
+  // ヘッダーにロールバッジを表示（一般以外）
+  if(s.role && s.role!=='user'){
     const el=document.getElementById('hdrRole');
-    el.textContent=s.role==='admin'?'システム管理者':'責任者';
+    el.textContent=ROLE_LABEL[s.role]||s.role;
     el.style.display='inline';
   }
-  // ユーザー管理・部署管理はシステム管理者（admin）のみ
-  if(s.userId==='admin'){
+  // 管理者メニューは system・admin のみ表示
+  if(isAdmin()){
     document.getElementById('adminMenu').style.display='block';
   }
   // 前回ログイン時刻を保存してからTOPへ
