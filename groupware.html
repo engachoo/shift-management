@@ -1256,9 +1256,16 @@ function clearS(){ _sess=null; sessionStorage.removeItem('gw2_s'); }
 function myId(){ return getS()?.userId||''; }
 // 権限ヘルパー
 // system > admin > manager > user
+// システム：管理者メニュー含む全権限
+// 管理者：スケジュール全体閲覧＋コミュニケーション（管理者メニューなし）
+// 責任者：自部門スケジュール＋コミュニケーション
+// 一般　：自部門スケジュール＋コミュニケーション
 function isSystem(){ return getS()?.role==='system'; }
-function isAdmin(){ return ['system','admin'].includes(getS()?.role); }
-function isManager(){ return ['system','admin','manager'].includes(getS()?.role); }
+function isAdmin(){ return isSystem(); } // 管理者メニューはシステムのみ
+function canSeeAllSchedules(userId){
+  const u = userId ? getUser(userId) : (getS() ? getUser(myId()) : null);
+  return u && (u.role==='system' || u.role==='admin');
+}
 const ROLE_LABEL = {system:'システム', admin:'管理者', manager:'責任者', user:'一般'};
 
 function doLogin(){
@@ -1577,11 +1584,9 @@ function getUserDeptGroup(userId){
 function getScheduleGroup(userId){
   const u=getUser(userId);
   if(!u) return null;
-  // system・admin は常に全グループ閲覧可
+  // system・admin は全グループ閲覧可（制限なし）
   if(u.role==='system'||u.role==='admin') return null;
-  // manager（責任者）はウェルピア所属のみ制限なし
-  // AMUSE・BLOCK47の責任者は一般と同じグループ制限
-  if(u.role==='manager' && getUserDeptGroup(userId)==='welpia') return null;
+  // manager（責任者）・user（一般）は自部門グループのみ
   return getUserDeptGroup(userId);
 }
 function scheduleVisibleUsers(){
@@ -2611,8 +2616,8 @@ function openEvDetail(evId){
     </div>`:''}
   `;
   const isMember=ev.memberIds?.includes(myId());
-  const canEdit=isMember||isAdmin();
-  const canDelete=ev.author===myId()||isAdmin();
+  const canEdit=isMember||isSystem();
+  const canDelete=ev.author===myId()||isSystem();
   const show=id=>document.getElementById(id).style.display='inline-block';
   const hide=id=>document.getElementById(id).style.display='none';
   canEdit   ? show('evDtEditBtn')  : hide('evDtEditBtn');
@@ -2800,7 +2805,7 @@ function renderCiDetail(){
   const total=c.recipients.length;
   const myR=c.responses[myId()]||{status:'pending',comment:''};
   const btns=(c.customButtons||['確認中','確認済']);
-  const canEdit=isAdmin()||c.author===myId();
+  const canEdit=isSystem()||c.author===myId();
   const routeLabel=c.routeSequential?'順番回覧':'一斉送信';
   const visLabel=c.visibility==='private'?'非公開':'公開';
 
