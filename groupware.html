@@ -515,6 +515,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
       <div class="side-group">システム設定</div>
       <div class="side-item" id="m-au" onclick="showMod('admin','users')"><span class="si-icon">👤</span>ユーザー管理</div>
       <div class="side-item" id="m-ad" onclick="showMod('admin','depts')"><span class="si-icon">🏢</span>部署管理</div>
+      <div class="side-item" id="m-ap" onclick="showMod('admin','perms')"><span class="si-icon">🔐</span>権限設定</div>
     </div>
   </div>
 
@@ -1807,7 +1808,8 @@ function showMod(mod,sub){
   } else if(mod==='admin'){
     if(!isAdmin()) return; // system・admin のみ
     document.getElementById('adminView').style.display='block';
-    document.getElementById('m-a'+(sub==='depts'?'d':'u')).classList.add('active');
+    const sideId = sub==='depts'?'d': sub==='perms'?'p':'u';
+    document.getElementById('m-a'+sideId).classList.add('active');
     adminTab=sub||'users';
     switchAdminTab(adminTab);
   }
