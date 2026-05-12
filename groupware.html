@@ -1189,6 +1189,34 @@ async function loadAllFromFirestore(){
     return false;
   }
 }
+
+// リアルタイム同期（他ユーザーの変更を自動反映）
+let _refreshTimer = null;
+function _scheduleRefresh(){
+  clearTimeout(_refreshTimer);
+  _refreshTimer = setTimeout(()=>{
+    if(!getS()) return;
+    updateBadges();
+    if(curMod==='schedule') renderSchedule();
+    else if(curMod==='top') renderTop();
+    else if(curMod==='bulletin') renderBl();
+    else if(curMod==='evnotif') renderEvNotif();
+    else if(curMod==='todo') renderTd();
+    else if(curMod==='circular') renderCiList();
+  }, 800);
+}
+function startRealtimeSync(){
+  _db.collection(_COL).onSnapshot(snap=>{
+    snap.docChanges().forEach(change=>{
+      if(change.type==='modified'||change.type==='added'){
+        try{ _cache[change.doc.id]=JSON.parse(change.doc.data().v); }catch(e){}
+      }
+    });
+    _scheduleRefresh();
+  }, err=>{
+    console.warn('Firestoreリアルタイム同期エラー:', err);
+  });
+}
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
@@ -3554,6 +3582,7 @@ function startApp(){
   }
 
   initData(); // デフォルトデータ投入（未存在キーのみ）
+  startRealtimeSync(); // 他ユーザーの変更をリアルタイムで反映
 
   document.getElementById('loadingScreen').style.display = 'none';
 
