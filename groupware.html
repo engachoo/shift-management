@@ -1531,6 +1531,36 @@ function getUser(id){ return load('users',[]).find(u=>u.id===id)||{name:id,deptI
 function getDept(id){ return load('depts',[]).find(d=>d.id===id)||{name:''}; }
 function activeUsers(){ return load('users',[]).filter(u=>u.active); }
 function normalUsers(){ return load('users',[]).filter(u=>u.active && u.loginId!=='admin'); }
+
+// =========================================================
+// スケジュールグループ（会社別隔離）
+// =========================================================
+// AMUSE JAPAN(d2配下) / BLOCK47(d1b配下) は自グループのスケジュールのみ表示
+// それ以外（大日産業本部・ウェルピア等）は全員表示
+function _isDeptUnder(deptId, targetId){
+  const depts=load('depts',[]);
+  let cur=deptId;
+  for(let i=0;i<8;i++){
+    if(cur===targetId) return true;
+    const d=depts.find(x=>x.id===cur);
+    if(!d||!d.parentId) break;
+    cur=d.parentId;
+  }
+  return false;
+}
+function getScheduleGroup(userId){
+  const u=getUser(userId);
+  if(!u) return null;
+  if(_isDeptUnder(u.deptId,'d2')) return 'amuse';
+  if(_isDeptUnder(u.deptId,'d1b')) return 'block47';
+  return null; // 制限なし
+}
+function scheduleVisibleUsers(){
+  const myGroup=getScheduleGroup(myId());
+  const users=normalUsers();
+  if(!myGroup) return users; // 制限なし → 全員表示
+  return users.filter(u=>getScheduleGroup(u.id)===myGroup);
+}
 function deptPath(id){
   const depts=load('depts',[]);
   const parts=[];let cur=id;
@@ -1578,7 +1608,7 @@ function renderPartSel(){
 function renderPartCand(){
   const q=(document.getElementById('ev-part-search')?.value||'').toLowerCase();
   const d=document.getElementById('ev-part-dept')?.value||'';
-  const users=normalUsers().filter(u=>{
+  const users=scheduleVisibleUsers().filter(u=>{
     if(_evParts.includes(u.id)) return false;
     if(d && u.deptId!==d) return false;
     if(q && !u.name.toLowerCase().includes(q)) return false;
@@ -1611,7 +1641,9 @@ function moveParticipant(dir){
   setTimeout(()=>{ const o=[...document.getElementById('ev-part-sel').options].find(o=>o.value===id); if(o) o.selected=true; },0);
 }
 function buildPartDeptFilter(){
-  const depts=load('depts',[]);
+  const visUsers=scheduleVisibleUsers();
+  const visDepIds=new Set(visUsers.map(u=>u.deptId));
+  const depts=load('depts',[]).filter(d=>visDepIds.has(d.id));
   document.getElementById('ev-part-dept').innerHTML=
     '<option value="">全部署</option>'+depts.map(d=>`<option value="${d.id}">${esc(getDept(d.id).name)}</option>`).join('');
 }
@@ -2062,7 +2094,9 @@ function renderSchedule(){ if(calSub==='gw') renderGW(); else if(calSub==='py') 
 
 function buildDeptFilter(){
   const sel=document.getElementById('deptFilterSel');
-  const depts=load('depts',[]);
+  const visUsers=scheduleVisibleUsers();
+  const visDepIds=new Set(visUsers.map(u=>u.deptId));
+  const depts=load('depts',[]).filter(d=>visDepIds.has(d.id));
   sel.innerHTML='<option value="">全部署</option>'+depts.map(d=>`<option value="${d.id}">${esc(deptPath(d.id))}</option>`).join('');
 }
 
@@ -2070,7 +2104,7 @@ function buildPmMemberSel(){
   const sel=document.getElementById('pmMemberSel');
   if(!sel) return;
   const me=myId();
-  let users=normalUsers().filter(u=>u.active!==false);
+  let users=scheduleVisibleUsers().filter(u=>u.active!==false);
   // ログインユーザーを先頭に
   const meUser=users.find(u=>u.id===me);
   const others=users.filter(u=>u.id!==me);
@@ -2092,7 +2126,7 @@ function renderGW(){
   const events=expandEvents(rawEvents, dateStr(days_[0]), dateStr(days_[6]));
   const allTodos=load('todos',[]);
   const deptId=document.getElementById('deptFilterSel').value;
-  let users=normalUsers();
+  let users=scheduleVisibleUsers();
   if(deptId) users=users.filter(u=>u.deptId===deptId||isDeptChild(u.deptId,deptId));
 
   // タイトル
