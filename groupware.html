@@ -59,6 +59,10 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
 .hdr-role{font-size:10px;background:#e53e3e;padding:1px 5px;border-radius:2px;font-weight:700}
 .hdr-btn{background:none;border:1px solid rgba(255,255,255,.3);color:#fff;padding:3px 10px;border-radius:3px;cursor:pointer;font-size:11px}
 .hdr-btn:hover{background:rgba(255,255,255,.15)}
+.hdr-btn-help{background:rgba(59,130,246,.55);border:1px solid rgba(147,197,253,.7);color:#fff;padding:4px 11px;border-radius:5px;cursor:pointer;font-size:11px;white-space:nowrap;font-weight:600;letter-spacing:.2px}
+.hdr-btn-help:hover{background:rgba(59,130,246,.8)}
+.hdr-btn-logout{background:rgba(220,38,38,.7);border:1px solid rgba(252,165,165,.6);color:#fff;padding:4px 11px;border-radius:5px;cursor:pointer;font-size:11px;white-space:nowrap;font-weight:600;letter-spacing:.2px}
+.hdr-btn-logout:hover{background:rgba(220,38,38,.95)}
 
 /* ===== サイドバー ===== */
 #sidebar{position:fixed;top:42px;left:0;width:186px;bottom:0;background:#fff;border-right:1px solid #dde3ec;overflow-y:auto;z-index:900}
@@ -394,6 +398,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
   .hdr-logo{font-size:11px;letter-spacing:0}
   #hdrDept,#hdrRole,.hdr-btn-help{display:none!important}
   .hdr-btn{font-size:11px;padding:3px 8px}
+  .hdr-btn-logout{font-size:11px;padding:3px 8px}
   #hdrName{font-size:11px;max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   #spHelpBtn{display:flex!important}
   #sidebar{transform:translateX(-100%);transition:transform .28s ease;z-index:1099;width:230px;top:0;padding-top:52px}
@@ -532,13 +537,13 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
   <div id="appHeader">
     <button id="menuToggle" onclick="toggleSidebar()"><span style="display:block;font-size:8px;letter-spacing:1px;line-height:1;margin-bottom:1px">MENU</span>☰</button>
     <div class="hdr-logo">大日産業 グループウェア</div>
-    <button class="hdr-btn-help" onclick="showHelp()" style="background:none;border:1px solid rgba(255,255,255,.35);color:rgba(255,255,255,.85);padding:3px 10px;border-radius:4px;cursor:pointer;font-size:11px;white-space:nowrap;margin-left:4px">📖 説明書</button>
+    <button class="hdr-btn-help" onclick="showHelp()">📖 説明書</button>
     <div class="hdr-spacer"></div>
     <div class="hdr-user">
       <span id="hdrDept" class="hdr-dept"></span>
       <span id="hdrRole" class="hdr-role" style="display:none">管理者</span>
       <span id="hdrName" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100px"></span>
-      <button class="hdr-btn" onclick="doLogout()">ログアウト</button>
+      <button class="hdr-btn-logout" onclick="doLogout()">🚪 ログアウト</button>
     </div>
   </div>
 
