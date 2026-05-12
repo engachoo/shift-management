@@ -1548,18 +1548,29 @@ function _isDeptUnder(deptId, targetId){
   }
   return false;
 }
-function getScheduleGroup(userId){
+// ユーザーの「所属グループ」（dept基準・表示用）
+function getUserDeptGroup(userId){
   const u=getUser(userId);
   if(!u) return null;
   if(_isDeptUnder(u.deptId,'d2')) return 'amuse';
   if(_isDeptUnder(u.deptId,'d1b')) return 'block47';
-  return null; // 制限なし
+  if(_isDeptUnder(u.deptId,'d3')) return 'welpia';
+  return null; // 大日産業本部等 → グループなし
+}
+// ログインユーザーが「閲覧できるグループ」（null=全員）
+function getScheduleGroup(userId){
+  const u=getUser(userId);
+  if(!u) return null;
+  // admin / manager（責任者）は制限なし → 全グループ閲覧可
+  if(u.role==='admin'||u.role==='manager') return null;
+  return getUserDeptGroup(userId);
 }
 function scheduleVisibleUsers(){
   const myGroup=getScheduleGroup(myId());
   const users=normalUsers();
   if(!myGroup) return users; // 制限なし → 全員表示
-  return users.filter(u=>getScheduleGroup(u.id)===myGroup);
+  // 所属グループが同じユーザーのみ（role関係なくdept基準で判断）
+  return users.filter(u=>getUserDeptGroup(u.id)===myGroup);
 }
 function deptPath(id){
   const depts=load('depts',[]);
