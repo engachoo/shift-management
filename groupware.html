@@ -490,6 +490,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
   <!-- ヘッダー -->
   <div id="appHeader">
     <div class="hdr-logo">大日産業 グループウェア</div>
+    <button onclick="showHelp()" style="background:none;border:1px solid rgba(255,255,255,.35);color:rgba(255,255,255,.85);padding:3px 10px;border-radius:4px;cursor:pointer;font-size:11px;white-space:nowrap;margin-left:8px">📖 説明書</button>
     <div class="hdr-spacer"></div>
     <div class="hdr-user">
       <span id="hdrDept" class="hdr-dept"></span>
@@ -2073,7 +2074,6 @@ function renderTop(){
       </div>
       <div class="top-header-btns">
         <button class="top-hdr-btn" onclick="showMod('schedule','gw')">📅 グループ週を開く</button>
-        <button class="top-hdr-btn" onclick="showHelp()" style="background:rgba(255,255,255,.22);border-color:rgba(255,255,255,.5)">📖 大日グループウェア説明書</button>
       </div>
     </div>
     ${evNotifs.length?`<div class="top-card" style="margin-bottom:12px">
