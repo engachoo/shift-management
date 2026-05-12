@@ -1131,6 +1131,141 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
   </div>
 </div>
 
+<!-- 説明書モーダル -->
+<div class="modal-bg" id="helpModal">
+  <div class="modal" style="width:680px;max-width:96vw;max-height:92vh">
+    <div class="modal-hdr" style="background:linear-gradient(135deg,#1a2b4a,#1a56db);color:#fff">
+      <h3 style="color:#fff">📖 大日グループウェア 説明書</h3>
+      <button class="modal-close" onclick="closeModal('helpModal')" style="color:#fff;font-size:20px">×</button>
+    </div>
+    <div class="modal-body" style="padding:0;overflow-y:auto;max-height:calc(92vh - 110px)">
+      <div style="padding:20px 24px">
+
+        <!-- ご利用について -->
+        <div style="background:#eff6ff;border-left:4px solid #1a56db;border-radius:4px;padding:12px 16px;margin-bottom:20px;font-size:13px;color:#1e3a5f">
+          このグループウェアは <strong>大日産業グループ</strong> の社内情報共有・スケジュール管理ツールです。<br>
+          データはクラウドに保存されるため、PCからもスマートフォンからもご利用いただけます。
+        </div>
+
+        <!-- ログイン -->
+        <div style="margin-bottom:20px">
+          <div style="font-size:15px;font-weight:700;color:#1a2b4a;border-bottom:2px solid #dde3ec;padding-bottom:6px;margin-bottom:10px">🔑 ログイン・ログアウト</div>
+          <ul style="font-size:13px;color:#334;line-height:2;padding-left:18px;margin:0">
+            <li>ログインIDとパスワードは管理者から付与されます</li>
+            <li>パスワードは定期的に変更することをお勧めします</li>
+            <li>30分間操作がないと自動的にログアウトされます</li>
+            <li>ログアウトはヘッダー右上の「ログアウト」から行ってください</li>
+          </ul>
+        </div>
+
+        <!-- スケジュール -->
+        <div style="margin-bottom:20px">
+          <div style="font-size:15px;font-weight:700;color:#1a2b4a;border-bottom:2px solid #dde3ec;padding-bottom:6px;margin-bottom:10px">📅 スケジュール管理</div>
+          <div style="font-size:13px;color:#334;line-height:1.8">
+            <div style="display:grid;grid-template-columns:120px 1fr;gap:6px 12px;align-items:start">
+              <span style="font-weight:600;color:#1a56db">グループ週</span><span>部署・グループ全員の週間スケジュールを一覧表示。部署フィルターで絞り込めます</span>
+              <span style="font-weight:600;color:#1a56db">個人月</span><span>特定メンバーの月間スケジュールを表示。セレクトでメンバーを切り替えられます</span>
+              <span style="font-weight:600;color:#1a56db">個人年</span><span>年間の予定をドット表示でまとめて確認できます</span>
+            </div>
+            <div style="margin-top:10px;background:#f8fafc;border-radius:6px;padding:12px">
+              <div style="font-weight:600;margin-bottom:6px">予定の登録方法</div>
+              <ol style="margin:0;padding-left:18px;line-height:2">
+                <li>カレンダーの日付セルをクリック</li>
+                <li>タイトル・日時・種別・参加者を入力</li>
+                <li>「登録する」ボタンで保存</li>
+              </ol>
+              <div style="margin-top:8px;font-size:12px;color:#6b7280">※ 開始時間を選択すると終了時間が自動で1時間後になります</div>
+            </div>
+            <div style="margin-top:10px;font-size:12px;color:#6b7280;background:#fef9c3;border-radius:4px;padding:8px 12px">
+              ⚠️ <strong>スケジュールの閲覧範囲：</strong>AMUSE JAPAN・BLOCK47・ウェルピアのメンバーは自グループの予定のみ閲覧できます。管理者・システムは全グループを閲覧できます。
+            </div>
+          </div>
+        </div>
+
+        <!-- 連絡事項 -->
+        <div style="margin-bottom:20px">
+          <div style="font-size:15px;font-weight:700;color:#1a2b4a;border-bottom:2px solid #dde3ec;padding-bottom:6px;margin-bottom:10px">📌 連絡事項</div>
+          <ul style="font-size:13px;color:#334;line-height:2;padding-left:18px;margin:0">
+            <li>全社または特定の部署・メンバーへ連絡を投稿できます</li>
+            <li>PDFや画像などの参考資料を添付できます</li>
+            <li>受信者は「🔔 要確認」ボタンを押して確認済みにします</li>
+            <li>未確認がある場合はサイドバーのバッジ（数字）でお知らせします</li>
+            <li>投稿者は誰が確認済みかを確認できます</li>
+          </ul>
+        </div>
+
+        <!-- 承認申請 -->
+        <div style="margin-bottom:20px">
+          <div style="font-size:15px;font-weight:700;color:#1a2b4a;border-bottom:2px solid #dde3ec;padding-bottom:6px;margin-bottom:10px">📝 承認申請</div>
+          <ul style="font-size:13px;color:#334;line-height:2;padding-left:18px;margin:0">
+            <li>稟議・申請書などを回覧形式で送付できます</li>
+            <li>「一斉送信」と「順番回覧」の2種類のルートが選べます</li>
+            <li>回答ボタン（確認中・確認済など）はカスタマイズ可能です</li>
+            <li>未対応の申請はサイドバーのバッジでお知らせします</li>
+          </ul>
+        </div>
+
+        <!-- ToDo -->
+        <div style="margin-bottom:20px">
+          <div style="font-size:15px;font-weight:700;color:#1a2b4a;border-bottom:2px solid #dde3ec;padding-bottom:6px;margin-bottom:10px">✅ ToDo管理</div>
+          <ul style="font-size:13px;color:#334;line-height:2;padding-left:18px;margin:0">
+            <li>個人のタスクを登録・管理できます</li>
+            <li>期限が3日以内に迫るとホーム画面でアラート表示されます</li>
+            <li>完了したタスクはチェックを入れると「完了済み」に移動します</li>
+          </ul>
+        </div>
+
+        <!-- 予定変更のお知らせ -->
+        <div style="margin-bottom:20px">
+          <div style="font-size:15px;font-weight:700;color:#1a2b4a;border-bottom:2px solid #dde3ec;padding-bottom:6px;margin-bottom:10px">🔔 予定変更のお知らせ</div>
+          <ul style="font-size:13px;color:#334;line-height:2;padding-left:18px;margin:0">
+            <li>参加している予定が変更・削除された場合に通知が届きます</li>
+            <li>サイドバーの「予定変更のお知らせ」から確認できます</li>
+            <li>「✓ 既読にする」ボタンで確認済みにできます</li>
+          </ul>
+        </div>
+
+        <!-- 権限 -->
+        <div style="margin-bottom:20px">
+          <div style="font-size:15px;font-weight:700;color:#1a2b4a;border-bottom:2px solid #dde3ec;padding-bottom:6px;margin-bottom:10px">🔐 権限について</div>
+          <table style="width:100%;border-collapse:collapse;font-size:12px">
+            <thead>
+              <tr style="background:#f5f7fb">
+                <th style="padding:8px;border:1px solid #dde3ec;text-align:left">権限</th>
+                <th style="padding:8px;border:1px solid #dde3ec;text-align:center">システム設定</th>
+                <th style="padding:8px;border:1px solid #dde3ec;text-align:center">スケジュール</th>
+                <th style="padding:8px;border:1px solid #dde3ec;text-align:center">コミュニケーション</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td style="padding:7px 8px;border:1px solid #dde3ec;font-weight:600">システム</td><td style="text-align:center;border:1px solid #dde3ec">✅</td><td style="text-align:center;border:1px solid #dde3ec">全グループ</td><td style="text-align:center;border:1px solid #dde3ec">全体</td></tr>
+              <tr style="background:#f9fafb"><td style="padding:7px 8px;border:1px solid #dde3ec;font-weight:600">管理者</td><td style="text-align:center;border:1px solid #dde3ec">—</td><td style="text-align:center;border:1px solid #dde3ec">全グループ</td><td style="text-align:center;border:1px solid #dde3ec">全体</td></tr>
+              <tr><td style="padding:7px 8px;border:1px solid #dde3ec;font-weight:600">責任者</td><td style="text-align:center;border:1px solid #dde3ec">—</td><td style="text-align:center;border:1px solid #dde3ec">自部門のみ</td><td style="text-align:center;border:1px solid #dde3ec">全体</td></tr>
+              <tr style="background:#f9fafb"><td style="padding:7px 8px;border:1px solid #dde3ec;font-weight:600">一般</td><td style="text-align:center;border:1px solid #dde3ec">—</td><td style="text-align:center;border:1px solid #dde3ec">自部門のみ</td><td style="text-align:center;border:1px solid #dde3ec">全体</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 利用ルール -->
+        <div style="margin-bottom:8px">
+          <div style="font-size:15px;font-weight:700;color:#1a2b4a;border-bottom:2px solid #dde3ec;padding-bottom:6px;margin-bottom:10px">📋 利用ルール</div>
+          <ul style="font-size:13px;color:#334;line-height:2;padding-left:18px;margin:0">
+            <li>業務に関係のない情報の投稿はご遠慮ください</li>
+            <li>他のメンバーの個人情報・スケジュールを外部へ共有しないでください</li>
+            <li>パスワードは第三者と共有しないでください</li>
+            <li>連絡事項・承認申請は確認後、速やかに「要確認」または回答をお願いします</li>
+            <li>退職・異動の際はシステム管理者へアカウントの無効化を依頼してください</li>
+          </ul>
+        </div>
+
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-primary" onclick="closeModal('helpModal')">閉じる</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // =========================================================
 // ログインスライドショー
@@ -1938,6 +2073,7 @@ function renderTop(){
       </div>
       <div class="top-header-btns">
         <button class="top-hdr-btn" onclick="showMod('schedule','gw')">📅 グループ週を開く</button>
+        <button class="top-hdr-btn" onclick="showHelp()" style="background:rgba(255,255,255,.22);border-color:rgba(255,255,255,.5)">📖 大日グループウェア説明書</button>
       </div>
     </div>
     ${evNotifs.length?`<div class="top-card" style="margin-bottom:12px">
@@ -3723,6 +3859,7 @@ function deleteDept(id){
 // 共通
 // =========================================================
 function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+function showHelp(){ document.getElementById('helpModal').classList.add('open'); }
 document.addEventListener('click',e=>{ if(e.target.classList.contains('modal-bg')) e.target.classList.remove('open'); });
 
 // =========================================================
