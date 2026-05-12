@@ -401,7 +401,13 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
   #sideOverlay.sp-open{display:block}
   #mainArea{margin-left:0;padding:6px}
   .gw-wrap{overflow-x:auto}
-  .month-wrap{overflow-x:auto}
+  .month-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .month-wrap table{min-width:560px;table-layout:fixed}
+  .month-wrap th{padding:6px 2px;font-size:11px}
+  .month-wrap td{min-height:72px;padding:3px 4px;font-size:12px}
+  .month-wrap .ev{font-size:10px;padding:1px 3px;margin-bottom:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;display:block}
+  .month-wrap .ev-todo{font-size:10px;padding:1px 3px;margin-bottom:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;display:block}
+  .month-wrap .today-circle{width:18px;height:18px;font-size:10px}
   .modal{width:98vw!important;max-width:98vw!important}
   .ci-detail,.ci-list{min-width:0}
   #circularView{flex-direction:column!important}
@@ -2594,7 +2600,8 @@ function renderPM(){
   const events=expandEvents(load('events',[]),_startDs,_endDs);
   const first=new Date(y,mo,1); const last=new Date(y,mo+1,0);
   const startDow=first.getDay();
-  let html='<table><thead><tr>';
+  const isSP=window.innerWidth<=700;
+  let html=(isSP?'<div style="text-align:right;font-size:10px;color:#9ca3af;margin-bottom:4px;padding-right:2px">← 左右にスライドできます →</div>':'')+'<table><thead><tr>';
   DOW.forEach((dw,i)=>html+=`<th style="${i===0?'color:#c53030':i===6?'color:#1a56db':''}">${dw}</th>`);
   html+='</tr></thead><tbody><tr>';
   let col=0;
