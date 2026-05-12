@@ -1808,24 +1808,24 @@ function initData(){
 // =========================================================
 const HOLIDAYS = {'2026-01-01':'元日','2026-02-11':'建国記念','2026-02-23':'天皇誕生日','2026-03-20':'春分の日','2026-04-29':'昭和の日','2026-05-03':'憲法記念日','2026-05-04':'みどりの日','2026-05-05':'こどもの日','2026-05-06':'振替休日','2026-07-20':'海の日','2026-08-11':'山の日','2026-09-21':'敬老の日','2026-09-23':'秋分の日','2026-10-12':'スポーツの日','2026-11-03':'文化の日','2026-11-23':'勤労感謝の日'};
 const EV_TYPES = {
-  meeting:   {label:'会議',                color:'#1d4ed8',cls:'ev-meeting'},
-  webmtg:    {label:'Web会議',             color:'#60a5fa',cls:'ev-webmtg'},
-  mtg:       {label:'MTG',                 color:'#22c55e',cls:'ev-mtg'},
-  visitor:   {label:'来客',               color:'#06b6d4',cls:'ev-visitor'},
-  outing:    {label:'外出',               color:'#f97316',cls:'ev-outing'},
-  rinten:    {label:'臨店',               color:'#ca8a04',cls:'ev-rinten'},
-  trip:      {label:'出張',               color:'#a855f7',cls:'ev-trip'},
-  internal:  {label:'社内業務',           color:'#b5936d',cls:'ev-internal'},
-  interview: {label:'面接',               color:'#f472b6',cls:'ev-interview'},
-  konsult:   {label:'面談',               color:'#16a34a',cls:'ev-konsult'},
-  holiday:   {label:'休み',               color:'#ef4444',cls:'ev-holiday'},
-  inspection:{label:'視察',               color:'#d97706',cls:'ev-inspection'},
-  training:  {label:'研修',               color:'#15803d',cls:'ev-training'},
-  remote:    {label:'在宅ワーク',         color:'#6b7280',cls:'ev-remote'},
-  deskwork:  {label:'デスクワーク（集中）',color:'#d97706',cls:'ev-deskwork'},
-  field:     {label:'現場実務',           color:'#8b5cf6',cls:'ev-field'},
-  alert:     {label:'期限・締切',         color:'#eab308',cls:'ev-alert'},
-  task:      {label:'通常',               color:'#94a3b8',cls:'ev-task'},
+  meeting:   {label:'会議',                short:'会議',  color:'#1d4ed8',cls:'ev-meeting'},
+  webmtg:    {label:'Web会議',             short:'Web',   color:'#60a5fa',cls:'ev-webmtg'},
+  mtg:       {label:'MTG',                 short:'MTG',   color:'#22c55e',cls:'ev-mtg'},
+  visitor:   {label:'来客',               short:'来客',  color:'#06b6d4',cls:'ev-visitor'},
+  outing:    {label:'外出',               short:'外出',  color:'#f97316',cls:'ev-outing'},
+  rinten:    {label:'臨店',               short:'臨店',  color:'#ca8a04',cls:'ev-rinten'},
+  trip:      {label:'出張',               short:'出張',  color:'#a855f7',cls:'ev-trip'},
+  internal:  {label:'社内業務',           short:'社内',  color:'#b5936d',cls:'ev-internal'},
+  interview: {label:'面接',               short:'面接',  color:'#f472b6',cls:'ev-interview'},
+  konsult:   {label:'面談',               short:'面談',  color:'#16a34a',cls:'ev-konsult'},
+  holiday:   {label:'休み',               short:'休み',  color:'#ef4444',cls:'ev-holiday'},
+  inspection:{label:'視察',               short:'視察',  color:'#d97706',cls:'ev-inspection'},
+  training:  {label:'研修',               short:'研修',  color:'#15803d',cls:'ev-training'},
+  remote:    {label:'在宅ワーク',         short:'在宅',  color:'#6b7280',cls:'ev-remote'},
+  deskwork:  {label:'デスクワーク（集中）',short:'集中', color:'#d97706',cls:'ev-deskwork'},
+  field:     {label:'現場実務',           short:'現場',  color:'#8b5cf6',cls:'ev-field'},
+  alert:     {label:'期限・締切',         short:'締切',  color:'#eab308',cls:'ev-alert'},
+  task:      {label:'通常',               short:'通常',  color:'#94a3b8',cls:'ev-task'},
 };
 const EV_TYPE_LIST = [
   {value:'meeting',    label:'会議',                color:'#1d4ed8'},
@@ -2324,7 +2324,7 @@ function renderTopWeek(s){
         const recIcon=ev._recurring?'🔁':'';
         html+=`<div onclick="openEvModal('${ev.id}',null,null)" title="${esc(ev.title)}" style="cursor:pointer;margin-bottom:3px">
           <span class="ev ${et.cls}" style="display:block;white-space:normal;word-break:break-all;overflow-wrap:break-word;font-size:11px;line-height:1.4">
-            ${ts?`<span class="ev-time">${esc(ts)}</span>`:''}${recIcon}<span class="ev-badge" style="background:${et.color}">${et.label}</span>${esc(ev.title)}
+            ${ts?`<span class="ev-time">${esc(ts)}</span>`:''}${recIcon}<span class="ev-badge" style="background:${et.color}">${et.short||et.label}</span>${esc(ev.title)}
           </span>
         </div>`;
       });
@@ -2504,7 +2504,7 @@ function renderGW(){
           events.filter(e=>e.memberIds&&e.memberIds.includes(u.id)&&e.date===ds&&e.memo!=='off').forEach(ev=>{
             const et=EV_TYPES[ev.type]||EV_TYPES.task;
             const ts=ev.startTime?(ev.startTime+(ev.endTime?'-'+ev.endTime:''))+' ':'';
-            const lbl=et.label?`<span class="ev-badge" style="background:${et.color}">${et.label}</span>`:'';
+            const lbl=et.label?`<span class="ev-badge" style="background:${et.color}">${et.short||et.label}</span>`:'';
             const recIcon=ev._recurring?'🔁 ':''; const spanIcon=ev._span?'↔ ':'';
             const reactIcon=ev.reaction?.enabled&&ev.reaction?.responses?.[u.id]?.reacted?'✓ ':'';
             html+=`<span class="ev ${et.cls}" onclick="openEvDetail('${ev.id}')" title="${esc(ev.title)}">`;
@@ -2629,7 +2629,7 @@ function renderPM(){
       const et=EV_TYPES[ev.type]||EV_TYPES.task;
       const ts=ev.startTime?(ev.startTime+(ev.endTime?'-'+ev.endTime:''))+' ':'';
       const recIcon=ev._recurring?'🔁':''; const reactIcon=ev.reaction?.enabled&&ev.reaction?.responses?.[myId()]?.reacted?'✓':'';
-      html+=`<span class="ev ${et.cls}" onclick="openEvModal('${ev.id}',null,null)">${ts?`<span class="ev-time">${esc(ts)}</span>`:''}<span class="ev-badge" style="background:${et.color}">${et.label}</span>${recIcon}${reactIcon}${esc(ev.title)}</span>`;
+      html+=`<span class="ev ${et.cls}" onclick="openEvModal('${ev.id}',null,null)">${ts?`<span class="ev-time">${esc(ts)}</span>`:''}<span class="ev-badge" style="background:${et.color}">${et.short||et.label}</span>${recIcon}${reactIcon}${esc(ev.title)}</span>`;
     });
     // ToDo（自分のみ表示）
     if(isMe){
