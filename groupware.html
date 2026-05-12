@@ -531,7 +531,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
     <div class="hdr-user">
       <span id="hdrDept" class="hdr-dept"></span>
       <span id="hdrRole" class="hdr-role" style="display:none">管理者</span>
-      <span id="hdrName"></span>
+      <span id="hdrName" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100px"></span>
       <button class="hdr-btn" onclick="doLogout()">ログアウト</button>
     </div>
   </div>
@@ -3921,11 +3921,12 @@ function startApp(){
   document.getElementById('loginScreen').style.display='none';
   document.getElementById('app').style.display='block';
   const s=getS();
-  document.getElementById('hdrName').textContent=s.name;
+  const isMobile = window.innerWidth <= 700;
+  document.getElementById('hdrName').textContent = isMobile ? '' : s.name;
   const dept=getDept(s.deptId);
-  document.getElementById('hdrDept').textContent=dept.name||'';
-  // ヘッダーにロールバッジを表示（一般以外）
-  if(s.role && s.role!=='user'){
+  document.getElementById('hdrDept').textContent = isMobile ? '' : (dept.name||'');
+  // ヘッダーにロールバッジを表示（一般以外・PCのみ）
+  if(!isMobile && s.role && s.role!=='user'){
     const el=document.getElementById('hdrRole');
     el.textContent=ROLE_LABEL[s.role]||s.role;
     el.style.display='inline';
