@@ -1187,7 +1187,8 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
         <!-- ご利用について -->
         <div style="background:#eff6ff;border-left:4px solid #1a56db;border-radius:4px;padding:12px 16px;margin-bottom:20px;font-size:13px;color:#1e3a5f">
           このグループウェアは <strong>大日産業グループ</strong> の社内情報共有・スケジュール管理ツールです。<br>
-          データはクラウドに保存されるため、PCからもスマートフォンからもご利用いただけます。
+          データはクラウドに保存されるため、PCからもスマートフォンからもご利用いただけます。<br>
+          他のメンバーの操作は<strong>リアルタイムで自動反映</strong>されます（画面の再読み込み不要）。
         </div>
 
         <!-- ログイン -->
@@ -1198,6 +1199,32 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
             <li>パスワードは定期的に変更することをお勧めします</li>
             <li>30分間操作がないと自動的にログアウトされます</li>
             <li>ログアウトはヘッダー右上の「ログアウト」から行ってください</li>
+            <li>ログインIDとパスワードは第三者と共有しないでください</li>
+          </ul>
+        </div>
+
+        <!-- ホーム -->
+        <div style="margin-bottom:20px">
+          <div style="font-size:15px;font-weight:700;color:#1a2b4a;border-bottom:2px solid #dde3ec;padding-bottom:6px;margin-bottom:10px">🏠 ホーム画面</div>
+          <ul style="font-size:13px;color:#334;line-height:2;padding-left:18px;margin:0">
+            <li>ログイン後に表示されるトップ画面です</li>
+            <li><strong>今週のスケジュール</strong>：自分が参加している今週の予定を表示します</li>
+            <li><strong>未読の連絡事項</strong>：未確認の連絡事項を新着順に表示します</li>
+            <li><strong>未対応の承認申請</strong>：自分宛てで未回答の申請を表示します</li>
+            <li><strong>期限が近いToDo</strong>：3日以内に期限が迫るタスクをアラート表示します</li>
+            <li>ヘッダー左の数字バッジは未処理アクションの合計件数を示します</li>
+          </ul>
+        </div>
+
+        <!-- スマートフォン -->
+        <div style="margin-bottom:20px">
+          <div style="font-size:15px;font-weight:700;color:#1a2b4a;border-bottom:2px solid #dde3ec;padding-bottom:6px;margin-bottom:10px">📱 スマートフォンでの利用</div>
+          <ul style="font-size:13px;color:#334;line-height:2;padding-left:18px;margin:0">
+            <li>スマートフォンのブラウザでも同じURLからご利用いただけます</li>
+            <li>画面幅に応じてスマートフォン向けレイアウトに自動切り替えされます</li>
+            <li>ヘッダー左上の <strong>☰ MENU</strong> をタップするとサイドバーメニューが開きます</li>
+            <li>メニュー外をタップするとサイドバーが閉じます</li>
+            <li>PCと同じデータがリアルタイムで同期されます</li>
           </ul>
         </div>
 
@@ -1205,22 +1232,30 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
         <div style="margin-bottom:20px">
           <div style="font-size:15px;font-weight:700;color:#1a2b4a;border-bottom:2px solid #dde3ec;padding-bottom:6px;margin-bottom:10px">📅 スケジュール管理</div>
           <div style="font-size:13px;color:#334;line-height:1.8">
-            <div style="display:grid;grid-template-columns:120px 1fr;gap:6px 12px;align-items:start">
+            <div style="display:grid;grid-template-columns:120px 1fr;gap:6px 12px;align-items:start;margin-bottom:10px">
               <span style="font-weight:600;color:#1a56db">グループ週</span><span>部署・グループ全員の週間スケジュールを一覧表示。部署フィルターで絞り込めます</span>
               <span style="font-weight:600;color:#1a56db">個人月</span><span>特定メンバーの月間スケジュールを表示。セレクトでメンバーを切り替えられます</span>
               <span style="font-weight:600;color:#1a56db">個人年</span><span>年間の予定をドット表示でまとめて確認できます</span>
             </div>
-            <div style="margin-top:10px;background:#f8fafc;border-radius:6px;padding:12px">
+            <div style="background:#f8fafc;border-radius:6px;padding:12px;margin-bottom:10px">
               <div style="font-weight:600;margin-bottom:6px">予定の登録方法</div>
               <ol style="margin:0;padding-left:18px;line-height:2">
-                <li>カレンダーの日付セルをクリック</li>
+                <li>カレンダーの日付セルまたは「＋ 追加」ボタンをクリック</li>
                 <li>タイトル・日時・種別・参加者を入力</li>
                 <li>「登録する」ボタンで保存</li>
               </ol>
-              <div style="margin-top:8px;font-size:12px;color:#6b7280">※ 開始時間を選択すると終了時間が自動で1時間後になります</div>
+              <div style="margin-top:8px;font-size:12px;color:#6b7280">※ 開始時間を選択すると終了時間が自動で1時間後に設定されます</div>
             </div>
-            <div style="margin-top:10px;font-size:12px;color:#6b7280;background:#fef9c3;border-radius:4px;padding:8px 12px">
-              ⚠️ <strong>スケジュールの閲覧範囲：</strong>AMUSE JAPAN・BLOCK47・ウェルピアのメンバーは自グループの予定のみ閲覧できます。管理者・システムは全グループを閲覧できます。
+            <div style="background:#f8fafc;border-radius:6px;padding:12px;margin-bottom:10px">
+              <div style="font-weight:600;margin-bottom:6px">予定の変更・削除</div>
+              <ul style="margin:0;padding-left:18px;line-height:2">
+                <li>カレンダー上の予定をクリックして詳細を開き、「編集」または「削除」を選択</li>
+                <li>予定を変更・削除すると、参加メンバー全員に<strong>更新・変更の通知</strong>が届きます</li>
+                <li>「この予定から抜ける」で自分だけ予定から外れることもできます</li>
+              </ul>
+            </div>
+            <div style="font-size:12px;color:#6b7280;background:#fef9c3;border-radius:4px;padding:8px 12px">
+              ⚠️ <strong>スケジュールの閲覧範囲：</strong>AMUSE JAPAN・BLOCK47・ウェルピアのメンバー（責任者・一般）は自グループの予定のみ閲覧できます。管理者・システムは全グループを閲覧できます。
             </div>
           </div>
         </div>
@@ -1230,22 +1265,31 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
           <div style="font-size:15px;font-weight:700;color:#1a2b4a;border-bottom:2px solid #dde3ec;padding-bottom:6px;margin-bottom:10px">📌 連絡事項</div>
           <ul style="font-size:13px;color:#334;line-height:2;padding-left:18px;margin:0">
             <li>全社または特定の部署・メンバーへ連絡を投稿できます</li>
-            <li>PDFや画像などの参考資料を添付できます</li>
+            <li>PDFや画像などの参考資料のリンクを添付できます</li>
             <li>受信者は「🔔 要確認」ボタンを押して確認済みにします</li>
             <li>未確認がある場合はサイドバーのバッジ（数字）でお知らせします</li>
-            <li>投稿者は誰が確認済みかを確認できます</li>
+            <li>投稿者は誰が確認済みかを一覧で確認できます</li>
+            <li>連絡事項は確認後できるだけ速やかに「要確認」を押してください</li>
           </ul>
         </div>
 
         <!-- 承認申請 -->
         <div style="margin-bottom:20px">
-          <div style="font-size:15px;font-weight:700;color:#1a2b4a;border-bottom:2px solid #dde3ec;padding-bottom:6px;margin-bottom:10px">📝 承認申請</div>
-          <ul style="font-size:13px;color:#334;line-height:2;padding-left:18px;margin:0">
-            <li>稟議・申請書などを回覧形式で送付できます</li>
-            <li>「一斉送信」と「順番回覧」の2種類のルートが選べます</li>
-            <li>回答ボタン（確認中・確認済など）はカスタマイズ可能です</li>
-            <li>未対応の申請はサイドバーのバッジでお知らせします</li>
-          </ul>
+          <div style="font-size:15px;font-weight:700;color:#1a2b4a;border-bottom:2px solid #dde3ec;padding-bottom:6px;margin-bottom:10px">📝 承認申請（回覧）</div>
+          <div style="font-size:13px;color:#334;line-height:1.8">
+            <ul style="padding-left:18px;margin:0 0 10px 0">
+              <li>稟議・申請書などを回覧形式で送付できます</li>
+              <li>未対応の申請はサイドバーのバッジでお知らせします</li>
+              <li>申請者はメンバーから回答があると<strong>更新・変更の通知</strong>で知らせを受け取ります</li>
+            </ul>
+            <div style="display:grid;grid-template-columns:110px 1fr;gap:6px 12px;align-items:start;background:#f8fafc;border-radius:6px;padding:12px">
+              <span style="font-weight:600;color:#1a56db">一斉送信</span><span>指定した全メンバーに同時に送付します。全員が個別に回答します</span>
+              <span style="font-weight:600;color:#1a56db">順番回覧</span><span>1人目が回答したら2人目へ、順番に回覧します。上長への段階承認などに適しています</span>
+            </div>
+            <div style="margin-top:10px;font-size:12px;color:#6b7280;background:#fef9c3;border-radius:4px;padding:8px 12px">
+              ⚠️ 回答ボタンの種類（確認中・承認・差し戻し など）は申請者が作成時に自由に設定できます
+            </div>
+          </div>
         </div>
 
         <!-- ToDo -->
@@ -1253,40 +1297,58 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
           <div style="font-size:15px;font-weight:700;color:#1a2b4a;border-bottom:2px solid #dde3ec;padding-bottom:6px;margin-bottom:10px">✅ ToDo管理</div>
           <ul style="font-size:13px;color:#334;line-height:2;padding-left:18px;margin:0">
             <li>個人のタスクを登録・管理できます</li>
+            <li>他のメンバーにタスクを依頼することもできます</li>
+            <li>「自分のToDo」「依頼された」「依頼した」の3タブで整理できます</li>
             <li>期限が3日以内に迫るとホーム画面でアラート表示されます</li>
-            <li>完了したタスクはチェックを入れると「完了済み」に移動します</li>
+            <li>完了したタスクにチェックを入れると「完了済み」に移動します</li>
           </ul>
         </div>
 
-        <!-- 予定変更のお知らせ -->
+        <!-- 更新・変更の通知 -->
         <div style="margin-bottom:20px">
-          <div style="font-size:15px;font-weight:700;color:#1a2b4a;border-bottom:2px solid #dde3ec;padding-bottom:6px;margin-bottom:10px">🔔 予定変更のお知らせ</div>
+          <div style="font-size:15px;font-weight:700;color:#1a2b4a;border-bottom:2px solid #dde3ec;padding-bottom:6px;margin-bottom:10px">🔔 更新・変更の通知</div>
           <ul style="font-size:13px;color:#334;line-height:2;padding-left:18px;margin:0">
-            <li>参加している予定が変更・削除された場合に通知が届きます</li>
-            <li>サイドバーの「予定変更のお知らせ」から確認できます</li>
-            <li>「✓ 既読にする」ボタンで確認済みにできます</li>
+            <li>以下のアクションが発生すると自動的に通知が届きます</li>
+          </ul>
+          <div style="margin-top:8px;display:grid;grid-template-columns:28px 1fr;gap:4px 8px;font-size:13px;color:#334;background:#f8fafc;border-radius:6px;padding:12px;align-items:start">
+            <span>✏️</span><span>参加中の予定が<strong>変更</strong>された</span>
+            <span>🗑️</span><span>参加中の予定が<strong>削除</strong>された</span>
+            <span>🚪</span><span>メンバーが予定から<strong>抜けた</strong></span>
+            <span>➕</span><span>メンバーが予定に<strong>参加した</strong></span>
+            <span>📝</span><span>自分が作成した申請にメンバーが<strong>回答した</strong></span>
+          </div>
+          <ul style="font-size:13px;color:#334;line-height:2;padding-left:18px;margin:8px 0 0 0">
+            <li>サイドバーの「🔔 更新・変更の通知」から一覧確認できます</li>
+            <li>未読がある場合はサイドバーのバッジ（数字）で表示されます</li>
+            <li>「✓ 既読にする」ボタンで個別に、または「すべて既読にする」でまとめて既読にできます</li>
           </ul>
         </div>
 
         <!-- 権限 -->
         <div style="margin-bottom:20px">
           <div style="font-size:15px;font-weight:700;color:#1a2b4a;border-bottom:2px solid #dde3ec;padding-bottom:6px;margin-bottom:10px">🔐 権限について</div>
-          <table style="width:100%;border-collapse:collapse;font-size:12px">
+          <table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:10px">
             <thead>
               <tr style="background:#f5f7fb">
                 <th style="padding:8px;border:1px solid #dde3ec;text-align:left">権限</th>
                 <th style="padding:8px;border:1px solid #dde3ec;text-align:center">システム設定</th>
-                <th style="padding:8px;border:1px solid #dde3ec;text-align:center">スケジュール</th>
-                <th style="padding:8px;border:1px solid #dde3ec;text-align:center">コミュニケーション</th>
+                <th style="padding:8px;border:1px solid #dde3ec;text-align:center">スケジュール閲覧</th>
+                <th style="padding:8px;border:1px solid #dde3ec;text-align:center">連絡・申請・ToDo</th>
               </tr>
             </thead>
             <tbody>
               <tr><td style="padding:7px 8px;border:1px solid #dde3ec;font-weight:600">システム</td><td style="text-align:center;border:1px solid #dde3ec">✅</td><td style="text-align:center;border:1px solid #dde3ec">全グループ</td><td style="text-align:center;border:1px solid #dde3ec">全体</td></tr>
               <tr style="background:#f9fafb"><td style="padding:7px 8px;border:1px solid #dde3ec;font-weight:600">管理者</td><td style="text-align:center;border:1px solid #dde3ec">—</td><td style="text-align:center;border:1px solid #dde3ec">全グループ</td><td style="text-align:center;border:1px solid #dde3ec">全体</td></tr>
-              <tr><td style="padding:7px 8px;border:1px solid #dde3ec;font-weight:600">責任者</td><td style="text-align:center;border:1px solid #dde3ec">—</td><td style="text-align:center;border:1px solid #dde3ec">自部門のみ</td><td style="text-align:center;border:1px solid #dde3ec">全体</td></tr>
-              <tr style="background:#f9fafb"><td style="padding:7px 8px;border:1px solid #dde3ec;font-weight:600">一般</td><td style="text-align:center;border:1px solid #dde3ec">—</td><td style="text-align:center;border:1px solid #dde3ec">自部門のみ</td><td style="text-align:center;border:1px solid #dde3ec">全体</td></tr>
+              <tr><td style="padding:7px 8px;border:1px solid #dde3ec;font-weight:600">責任者</td><td style="text-align:center;border:1px solid #dde3ec">—</td><td style="text-align:center;border:1px solid #dde3ec">自グループのみ</td><td style="text-align:center;border:1px solid #dde3ec">全体</td></tr>
+              <tr style="background:#f9fafb"><td style="padding:7px 8px;border:1px solid #dde3ec;font-weight:600">一般</td><td style="text-align:center;border:1px solid #dde3ec">—</td><td style="text-align:center;border:1px solid #dde3ec">自グループのみ</td><td style="text-align:center;border:1px solid #dde3ec">全体</td></tr>
             </tbody>
           </table>
+          <ul style="font-size:12px;color:#6b7280;line-height:2;padding-left:18px;margin:0">
+            <li>「システム」は旧管理者権限。ユーザー管理・部署管理・権限設定などすべてにアクセスできます</li>
+            <li>「管理者」はスケジュール・コミュニケーション機能を全グループ横断で利用できます</li>
+            <li>「責任者」「一般」は自グループ（AMUSE JAPAN / BLOCK47 / ウェルピア）内のスケジュールのみ閲覧できます</li>
+            <li>権限の変更はシステム権限のユーザーが「システム設定 → 権限設定」から行えます</li>
+          </ul>
         </div>
 
         <!-- 利用ルール -->
@@ -1296,8 +1358,10 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
             <li>業務に関係のない情報の投稿はご遠慮ください</li>
             <li>他のメンバーの個人情報・スケジュールを外部へ共有しないでください</li>
             <li>パスワードは第三者と共有しないでください</li>
-            <li>連絡事項・承認申請は確認後、速やかに「要確認」または回答をお願いします</li>
+            <li>連絡事項・承認申請は確認後、速やかに「要確認」または回答を行ってください</li>
+            <li>スケジュールを変更・削除する際は、関係者への事前連絡を心がけてください</li>
             <li>退職・異動の際はシステム管理者へアカウントの無効化を依頼してください</li>
+            <li>不具合や操作に関するご質問はシステム管理者へお問い合わせください</li>
           </ul>
         </div>
 
