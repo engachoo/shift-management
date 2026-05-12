@@ -1561,8 +1561,11 @@ function getUserDeptGroup(userId){
 function getScheduleGroup(userId){
   const u=getUser(userId);
   if(!u) return null;
-  // admin / manager（責任者）は制限なし → 全グループ閲覧可
-  if(u.role==='admin'||u.role==='manager') return null;
+  // admin は常に制限なし
+  if(u.role==='admin') return null;
+  // manager（責任者）はウェルピア所属のみ制限なし
+  // AMUSE・BLOCK47の責任者は一般メンバーと同じグループ制限
+  if(u.role==='manager' && getUserDeptGroup(userId)==='welpia') return null;
   return getUserDeptGroup(userId);
 }
 function scheduleVisibleUsers(){
