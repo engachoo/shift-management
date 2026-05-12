@@ -385,14 +385,18 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
 @media(max-width:900px){.top-cols{grid-template-columns:1fr}}
 
 /* ===== スマートフォン対応 ===== */
-#menuToggle{display:none;background:none;border:none;color:#fff;font-size:22px;cursor:pointer;padding:0 4px;line-height:1;flex-shrink:0}
-#sideOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:899}
+#menuToggle{display:none;background:none;border:none;color:#fff;font-size:24px;cursor:pointer;padding:0 6px;line-height:1;flex-shrink:0}
+#sideOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1098}
+#spHelpBtn{display:none}
 @media(max-width:700px){
+  #appHeader{padding:0 8px;gap:6px}
   #menuToggle{display:block}
-  .hdr-logo{font-size:12px}
-  #hdrDept{display:none}
+  .hdr-logo{font-size:11px;letter-spacing:0}
+  #hdrDept,#hdrRole,.hdr-btn-help{display:none!important}
   .hdr-btn{font-size:11px;padding:3px 8px}
-  #sidebar{transform:translateX(-100%);transition:transform .25s ease;z-index:900;width:220px}
+  #hdrName{font-size:11px;max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #spHelpBtn{display:flex!important}
+  #sidebar{transform:translateX(-100%);transition:transform .28s ease;z-index:1099;width:230px;top:0;padding-top:52px}
   #sidebar.sp-open{transform:translateX(0)}
   #sideOverlay.sp-open{display:block}
   #mainArea{margin-left:0;padding:6px}
@@ -405,8 +409,9 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
   .top-hdr-btn{font-size:11px;padding:4px 8px}
   .top-header{padding:12px 14px}
   .top-header-title{font-size:14px}
+  .top-header-btns{flex-wrap:wrap;gap:6px}
   .admin-tabs{flex-wrap:wrap}
-  .admin-tab{padding:7px 12px;font-size:12px}
+  .admin-tab{padding:7px 10px;font-size:11px}
   .f-checks{max-height:200px}
   .page-hdr{flex-wrap:wrap;gap:6px}
 }
@@ -521,7 +526,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
   <div id="appHeader">
     <button id="menuToggle" onclick="toggleSidebar()">☰</button>
     <div class="hdr-logo">大日産業 グループウェア</div>
-    <button onclick="showHelp()" style="background:none;border:1px solid rgba(255,255,255,.35);color:rgba(255,255,255,.85);padding:3px 10px;border-radius:4px;cursor:pointer;font-size:11px;white-space:nowrap;margin-left:8px">📖 説明書</button>
+    <button class="hdr-btn-help" onclick="showHelp()" style="background:none;border:1px solid rgba(255,255,255,.35);color:rgba(255,255,255,.85);padding:3px 10px;border-radius:4px;cursor:pointer;font-size:11px;white-space:nowrap;margin-left:4px">📖 説明書</button>
     <div class="hdr-spacer"></div>
     <div class="hdr-user">
       <span id="hdrDept" class="hdr-dept"></span>
@@ -533,6 +538,12 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
 
   <!-- サイドバー -->
   <div id="sidebar">
+    <!-- スマホ用ヘッダー -->
+    <div id="spHelpBtn" style="display:none;background:#1a2b4a;position:absolute;top:0;left:0;right:0;height:52px;align-items:center;padding:0 12px;gap:8px">
+      <span style="color:#7ec8e3;font-size:12px;font-weight:700;flex:1">大日産業 グループウェア</span>
+      <button onclick="showHelp();closeSidebar();" style="background:none;border:1px solid rgba(255,255,255,.4);color:#fff;padding:3px 8px;border-radius:4px;font-size:11px;cursor:pointer">📖 説明書</button>
+      <button onclick="closeSidebar()" style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer;line-height:1;padding:0 2px">×</button>
+    </div>
     <div class="side-item" id="m-top" onclick="showMod('top')"><span class="si-icon">🏠</span>ホーム<span class="side-badge" id="badge-top" style="display:none"></span></div>
     <div class="side-group">スケジュール</div>
     <div class="side-item" id="m-sgw" onclick="showMod('schedule','gw')"><span class="si-icon">📅</span>グループ週</div>
