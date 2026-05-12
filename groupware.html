@@ -103,7 +103,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
 .gw-wrap th.th-today{background:#fffde7}
 .gw-wrap th.th-holiday{color:#c53030}
 .gw-wrap th.th-sat{color:#1a56db}
-.gw-wrap td{vertical-align:top;padding:4px 5px;border:1px solid #dde3ec;min-height:72px}
+.gw-wrap td{vertical-align:top;padding:4px 5px;border:1px solid #dde3ec;min-height:72px;overflow:hidden;word-break:break-all}
 .gw-wrap td.td-member{background:#f9fafb;vertical-align:middle;padding:6px 10px;width:110px}
 .td-member .m-name{font-size:12px;font-weight:600;color:#1a2b4a}
 .td-member .m-dept{font-size:10px;color:#8899aa}
@@ -145,7 +145,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
 .ev-type-opt{display:flex;align-items:center;gap:8px;padding:7px 12px;cursor:pointer;font-size:12px;color:#334}
 .ev-type-opt:hover{background:#f0f4fa}
 .ev-type-opt.active{background:#e8f0fe;font-weight:600;color:#1a56db}
-.ev-time{display:block;font-size:11px;font-weight:700;opacity:.9;margin-bottom:2px;letter-spacing:.3px}
+.ev-time{display:block;font-size:11px;font-weight:700;opacity:.9;margin-bottom:2px;letter-spacing:.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 .ev-badge{display:inline-block;color:#fff;font-size:9px;font-weight:700;border-radius:3px;padding:0 4px;margin-right:3px;vertical-align:middle;line-height:1.6;letter-spacing:.2px;white-space:nowrap}
 .add-btn-wrap{margin-top:3px}
 .add-btn-wrap button{background:none;border:none;color:#1a56db;font-size:18px;cursor:pointer;line-height:1;padding:0 2px}
@@ -2312,7 +2312,7 @@ function renderTopWeek(s){
     const isSun=d.getDay()===0;
     const offEv=events.find(e=>e.memberIds&&e.memberIds.includes(uid)&&e.date===ds&&e.memo==='off');
     let bg=isToday?'#fffef0':holi||isSun?'#fff8f8':'';
-    html+=`<td style="vertical-align:top;padding:5px 6px;border:1px solid #dde3ec;min-height:80px;background:${bg}">`;
+    html+=`<td style="vertical-align:top;padding:5px 6px;border:1px solid #dde3ec;min-height:80px;background:${bg};overflow:hidden;word-break:break-all">`;
     if(offEv){
       html+='<span style="font-size:11px;background:#e5e7eb;border-radius:3px;padding:1px 6px;color:#6b7280">休み</span>';
     } else {
@@ -2323,7 +2323,7 @@ function renderTopWeek(s){
         const ts=ev.startTime?(ev.startTime+(ev.endTime?'-'+ev.endTime:''))+' ':'';
         const recIcon=ev._recurring?'🔁':'';
         html+=`<div onclick="openEvModal('${ev.id}',null,null)" title="${esc(ev.title)}" style="cursor:pointer;margin-bottom:3px">
-          <span class="ev ${et.cls}" style="display:block;white-space:normal;word-break:break-all;overflow-wrap:break-word;font-size:11px;line-height:1.4">
+          <span class="ev ${et.cls}" style="display:block;white-space:normal;word-break:break-all;overflow:hidden;font-size:11px;line-height:1.4">
             ${ts?`<span class="ev-time">${esc(ts)}</span>`:''}${recIcon}<span class="ev-badge" style="background:${et.color}">${et.short||et.label}</span>${esc(ev.title)}
           </span>
         </div>`;
