@@ -512,7 +512,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
     <div class="side-item" id="m-en" onclick="showMod('evnotif')"><span class="si-icon">🔔</span>予定変更のお知らせ<span class="side-badge" id="badge-en" style="display:none"></span></div>
     <div class="side-item" id="m-td" onclick="showMod('todo')"><span class="si-icon">✅</span>ToDo<span class="side-badge gray" id="badge-td">0</span></div>
     <div id="adminMenu" style="display:none">
-      <div class="side-group">管理者メニュー</div>
+      <div class="side-group">システム設定</div>
       <div class="side-item" id="m-au" onclick="showMod('admin','users')"><span class="si-icon">👤</span>ユーザー管理</div>
       <div class="side-item" id="m-ad" onclick="showMod('admin','depts')"><span class="si-icon">🏢</span>部署管理</div>
     </div>
@@ -605,6 +605,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
       <div class="admin-tabs">
         <div class="admin-tab active" id="at-users" onclick="switchAdminTab('users')">👤 ユーザー管理</div>
         <div class="admin-tab" id="at-depts" onclick="switchAdminTab('depts')">🏢 部署管理</div>
+        <div class="admin-tab" id="at-perms" onclick="switchAdminTab('perms')">🔐 権限設定</div>
       </div>
       <div class="admin-card">
         <div id="adminUsers">
@@ -621,6 +622,28 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
             <button class="btn-new" onclick="openDeptModal(null)">＋ 新規部署</button>
           </div>
           <div class="dept-tree" id="deptTree"></div>
+        </div>
+        <div id="adminPerms" style="display:none">
+          <div style="font-size:14px;font-weight:700;margin-bottom:16px">🔐 権限設定マトリックス</div>
+          <div style="font-size:12px;color:#6b7280;margin-bottom:12px">各機能に対してロール別の権限をチェックボックスで設定します。変更後は「保存」ボタンを押してください。</div>
+          <div style="overflow-x:auto">
+            <table id="permMatrix" style="width:100%;border-collapse:collapse;font-size:13px">
+              <thead>
+                <tr style="background:#f5f7fb">
+                  <th style="text-align:left;padding:10px 12px;border:1px solid #dde3ec;min-width:200px">機能</th>
+                  <th style="text-align:center;padding:10px 16px;border:1px solid #dde3ec;color:#1a56db;min-width:80px">システム</th>
+                  <th style="text-align:center;padding:10px 16px;border:1px solid #dde3ec;color:#047857;min-width:80px">管理者</th>
+                  <th style="text-align:center;padding:10px 16px;border:1px solid #dde3ec;color:#b45309;min-width:80px">責任者</th>
+                  <th style="text-align:center;padding:10px 16px;border:1px solid #dde3ec;color:#374151;min-width:80px">一般</th>
+                </tr>
+              </thead>
+              <tbody id="permMatrixBody"></tbody>
+            </table>
+          </div>
+          <div style="margin-top:16px;display:flex;gap:8px">
+            <button class="btn-primary" onclick="savePermMatrix()">💾 保存する</button>
+            <button class="btn-secondary" onclick="resetPermMatrix()">↩ デフォルトに戻す</button>
+          </div>
         </div>
       </div>
     </div>
@@ -3355,16 +3378,108 @@ function saveTd(){
 }
 
 // =========================================================
+// 権限設定マトリックス
+// =========================================================
+const PERM_DEFS = [
+  { key:'system_settings',      label:'システム設定',         desc:'ユーザー管理・部署管理・権限設定',   group:'システム' },
+  { key:'schedule_all',         label:'全グループスケジュール閲覧', desc:'全社のスケジュールを閲覧・確認', group:'スケジュール' },
+  { key:'schedule_register',    label:'スケジュール登録',      desc:'予定の新規登録・参加',             group:'スケジュール' },
+  { key:'schedule_edit_own',    label:'自分の予定編集・削除',  desc:'自分が参加する予定の変更・削除',   group:'スケジュール' },
+  { key:'schedule_edit_others', label:'他者の予定編集・削除',  desc:'他者が作成した予定の変更・削除',   group:'スケジュール' },
+  { key:'comm_bulletin',        label:'連絡事項',              desc:'連絡事項の閲覧・投稿・確認',       group:'コミュニケーション' },
+  { key:'comm_circular',        label:'承認申請',              desc:'承認申請の作成・回答・閲覧',       group:'コミュニケーション' },
+  { key:'comm_todo',            label:'ToDo管理',              desc:'ToDoの作成・管理・確認',           group:'コミュニケーション' },
+  { key:'comm_evnotif',         label:'予定変更のお知らせ',    desc:'予定変更通知の受信・確認',         group:'コミュニケーション' },
+];
+const PERM_DEFAULT = {
+  system_settings:      { system:true,  admin:false, manager:false, user:false },
+  schedule_all:         { system:true,  admin:true,  manager:false, user:false },
+  schedule_register:    { system:true,  admin:true,  manager:true,  user:true  },
+  schedule_edit_own:    { system:true,  admin:true,  manager:true,  user:true  },
+  schedule_edit_others: { system:true,  admin:false, manager:false, user:false },
+  comm_bulletin:        { system:true,  admin:true,  manager:true,  user:true  },
+  comm_circular:        { system:true,  admin:true,  manager:true,  user:true  },
+  comm_todo:            { system:true,  admin:true,  manager:true,  user:true  },
+  comm_evnotif:         { system:true,  admin:true,  manager:true,  user:true  },
+};
+const ROLES = ['system','admin','manager','user'];
+
+function getPerms(){ return Object.assign({}, PERM_DEFAULT, load('permissions',{})); }
+function hasPerm(key){
+  const role = getS()?.role||'user';
+  const perms = getPerms();
+  return !!(perms[key]?.[role] ?? PERM_DEFAULT[key]?.[role] ?? false);
+}
+
+function renderPermMatrix(){
+  const perms = getPerms();
+  let curGroup = '';
+  let html = '';
+  PERM_DEFS.forEach(def=>{
+    if(def.group !== curGroup){
+      curGroup = def.group;
+      html += `<tr><td colspan="5" style="background:#e8f0fe;color:#1a56db;font-weight:700;padding:6px 12px;border:1px solid #dde3ec;font-size:12px">${curGroup}</td></tr>`;
+    }
+    const rowPerms = perms[def.key] || PERM_DEFAULT[def.key] || {};
+    html += `<tr id="prow-${def.key}" style="transition:background .2s">
+      <td style="padding:8px 12px;border:1px solid #dde3ec">
+        <div style="font-weight:600;color:#1a2b4a">${def.label}</div>
+        <div style="font-size:11px;color:#8899aa;margin-top:1px">${def.desc}</div>
+      </td>`;
+    ROLES.forEach(role=>{
+      const checked = rowPerms[role] !== undefined ? rowPerms[role] : (PERM_DEFAULT[def.key]?.[role]||false);
+      const locked = role==='system' && def.key==='system_settings'; // システム設定はsystemから外せない
+      html += `<td style="text-align:center;border:1px solid #dde3ec;padding:8px">
+        <input type="checkbox" id="perm-${def.key}-${role}" ${checked?'checked':''} ${locked?'disabled':''}
+          style="width:18px;height:18px;cursor:${locked?'not-allowed':'pointer'}"
+          onchange="onPermChange('${def.key}')">
+      </td>`;
+    });
+    html += '</tr>';
+  });
+  document.getElementById('permMatrixBody').innerHTML = html;
+}
+
+function onPermChange(key){
+  const row = document.getElementById('prow-'+key);
+  if(row) row.style.background = '#fefce8';
+}
+
+function savePermMatrix(){
+  const perms = {};
+  PERM_DEFS.forEach(def=>{
+    perms[def.key] = {};
+    ROLES.forEach(role=>{
+      const el = document.getElementById('perm-'+def.key+'-'+role);
+      perms[def.key][role] = el ? el.checked : (PERM_DEFAULT[def.key]?.[role]||false);
+    });
+    // system_settingsのsystemは必ずtrue
+    if(def.key==='system_settings') perms[def.key].system = true;
+  });
+  save('permissions', perms);
+  document.querySelectorAll('[id^="prow-"]').forEach(r=>r.style.background='');
+  alert('権限設定を保存しました。');
+}
+
+function resetPermMatrix(){
+  if(!confirm('権限設定をデフォルトに戻しますか？')) return;
+  save('permissions', PERM_DEFAULT);
+  renderPermMatrix();
+  alert('デフォルトに戻しました。');
+}
+
+// =========================================================
 // 管理者パネル
 // =========================================================
 function switchAdminTab(tab){
   adminTab=tab;
-  ['users','depts'].forEach(k=>{
+  ['users','depts','perms'].forEach(k=>{
     document.getElementById('admin'+k.charAt(0).toUpperCase()+k.slice(1)).style.display=k===tab?'block':'none';
     document.getElementById('at-'+k).classList.toggle('active',k===tab);
   });
   if(tab==='users') renderUserTable();
-  else renderDeptTree();
+  else if(tab==='depts') renderDeptTree();
+  else if(tab==='perms') renderPermMatrix();
 }
 
 function markRowDirty(uid){
