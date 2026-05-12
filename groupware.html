@@ -383,6 +383,33 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
 .top-hdr-btn:hover{background:rgba(255,255,255,.28)}
 .top-cols{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 @media(max-width:900px){.top-cols{grid-template-columns:1fr}}
+
+/* ===== スマートフォン対応 ===== */
+#menuToggle{display:none;background:none;border:none;color:#fff;font-size:22px;cursor:pointer;padding:0 4px;line-height:1;flex-shrink:0}
+#sideOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:899}
+@media(max-width:700px){
+  #menuToggle{display:block}
+  .hdr-logo{font-size:12px}
+  #hdrDept{display:none}
+  .hdr-btn{font-size:11px;padding:3px 8px}
+  #sidebar{transform:translateX(-100%);transition:transform .25s ease;z-index:900;width:220px}
+  #sidebar.sp-open{transform:translateX(0)}
+  #sideOverlay.sp-open{display:block}
+  #mainArea{margin-left:0;padding:6px}
+  .gw-wrap{overflow-x:auto}
+  .month-wrap{overflow-x:auto}
+  .modal{width:98vw!important;max-width:98vw!important}
+  .ci-detail,.ci-list{min-width:0}
+  #circularView{flex-direction:column!important}
+  .ci-list{width:100%!important;max-height:180px}
+  .top-hdr-btn{font-size:11px;padding:4px 8px}
+  .top-header{padding:12px 14px}
+  .top-header-title{font-size:14px}
+  .admin-tabs{flex-wrap:wrap}
+  .admin-tab{padding:7px 12px;font-size:12px}
+  .f-checks{max-height:200px}
+  .page-hdr{flex-wrap:wrap;gap:6px}
+}
 .top-card{background:#fff;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,.08);overflow:hidden}
 .top-card-hdr{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:2px solid #eef2f7;font-weight:700;font-size:13px;color:#1a2b4a}
 .top-card-hdr .tc-icon{font-size:16px}
@@ -487,8 +514,12 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
 
 <!-- ===== メインアプリ ===== -->
 <div id="app">
+  <!-- サイドバーオーバーレイ（スマホ用） -->
+  <div id="sideOverlay" onclick="closeSidebar()"></div>
+
   <!-- ヘッダー -->
   <div id="appHeader">
+    <button id="menuToggle" onclick="toggleSidebar()">☰</button>
     <div class="hdr-logo">大日産業 グループウェア</div>
     <button onclick="showHelp()" style="background:none;border:1px solid rgba(255,255,255,.35);color:rgba(255,255,255,.85);padding:3px 10px;border-radius:4px;cursor:pointer;font-size:11px;white-space:nowrap;margin-left:8px">📖 説明書</button>
     <div class="hdr-spacer"></div>
@@ -1908,6 +1939,7 @@ function expandEvents(events, startDs, endDs){
 
 function showMod(mod,sub){
   curMod=mod;
+  closeSidebar(); // スマホ：メニュー選択後に自動で閉じる
   document.querySelectorAll('#mainArea>div').forEach(d=>d.style.display='none');
   document.querySelectorAll('.side-item').forEach(d=>d.classList.remove('active'));
   if(mod==='top'){
@@ -3860,6 +3892,15 @@ function deleteDept(id){
 // =========================================================
 function closeModal(id){ document.getElementById(id).classList.remove('open'); }
 function showHelp(){ document.getElementById('helpModal').classList.add('open'); }
+// スマホ用サイドバー開閉
+function toggleSidebar(){
+  document.getElementById('sidebar').classList.toggle('sp-open');
+  document.getElementById('sideOverlay').classList.toggle('sp-open');
+}
+function closeSidebar(){
+  document.getElementById('sidebar').classList.remove('sp-open');
+  document.getElementById('sideOverlay').classList.remove('sp-open');
+}
 document.addEventListener('click',e=>{ if(e.target.classList.contains('modal-bg')) e.target.classList.remove('open'); });
 
 // =========================================================
