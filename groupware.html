@@ -2322,7 +2322,7 @@ function renderTopWeek(s){
         const et=EV_TYPES[ev.type]||EV_TYPES.task;
         const ts=ev.startTime?(ev.startTime+(ev.endTime?'-'+ev.endTime:''))+' ':'';
         const recIcon=ev._recurring?'🔁':'';
-        html+=`<div onclick="openEvModal('${ev.id}',null,null)" title="${esc(ev.title)}" style="cursor:pointer;margin-bottom:3px">
+        html+=`<div onclick="openEvDetail('${ev.id}')" title="${esc(ev.title)}" style="cursor:pointer;margin-bottom:3px">
           <span class="ev ${et.cls}" style="display:block;white-space:normal;word-break:break-all;overflow:hidden;font-size:11px;line-height:1.4">
             ${ts?`<span class="ev-time">${esc(ts)}</span>`:''}${recIcon}<span class="ev-badge" style="background:${et.color}">${et.short||et.label}</span>${esc(ev.title)}
           </span>
@@ -2629,7 +2629,7 @@ function renderPM(){
       const et=EV_TYPES[ev.type]||EV_TYPES.task;
       const ts=ev.startTime?(ev.startTime+(ev.endTime?'-'+ev.endTime:''))+' ':'';
       const recIcon=ev._recurring?'🔁':''; const reactIcon=ev.reaction?.enabled&&ev.reaction?.responses?.[myId()]?.reacted?'✓':'';
-      html+=`<span class="ev ${et.cls}" onclick="openEvModal('${ev.id}',null,null)">${ts?`<span class="ev-time">${esc(ts)}</span>`:''}<span class="ev-badge" style="background:${et.color}">${et.short||et.label}</span>${recIcon}${reactIcon}${esc(ev.title)}</span>`;
+      html+=`<span class="ev ${et.cls}" onclick="openEvDetail('${ev.id}')">${ts?`<span class="ev-time">${esc(ts)}</span>`:''}<span class="ev-badge" style="background:${et.color}">${et.short||et.label}</span>${recIcon}${reactIcon}${esc(ev.title)}</span>`;
     });
     // ToDo（自分のみ表示）
     if(isMe){
