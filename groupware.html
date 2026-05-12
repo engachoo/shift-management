@@ -146,6 +146,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
 .ev-type-opt:hover{background:#f0f4fa}
 .ev-type-opt.active{background:#e8f0fe;font-weight:600;color:#1a56db}
 .ev-time{font-size:10px;opacity:.7;margin-right:2px}
+.ev-badge{display:inline-block;color:#fff;font-size:9px;font-weight:700;border-radius:3px;padding:0 4px;margin-right:3px;vertical-align:middle;line-height:1.6;letter-spacing:.2px;white-space:nowrap}
 .add-btn-wrap{margin-top:3px}
 .add-btn-wrap button{background:none;border:none;color:#1a56db;font-size:18px;cursor:pointer;line-height:1;padding:0 2px}
 
@@ -2321,7 +2322,7 @@ function renderTopWeek(s){
         const recIcon=ev._recurring?'🔁':'';
         html+=`<div onclick="openEvModal('${ev.id}',null,null)" title="${esc(ev.title)}" style="cursor:pointer;margin-bottom:3px">
           <span class="ev ${et.cls}" style="display:block;white-space:normal;word-break:break-all;overflow-wrap:break-word;font-size:11px;line-height:1.4">
-            ${ts?`<span class="ev-time">${esc(ts)}</span>`:''}${recIcon}<span style="font-size:9px;background:rgba(0,0,0,.1);border-radius:2px;padding:0 3px;margin-right:2px">${et.label}</span>${esc(ev.title)}
+            ${ts?`<span class="ev-time">${esc(ts)}</span>`:''}${recIcon}<span class="ev-badge" style="background:${et.color}">${et.label}</span>${esc(ev.title)}
           </span>
         </div>`;
       });
@@ -2501,7 +2502,7 @@ function renderGW(){
           events.filter(e=>e.memberIds&&e.memberIds.includes(u.id)&&e.date===ds&&e.memo!=='off').forEach(ev=>{
             const et=EV_TYPES[ev.type]||EV_TYPES.task;
             const ts=ev.startTime?(ev.startTime+(ev.endTime?'-'+ev.endTime:''))+' ':'';
-            const lbl=et.label?`<span style="font-size:9px;background:rgba(0,0,0,.1);border-radius:2px;padding:0 3px;margin-right:2px">${et.label}</span>`:'';
+            const lbl=et.label?`<span class="ev-badge" style="background:${et.color}">${et.label}</span>`:'';
             const recIcon=ev._recurring?'🔁 ':''; const spanIcon=ev._span?'↔ ':'';
             const reactIcon=ev.reaction?.enabled&&ev.reaction?.responses?.[u.id]?.reacted?'✓ ':'';
             html+=`<span class="ev ${et.cls}" onclick="openEvDetail('${ev.id}')" title="${esc(ev.title)}">`;
@@ -2626,7 +2627,7 @@ function renderPM(){
       const et=EV_TYPES[ev.type]||EV_TYPES.task;
       const ts=ev.startTime?(ev.startTime+(ev.endTime?'-'+ev.endTime:''))+' ':'';
       const recIcon=ev._recurring?'🔁':''; const reactIcon=ev.reaction?.enabled&&ev.reaction?.responses?.[myId()]?.reacted?'✓':'';
-      html+=`<span class="ev ${et.cls}" onclick="openEvModal('${ev.id}',null,null)"><span class="ev-time">${esc(ts)}</span>${recIcon}${reactIcon}${esc(ev.title)}</span>`;
+      html+=`<span class="ev ${et.cls}" onclick="openEvModal('${ev.id}',null,null)">${ts?`<span class="ev-time">${esc(ts)}</span>`:''}<span class="ev-badge" style="background:${et.color}">${et.label}</span>${recIcon}${reactIcon}${esc(ev.title)}</span>`;
     });
     // ToDo（自分のみ表示）
     if(isMe){
