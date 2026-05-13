@@ -75,7 +75,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
 /* ===== サイドバー ===== */
 #sidebar{position:fixed;top:42px;left:0;width:186px;bottom:0;background:#fff;border-right:1px solid #dde3ec;overflow-y:auto;z-index:900}
 .side-group{padding:8px 12px 2px;font-size:10px;color:#8899aa;font-weight:700;text-transform:uppercase;letter-spacing:.6px;margin-top:4px}
-.side-item{display:flex;align-items:center;gap:8px;padding:7px 14px;cursor:pointer;color:#445566;transition:background .15s;border-left:3px solid transparent}
+.side-item{display:flex;align-items:center;gap:8px;padding:7px 14px;cursor:pointer;color:#445566;transition:background .15s;border-left:3px solid transparent;white-space:nowrap;overflow:hidden}
 .side-item:hover{background:#f0f4fa}
 .side-item.active{background:#e8f0fe;color:#1a56db;font-weight:600;border-left-color:#1a56db}
 .side-item .si-icon{font-size:14px;width:18px;text-align:center}
@@ -1860,7 +1860,7 @@ const DOW = ['日','月','火','水','木','金','土'];
 
 function dateStr(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 function todayStr(){ return dateStr(new Date()); }
-function jstISO(){ return new Date(Date.now()+9*3600000).toISOString(); }
+function jstISO(){ return new Date().toLocaleString('sv',{timeZone:'Asia/Tokyo'}); }
 
 function getUser(id){ return load('users',[]).find(u=>u.id===id)||{name:id,deptId:''}; }
 function getDept(id){ return load('depts',[]).find(d=>d.id===id)||{name:''}; }
