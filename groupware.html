@@ -743,6 +743,10 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
             〜 <input class="f-input" id="ev-enddate" type="date" style="width:155px">
           </span>
         </div>
+        <div id="ev-extra-dates-wrap" style="display:none;margin-top:6px">
+          <div id="ev-extra-dates" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px"></div>
+          <button type="button" onclick="addExtraDate()" style="background:#e8f0fe;color:#1a56db;border:1px solid #b3ccf5;border-radius:4px;padding:4px 10px;font-size:12px;cursor:pointer">＋ 日付を追加</button>
+        </div>
       </div>
       <!-- 時刻 -->
       <div class="f-row" id="ev-time-wrap">
@@ -912,7 +916,8 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
     <div class="modal-foot" style="flex-wrap:wrap;gap:6px">
       <button class="btn-secondary" onclick="closeModal('evDetailModal')">閉じる</button>
       <button class="btn-primary" id="evDtEditBtn" onclick="editFromDetail()" style="display:none">✏️ 変更する</button>
-      <button class="btn-danger"   id="evDtDelBtn"  onclick="deleteFromDetail()" style="display:none;background:#ef4444;color:#fff;border:none;padding:6px 14px;border-radius:5px;cursor:pointer;font-size:12px;font-weight:600">🗑️ 削除する</button>
+      <button class="btn-danger"   id="evDtDelDayBtn" onclick="deleteOneDayFromDetail()" style="display:none;background:#f97316;color:#fff;border:none;padding:6px 14px;border-radius:5px;cursor:pointer;font-size:12px;font-weight:600">🗑️ この日のみ削除</button>
+      <button class="btn-danger"   id="evDtDelBtn"  onclick="deleteFromDetail()" style="display:none;background:#ef4444;color:#fff;border:none;padding:6px 14px;border-radius:5px;cursor:pointer;font-size:12px;font-weight:600">🗑️ 全期間を削除</button>
       <button class="btn-secondary" id="evDtLeaveBtn" onclick="leaveFromDetail()" style="display:none">🚪 予定から抜ける</button>
       <button class="btn-primary"   id="evDtJoinBtn"  onclick="joinFromDetail()"  style="display:none">➕ 予定に参加する</button>
     </div>
@@ -1937,7 +1942,7 @@ function deptPath(id){
 // =========================================================
 let curMod='', calSub='gw', calDate=new Date(), ciFilter='pending', ciSelId=null, ciTab='content', editEvId=null, editUserId=null, editDeptId=null, adminTab='users';
 // 予定モーダル状態
-let _evTab='normal', _evParts=[], _evFacs=[], _viewEvId=null;
+let _evTab='normal', _evParts=[], _evFacs=[], _viewEvId=null, _viewDate=null;
 
 // ===== 予定タブ =====
 function switchEvTab(tab, el){
@@ -1946,9 +1951,19 @@ function switchEvTab(tab, el){
   el.classList.add('active');
   const multi = tab==='multiday'||tab==='period';
   const rec   = tab==='recurring';
-  document.getElementById('ev-enddate-wrap').style.display   = multi?'flex':'none';
-  document.getElementById('ev-time-wrap').style.display      = tab==='multiday'?'none':'flex';
-  document.getElementById('ev-rec-section').style.display    = rec?'flex':'none';
+  document.getElementById('ev-enddate-wrap').style.display      = multi?'flex':'none';
+  document.getElementById('ev-time-wrap').style.display         = tab==='multiday'?'none':'flex';
+  document.getElementById('ev-rec-section').style.display       = rec?'flex':'none';
+  document.getElementById('ev-extra-dates-wrap').style.display  = tab==='normal'?'block':'none';
+  if(tab!=='normal') document.getElementById('ev-extra-dates').innerHTML='';
+}
+function addExtraDate(){
+  const wrap=document.getElementById('ev-extra-dates');
+  const id='ev-ed-'+Date.now();
+  const div=document.createElement('div');
+  div.style.cssText='display:flex;align-items:center;gap:4px';
+  div.innerHTML=`<input class="f-input ev-extra-date" type="date" style="width:155px"><button type="button" onclick="this.parentNode.remove()" style="background:none;border:none;color:#c53030;cursor:pointer;font-size:16px;line-height:1">×</button>`;
+  wrap.appendChild(div);
 }
 function onRecPatternChange(){
   const p=document.getElementById('ev-rec-pattern').value;
@@ -2355,7 +2370,7 @@ function renderTopWeek(s){
         const et=EV_TYPES[ev.type]||EV_TYPES.task;
         const ts=ev.startTime?(ev.startTime+(ev.endTime?'-'+ev.endTime:''))+' ':'';
         const recIcon=ev._recurring?'🔁':'';
-        html+=`<div onclick="openEvDetail('${ev.id}')" title="${esc(ev.title)}" style="cursor:pointer;margin-bottom:3px">
+        html+=`<div onclick="openEvDetail('${ev.id}','${ev.date}')" title="${esc(ev.title)}" style="cursor:pointer;margin-bottom:3px">
           <span class="ev ${et.cls}" style="display:block;white-space:normal;word-break:break-all;overflow:hidden;font-size:11px;line-height:1.4">
             ${ts?`<span class="ev-time">${esc(ts)}</span>`:''}${recIcon}<span class="ev-badge" style="background:${et.color}">${et.short||et.label}</span>${esc(ev.title)}
           </span>
@@ -2540,7 +2555,7 @@ function renderGW(){
             const lbl=et.label?`<span class="ev-badge" style="background:${et.color}">${et.short||et.label}</span>`:'';
             const recIcon=ev._recurring?'🔁 ':''; const spanIcon=ev._span?'↔ ':'';
             const reactIcon=ev.reaction?.enabled&&ev.reaction?.responses?.[u.id]?.reacted?'✓ ':'';
-            html+=`<span class="ev ${et.cls}" onclick="openEvDetail('${ev.id}')" title="${esc(ev.title)}">`;
+            html+=`<span class="ev ${et.cls}" onclick="openEvDetail('${ev.id}','${ev.date}')" title="${esc(ev.title)}">`;
             if(ts) html+=`<span class="ev-time">${esc(ts)}</span>`;
             html+=`${recIcon}${spanIcon}${reactIcon}${lbl}${esc(ev.title)}</span>`;
           });
@@ -2662,7 +2677,7 @@ function renderPM(){
       const et=EV_TYPES[ev.type]||EV_TYPES.task;
       const ts=ev.startTime?(ev.startTime+(ev.endTime?'-'+ev.endTime:''))+' ':'';
       const recIcon=ev._recurring?'🔁':''; const reactIcon=ev.reaction?.enabled&&ev.reaction?.responses?.[myId()]?.reacted?'✓':'';
-      html+=`<span class="ev ${et.cls}" onclick="openEvDetail('${ev.id}')">${ts?`<span class="ev-time">${esc(ts)}</span>`:''}<span class="ev-badge" style="background:${et.color}">${et.short||et.label}</span>${recIcon}${reactIcon}${esc(ev.title)}</span>`;
+      html+=`<span class="ev ${et.cls}" onclick="openEvDetail('${ev.id}','${ev.date}')">${ts?`<span class="ev-time">${esc(ts)}</span>`:''}<span class="ev-badge" style="background:${et.color}">${et.short||et.label}</span>${recIcon}${reactIcon}${esc(ev.title)}</span>`;
     });
     // ToDo（自分のみ表示）
     if(isMe){
@@ -2912,9 +2927,13 @@ function saveEvent(){
   if(editEvId){
     const i=events.findIndex(e=>e.id===editEvId);
     if(i>=0)events[i]=newEv;else events.push(newEv);
-    // 変更通知
     sendEvNotif(newEv.memberIds||[], '✏️', `「${newEv.title}」の予定が変更されました`);
-  } else events.push(newEv);
+  } else {
+    // 複数日選択：追加日付ぶんも個別イベントとして登録
+    const extraDates=[...document.querySelectorAll('.ev-extra-date')].map(i=>i.value).filter(v=>v);
+    events.push(newEv);
+    extraDates.forEach(d=>events.push({...newEv,id:uid(),date:d}));
+  }
   save('events',events);
   closeModal('evModal');
   renderSchedule();
@@ -2927,8 +2946,8 @@ function deleteEvent(){
 }
 
 // ===== 予定詳細（クリック表示）=====
-function openEvDetail(evId){
-  _viewEvId=evId;
+function openEvDetail(evId,calDate){
+  _viewEvId=evId; _viewDate=calDate||null;
   const events=load('events',[]);
   const ev=events.find(e=>e.id===evId);
   if(!ev){ openEvModal(evId,null,null); return; }
@@ -2958,10 +2977,14 @@ function openEvDetail(evId){
   const isMember=ev.memberIds?.includes(myId());
   const canEdit=isMember||isSystem();
   const canDelete=ev.author===myId()||isSystem();
+  const isSpan=(ev.evTab==='multiday'||ev.evTab==='period')&&ev.endDate;
   const show=id=>document.getElementById(id).style.display='inline-block';
   const hide=id=>document.getElementById(id).style.display='none';
   canEdit   ? show('evDtEditBtn')  : hide('evDtEditBtn');
-  canDelete ? show('evDtDelBtn')   : hide('evDtDelBtn');
+  if(canDelete){
+    if(isSpan&&_viewDate){ show('evDtDelDayBtn'); show('evDtDelBtn'); }
+    else { hide('evDtDelDayBtn'); show('evDtDelBtn'); }
+  } else { hide('evDtDelDayBtn'); hide('evDtDelBtn'); }
   isMember  ? show('evDtLeaveBtn') : hide('evDtLeaveBtn');
   isMember  ? hide('evDtJoinBtn')  : show('evDtJoinBtn');
   document.getElementById('evDetailModal').classList.add('open');
@@ -3049,6 +3072,38 @@ function dismissAllEvNotifs(){
 function editFromDetail(){
   closeModal('evDetailModal');
   openEvModal(_viewEvId,null,null);
+}
+function deleteOneDayFromDetail(){
+  if(!_viewDate||!confirm(`${_viewDate} のみを削除しますか？`)) return;
+  const events=load('events',[]);
+  const idx=events.findIndex(e=>e.id===_viewEvId);
+  if(idx<0) return;
+  const ev=events[idx];
+  const d=_viewDate;
+  if(d===ev.date&&d===ev.endDate){
+    // 1日しかない→全削除
+    events.splice(idx,1);
+  } else if(d===ev.date){
+    // 開始日を削除→翌日に繰り上げ
+    const next=new Date(new Date(d).getTime()+86400000);
+    ev.date=dateStr(next);
+  } else if(d===ev.endDate){
+    // 終了日を削除→前日に繰り下げ
+    const prev=new Date(new Date(d).getTime()-86400000);
+    ev.endDate=dateStr(prev);
+    if(ev.date===ev.endDate) ev.evTab='normal';
+  } else {
+    // 中間日→2つに分割
+    const prev=new Date(new Date(d).getTime()-86400000);
+    const next=new Date(new Date(d).getTime()+86400000);
+    const ev2={...ev,id:uid(),date:dateStr(next)};
+    ev.endDate=dateStr(prev);
+    if(ev.date===ev.endDate) ev.evTab='normal';
+    if(ev2.date===ev2.endDate) ev2.evTab='normal';
+    events.splice(idx+1,0,ev2);
+  }
+  save('events',events);
+  closeModal('evDetailModal'); renderSchedule();
 }
 function deleteFromDetail(){
   if(!confirm('この予定を削除しますか？')) return;
