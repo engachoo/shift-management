@@ -1692,7 +1692,7 @@ function initData(){
 
   // ---- ユーザー：不足分だけ追加 ----
   const defaultUsers = [
-    {id:'admin',       loginId:'admin',       password:'admin123', name:'システム管理者', deptId:'d1a', role:'system',  active:true},
+    {id:'admin',       loginId:'admin',       password:'admin123', name:'システム管理者', deptId:'',    role:'system',  active:true},
     {id:'iwashimizu',  loginId:'iwashimizu',  password:'pass123',  name:'岩清水 克尚',   deptId:'d1a', role:'admin',   active:true},
     {id:'hayashi',     loginId:'hayashi',     password:'pass123',  name:'林 幹根',       deptId:'d1a', role:'user',    active:true},
     {id:'onda',        loginId:'onda',        password:'pass123',  name:'恩田 賢一',     deptId:'d1a', role:'user',    active:true},
@@ -1714,6 +1714,8 @@ function initData(){
   });
 
   // ---- ロール再構築マイグレーション（一回限り） ----
+  // システム管理者の所属を空に（独立）
+  { const users=load('users',[]); const a=users.find(u=>u.loginId==='admin'); if(a&&a.deptId){a.deptId='';save('users',users);} }
   // admin loginId ユーザーを system に、それ以外の role=admin を admin のまま維持
   if(load('migrated_role_v2','')!=='1'){
     users.forEach(u=>{
@@ -4076,7 +4078,7 @@ function renderDeptTree(){
   const depts=load('depts',[]);
   const users=load('users',[]);
   function countMembers(deptId){
-    const direct=users.filter(u=>u.deptId===deptId).length;
+    const direct=users.filter(u=>u.deptId===deptId&&u.loginId!=='admin').length;
     const children=depts.filter(d=>d.parentId===deptId);
     return direct+children.reduce((s,c)=>s+countMembers(c.id),0);
   }
