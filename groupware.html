@@ -418,8 +418,9 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
   .month-wrap .today-circle{width:18px;height:18px;font-size:10px}
   .modal{width:98vw!important;max-width:98vw!important}
   .ci-detail,.ci-list{min-width:0}
-  #circularView{flex-direction:column!important}
-  .ci-list{width:100%!important;max-height:180px}
+  #circularView{flex-direction:column!important;height:auto!important}
+  .ci-list{width:100%!important;max-height:32vh;overflow-y:auto}
+  .ci-detail{max-height:60vh;overflow-y:auto}
   .top-hdr-btn{font-size:11px;padding:4px 8px}
   .top-header{padding:12px 14px}
   .top-header-title{font-size:14px}
@@ -2047,8 +2048,12 @@ function expandEvents(events, startDs, endDs){
   return result;
 }
 
-function showMod(mod,sub){
+function showMod(mod,sub,_fromPop){
   curMod=mod;
+  // ブラウザ履歴に記録（popstate 経由の場合は記録しない）
+  if(!_fromPop){
+    history.pushState({mod,sub:sub||null},'','');
+  }
   closeSidebar(); // スマホ：メニュー選択後に自動で閉じる
   document.querySelectorAll('#mainArea>div').forEach(d=>d.style.display='none');
   document.querySelectorAll('.side-item').forEach(d=>d.classList.remove('active'));
@@ -4060,7 +4065,21 @@ function startApp(){
   const prevLogin = load('lastLogin_'+uid, null);
   save('lastLogin_'+uid, new Date().toISOString());
   startActivityTimer(); // 自動ログアウトタイマー開始（管理者以外）
-  showMod('top');
+  // 初期履歴エントリを差し替え（ブラウザ戻るでアプリ内に留まる）
+  history.replaceState({mod:'top',sub:null},'','');
+  // popstate：ブラウザの戻る/進むをアプリ内ナビに横取り
+  window.addEventListener('popstate',function(e){
+    if(!getS()) return; // 未ログインは無視
+    const st=e.state;
+    if(st&&st.mod){
+      showMod(st.mod, st.sub||undefined, true);
+    } else {
+      // stateがない場合はホームへ（離脱させない）
+      history.replaceState({mod:'top',sub:null},'','');
+      showMod('top',undefined,true);
+    }
+  });
+  showMod('top',undefined,true); // 初期表示は履歴を積まない
 }
 
 // =========================================================
