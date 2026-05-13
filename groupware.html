@@ -1528,6 +1528,22 @@ function startRealtimeSync(){
     console.warn('Firestoreリアルタイム同期エラー:', err);
   });
 }
+// UTC→JST タイムスタンプ一括修正（初回のみ）
+function _shiftUTCtoJST(ts){
+  if(!ts||typeof ts!=='string'||!/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}/.test(ts)) return ts;
+  const d=new Date(ts.replace(' ','T')+':00Z');
+  return isNaN(d)?ts:d.toLocaleString('sv',{timeZone:'Asia/Tokyo'}).slice(0,16);
+}
+function migrateTimestamps(){
+  if(load('_tz_migrated_v1',false)) return;
+  const notifs=load('evNotifs',[]);
+  if(notifs.length){ notifs.forEach(n=>{n.createdAt=_shiftUTCtoJST(n.createdAt);}); save('evNotifs',notifs); }
+  const cis=load('cis',[]);
+  if(cis.length){ cis.forEach(c=>{c.createdAt=_shiftUTCtoJST(c.createdAt);if(c.responses)Object.values(c.responses).forEach(r=>{if(r.updatedAt)r.updatedAt=_shiftUTCtoJST(r.updatedAt);if(r.at)r.at=_shiftUTCtoJST(r.at);});}); save('cis',cis); }
+  const bls=load('bulletins',[]);
+  if(bls.length){ bls.forEach(b=>{b.createdAt=_shiftUTCtoJST(b.createdAt);if(b.reactions)Object.values(b.reactions).forEach(r=>{if(r.at)r.at=_shiftUTCtoJST(r.at);});}); save('bulletins',bls); }
+  save('_tz_migrated_v1',true);
+}
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
@@ -4108,6 +4124,7 @@ function startApp(){
   }
 
   initData(); // デフォルトデータ投入（未存在キーのみ）
+  migrateTimestamps(); // UTC→JSTタイムスタンプ修正（初回のみ）
   startRealtimeSync(); // 他ユーザーの変更をリアルタイムで反映
 
   document.getElementById('loadingScreen').style.display = 'none';
