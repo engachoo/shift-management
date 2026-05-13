@@ -2235,15 +2235,14 @@ function renderTop(){
     </div>
     ${evNotifs.length?`<div class="top-card" style="margin-bottom:12px">
       <div class="top-card-hdr">
-        <span class="tc-icon">🔔</span>予定のお知らせ
+        <span class="tc-icon">🔔</span>更新・変更の通知
         <span class="tc-count" style="background:#fef2f2;color:#dc2626;border:1px solid #fca5a5">${evNotifs.length}件</span>
       </div>
       ${evNotifs.slice(0,5).map(n=>`
-        <div class="top-item" id="evnotif-${n.id}">
-          <div class="top-item-icon">${n.icon||'📅'}</div>
-          <div class="top-item-body">
-            <div class="top-item-title">${esc(n.message)}</div>
-            <div class="top-item-meta">${esc(n.actorName)} ・ ${n.createdAt}</div>
+        <div class="top-item" id="evnotif-${n.id}" style="align-items:center;padding:8px 14px">
+          <div class="top-item-icon" style="font-size:15px;margin-top:0">${n.icon||'📅'}</div>
+          <div style="flex:1;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:13px;color:#2d3748">
+            <span style="font-weight:600">${esc(n.message)}</span><span style="color:#8899aa;font-size:11px;margin-left:10px">${esc(n.actorName)} ・ ${n.createdAt}</span>
           </div>
           <button class="notif-dismiss" onclick="dismissEvNotif('${n.id}')">閉じる</button>
         </div>`).join('')}
