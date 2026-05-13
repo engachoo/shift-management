@@ -1113,7 +1113,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
     </div>
     <div class="modal-foot">
       <button class="btn-secondary" onclick="closeModal('tdModal')">キャンセル</button>
-      <button class="btn-primary" onclick="saveTd()">追加</button>
+      <button class="btn-primary" id="tdSaveBtn" onclick="saveTd()">追加</button>
     </div>
   </div>
 </div>
@@ -3664,7 +3664,10 @@ function renderTd(){
           ${requesterName?`<span class="td-requester-badge">📨 依頼: ${esc(requesterName)}</span>`:''}
         </div>
       </div>
-      ${canDel?`<button onclick="delTd('${t.id}')" style="background:none;border:none;color:#c53030;cursor:pointer;font-size:18px;flex-shrink:0" title="削除">×</button>`:''}
+      <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">
+        ${canDel?`<button onclick="editTd('${t.id}')" style="background:none;border:none;color:#1a56db;cursor:pointer;font-size:15px;line-height:1" title="編集">✏️</button>`:''}
+        ${canDel?`<button onclick="delTd('${t.id}')" style="background:none;border:none;color:#c53030;cursor:pointer;font-size:18px;line-height:1" title="削除">×</button>`:''}
+      </div>
     </div>`;
   }
 
@@ -3676,38 +3679,54 @@ function renderTd(){
 function toggleTd(id,done){const tds=load('todos',[]);const t=tds.find(x=>x.id===id);if(t){t.done=!!done;if(done&&!t.doneAt)t.doneAt=dateStr(new Date());if(!done)t.doneAt=null;}save('todos',tds);renderTd();renderSchedule&&curMod==='schedule'&&renderSchedule();}
 function delTd(id){save('todos',load('todos',[]).filter(t=>t.id!==id));renderTd();}
 
-function openTdModal(){
-  document.getElementById('tdModalTitle').textContent='ToDo 追加';
-  document.getElementById('td-title').value='';
-  document.getElementById('td-due').value='';
-  document.getElementById('td-due-time').value='';
-  document.getElementById('td-pri').value='med';
-  document.getElementById('td-memo').value='';
-  // 担当者ドロップダウン構築
+let _editTdId=null;
+function openTdModal(id){
+  _editTdId=id||null;
+  const t=id?load('todos',[]).find(x=>x.id===id):null;
+  document.getElementById('tdModalTitle').textContent=t?'ToDo 編集':'ToDo 追加';
+  document.getElementById('td-title').value=t?t.title:'';
+  document.getElementById('td-due').value=t?(t.due||''):'';
+  document.getElementById('td-due-time').value=t?(t.dueTime||''):'';
+  document.getElementById('td-pri').value=t?(t.priority||'med'):'med';
+  document.getElementById('td-memo').value=t?(t.memo||''):'';
   const users=normalUsers();
+  const assigneeVal=t?t.userId:myId();
   document.getElementById('td-assignee').innerHTML=
     `<option value="${myId()}">自分（${esc(getUser(myId()).name)}）</option>`+
     users.filter(u=>u.id!==myId()).map(u=>`<option value="${u.id}">${esc(u.name)}</option>`).join('');
+  document.getElementById('td-assignee').value=assigneeVal;
+  document.getElementById('tdSaveBtn').textContent=t?'保存':'追加';
   document.getElementById('tdModal').classList.add('open');
 }
+function editTd(id){openTdModal(id);}
 
 function saveTd(){
   const title=document.getElementById('td-title').value.trim();
   if(!title){alert('タスク名を入力してください');return;}
   const assigneeId=document.getElementById('td-assignee').value;
   const tds=load('todos',[]);
-  const entry={
-    id:uid(),title,done:false,
-    priority:document.getElementById('td-pri').value,
-    due:document.getElementById('td-due').value,
-    dueTime:document.getElementById('td-due-time').value,
-    memo:document.getElementById('td-memo').value.trim(),
-    userId:assigneeId,
-    assignedBy:myId()
-  };
-  tds.unshift(entry);
+  if(_editTdId){
+    const t=tds.find(x=>x.id===_editTdId);
+    if(t){
+      t.title=title;
+      t.priority=document.getElementById('td-pri').value;
+      t.due=document.getElementById('td-due').value;
+      t.dueTime=document.getElementById('td-due-time').value;
+      t.memo=document.getElementById('td-memo').value.trim();
+      t.userId=assigneeId;
+    }
+  } else {
+    tds.unshift({
+      id:uid(),title,done:false,
+      priority:document.getElementById('td-pri').value,
+      due:document.getElementById('td-due').value,
+      dueTime:document.getElementById('td-due-time').value,
+      memo:document.getElementById('td-memo').value.trim(),
+      userId:assigneeId,
+      assignedBy:myId()
+    });
+  }
   save('todos',tds);closeModal('tdModal');
-  // 依頼先が自分以外なら依頼タブへ
   if(assigneeId!==myId()) switchTdTab('delegated'); else switchTdTab('mine');
   renderTd();
 }
