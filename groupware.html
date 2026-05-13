@@ -1109,16 +1109,34 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
     <div class="modal-hdr"><h3 id="tdModalTitle">ToDo 追加</h3><button class="modal-close" onclick="closeModal('tdModal')">×</button></div>
     <div class="modal-body">
       <div class="f-row"><label class="f-label">タスク名 *</label><input class="f-input" id="td-title" placeholder="タスク名"></div>
-      <div class="f-row"><label class="f-label">担当者</label>
-        <select class="f-select" id="td-assignee"></select>
+      <div class="f-row">
+        <label class="f-label">担当者（複数可）</label>
+        <div id="td-assignee-list" style="max-height:130px;overflow-y:auto;border:1.5px solid #d1d5db;border-radius:5px;padding:6px 10px"></div>
       </div>
-      <div class="f-row-2">
-        <div><label class="f-label">優先度</label>
-          <select class="f-select" id="td-pri"><option value="med">中</option><option value="high">高</option><option value="low">低</option></select>
-        </div>
-        <div><label class="f-label">期日</label><div style="display:flex;gap:6px;align-items:center"><input class="f-input" id="td-due" type="date" style="flex:1"><select class="f-select" id="td-due-h" style="width:72px"></select><select class="f-select" id="td-due-m" style="width:64px"></select></div></div>
+      <div class="f-row" style="display:flex;align-items:center;gap:10px">
+        <label class="f-label" style="margin:0;white-space:nowrap">優先度</label>
+        <select class="f-select" id="td-pri" style="width:80px"><option value="med">中</option><option value="high">高</option><option value="low">低</option></select>
       </div>
+      <div class="f-row"><label class="f-label">期日</label><div style="display:flex;gap:6px;align-items:center"><input class="f-input" id="td-due" type="date" style="flex:1"><select class="f-select" id="td-due-h" style="width:72px"></select><select class="f-select" id="td-due-m" style="width:64px"></select></div></div>
       <div class="f-row"><label class="f-label">メモ</label><input class="f-input" id="td-memo" placeholder="任意"></div>
+      <div class="f-row" style="display:flex;align-items:center;gap:10px">
+        <label class="f-label" style="margin:0;white-space:nowrap">返信ボタン</label>
+        <select class="f-select" id="td-reply-type">
+          <option value="">なし</option>
+          <option value="attend">① 出席・欠席</option>
+          <option value="done">② 完了</option>
+          <option value="memo">③ フリーメモで回答</option>
+        </select>
+      </div>
+      <div class="f-row">
+        <label class="f-label">添付ファイル</label>
+        <div>
+          <label style="cursor:pointer;display:inline-block;background:#e8f0fe;color:#1a56db;border:1px solid #b3ccf5;border-radius:4px;padding:4px 10px;font-size:12px">
+            📎 ファイルを選択<input type="file" id="td-files" multiple style="display:none" onchange="onTdFileChange()">
+          </label>
+          <div id="td-file-list" style="margin-top:4px;display:flex;flex-wrap:wrap;gap:4px"></div>
+        </div>
+      </div>
     </div>
     <div class="modal-foot">
       <button class="btn-secondary" onclick="closeModal('tdModal')">キャンセル</button>
@@ -3712,6 +3730,22 @@ function renderTd(){
     const canDel   = t.assignedBy===me||!t.assignedBy;
     const statusIcon = t.done ? '✓' : '';
     const statusLbl  = t.done ? '完了' : '未着手';
+    // 返信UI
+    const canRespond = t.userId===me && t.assignedBy && t.assignedBy!==me && t.replyType;
+    let replyHtml='';
+    if(canRespond){
+      if(t.response){
+        replyHtml=`<div style="margin-top:5px;font-size:11px;color:#059669;background:#f0fdf4;border-radius:3px;padding:2px 6px;display:inline-block">✓ ${esc(t.response.status)}${t.response.memo?' / '+esc(t.response.memo):''}</div>`;
+      } else if(t.replyType==='attend'){
+        replyHtml=`<div style="margin-top:5px;display:flex;gap:4px"><button onclick="respondTd('${t.id}','出席','')" style="background:#dbeafe;color:#1e40af;border:1px solid #93c5fd;border-radius:3px;padding:2px 10px;font-size:12px;cursor:pointer">出席</button><button onclick="respondTd('${t.id}','欠席','')" style="background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5;border-radius:3px;padding:2px 10px;font-size:12px;cursor:pointer">欠席</button></div>`;
+      } else if(t.replyType==='done'){
+        replyHtml=`<div style="margin-top:5px"><button onclick="respondTd('${t.id}','完了','')" style="background:#d1fae5;color:#065f46;border:1px solid #6ee7b7;border-radius:3px;padding:2px 12px;font-size:12px;cursor:pointer">✓ 完了</button></div>`;
+      } else if(t.replyType==='memo'){
+        replyHtml=`<div style="margin-top:5px;display:flex;gap:4px"><input type="text" id="td-resp-${t.id}" placeholder="回答を入力" style="flex:1;border:1px solid #ccd;border-radius:3px;padding:3px 6px;font-size:12px"><button onclick="respondTdMemo('${t.id}')" style="background:#e8f0fe;color:#1a56db;border:1px solid #b3ccf5;border-radius:3px;padding:2px 8px;font-size:12px;cursor:pointer">送信</button></div>`;
+      }
+    }
+    // ファイル
+    const filesHtml=(t.files&&t.files.length)?`<div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:3px">${t.files.map((f,i)=>`<span onclick="downloadTdFile('${t.id}',${i})" style="cursor:pointer;font-size:11px;background:#f0f4fa;border:1px solid #ccd;border-radius:3px;padding:1px 6px">📎 ${esc(f.name)}</span>`).join('')}</div>`:'';
     return `<div class="td-item ${t.done?'done':''} td-pri-${t.priority||'med'}">
       <div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex-shrink:0">
         <button class="td-status-btn ${t.done?'done':''}"
@@ -3727,6 +3761,8 @@ function renderTd(){
           ${assigneeName?`<span class="td-assignee-badge">👤 担当: ${esc(assigneeName)}</span>`:''}
           ${requesterName?`<span class="td-requester-badge">📨 依頼: ${esc(requesterName)}</span>`:''}
         </div>
+        ${filesHtml}
+        ${replyHtml}
       </div>
       <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">
         ${canDel?`<button onclick="editTd('${t.id}')" style="background:none;border:none;color:#1a56db;cursor:pointer;font-size:15px;line-height:1" title="編集">✏️</button>`:''}
@@ -3744,9 +3780,39 @@ function toggleTd(id,done){const tds=load('todos',[]);const t=tds.find(x=>x.id==
 function delTd(id){save('todos',load('todos',[]).filter(t=>t.id!==id));renderTd();}
 
 
-let _editTdId=null;
+let _editTdId=null, _tdFiles=[];
+function onTdFileChange(){
+  const input=document.getElementById('td-files');
+  if(!input)return;
+  [...input.files].forEach(f=>{
+    const reader=new FileReader();
+    reader.onload=e=>{ _tdFiles.push({name:f.name,type:f.type,size:f.size,data:e.target.result}); renderTdFileList(); };
+    reader.readAsDataURL(f);
+  });
+  input.value='';
+}
+function renderTdFileList(){
+  const el=document.getElementById('td-file-list');
+  if(!el)return;
+  el.innerHTML=_tdFiles.map((f,i)=>`<span class="ap-file-tag">📄 ${esc(f.name)}<button onclick="_tdFiles.splice(${i},1);renderTdFileList()">×</button></span>`).join('');
+}
+function downloadTdFile(tdId,fileIdx){
+  const t=load('todos',[]).find(x=>x.id===tdId);
+  if(!t||!t.files||!t.files[fileIdx])return;
+  const f=t.files[fileIdx];
+  const a=document.createElement('a'); a.href=f.data; a.download=f.name; a.click();
+}
+function respondTd(id,status,memo){
+  const tds=load('todos',[]); const t=tds.find(x=>x.id===id);
+  if(t){ t.response={status,memo:memo||'',at:jstISO().slice(0,16)}; }
+  save('todos',tds); renderTd();
+}
+function respondTdMemo(id){
+  const val=document.getElementById('td-resp-'+id)?.value?.trim()||'';
+  respondTd(id,'メモ回答',val);
+}
 function openTdModal(id){
-  _editTdId=id||null;
+  _editTdId=id||null; _tdFiles=[];
   const t=id?load('todos',[]).find(x=>x.id===id):null;
   document.getElementById('tdModalTitle').textContent=t?'ToDo 編集':'ToDo 追加';
   document.getElementById('td-title').value=t?t.title:'';
@@ -3754,12 +3820,14 @@ function openTdModal(id){
   buildTimeSelects('td-due',t?(t.dueTime||''):'');
   document.getElementById('td-pri').value=t?(t.priority||'med'):'med';
   document.getElementById('td-memo').value=t?(t.memo||''):'';
+  document.getElementById('td-reply-type').value=t?(t.replyType||''):'';
+  renderTdFileList();
+  // 担当者チェックボックス
   const users=normalUsers();
-  const assigneeVal=t?t.userId:myId();
-  document.getElementById('td-assignee').innerHTML=
-    `<option value="${myId()}">自分（${esc(getUser(myId()).name)}）</option>`+
-    users.filter(u=>u.id!==myId()).map(u=>`<option value="${u.id}">${esc(u.name)}</option>`).join('');
-  document.getElementById('td-assignee').value=assigneeVal;
+  const assignedIds=t?(Array.isArray(t.assigneeIds)?t.assigneeIds:[t.userId]):[myId()];
+  document.getElementById('td-assignee-list').innerHTML=
+    `<label style="display:flex;align-items:center;gap:6px;padding:3px 0;font-size:13px"><input type="checkbox" class="td-assignee-cb" value="${myId()}" ${assignedIds.includes(myId())?'checked':''}> 自分（${esc(getUser(myId()).name)}）</label>`+
+    users.filter(u=>u.id!==myId()).map(u=>`<label style="display:flex;align-items:center;gap:6px;padding:3px 0;font-size:13px"><input type="checkbox" class="td-assignee-cb" value="${u.id}" ${assignedIds.includes(u.id)?'checked':''}> ${esc(u.name)}</label>`).join('');
   document.getElementById('tdSaveBtn').textContent=t?'保存':'追加';
   document.getElementById('tdModal').classList.add('open');
 }
@@ -3768,31 +3836,26 @@ function editTd(id){openTdModal(id);}
 function saveTd(){
   const title=document.getElementById('td-title').value.trim();
   if(!title){alert('タスク名を入力してください');return;}
-  const assigneeId=document.getElementById('td-assignee').value;
+  const checkedIds=[...document.querySelectorAll('.td-assignee-cb:checked')].map(cb=>cb.value);
+  if(!checkedIds.length) checkedIds.push(myId());
+  const pri=document.getElementById('td-pri').value;
+  const due=document.getElementById('td-due').value;
+  const dueTime=getTimeVal('td-due');
+  const memo=document.getElementById('td-memo').value.trim();
+  const replyType=document.getElementById('td-reply-type').value;
+  const files=[..._tdFiles];
   const tds=load('todos',[]);
   if(_editTdId){
     const t=tds.find(x=>x.id===_editTdId);
-    if(t){
-      t.title=title;
-      t.priority=document.getElementById('td-pri').value;
-      t.due=document.getElementById('td-due').value;
-      t.dueTime=getTimeVal('td-due');
-      t.memo=document.getElementById('td-memo').value.trim();
-      t.userId=assigneeId;
-    }
+    if(t){ t.title=title; t.priority=pri; t.due=due; t.dueTime=dueTime; t.memo=memo; t.replyType=replyType; if(files.length)t.files=files; }
   } else {
-    tds.unshift({
-      id:uid(),title,done:false,
-      priority:document.getElementById('td-pri').value,
-      due:document.getElementById('td-due').value,
-      dueTime:getTimeVal('td-due'),
-      memo:document.getElementById('td-memo').value.trim(),
-      userId:assigneeId,
-      assignedBy:myId()
+    checkedIds.forEach(assigneeId=>{
+      tds.unshift({id:uid(),title,done:false,priority:pri,due,dueTime,memo,replyType,files,response:null,userId:assigneeId,assignedBy:myId(),assigneeIds:checkedIds});
     });
   }
-  save('todos',tds);closeModal('tdModal');
-  if(assigneeId!==myId()) switchTdTab('delegated'); else switchTdTab('mine');
+  save('todos',tds); closeModal('tdModal');
+  const hasOther=checkedIds.some(id=>id!==myId());
+  if(hasOther) switchTdTab('delegated'); else switchTdTab('mine');
   renderTd();
 }
 
