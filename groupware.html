@@ -1860,6 +1860,8 @@ const DOW = ['日','月','火','水','木','金','土'];
 
 function dateStr(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 function todayStr(){ return dateStr(new Date()); }
+function jstISO(){ return new Date(Date.now()+9*3600000).toISOString(); }
+
 function getUser(id){ return load('users',[]).find(u=>u.id===id)||{name:id,deptId:''}; }
 function getDept(id){ return load('depts',[]).find(d=>d.id===id)||{name:''}; }
 function activeUsers(){ return load('users',[]).filter(u=>u.active); }
@@ -2365,7 +2367,7 @@ function confirmBl(blId){
   const b=bls.find(x=>x.id===blId);
   if(b){
     if(!b.reactions) b.reactions={};
-    b.reactions[uid]={confirmed:true,at:new Date().toISOString().slice(0,16).replace('T',' ')};
+    b.reactions[uid]={confirmed:true,at:jstISO().slice(0,16).replace('T',' ')};
     save('bulletins',bls);
   }
   // 該当行をフェードアウトして消す
@@ -2955,7 +2957,7 @@ function sendEvNotif(targetUserIds, icon, message){
     id:uid(), icon, message,
     actorId:myId(), actorName:actor.name||myId(),
     targetUserIds: targetUserIds.filter(id=>id!==myId()), // 自分以外に通知
-    createdAt:new Date().toISOString().slice(0,16).replace('T',' '),
+    createdAt:jstISO().slice(0,16).replace('T',' '),
     readBy:[]
   });
   // 古い通知は100件まで
@@ -3064,7 +3066,7 @@ function doReaction(evId){
   const ev=events.find(e=>e.id===evId);
   if(!ev||!ev.reaction) return;
   if(!ev.reaction.responses) ev.reaction.responses={};
-  ev.reaction.responses[myId()]={reacted:true,at:new Date().toISOString().slice(0,16).replace('T',' ')};
+  ev.reaction.responses[myId()]={reacted:true,at:jstISO().slice(0,16).replace('T',' ')};
   save('events',events);
   openEvDetail(evId); // 再描画
 }
@@ -3207,7 +3209,7 @@ function respondCi(id, status, label){
   c.responses[myId()].status=status;
   c.responses[myId()].statusLabel=label||status;
   c.responses[myId()].comment=comment;
-  c.responses[myId()].updatedAt=new Date().toISOString().slice(0,16).replace('T',' ');
+  c.responses[myId()].updatedAt=jstISO().slice(0,16).replace('T',' ');
   save('circulars',cis);
   // 申請者に通知（自分が申請者の場合は不要なので sendEvNotif 内でフィルタ済み）
   if(c.author && c.author !== myId()){
@@ -3380,7 +3382,7 @@ function saveCi(){
   const recipients=[..._ciRecips];
   if(!recipients.includes(myId())) recipients.unshift(myId());
   const responses={};
-  const now=new Date().toISOString().slice(0,16).replace('T',' ');
+  const now=jstISO().slice(0,16).replace('T',' ');
   recipients.forEach(id=>{
     responses[id]=id===myId()
       ?{status:'confirmed',statusLabel:'確認済',comment:'',updatedAt:now}
@@ -3492,7 +3494,7 @@ function reactBl(id){
   if(myR?.confirmed){
     b.reactions[myId()]={confirmed:false,at:null};
   } else {
-    b.reactions[myId()]={confirmed:true,at:new Date().toISOString().slice(0,16).replace('T',' ')};
+    b.reactions[myId()]={confirmed:true,at:jstISO().slice(0,16).replace('T',' ')};
   }
   save('bulletins',bls);
   renderBl();
@@ -3572,7 +3574,7 @@ function saveBl(){
   const targetId=target!=='all'?document.getElementById('bl-target-id').value:'';
   const targetRole=target==='hierarchy'?document.getElementById('bl-target-role').value:'all';
   const bls=load('bulletins',[]);
-  bls.unshift({id:uid(),title,body,author:myId(),createdAt:new Date().toISOString().slice(0,16).replace('T',' '),reactions:{},target,targetId,targetRole,files:[..._blFiles]});
+  bls.unshift({id:uid(),title,body,author:myId(),createdAt:jstISO().slice(0,16).replace('T',' '),reactions:{},target,targetId,targetRole,files:[..._blFiles]});
   save('bulletins',bls);closeModal('blModal');renderBl();
 }
 function blVisibleToMe(b){
@@ -4071,7 +4073,7 @@ function startApp(){
   // 前回ログイン時刻を保存してからTOPへ
   const uid = s.userId;
   const prevLogin = load('lastLogin_'+uid, null);
-  save('lastLogin_'+uid, new Date().toISOString());
+  save('lastLogin_'+uid, jstISO());
   startActivityTimer(); // 自動ログアウトタイマー開始（管理者以外）
   // 初期履歴エントリを差し替え（ブラウザ戻るでアプリ内に留まる）
   history.replaceState({mod:'top',sub:null},'','');

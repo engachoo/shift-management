@@ -650,6 +650,8 @@ function getNextMonth(){const n=new Date();const y=n.getMonth()===11?n.getFullYe
 function getDays(y,m){return new Date(y,m,0).getDate();}
 function getFirstDow(y,m){return new Date(y,m-1,1).getDay();}
 function getDow(y,m,d){return new Date(y,m-1,d).getDay();}
+function jstISO(){ return new Date(Date.now()+9*3600000).toISOString(); }
+
 function dk(y,m,d){return`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;}
 const JP_HOLIDAYS={
   '2025-01-01':'元日','2025-01-13':'成人の日','2025-02-11':'建国記念の日',
@@ -1572,7 +1574,7 @@ function deleteStaffConfirm(id,isRetired){
 function retireStaff(id){
   const u=findUser(id);if(!u)return;
   if(!confirm(`「${u.name}」を退職処理しますか？`))return;
-  const rDate=prompt('退職日（例：2025-03-31）',new Date().toISOString().slice(0,10))||new Date().toISOString().slice(0,10);
+  const rDate=prompt('退職日（例：2025-03-31）',jstISO().slice(0,10))||jstISO().slice(0,10);
   retiredStaff.push({...u,retireDate:rDate,retired:true});
   staffData=staffData.filter(s=>s.id!==id);
   delete shiftTable[id];delete kyukaRequests[id];delete partRequests[id];delete partSubmitted[id];
