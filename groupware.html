@@ -2178,9 +2178,12 @@ function renderTop(){
     ? prevLogin.toLocaleDateString('ja-JP',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})+'のログイン以降'
     : '最新情報';
 
+  const _60dAgo = new Date(Date.now()-60*24*3600000);
+  const recentPendingCis = pendingCis.filter(c=>new Date(c.createdAt)>=_60dAgo).sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
   function ciItems(){
     if(!pendingCis.length) return `<div class="top-empty">未対応の申請はありません</div>`;
-    return pendingCis.slice(0,5).map(c=>`
+    const show = recentPendingCis.length ? recentPendingCis : pendingCis;
+    const items = show.slice(0,3).map(c=>`
       <div class="top-item" onclick="showMod('circular')">
         <div class="top-item-icon">📝</div>
         <div class="top-item-body">
@@ -2189,6 +2192,9 @@ function renderTop(){
         </div>
         ${newCis.includes(c)?'<div class="top-item-badge new">NEW</div>':'<div class="top-item-badge info">未対応</div>'}
       </div>`).join('');
+    const rest = pendingCis.length - show.slice(0,3).length;
+    const more = rest>0?`<div onclick="showMod('circular')" style="text-align:right;padding:6px 14px;font-size:11px;color:#1a56db;cursor:pointer">他${rest}件を見る →</div>`:'';
+    return items+more;
   }
 
   // 未確認（reactions で confirmed でないもの）
