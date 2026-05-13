@@ -1025,8 +1025,11 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
           <td class="ap-val" colspan="3">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
               <span style="font-size:12px;color:#445;font-weight:600">プリセット：</span>
-              <button class="ap-dual-btn" onclick="applyCiPreset('approval')" title="承認・保留・見送り">① 承認・保留・見送り</button>
-              <button class="ap-dual-btn" onclick="applyCiPreset('confirm')" title="確認済・保留">② 確認済・保留</button>
+              <select id="ci-preset-sel" onchange="applyCiPreset(this.value)" style="border:1px solid #ccd;border-radius:4px;padding:5px 10px;font-size:12px;background:#fff;cursor:pointer">
+                <option value="approval">① 承認・保留・見送り</option>
+                <option value="confirm">② 確認済・確認中</option>
+                <option value="custom">カスタム</option>
+              </select>
             </div>
             <div id="ci-custom-tags" style="margin-bottom:6px"></div>
             <div class="ap-custom-add">
@@ -3401,7 +3404,8 @@ function downloadCiFile(ciId,fileIdx){
 // ----- 返信ボタン プリセット -----
 function applyCiPreset(type){
   if(type==='approval') _ciCustomBtns=['承認','保留','見送り'];
-  else if(type==='confirm') _ciCustomBtns=['確認済','保留'];
+  else if(type==='confirm') _ciCustomBtns=['確認済','確認中'];
+  // custom の場合は現在のタグをそのまま維持
   renderCiCustomTags();
 }
 
@@ -3431,7 +3435,9 @@ function removeCiCustomBtn(idx){
 // ----- モーダル開閉・保存 -----
 function openCiModal(){
   _ciRecips=[];
-  _ciCustomBtns=['確認中','確認済'];
+  _ciCustomBtns=['承認','保留','見送り'];
+  const presetSel=document.getElementById('ci-preset-sel');
+  if(presetSel) presetSel.value='approval';
   _ciFiles=[];
   document.getElementById('ci-title').value='';
   document.getElementById('ci-body').value='';
