@@ -1107,7 +1107,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
         <div><label class="f-label">優先度</label>
           <select class="f-select" id="td-pri"><option value="med">中</option><option value="high">高</option><option value="low">低</option></select>
         </div>
-        <div><label class="f-label">期日</label><input class="f-input" id="td-due" type="date"></div>
+        <div><label class="f-label">期日</label><div style="display:flex;gap:6px"><input class="f-input" id="td-due" type="date" style="flex:1"><input class="f-input" id="td-due-time" type="time" style="width:96px"></div></div>
       </div>
       <div class="f-row"><label class="f-label">メモ</label><input class="f-input" id="td-memo" placeholder="任意"></div>
     </div>
@@ -2154,7 +2154,8 @@ function renderTop(){
   const todos = load('todos',[]).filter(t=>t.userId===myId()&&!t.done);
   const urgentTodos = todos.filter(t=>{
     if(!t.due) return false;
-    const diff=(new Date(t.due)-now)/(1000*60*60*24);
+    const dd=t.dueTime?new Date(t.due+'T'+t.dueTime+':00'):new Date(t.due+'T23:59:59');
+    const diff=(dd-now)/(1000*60*60*24);
     return diff<=3;
   });
 
@@ -2213,8 +2214,9 @@ function renderTop(){
       return `<div class="top-empty">期限が迫っているToDoはありません<br><span style="font-size:11px">（未完了: ${todos.length}件）</span></div>`;
     }
     return urgentTodos.slice(0,5).map(t=>{
-      const diff = t.due ? Math.ceil((new Date(t.due)-now)/(1000*60*60*24)) : null;
-      const label = diff===null?'':'期限: '+t.due+(diff<=0?' 【期限切れ】':diff===0?' 【今日】':' (あと'+diff+'日)');
+      const _dd=t.due?(t.dueTime?new Date(t.due+'T'+t.dueTime+':00'):new Date(t.due+'T23:59:59')):null;
+      const diff = _dd ? Math.ceil((_dd-now)/(1000*60*60*24)) : null;
+      const label = diff===null?'':'期限: '+t.due+(t.dueTime?' '+t.dueTime:'')+(diff<=0?' 【期限切れ】':diff===0?' 【今日】':' (あと'+diff+'日)');
       return `<div class="top-item" onclick="showMod('todo')">
         <div class="top-item-icon">${diff<=0?'🔴':'🟡'}</div>
         <div class="top-item-body">
@@ -2433,7 +2435,7 @@ function updateBadges(){
   if(topBadge){
     const cis=load('circulars',[]).filter(c=>{if(!c.recipients?.includes(me))return false;const r=c.responses[me];return !r||r.status==='pending'||r.status==='checking';}).length;
     const bls2=load('bulletins',[]).filter(b=>blVisibleToMe(b)&&!(b.reactions&&b.reactions[me]?.confirmed)).length;
-    const todos2=load('todos',[]).filter(t=>!t.done&&t.userId===me&&t.due&&Math.ceil((new Date(t.due)-new Date())/(1000*60*60*24))<=3).length;
+    const todos2=load('todos',[]).filter(t=>!t.done&&t.userId===me&&t.due&&Math.ceil(((t.dueTime?new Date(t.due+'T'+t.dueTime+':00'):new Date(t.due+'T23:59:59'))-new Date())/(1000*60*60*24))<=3).length;
     const total=cis+bls2+todos2+evNotifCount;
     topBadge.textContent=total||''; topBadge.style.display=total?'':'none';
   }
@@ -3656,7 +3658,7 @@ function renderTd(){
       <div class="td-body">
         <div class="td-title">${esc(t.title)}</div>
         <div class="td-meta">
-          ${t.due?`<span>📅 ${t.due}</span>`:''}
+          ${t.due?`<span>📅 ${t.due}${t.dueTime?' '+t.dueTime:''}</span>`:''}
           ${t.memo?`<span>📝 ${esc(t.memo)}</span>`:''}
           ${assigneeName?`<span class="td-assignee-badge">👤 担当: ${esc(assigneeName)}</span>`:''}
           ${requesterName?`<span class="td-requester-badge">📨 依頼: ${esc(requesterName)}</span>`:''}
@@ -3678,6 +3680,7 @@ function openTdModal(){
   document.getElementById('tdModalTitle').textContent='ToDo 追加';
   document.getElementById('td-title').value='';
   document.getElementById('td-due').value='';
+  document.getElementById('td-due-time').value='';
   document.getElementById('td-pri').value='med';
   document.getElementById('td-memo').value='';
   // 担当者ドロップダウン構築
@@ -3697,6 +3700,7 @@ function saveTd(){
     id:uid(),title,done:false,
     priority:document.getElementById('td-pri').value,
     due:document.getElementById('td-due').value,
+    dueTime:document.getElementById('td-due-time').value,
     memo:document.getElementById('td-memo').value.trim(),
     userId:assigneeId,
     assignedBy:myId()
