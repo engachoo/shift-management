@@ -1027,7 +1027,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
               <span style="font-size:12px;color:#445;font-weight:600">プリセット：</span>
               <select id="ci-preset-sel" onchange="applyCiPreset(this.value)" style="border:1px solid #ccd;border-radius:4px;padding:5px 10px;font-size:12px;background:#fff;cursor:pointer">
                 <option value="approval">① 承認・保留・見送り</option>
-                <option value="confirm">② 確認済・確認中</option>
+                <option value="confirm">② 確認済・保留</option>
                 <option value="custom">カスタム</option>
               </select>
             </div>
@@ -3404,7 +3404,7 @@ function downloadCiFile(ciId,fileIdx){
 // ----- 返信ボタン プリセット -----
 function applyCiPreset(type){
   if(type==='approval') _ciCustomBtns=['承認','保留','見送り'];
-  else if(type==='confirm') _ciCustomBtns=['確認済','確認中'];
+  else if(type==='confirm') _ciCustomBtns=['確認済','保留'];
   // custom の場合は現在のタグをそのまま維持
   renderCiCustomTags();
 }
