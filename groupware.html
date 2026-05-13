@@ -2180,7 +2180,7 @@ function renderTop(){
   // ---- 今日の予定（繰り返し予定含む） ----
   const todayEvs = expandEvents(load('events',[]), today, today)
     .filter(e=>e.memberIds&&e.memberIds.includes(myId())&&e.date===today&&e.memo!=='off')
-    .sort((a,b)=>(a.startTime||'99:99').localeCompare(b.startTime||'99:99'));
+    .sort((a,b)=>{const at=a.startTime||'',bt=b.startTime||'';if(!at&&!bt)return 0;if(!at)return -1;if(!bt)return 1;return at.localeCompare(bt);});
 
   // ---- 予定通知 ----
   const evNotifs = load('evNotifs',[]).filter(n=>n.targetUserIds?.includes(uid)&&!n.readBy?.includes(uid));
@@ -2367,7 +2367,7 @@ function renderTopWeek(s){
       html+='<span style="font-size:11px;background:#e5e7eb;border-radius:3px;padding:1px 6px;color:#6b7280">休み</span>';
     } else {
       const dayEvs=events.filter(e=>e.memberIds&&e.memberIds.includes(uid)&&e.date===ds&&e.memo!=='off')
-        .sort((a,b)=>(a.startTime||'99:99').localeCompare(b.startTime||'99:99'));
+        .sort((a,b)=>{const at=a.startTime||'',bt=b.startTime||'';if(!at&&!bt)return 0;if(!at)return -1;if(!bt)return 1;return at.localeCompare(bt);});
       dayEvs.forEach(ev=>{
         const et=EV_TYPES[ev.type]||EV_TYPES.task;
         const ts=ev.startTime?(ev.startTime+(ev.endTime?'-'+ev.endTime:''))+' ':'';
@@ -2551,7 +2551,7 @@ function renderGW(){
         html+=`<td class="${cls}">`;
         if(offEv){ html+='<span class="off-lbl">休み</span>'; }
         else {
-          events.filter(e=>e.memberIds&&e.memberIds.includes(u.id)&&e.date===ds&&e.memo!=='off').forEach(ev=>{
+          events.filter(e=>e.memberIds&&e.memberIds.includes(u.id)&&e.date===ds&&e.memo!=='off').sort((a,b)=>{const at=a.startTime||'',bt=b.startTime||'';if(!at&&!bt)return 0;if(!at)return -1;if(!bt)return 1;return at.localeCompare(bt);}).forEach(ev=>{
             const et=EV_TYPES[ev.type]||EV_TYPES.task;
             const ts=ev.startTime?(ev.startTime+(ev.endTime?'-'+ev.endTime:''))+' ':'';
             const lbl=et.label?`<span class="ev-badge" style="background:${et.color}">${et.short||et.label}</span>`:'';
@@ -2675,7 +2675,7 @@ function renderPM(){
     html+=`<td class="${cls}" style="${isSun?'color:#c53030':isSat?'color:#1a56db':''}">`;
     html+=`<div class="day-num">${isToday?`<span class="today-circle">${day}</span>`:day}</div>`;
     if(HOLIDAYS[ds]) html+=`<div style="font-size:10px;color:#c53030">${HOLIDAYS[ds]}</div>`;
-    events.filter(e=>e.memberIds&&e.memberIds.includes(targetId)&&e.date===ds&&e.memo!=='off').forEach(ev=>{
+    events.filter(e=>e.memberIds&&e.memberIds.includes(targetId)&&e.date===ds&&e.memo!=='off').sort((a,b)=>{const at=a.startTime||'',bt=b.startTime||'';if(!at&&!bt)return 0;if(!at)return -1;if(!bt)return 1;return at.localeCompare(bt);}).forEach(ev=>{
       const et=EV_TYPES[ev.type]||EV_TYPES.task;
       const ts=ev.startTime?(ev.startTime+(ev.endTime?'-'+ev.endTime:''))+' ':'';
       const recIcon=ev._recurring?'🔁':''; const reactIcon=ev.reaction?.enabled&&ev.reaction?.responses?.[myId()]?.reacted?'✓':'';
