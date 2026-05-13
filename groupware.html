@@ -1882,6 +1882,7 @@ const EV_TYPES = {
   task:      {label:'通常',               short:'通常',  color:'#94a3b8',cls:'ev-task'},
 };
 const EV_TYPE_LIST = [
+  {value:'alert',      label:'期限・締切',         color:'#eab308'},
   {value:'meeting',    label:'会議',                color:'#1d4ed8'},
   {value:'webmtg',     label:'Web会議',             color:'#60a5fa'},
   {value:'mtg',        label:'MTG',                 color:'#22c55e'},
@@ -1898,7 +1899,6 @@ const EV_TYPE_LIST = [
   {value:'remote',     label:'在宅ワーク',         color:'#6b7280'},
   {value:'deskwork',   label:'デスクワーク（集中）',color:'#d97706'},
   {value:'field',      label:'現場実務',           color:'#8b5cf6'},
-  {value:'alert',      label:'期限・締切',         color:'#eab308'},
   {value:'task',       label:'通常',               color:'#94a3b8'},
 ];
 const DOW = ['日','月','火','水','木','金','土'];
@@ -2956,6 +2956,25 @@ function saveEvent(){
     const extraDates=[...document.querySelectorAll('.ev-extra-date')].map(i=>i.value).filter(v=>v);
     events.push(newEv);
     extraDates.forEach(d=>events.push({...newEv,id:uid(),date:d}));
+  }
+  // 期限・締切 → ToDo に自動反映
+  if(newEv.type==='alert'){
+    const tds=load('todos',[]);
+    const linkedId=existEv?.linkedTodoId;
+    if(linkedId){
+      // 編集時：既存ToDoを更新
+      const td=tds.find(t=>t.id===linkedId);
+      if(td){ td.title=newEv.title; td.due=newEv.date; td.dueTime=newEv.startTime||''; td.memo=newEv.memo||''; }
+      save('todos',tds);
+    } else {
+      // 新規：ToDoを作成してリンクIDを相互保存
+      const todoId=uid();
+      tds.unshift({id:todoId,title:newEv.title,done:false,priority:'high',due:newEv.date,dueTime:newEv.startTime||'',memo:newEv.memo||'',replyType:'',files:[],response:null,userId:myId(),assignedBy:myId(),linkedEvId:newEv.id});
+      save('todos',tds);
+      newEv.linkedTodoId=todoId;
+      const evIdx=events.findIndex(e=>e.id===newEv.id);
+      if(evIdx>=0) events[evIdx]=newEv;
+    }
   }
   save('events',events);
   closeModal('evModal');
