@@ -1107,7 +1107,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
         <div><label class="f-label">優先度</label>
           <select class="f-select" id="td-pri"><option value="med">中</option><option value="high">高</option><option value="low">低</option></select>
         </div>
-        <div><label class="f-label">期日</label><div style="display:flex;gap:6px"><input class="f-input" id="td-due" type="date" style="flex:1"><input class="f-input" id="td-due-time" type="time" step="900" style="width:96px"></div></div>
+        <div><label class="f-label">期日</label><div style="display:flex;gap:6px"><input class="f-input" id="td-due" type="date" style="flex:1"><select class="f-select" id="td-due-time" style="width:96px"></select></div></div>
       </div>
       <div class="f-row"><label class="f-label">メモ</label><input class="f-input" id="td-memo" placeholder="任意"></div>
     </div>
@@ -3679,6 +3679,15 @@ function renderTd(){
 function toggleTd(id,done){const tds=load('todos',[]);const t=tds.find(x=>x.id===id);if(t){t.done=!!done;if(done&&!t.doneAt)t.doneAt=dateStr(new Date());if(!done)t.doneAt=null;}save('todos',tds);renderTd();renderSchedule&&curMod==='schedule'&&renderSchedule();}
 function delTd(id){save('todos',load('todos',[]).filter(t=>t.id!==id));renderTd();}
 
+function _buildTimeSelect(selEl,val){
+  const opts=['<option value="">--:--</option>'];
+  for(let h=0;h<24;h++)for(let m=0;m<60;m+=15){
+    const hh=String(h).padStart(2,'0'),mm=String(m).padStart(2,'0');
+    opts.push(`<option value="${hh}:${mm}">${hh}:${mm}</option>`);
+  }
+  selEl.innerHTML=opts.join('');
+  selEl.value=val||'';
+}
 let _editTdId=null;
 function openTdModal(id){
   _editTdId=id||null;
@@ -3686,7 +3695,7 @@ function openTdModal(id){
   document.getElementById('tdModalTitle').textContent=t?'ToDo 編集':'ToDo 追加';
   document.getElementById('td-title').value=t?t.title:'';
   document.getElementById('td-due').value=t?(t.due||''):'';
-  document.getElementById('td-due-time').value=t?(t.dueTime||''):'';
+  _buildTimeSelect(document.getElementById('td-due-time'),t?(t.dueTime||''):'');
   document.getElementById('td-pri').value=t?(t.priority||'med'):'med';
   document.getElementById('td-memo').value=t?(t.memo||''):'';
   const users=normalUsers();
