@@ -1235,7 +1235,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
   <div class="modal" style="width:680px;max-width:96vw;max-height:92vh">
     <div class="modal-hdr" style="background:linear-gradient(135deg,#1a2b4a,#1a56db);color:#fff">
       <h3 style="color:#fff">📖 大日グループウェア 説明書</h3>
-      <button class="modal-close" onclick="closeModal('helpModal')" style="color:#fff;font-size:20px">×</button>
+      <button class="modal-close" onclick="closeHelpModal()" style="color:#fff;font-size:20px">×</button>
     </div>
     <div class="modal-body" style="padding:0;overflow-y:auto;max-height:calc(92vh - 110px)">
       <div style="padding:20px 24px">
@@ -1454,7 +1454,20 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
       </div>
     </div>
     <div class="modal-foot">
-      <button class="btn-primary" onclick="closeModal('helpModal')">閉じる</button>
+      <button class="btn-primary" onclick="closeHelpModal()">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- 説明書 閲覧確認ポップアップ -->
+<div id="helpReadConfirm" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:10100;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:16px;padding:28px 24px;max-width:340px;width:90%;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,.35)">
+    <div style="font-size:28px;margin-bottom:10px">📖</div>
+    <div style="font-weight:700;font-size:15px;color:#1a2b4a;margin-bottom:8px;line-height:1.6">新しい変更点は<br>理解できましたか？</div>
+    <div style="font-size:12px;color:#6b7280;margin-bottom:22px">「はい」を選ぶとNewバッジが消えます</div>
+    <div style="display:flex;gap:10px">
+      <button onclick="helpReadNo()" style="flex:1;padding:11px;border:1.5px solid #dde3ec;border-radius:10px;cursor:pointer;font-size:14px;font-weight:600;color:#374151;background:#f9fafb">いいえ</button>
+      <button onclick="helpReadYes()" style="flex:1;padding:11px;border:none;border-radius:10px;cursor:pointer;font-size:14px;font-weight:700;color:#fff;background:linear-gradient(135deg,#1a56db,#1e40af);box-shadow:0 2px 8px rgba(26,86,219,.3)">はい ✓</button>
     </div>
   </div>
 </div>
@@ -4320,14 +4333,38 @@ function deleteDept(id){
 function closeModal(id){ document.getElementById(id).classList.remove('open'); }
 function showHelp(){
   document.getElementById('helpModal').classList.add('open');
-  markHelpNewSections(); // 内容内Newバッジ更新
+  markHelpNewSections();
+}
+function closeHelpModal(){
+  // Newバッジが表示中なら確認ポップアップを出す
+  const hasNew=Array.from(document.querySelectorAll('.helpNewBadge')).some(b=>b.style.display!=='none');
+  if(hasNew){
+    document.getElementById('helpReadConfirm').style.display='flex';
+  } else {
+    closeModal('helpModal');
+  }
+}
+function helpReadYes(){
+  // 既読を記録 → バッジを消す
+  localStorage.setItem('helpReadAt', new Date().toISOString());
+  document.getElementById('helpReadConfirm').style.display='none';
+  document.querySelectorAll('.helpNewBadge').forEach(b=>b.style.display='none');
+  document.querySelectorAll('.help-new-badge').forEach(b=>b.remove());
+  closeModal('helpModal');
+}
+function helpReadNo(){
+  // バッジを残したまま閉じる
+  document.getElementById('helpReadConfirm').style.display='none';
+  closeModal('helpModal');
 }
 function markHelpNewSections(){
   const now=Date.now(); const days60=60*24*60*60*1000;
+  const readAt=localStorage.getItem('helpReadAt')?new Date(localStorage.getItem('helpReadAt')).getTime():0;
   let hasNew=false;
   document.querySelectorAll('[data-help-new]').forEach(el=>{
     const added=new Date(el.dataset.helpNew).getTime();
-    const isNew=(now-added)<days60;
+    // 60日以内 かつ 最後の既読より後に追加されたものがNew
+    const isNew=(now-added)<days60&&added>readAt;
     if(isNew) hasNew=true;
     const titleEl=el.querySelector('.help-section-title');
     if(titleEl){
