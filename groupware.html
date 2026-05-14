@@ -157,6 +157,9 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
 .ev-badge{display:inline-block;color:#fff;font-size:9px;font-weight:700;border-radius:3px;padding:0 4px;margin-right:3px;vertical-align:middle;line-height:1.6;letter-spacing:.2px;white-space:nowrap}
 .add-btn-wrap{margin-top:3px}
 .add-btn-wrap button{background:none;border:none;color:#1a56db;font-size:18px;cursor:pointer;line-height:1;padding:0 2px}
+.drag-over{background:#dbeafe !important;outline:2px dashed #3b82f6 !important;outline-offset:-2px}
+.ev[draggable="true"]{cursor:grab}
+.ev[draggable="true"]:active{cursor:grabbing;opacity:.7}
 
 /* 個人月 */
 .month-wrap{background:#fff;border-radius:6px;box-shadow:0 1px 3px rgba(0,0,0,.08);overflow:hidden}
@@ -2573,7 +2576,7 @@ function renderGW(){
         const offEv=events.find(e=>e.memberIds&&e.memberIds.includes(u.id)&&e.date===ds&&e.memo==='off');
         let cls=isToday?'td-today':holi||isSun?'td-holiday':'';
         if(offEv) cls='td-off';
-        html+=`<td class="${cls}">`;
+        html+=`<td class="${cls}" ondragover="dragOverCell(event)" ondragleave="dragLeaveCell(event)" ondrop="dropEv('${ds}',event)">`;
         if(offEv){ html+='<span class="off-lbl">休み</span>'; }
         else {
           events.filter(e=>e.memberIds&&e.memberIds.includes(u.id)&&e.date===ds&&e.memo!=='off').sort((a,b)=>{const at=a.startTime||'',bt=b.startTime||'';if(!at&&!bt)return 0;if(!at)return -1;if(!bt)return 1;return at.localeCompare(bt);}).forEach(ev=>{
@@ -2582,7 +2585,8 @@ function renderGW(){
             const lbl=et.label?`<span class="ev-badge" style="background:${et.color}">${et.short||et.label}</span>`:'';
             const recIcon=ev._recurring?'🔁 ':''; const spanIcon=ev._span?'↔ ':'';
             const reactIcon=ev.reaction?.enabled&&ev.reaction?.responses?.[u.id]?.reacted?'✓ ':'';
-            html+=`<span class="ev ${et.cls}" onclick="openEvDetail('${ev.id}','${ev.date}')" title="${esc(ev.title)}">`;
+            const canDrag=!ev._recurring&&(ev.memberIds&&ev.memberIds[0]===myId()||ev.memberIds&&ev.memberIds.includes(myId()));
+            html+=`<span class="ev ${et.cls}" onclick="openEvDetail('${ev.id}','${ev.date}')" title="${esc(ev.title)}"${canDrag?` draggable="true" ondragstart="dragEvStart('${ev.id}','${ev.date}',event)" ondragend="dragEndEv()"`:''}>`;
             if(ts) html+=`<span class="ev-time">${esc(ts)}</span>`;
             html+=`${recIcon}${spanIcon}${reactIcon}${lbl}${esc(ev.title)}</span>`;
           });
@@ -2697,14 +2701,17 @@ function renderPM(){
     const isSun=d.getDay()===0,isSat=d.getDay()===6,isHoli=!!HOLIDAYS[ds],isToday=ds===today;
     let cls='';
     if(isToday) cls='td-today'; else if(isHoli) cls='td-holi';
-    html+=`<td class="${cls}" style="${isSun?'color:#c53030':isSat?'color:#1a56db':''}">`;
+    html+=`<td class="${cls}" style="${isSun?'color:#c53030':isSat?'color:#1a56db':''}" ondragover="dragOverCell(event)" ondragleave="dragLeaveCell(event)" ondrop="dropEv('${ds}',event)">`;
     html+=`<div class="day-num">${isToday?`<span class="today-circle">${day}</span>`:day}</div>`;
     if(HOLIDAYS[ds]) html+=`<div style="font-size:10px;color:#c53030">${HOLIDAYS[ds]}</div>`;
     events.filter(e=>e.memberIds&&e.memberIds.includes(targetId)&&e.date===ds&&e.memo!=='off').sort((a,b)=>{const at=a.startTime||'',bt=b.startTime||'';if(!at&&!bt)return 0;if(!at)return -1;if(!bt)return 1;return at.localeCompare(bt);}).forEach(ev=>{
       const et=EV_TYPES[ev.type]||EV_TYPES.task;
       const ts=ev.startTime?(ev.startTime+(ev.endTime?'-'+ev.endTime:''))+' ':'';
       const recIcon=ev._recurring?'🔁':''; const reactIcon=ev.reaction?.enabled&&ev.reaction?.responses?.[myId()]?.reacted?'✓':'';
-      html+=`<span class="ev ${et.cls}" onclick="openEvDetail('${ev.id}','${ev.date}')">${ts?`<span class="ev-time">${esc(ts)}</span>`:''}<span class="ev-badge" style="background:${et.color}">${et.short||et.label}</span>${recIcon}${reactIcon}${esc(ev.title)}</span>`;
+      const canDrag=!ev._recurring&&isMe;
+      const dragAttr=canDrag?` draggable="true" ondragstart="dragEvStart('${ev.id}','${ev.date}',event)" ondragend="dragEndEv()"`:'' ;
+      html+=`<span class="ev ${et.cls}" onclick="openEvDetail('${ev.id}','${ev.date}')"${dragAttr}>${ts?`<span class="ev-time">${esc(ts)}</span>`:''}<span class="ev-badge" style="background:${et.color}">${et.short||et.label}</span>${recIcon}${reactIcon}${esc(ev.title)}</span>`;
+
     });
     // ToDo（自分のみ表示）
     if(isMe){
@@ -2771,6 +2778,46 @@ function renderPY(){
     html+='</tr></tbody></table></div>';
   }
   py.innerHTML=html;
+}
+
+// ===== カレンダー D&D =====
+let _dragEvId=null, _dragDate=null;
+function dragEvStart(evId, dragDate, e){
+  _dragEvId=evId; _dragDate=dragDate;
+  e.dataTransfer.effectAllowed='move';
+  e.stopPropagation();
+}
+function dragEndEv(){
+  document.querySelectorAll('.drag-over').forEach(el=>el.classList.remove('drag-over'));
+}
+function dragOverCell(e){
+  e.preventDefault();
+  e.currentTarget.classList.add('drag-over');
+}
+function dragLeaveCell(e){
+  e.currentTarget.classList.remove('drag-over');
+}
+function dropEv(dropDate, e){
+  e.preventDefault();
+  document.querySelectorAll('.drag-over').forEach(el=>el.classList.remove('drag-over'));
+  if(!_dragEvId||!_dragDate||_dragDate===dropDate){ _dragEvId=null; _dragDate=null; return; }
+  const delta=Math.round((new Date(dropDate)-new Date(_dragDate))/(1000*60*60*24));
+  if(delta===0){ _dragEvId=null; _dragDate=null; return; }
+  const events=load('events',[]);
+  const ev=events.find(x=>x.id===_dragEvId);
+  if(!ev){ _dragEvId=null; _dragDate=null; return; }
+  const shiftDs=ds=>{ const d=new Date(ds); d.setDate(d.getDate()+delta); return dateStr(d); };
+  ev.date=shiftDs(ev.date);
+  if(ev.endDate) ev.endDate=shiftDs(ev.endDate);
+  // カレンダー連携ToDoも日付を同期
+  if(ev.linkedTodoId){
+    const tds=load('todos',[]);
+    const td=tds.find(t=>t.id===ev.linkedTodoId);
+    if(td){ td.due=ev.date; save('todos',tds); }
+  }
+  save('events',events);
+  _dragEvId=null; _dragDate=null;
+  renderSchedule();
 }
 
 // ===== 予定種別カスタムドロップダウン =====
