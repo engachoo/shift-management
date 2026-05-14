@@ -2567,6 +2567,24 @@ function buildPmMemberSel(){
   else if(meUser) sel.value=me;
 }
 
+// ===== ダブルブッキング検出 =====
+function timeToMin(t){ if(!t)return null; const[h,m]=t.split(':').map(Number); return h*60+m; }
+function evOverlap(a,b){
+  const s1=timeToMin(a.startTime),s2=timeToMin(b.startTime);
+  if(s1===null||s2===null) return false;
+  const e1=a.endTime?timeToMin(a.endTime):s1+60;
+  const e2=b.endTime?timeToMin(b.endTime):s2+60;
+  return s1<e2&&s2<e1;
+}
+function doubleBookedIds(evList){
+  const result=new Set();
+  const timed=evList.filter(e=>e.startTime&&e.memo!=='off');
+  for(let i=0;i<timed.length;i++)
+    for(let j=i+1;j<timed.length;j++)
+      if(evOverlap(timed[i],timed[j])){ result.add(timed[i].id); result.add(timed[j].id); }
+  return result;
+}
+
 function renderGW(){
   const gw=document.getElementById('gwView'); const pm=document.getElementById('pmView'); const py=document.getElementById('pyView');
   gw.style.display='block'; pm.style.display='none'; py.style.display='none';
@@ -2614,16 +2632,19 @@ function renderGW(){
         html+=`<td class="${cls}" ondragover="dragOverCell(event)" ondragleave="dragLeaveCell(event)" ondrop="dropEv('${ds}',event)">`;
         if(offEv){ html+='<span class="off-lbl">休み</span>'; }
         else {
-          events.filter(e=>e.memberIds&&e.memberIds.includes(u.id)&&e.date===ds&&e.memo!=='off').sort((a,b)=>{const at=a.startTime||'',bt=b.startTime||'';if(!at&&!bt)return 0;if(!at)return -1;if(!bt)return 1;return at.localeCompare(bt);}).forEach(ev=>{
+          const userDayEvs=events.filter(e=>e.memberIds&&e.memberIds.includes(u.id)&&e.date===ds&&e.memo!=='off');
+          const dbIds=doubleBookedIds(userDayEvs);
+          userDayEvs.sort((a,b)=>{const at=a.startTime||'',bt=b.startTime||'';if(!at&&!bt)return 0;if(!at)return -1;if(!bt)return 1;return at.localeCompare(bt);}).forEach(ev=>{
             const et=EV_TYPES[ev.type]||EV_TYPES.task;
             const ts=ev.startTime?(ev.startTime+(ev.endTime?'-'+ev.endTime:''))+' ':'';
             const lbl=et.label?`<span class="ev-badge" style="background:${et.color}">${et.short||et.label}</span>`:'';
             const recIcon=ev._recurring?'🔁 ':''; const spanIcon=ev._span?'↔ ':'';
             const reactIcon=ev.reaction?.enabled&&ev.reaction?.responses?.[u.id]?.reacted?'✓ ':'';
             const canDrag=!ev._recurring&&(ev.memberIds&&ev.memberIds[0]===myId()||ev.memberIds&&ev.memberIds.includes(myId()));
+            const warnIcon=dbIds.has(ev.id)?'<span title="時間が重複しています" style="margin-right:2px">⚠️</span>':'';
             html+=`<span class="ev ${et.cls}" onclick="openEvDetail('${ev.id}','${ev.date}')" title="${esc(ev.title)}"${canDrag?` draggable="true" ondragstart="dragEvStart('${ev.id}','${ev.date}',event)" ondragend="dragEndEv()"`:''}>`;
             if(ts) html+=`<span class="ev-time">${esc(ts)}</span>`;
-            html+=`${recIcon}${spanIcon}${reactIcon}${lbl}${esc(ev.title)}</span>`;
+            html+=`${recIcon}${spanIcon}${reactIcon}${warnIcon}${lbl}${esc(ev.title)}</span>`;
           });
           // ToDo（期日が一致するもの・完了済みも表示）
           allTodos.filter(t=>t.userId===u.id&&t.due===ds).forEach(t=>{
@@ -2739,14 +2760,16 @@ function renderPM(){
     html+=`<td class="${cls}" style="${isSun?'color:#c53030':isSat?'color:#1a56db':''}" ondragover="dragOverCell(event)" ondragleave="dragLeaveCell(event)" ondrop="dropEv('${ds}',event)">`;
     html+=`<div class="day-num">${isToday?`<span class="today-circle">${day}</span>`:day}</div>`;
     if(HOLIDAYS[ds]) html+=`<div style="font-size:10px;color:#c53030">${HOLIDAYS[ds]}</div>`;
-    events.filter(e=>e.memberIds&&e.memberIds.includes(targetId)&&e.date===ds&&e.memo!=='off').sort((a,b)=>{const at=a.startTime||'',bt=b.startTime||'';if(!at&&!bt)return 0;if(!at)return -1;if(!bt)return 1;return at.localeCompare(bt);}).forEach(ev=>{
+    const dayEvsPM=events.filter(e=>e.memberIds&&e.memberIds.includes(targetId)&&e.date===ds&&e.memo!=='off');
+    const dbIdsPM=doubleBookedIds(dayEvsPM);
+    dayEvsPM.sort((a,b)=>{const at=a.startTime||'',bt=b.startTime||'';if(!at&&!bt)return 0;if(!at)return -1;if(!bt)return 1;return at.localeCompare(bt);}).forEach(ev=>{
       const et=EV_TYPES[ev.type]||EV_TYPES.task;
       const ts=ev.startTime?(ev.startTime+(ev.endTime?'-'+ev.endTime:''))+' ':'';
       const recIcon=ev._recurring?'🔁':''; const reactIcon=ev.reaction?.enabled&&ev.reaction?.responses?.[myId()]?.reacted?'✓':'';
       const canDrag=!ev._recurring&&isMe;
       const dragAttr=canDrag?` draggable="true" ondragstart="dragEvStart('${ev.id}','${ev.date}',event)" ondragend="dragEndEv()"`:'' ;
-      html+=`<span class="ev ${et.cls}" onclick="openEvDetail('${ev.id}','${ev.date}')"${dragAttr}>${ts?`<span class="ev-time">${esc(ts)}</span>`:''}<span class="ev-badge" style="background:${et.color}">${et.short||et.label}</span>${recIcon}${reactIcon}${esc(ev.title)}</span>`;
-
+      const warnPM=dbIdsPM.has(ev.id)?'⚠️ ':'';
+      html+=`<span class="ev ${et.cls}" onclick="openEvDetail('${ev.id}','${ev.date}')"${dragAttr}>${ts?`<span class="ev-time">${esc(ts)}</span>`:''}<span class="ev-badge" style="background:${et.color}">${et.short||et.label}</span>${recIcon}${reactIcon}${warnPM}${esc(ev.title)}</span>`;
     });
     // ToDo（自分のみ表示）
     if(isMe){
