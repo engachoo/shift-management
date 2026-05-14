@@ -761,8 +761,8 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
           <select class="f-select" id="ev-start-h" style="width:80px" onchange="autoSetEndTime()"></select>
           <select class="f-select" id="ev-start-m" style="width:72px" onchange="autoSetEndTime()"></select>
           <span style="padding:0 4px">〜</span>
-          <select class="f-select" id="ev-end-h" style="width:80px"></select>
-          <select class="f-select" id="ev-end-m" style="width:72px"></select>
+          <select class="f-select" id="ev-end-h" style="width:80px" onchange="checkEvTimeConflict()"></select>
+          <select class="f-select" id="ev-end-m" style="width:72px" onchange="checkEvTimeConflict()"></select>
         </div>
       </div>
 
@@ -1469,6 +1469,16 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
       <button onclick="helpReadNo()" style="flex:1;padding:11px;border:1.5px solid #dde3ec;border-radius:10px;cursor:pointer;font-size:14px;font-weight:600;color:#374151;background:#f9fafb">いいえ</button>
       <button onclick="helpReadYes()" style="flex:1;padding:11px;border:none;border-radius:10px;cursor:pointer;font-size:14px;font-weight:700;color:#fff;background:linear-gradient(135deg,#1a56db,#1e40af);box-shadow:0 2px 8px rgba(26,86,219,.3)">はい ✓</button>
     </div>
+  </div>
+</div>
+
+<!-- 予定登録 時間重複確認ポップアップ -->
+<div id="evConflictPopup" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10200;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:16px;padding:28px 24px;max-width:320px;width:90%;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,.35)">
+    <div style="font-size:28px;margin-bottom:10px">⚠️</div>
+    <div style="font-weight:700;font-size:15px;color:#1a2b4a;margin-bottom:8px;line-height:1.7">重複した予定があります。<br>よろしいですか？</div>
+    <div style="font-size:12px;color:#6b7280;margin-bottom:22px">OKを押すと入力画面に戻ります</div>
+    <button onclick="document.getElementById('evConflictPopup').style.display='none'" style="width:100%;padding:12px;border:none;border-radius:10px;cursor:pointer;font-size:14px;font-weight:700;color:#fff;background:linear-gradient(135deg,#1a56db,#1e40af);box-shadow:0 2px 8px rgba(26,86,219,.3)">OK</button>
   </div>
 </div>
 
@@ -2973,20 +2983,42 @@ function autoSetEndTime(){
   const sh=document.getElementById('ev-start-h')?.value;
   const sm=document.getElementById('ev-start-m')?.value;
   if(!sh||!sm) return;
-  // 終了時間がすでに入力されている場合はスキップ
+  // 終了時間がまだ未入力の場合のみ自動設定
   const eh=document.getElementById('ev-end-h')?.value;
   const em=document.getElementById('ev-end-m')?.value;
-  if(eh&&em) return;
-  // 1時間後を計算
-  let totalMin=parseInt(sh)*60+parseInt(sm)+60;
-  const endH=Math.floor(totalMin/60)%24;
-  const endM=totalMin%60;
-  const endHStr=String(endH).padStart(2,'0');
-  const endMStr=String(endM).padStart(2,'0');
-  const endHSel=document.getElementById('ev-end-h');
-  const endMSel=document.getElementById('ev-end-m');
-  if(endHSel) endHSel.value=endHStr;
-  if(endMSel) endMSel.value=endMStr;
+  if(!eh||!em){
+    let totalMin=parseInt(sh)*60+parseInt(sm)+60;
+    const endH=Math.floor(totalMin/60)%24;
+    const endM=totalMin%60;
+    const endHSel=document.getElementById('ev-end-h');
+    const endMSel=document.getElementById('ev-end-m');
+    if(endHSel) endHSel.value=String(endH).padStart(2,'0');
+    if(endMSel) endMSel.value=String(endM).padStart(2,'0');
+  }
+  // 時刻変更のたびに重複チェック
+  checkEvTimeConflict();
+}
+
+function checkEvTimeConflict(){
+  const date=document.getElementById('ev-date')?.value;
+  const startTime=getTimeVal('ev-start');
+  if(!date||!startTime) return; // 時刻未選択なら不要
+  const endTime=getTimeVal('ev-end');
+  const newEv={id:editEvId||'__new__', startTime, endTime, memo:''};
+  // 既存予定を取得（自身の編集時は除外）
+  const existing=expandEvents(load('events',[]),date,date)
+    .filter(e=>e.id!==editEvId&&e.memo!=='off'&&e.startTime&&e.date===date);
+  // 参加者ごとに重複チェック
+  const parts=_evParts&&_evParts.length?_evParts:[myId()];
+  for(const uid of parts){
+    const userEvs=existing.filter(e=>e.memberIds&&e.memberIds.includes(uid));
+    for(const ev of userEvs){
+      if(evOverlap(newEv,ev)){
+        document.getElementById('evConflictPopup').style.display='flex';
+        return;
+      }
+    }
+  }
 }
 
 function openEvModal(evId, memberId, ds){
