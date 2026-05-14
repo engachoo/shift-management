@@ -2193,9 +2193,15 @@ function renderTop(){
   const todos = load('todos',[]).filter(t=>t.userId===myId()&&!t.done);
   const urgentTodos = todos.filter(t=>{
     if(!t.due) return false;
+    // カレンダー連携（期限・締切）は期限問わず常に表示
+    if(t.linkedEvId) return true;
     const dd=t.dueTime?new Date(t.due+'T'+t.dueTime+':00'):new Date(t.due+'T23:59:59');
     const diff=(dd-now)/(1000*60*60*24);
     return diff<=3;
+  }).sort((a,b)=>{
+    const da=a.dueTime?new Date(a.due+'T'+a.dueTime+':00'):new Date(a.due+'T23:59:59');
+    const db=b.dueTime?new Date(b.due+'T'+b.dueTime+':00'):new Date(b.due+'T23:59:59');
+    return da-db;
   });
 
   // ---- 今日の予定（繰り返し予定含む） ----
