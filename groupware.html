@@ -589,6 +589,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
       <div class="side-item" id="m-au" onclick="showMod('admin','users')"><span class="si-icon">👤</span>ユーザー管理</div>
       <div class="side-item" id="m-ad" onclick="showMod('admin','depts')"><span class="si-icon">🏢</span>部署管理</div>
       <div class="side-item" id="m-ap" onclick="showMod('admin','perms')"><span class="si-icon">🔐</span>権限設定</div>
+      <div class="side-item" id="m-dev" onclick="showMod('devapps')" style="border-top:1px dashed rgba(255,255,255,.15);margin-top:4px;padding-top:8px"><span class="si-icon">🧪</span>開発中アプリ</div>
     </div>
   </div>
 
@@ -720,6 +721,14 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- 開発中アプリ（システム専用） -->
+    <div id="devAppsView" style="display:none;padding:16px">
+      <div class="page-hdr" style="position:static;margin-bottom:16px">
+        <h2>🧪 開発中アプリ</h2>
+      </div>
+      <div id="devAppsContent"></div>
     </div>
 
   </div><!-- /mainArea -->
@@ -2206,6 +2215,11 @@ function showMod(mod,sub,_fromPop){
     document.getElementById('m-a'+sideId).classList.add('active');
     adminTab=sub||'users';
     switchAdminTab(adminTab);
+  } else if(mod==='devapps'){
+    if(!isSystem()) return; // システムのみ
+    document.getElementById('devAppsView').style.display='block';
+    document.getElementById('m-dev').classList.add('active');
+    renderDevApps();
   }
   updateBadges();
 }
@@ -2575,6 +2589,43 @@ function buildPmMemberSel(){
   // 以前の選択を維持
   if(prev && sorted.find(u=>u.id===prev)) sel.value=prev;
   else if(meUser) sel.value=me;
+}
+
+// =========================================================
+// 開発中アプリ（システム管理者専用）
+// =========================================================
+function renderDevApps(){
+  if(!isSystem()) return;
+  const apps = [
+    // { id:'app1', name:'サンプルアプリ', icon:'🔬', desc:'開発中のサンプルです', status:'開発中' }
+    // ← 今後ここにアプリを追加していく
+  ];
+  const el = document.getElementById('devAppsContent');
+  if(!el) return;
+
+  if(!apps.length){
+    el.innerHTML = `
+      <div style="background:#f8fafc;border:2px dashed #cbd5e1;border-radius:12px;padding:40px 24px;text-align:center;color:#94a3b8">
+        <div style="font-size:40px;margin-bottom:12px">🧪</div>
+        <div style="font-weight:700;font-size:15px;margin-bottom:6px;color:#64748b">開発中のアプリはまだありません</div>
+        <div style="font-size:12px;line-height:1.8">今後、グループウェア内で開発するアプリをここに表示します。<br>このページはシステム管理者にのみ表示されます。</div>
+      </div>`;
+    return;
+  }
+
+  el.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px">` +
+    apps.map(app=>`
+      <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,.06);cursor:pointer;transition:box-shadow .15s" onclick="openDevApp('${app.id}')" onmouseenter="this.style.boxShadow='0 4px 12px rgba(0,0,0,.12)'" onmouseleave="this.style.boxShadow='0 1px 4px rgba(0,0,0,.06)'">
+        <div style="font-size:32px;margin-bottom:10px">${app.icon}</div>
+        <div style="font-weight:700;font-size:14px;color:#1a2b4a;margin-bottom:4px">${esc(app.name)}</div>
+        <div style="font-size:12px;color:#6b7280;margin-bottom:10px;line-height:1.6">${esc(app.desc)}</div>
+        <span style="display:inline-block;background:#fef9c3;color:#78350f;border:1px solid #fde68a;border-radius:20px;font-size:10px;font-weight:700;padding:2px 8px">${esc(app.status)}</span>
+      </div>`).join('') +
+    `</div>`;
+}
+function openDevApp(id){
+  // 各アプリの起動処理をここに追加する
+  alert('アプリ「'+id+'」は現在開発中です');
 }
 
 // ===== ダブルブッキング検出 =====
