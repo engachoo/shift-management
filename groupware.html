@@ -160,6 +160,9 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
 .drag-over{background:#dbeafe !important;outline:2px dashed #3b82f6 !important;outline-offset:-2px}
 .ev[draggable="true"]{cursor:grab}
 .ev[draggable="true"]:active{cursor:grabbing;opacity:.7}
+.help-new-badge{display:inline-block;background:#ef4444;color:#fff;border-radius:10px;font-size:10px;padding:1px 6px;margin-left:6px;font-weight:700;vertical-align:middle;line-height:1.6;letter-spacing:.3px}
+.hdr-help-new{display:inline-block;background:#ef4444;color:#fff;border-radius:9px;font-size:10px;padding:1px 5px;margin-left:4px;font-weight:700;vertical-align:middle;animation:pulse-badge .9s infinite alternate}
+@keyframes pulse-badge{from{opacity:1}to{opacity:.6}}
 
 /* 個人月 */
 .month-wrap{background:#fff;border-radius:6px;box-shadow:0 1px 3px rgba(0,0,0,.08);overflow:hidden}
@@ -553,7 +556,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
   <div id="appHeader">
     <button id="menuToggle" onclick="toggleSidebar()"><span style="display:block;font-size:8px;letter-spacing:1px;line-height:1;margin-bottom:1px">MENU</span>☰</button>
     <div class="hdr-logo">大日産業 グループウェア</div>
-    <button class="hdr-btn-help" onclick="showHelp()">📖 説明書</button>
+    <button class="hdr-btn-help" onclick="showHelp()">📖 説明書<span class="hdr-help-new helpNewBadge" style="display:none">New</span></button>
     <div class="hdr-spacer"></div>
     <div class="hdr-user">
       <span id="hdrDept" class="hdr-dept"></span>
@@ -568,7 +571,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
     <!-- スマホ用ヘッダー -->
     <div id="spHelpBtn" style="display:none;background:#1a2b4a;position:absolute;top:0;left:0;right:0;height:52px;align-items:center;padding:0 12px;gap:8px">
       <span style="color:#7ec8e3;font-size:12px;font-weight:700;flex:1">大日産業 グループウェア</span>
-      <button onclick="showHelp();closeSidebar();" style="background:none;border:1px solid rgba(255,255,255,.4);color:#fff;padding:3px 8px;border-radius:4px;font-size:11px;cursor:pointer">📖 説明書</button>
+      <button onclick="showHelp();closeSidebar();" style="background:none;border:1px solid rgba(255,255,255,.4);color:#fff;padding:3px 8px;border-radius:4px;font-size:11px;cursor:pointer">📖 説明書<span class="helpNewBadge" style="display:none;background:#ef4444;color:#fff;border-radius:9px;font-size:10px;padding:1px 5px;margin-left:4px;font-weight:700;vertical-align:middle">New</span></button>
       <button onclick="closeSidebar()" style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer;line-height:1;padding:0 2px">×</button>
     </div>
     <div class="side-item" id="m-top" onclick="showMod('top')"><span class="si-icon">🏠</span>ホーム<span class="side-badge" id="badge-top" style="display:none"></span></div>
@@ -1282,8 +1285,8 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
         </div>
 
         <!-- スケジュール -->
-        <div style="margin-bottom:20px">
-          <div style="font-size:15px;font-weight:700;color:#1a2b4a;border-bottom:2px solid #dde3ec;padding-bottom:6px;margin-bottom:10px">📅 スケジュール管理</div>
+        <div style="margin-bottom:20px" data-help-new="2026-05-14">
+          <div class="help-section-title" style="font-size:15px;font-weight:700;color:#1a2b4a;border-bottom:2px solid #dde3ec;padding-bottom:6px;margin-bottom:10px">📅 スケジュール管理</div>
           <div style="font-size:13px;color:#334;line-height:1.8">
             <div style="display:grid;grid-template-columns:120px 1fr;gap:6px 12px;align-items:start;margin-bottom:10px">
               <span style="font-weight:600;color:#1a56db">グループ週</span><span>部署・グループ全員の週間スケジュールを一覧表示。部署フィルターで絞り込めます</span>
@@ -1305,6 +1308,15 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
                 <li>カレンダー上の予定をクリックして詳細を開き、「編集」または「削除」を選択</li>
                 <li>予定を変更・削除すると、参加メンバー全員に<strong>更新・変更の通知</strong>が届きます</li>
                 <li>「この予定から抜ける」で自分だけ予定から外れることもできます</li>
+              </ul>
+            </div>
+            <div style="background:#f0fdf4;border-radius:6px;padding:12px;margin-bottom:10px;border-left:3px solid #16a34a">
+              <div style="font-weight:600;margin-bottom:6px;color:#14532d">🖱️ ドラッグ＆ドロップで予定を移動（New機能）</div>
+              <ul style="margin:0;padding-left:18px;line-height:2;font-size:12px;color:#334">
+                <li><strong>グループ週・個人月</strong>：予定をつかんで別の日付セルへドロップすると、同じ時刻のまま日付が変わります</li>
+                <li><strong>ホーム画面「今日の予定」</strong>：予定をドラッグすると下部に移動先入力欄が表示されます。日付を選んで「この日へ移動」を押してください</li>
+                <li>複数日にまたがる予定は期間ごとシフトされます</li>
+                <li>繰り返し予定はドラッグできません（パターンが崩れるため）</li>
               </ul>
             </div>
             <div style="font-size:12px;color:#6b7280;background:#fef9c3;border-radius:4px;padding:8px 12px">
@@ -1445,6 +1457,14 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
       <button class="btn-primary" onclick="closeModal('helpModal')">閉じる</button>
     </div>
   </div>
+</div>
+
+<!-- ホーム画面 予定ドラッグ＆ドロップ ゾーン -->
+<div id="homeDragZone" style="display:none;position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#1e3a8a,#1a56db);color:#fff;padding:14px 20px;border-radius:14px;z-index:9999;box-shadow:0 6px 24px rgba(0,0,0,.4);align-items:center;gap:10px;white-space:nowrap" ondragover="event.preventDefault()" ondrop="doHomeDrop(event)">
+  <span style="font-size:13px">📅 移動先の日付：</span>
+  <input type="date" id="homeDragDate" style="border-radius:6px;padding:5px 10px;color:#1e3a5f;border:none;font-size:13px;font-weight:600">
+  <button onclick="doHomeDrop()" style="background:#fff;color:#1a56db;padding:6px 16px;border:none;border-radius:8px;cursor:pointer;font-weight:700;font-size:13px">この日へ移動</button>
+  <button onclick="cancelHomeDrop()" style="background:rgba(255,255,255,.15);color:#fff;padding:6px 10px;border:1px solid rgba(255,255,255,.4);border-radius:8px;cursor:pointer;font-size:13px">✕</button>
 </div>
 
 <script>
@@ -2279,10 +2299,12 @@ function renderTop(){
     return todayEvs.map(ev=>{
       const et = EV_TYPES[ev.type]||EV_TYPES.task;
       const time = ev.startTime ? ev.startTime+(ev.endTime?' 〜 '+ev.endTime:'') : '終日';
-      return `<div class="top-ev-row">
+      const canDragHome=!ev._recurring;
+      return `<div class="top-ev-row"${canDragHome?` draggable="true" ondragstart="homeEvDragStart('${ev.id}',event)" ondragend="cancelHomeDrop()" style="cursor:grab"`:''}>
         <div class="top-ev-dot" style="background:${et.color}"></div>
         <div class="top-ev-time">${time}</div>
         <div class="top-ev-title">${esc(ev.title)}</div>
+        ${canDragHome?`<span style="font-size:10px;color:#9ca3af;margin-left:auto;padding-left:6px">⠿</span>`:''}
       </div>`;
     }).join('');
   }
@@ -2778,6 +2800,29 @@ function renderPY(){
     html+='</tr></tbody></table></div>';
   }
   py.innerHTML=html;
+}
+
+// ===== ホーム画面 予定D&D =====
+function homeEvDragStart(evId, e){
+  _dragEvId=evId; _dragDate=todayStr();
+  e.dataTransfer.effectAllowed='move';
+  const zone=document.getElementById('homeDragZone');
+  zone.style.display='flex';
+  document.getElementById('homeDragDate').value=todayStr();
+}
+function cancelHomeDrop(){
+  const zone=document.getElementById('homeDragZone');
+  if(zone) zone.style.display='none';
+  _dragEvId=null; _dragDate=null;
+}
+function doHomeDrop(e){
+  if(e&&e.preventDefault) e.preventDefault();
+  const newDate=document.getElementById('homeDragDate').value;
+  const zone=document.getElementById('homeDragZone');
+  if(zone) zone.style.display='none';
+  if(!newDate||!_dragEvId){ _dragEvId=null; _dragDate=null; return; }
+  if(newDate===_dragDate){ _dragEvId=null; _dragDate=null; return; }
+  dropEv(newDate, {preventDefault:()=>{}});
 }
 
 // ===== カレンダー D&D =====
@@ -4273,7 +4318,26 @@ function deleteDept(id){
 // 共通
 // =========================================================
 function closeModal(id){ document.getElementById(id).classList.remove('open'); }
-function showHelp(){ document.getElementById('helpModal').classList.add('open'); }
+function showHelp(){
+  document.getElementById('helpModal').classList.add('open');
+  markHelpNewSections(); // 内容内Newバッジ更新
+}
+function markHelpNewSections(){
+  const now=Date.now(); const days60=60*24*60*60*1000;
+  let hasNew=false;
+  document.querySelectorAll('[data-help-new]').forEach(el=>{
+    const added=new Date(el.dataset.helpNew).getTime();
+    const isNew=(now-added)<days60;
+    if(isNew) hasNew=true;
+    const titleEl=el.querySelector('.help-section-title');
+    if(titleEl){
+      let badge=titleEl.querySelector('.help-new-badge');
+      if(isNew&&!badge){ badge=document.createElement('span'); badge.className='help-new-badge'; badge.textContent='New'; titleEl.appendChild(badge); }
+      else if(!isNew&&badge){ badge.remove(); }
+    }
+  });
+  document.querySelectorAll('.helpNewBadge').forEach(b=>b.style.display=hasNew?'':'none');
+}
 // スマホ用サイドバー開閉
 function toggleSidebar(){
   document.getElementById('sidebar').classList.toggle('sp-open');
@@ -4311,6 +4375,7 @@ function startApp(){
   const prevLogin = load('lastLogin_'+uid, null);
   save('lastLogin_'+uid, jstISO());
   startActivityTimer(); // 自動ログアウトタイマー開始（管理者以外）
+  markHelpNewSections(); // 説明書Newバッジ初期化
   // 初期履歴エントリを差し替え（ブラウザ戻るでアプリ内に留まる）
   history.replaceState({mod:'top',sub:null},'','');
   // popstate：ブラウザの戻る/進むをアプリ内ナビに横取り
