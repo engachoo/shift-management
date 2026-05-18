@@ -3024,6 +3024,11 @@ function pcUnlock(){
 }
 
 // ===== Excel取込 =====
+// CSVエクスポートの列構成:
+//  [0]精算日(年/令和)  [1]精算日(月)  [2]精算日(日)  [3]部門  [4]購入者
+//  [5]インボイスチェック  [6]支払先  [7]領収書日付  [8]内容
+//  [9]借方金額(収入)  [10]貸方金額(支払)  [11]差引残高
+// 前月末残高行: [0]="R○年○月末残高繰越額"  [11]=金額
 function pcHandleXLS(file){
   if(!file) return;
   if(!_pcData){ alert('データが読み込まれていません。'); return; }
@@ -3034,26 +3039,41 @@ function pcHandleXLS(file){
       const wb=XLSX.read(ev.target.result,{type:'array'});
       const ws=wb.Sheets[wb.SheetNames[0]];
       const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
-      // ヘッダー行を探す（「精算日」を含む行の次から）
-      let startRow=-1;
+
+      // ヘッダー行を探す（「精算日」を含む行）
+      let headerRow=-1;
       for(let i=0;i<rows.length;i++){
-        if(rows[i].some(c=>String(c).includes('精算日')||String(c).includes('借方')||String(c).includes('収入金額'))){
-          startRow=i+1; break;
+        if(rows[i].some(c=>String(c).includes('精算日'))){
+          headerRow=i; break;
         }
       }
-      if(startRow<0){ alert('対応フォーマットが見つかりません。\nCSV出力と同じ形式のExcelファイルを選択してください。'); return; }
+      if(headerRow<0){ alert('対応フォーマットが見つかりません。\nCSV出力と同じ形式のExcelファイルを選択してください。'); return; }
+
       const [isoY,isoM]=_pcYearMonth.split('-');
+      let newOpeningBalance=_pcData.openingBalance||0;
       const entries=[];
-      for(let i=startRow;i<rows.length;i++){
+
+      for(let i=headerRow+1;i<rows.length;i++){
         const r=rows[i];
-        const ry=Number(r[0])||0,rm=Number(r[1])||0,rd=Number(r[2])||0;
-        // 前月末残高行・合計行・空行はスキップ
-        if(!rd&&!(Number(r[9])||Number(r[10]))) continue;
-        if(String(r[0]).includes('合計')||String(r[0]).includes('繰越')) continue;
-        // 年月はヘッダー選択を優先、日だけ取り込む
-        const adY=ry?ry+2018:Number(isoY);
-        const useM=rm||Number(isoM);
-        const dateVal=rd?`${adY}-${String(useM).padStart(2,'0')}-${String(rd).padStart(2,'0')}`:'';
+        const col0=String(r[0]||'');
+
+        // 前月末残高繰越行: col[11]から前月末残高を取得
+        if(col0.includes('繰越')||col0.includes('残高繰越')){
+          const ob=Number(r[11]);
+          if(!isNaN(ob)) newOpeningBalance=ob;
+          continue;
+        }
+
+        // 合計行スキップ
+        if(col0.includes('合計')) continue;
+
+        // 日(col[2])を取得。日がない行（空行等）はスキップ
+        const rd=Number(r[2])||0;
+        if(!rd) continue;
+
+        // 日付: ヘッダー選択年月 + 日（col[2]のみ使用）
+        const dateVal=`${isoY}-${isoM}-${String(rd).padStart(2,'0')}`;
+
         entries.push({
           date:dateVal,
           department:String(r[3]||''),
@@ -3066,9 +3086,11 @@ function pcHandleXLS(file){
           expense:Number(r[10])||0,
         });
       }
+
       if(entries.length===0){ alert('取り込めるデータが見つかりませんでした。'); return; }
-      if(!confirm(`${entries.length}件のデータを取り込みます。\n現在のデータは上書きされます。続けますか？`)) return;
+      if(!confirm(`${entries.length}件のデータを取り込みます。\n前月末残高も更新されます。現在のデータは上書きされます。続けますか？`)) return;
       _pcData.entries=entries;
+      _pcData.openingBalance=newOpeningBalance;
       _pcDirty=true;
       save(pcKey(),_pcData);
       renderPettyCash();
