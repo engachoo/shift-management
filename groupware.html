@@ -2667,6 +2667,11 @@ function toWareki(dateStr){
   return {y:ey,m,d};
 }
 function pcCanAccessAllDepts(){
+  // systemのみ全社・全部署を閲覧・操作可
+  return getS()?.role==='system';
+}
+function pcCanEditLocked(){
+  // system・adminは締済月も編集可
   const r=getS()?.role;
   return r==='system'||r==='admin';
 }
@@ -2720,7 +2725,10 @@ function openPettyCash(){
       const sysDepts=load('depts',[]);
       const myUserDept=sysDepts.find(d=>d.id===myDId)||{};
       const myGroupIds=new Set([myDId,myUserDept.parentId].filter(Boolean));
-      const myPc=pcDs.find(d=>!d.adminOnly&&myGroupIds.has(d.groupId));
+      const isAdminRole=(s?.role==='admin');
+      const myPc=isAdminRole
+        ? pcDs.find(d=>myGroupIds.has(d.groupId))
+        : pcDs.find(d=>!d.adminOnly&&myGroupIds.has(d.groupId));
       _pcDeptId=myPc?.id||'';
     }
   }
@@ -2748,7 +2756,8 @@ function renderPettyCash(){
   const pcDepts=load('pcDepts',[]);
   const canAll=pcCanAccessAllDepts();
   const myDeptId=getS()?.deptId||'';
-  // 出納帳部署セレクト（管理者は全9部署、一般は所属会社グループの部署のみ）
+  const myRole=getS()?.role||'';
+  // system: 全部署 / admin: 自社グループ全部署（本社含む） / 責任者・一般: 自社グループの本社除く部署
   let visibleDepts;
   if(canAll){
     visibleDepts=pcDepts;
@@ -2756,8 +2765,13 @@ function renderPettyCash(){
     const sysDepts=load('depts',[]);
     const myUserDept=sysDepts.find(d=>d.id===myDeptId)||{};
     const myGroupIds=new Set([myDeptId,myUserDept.parentId].filter(Boolean));
-    // 責任者・一般：本社（adminOnly）は非表示、自部署グループの残りのみ
-    visibleDepts=pcDepts.filter(d=>!d.adminOnly&&myGroupIds.has(d.groupId));
+    if(myRole==='admin'){
+      // admin: 自社グループ全部署（本社adminOnlyも含む）
+      visibleDepts=pcDepts.filter(d=>myGroupIds.has(d.groupId));
+    } else {
+      // 責任者・一般: 本社（adminOnly）は非表示、自部署グループのみ
+      visibleDepts=pcDepts.filter(d=>!d.adminOnly&&myGroupIds.has(d.groupId));
+    }
   }
   if(!_pcDeptId&&visibleDepts.length>0) _pcDeptId=visibleDepts[0].id;
   const deptOpts=visibleDepts.map(d=>`<option value="${d.id}"${d.id===_pcDeptId?' selected':''}>${esc(d.name)}</option>`).join('');
@@ -2776,7 +2790,7 @@ function renderPettyCash(){
 
   // 締め状態
   const locked=!!_pcData.locked;
-  const canEdit=!locked||canAll; // 管理者は締め中でも編集可
+  const canEdit=!locked||pcCanEditLocked(); // system・admin は締め中でも編集可
 
   // 令和年月ラベル（締め状態表示用）
   const curWr=toWareki(_pcYearMonth+'-01');
@@ -2820,7 +2834,7 @@ function renderPettyCash(){
 
     <div style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:12px 16px;margin-bottom:12px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
       <div style="font-size:13px;font-weight:700;color:#1a2b4a">部署：
-        ${canAll
+        ${visibleDepts.length>1
           ? `<select onchange="_pcDeptId=this.value;_pcDirty=false;_pcData=null;renderPettyCash()" style="border:1px solid #e2e8f0;border-radius:5px;padding:4px 8px;font-size:13px;margin-left:4px">${deptOpts}</select>`
           : `<span style="margin-left:4px">${esc(deptName)}</span>`
         }
@@ -2877,7 +2891,7 @@ function renderPettyCash(){
       </table>
     </div>
 
-    ${locked&&!canAll?`<div style="background:#fff7ed;border:1.5px solid #fed7aa;border-radius:7px;padding:10px 16px;margin-bottom:10px;font-size:13px;color:#9a3412;font-weight:600">🔒 令和${curWr.y}年${curWr.m}月は締済です。閲覧のみ可能です（変更は管理者にお問い合わせください）。</div>`:''}
+    ${locked&&!pcCanEditLocked()?`<div style="background:#fff7ed;border:1.5px solid #fed7aa;border-radius:7px;padding:10px 16px;margin-bottom:10px;font-size:13px;color:#9a3412;font-weight:600">🔒 令和${curWr.y}年${curWr.m}月は締済です。閲覧のみ可能です（変更は管理者にお問い合わせください）。</div>`:''}
 
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       ${canEdit?`<button onclick="pcAddRow()" style="background:#eff6ff;border:1.5px solid #bfdbfe;color:#1d4ed8;border-radius:7px;padding:8px 18px;cursor:pointer;font-size:13px;font-weight:600">＋ 行を追加</button>
@@ -2888,7 +2902,7 @@ function renderPettyCash(){
       <button onclick="pcExportCSV()" style="background:#f0fdf4;border:1.5px solid #bbf7d0;color:#166534;border-radius:7px;padding:8px 18px;cursor:pointer;font-size:13px;font-weight:600">📥 CSV出力</button>
       <button onclick="document.getElementById('pcXlsInput').click()" style="background:#faf5ff;border:1.5px solid #e9d5ff;color:#7c3aed;border-radius:7px;padding:8px 18px;cursor:pointer;font-size:13px;font-weight:600">📂 Excel取込</button>
       <input type="file" id="pcXlsInput" accept=".xlsx,.xls,.csv" style="display:none" onchange="pcHandleXLS(this.files[0]);this.value=''">
-      ${canAll?`<button onclick="${locked?'pcUnlock':'pcLock'}()" style="background:${locked?'#fef9c3':'#fff1f2'};border:1.5px solid ${locked?'#fde68a':'#fecdd3'};color:${locked?'#92400e':'#be123c'};border-radius:7px;padding:8px 18px;cursor:pointer;font-size:13px;font-weight:600">${locked?'🔓 締め解除':'🔒 月次締め'}</button>`:''}
+      ${pcCanEditLocked()?`<button onclick="${locked?'pcUnlock':'pcLock'}()" style="background:${locked?'#fef9c3':'#fff1f2'};border:1.5px solid ${locked?'#fde68a':'#fecdd3'};color:${locked?'#92400e':'#be123c'};border-radius:7px;padding:8px 18px;cursor:pointer;font-size:13px;font-weight:600">${locked?'🔓 締め解除':'🔒 月次締め'}</button>`:''}
     </div>`;
 }
 
@@ -3002,7 +3016,7 @@ function pcRowHTML(e,i){
   // 日だけe.dateから取り出す
   const dayVal=e.date?Number(e.date.split('-')[2])||'':'';
   // 締め中かつ非管理者は閲覧のみ
-  const ro=!!(_pcData?.locked&&!pcCanAccessAllDepts());
+  const ro=!!(_pcData?.locked&&!pcCanEditLocked());
   const txtSt=(c)=>`font-size:12px;color:${c||'#1a2b4a'};padding:4px 2px`;
   const ist=(w,r)=>`border:1px solid #e2e8f0;border-radius:4px;padding:4px 6px;font-size:12px;width:${w}px${r?';text-align:right':''}`;
   const inp=(id,val,ph,w,r)=>{
@@ -3047,7 +3061,7 @@ function pcRowHTML(e,i){
   </tr>`;
 }
 function pcAddRow(){
-  if(_pcData?.locked&&!pcCanAccessAllDepts()){ alert('この月は締め済みです。管理者に連絡してください。'); return; }
+  if(_pcData?.locked&&!pcCanEditLocked()){ alert('この月は締め済みです。管理者に連絡してください。'); return; }
   // 現在のストレージデータを読み込み、新行を追加してから保存→再描画
   const cur=JSON.parse(JSON.stringify(load(pcKey(),{openingBalance:0,entries:[]})));
   if(!cur.entries) cur.entries=[];
@@ -3064,7 +3078,7 @@ function pcAddRow(){
   },60);
 }
 function pcDeleteRow(i){
-  if(_pcData?.locked&&!pcCanAccessAllDepts()){ alert('この月は締め済みです。'); return; }
+  if(_pcData?.locked&&!pcCanEditLocked()){ alert('この月は締め済みです。'); return; }
   if(!_pcData||!confirm('この行を削除しますか？')) return;
   _pcData.entries.splice(i,1);
   save(pcKey(),_pcData); // 先に保存してからrenderPettyCash（ストレージ再読込のため）
@@ -3075,7 +3089,7 @@ function pcSelectAll(checked){
   document.querySelectorAll('.pcRowCheck').forEach(cb=>cb.checked=checked);
 }
 function pcDeleteSelected(){
-  if(_pcData?.locked&&!pcCanAccessAllDepts()){ alert('この月は締め済みです。'); return; }
+  if(_pcData?.locked&&!pcCanEditLocked()){ alert('この月は締め済みです。'); return; }
   const checked=Array.from(document.querySelectorAll('.pcRowCheck:checked'));
   if(checked.length===0){ alert('削除する行にチェックを入れてください。'); return; }
   if(!confirm(`選択した ${checked.length} 行を削除しますか？`)) return;
@@ -3137,7 +3151,7 @@ function pcExportCSV(){
 
 // ===== 月次締め =====
 function pcLock(){
-  if(!pcCanAccessAllDepts()) return;
+  if(!pcCanEditLocked()) return;
   if(!confirm('この月を締めますか？\n締め後は管理者以上のみ変更可能になります。')) return;
   if(!_pcData) return;
   _pcData.locked=true;
@@ -3145,7 +3159,7 @@ function pcLock(){
   renderPettyCash();
 }
 function pcUnlock(){
-  if(!pcCanAccessAllDepts()) return;
+  if(!pcCanEditLocked()) return;
   if(!confirm('締めを解除しますか？')) return;
   if(!_pcData) return;
   _pcData.locked=false;
@@ -3162,7 +3176,7 @@ function pcUnlock(){
 function pcHandleXLS(file){
   if(!file) return;
   if(!_pcData){ alert('データが読み込まれていません。'); return; }
-  if(_pcData.locked&&!pcCanAccessAllDepts()){ alert('この月は締め済みです。'); return; }
+  if(_pcData.locked&&!pcCanEditLocked()){ alert('この月は締め済みです。'); return; }
   const reader=new FileReader();
   reader.onload=function(ev){
     try{
