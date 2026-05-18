@@ -2677,13 +2677,8 @@ function toWareki(dateStr){
   if(y<2019||(y===2019&&m<5)) ey=y-1988; // 平成
   return {y:ey,m,d};
 }
-function pcCanAccessAllDepts(){
-  // system・soumuは全社・全部署を閲覧・操作可
-  const r=getS()?.role;
-  return r==='system'||r==='soumu';
-}
-// pcCanEditLocked は pcCanAccessAllDepts と同等
-function pcCanEditLocked(){ return pcCanAccessAllDepts(); }
+function pcCanAccessAllDepts(){ return hasPerm('acct_all_depts'); }
+function pcCanEditLocked(){     return hasPerm('acct_lock'); }
 // ===== 決算期情報 =====
 // 大日/AMUSE/BLOCK: 7〜6月末決算  ウェルピア(d3): 4〜3月末決算
 function pcFYInfo(){
@@ -4810,6 +4805,10 @@ const PERM_DEFS = [
   { key:'comm_evnotif',         label:'予定変更のお知らせ',        desc:'予定変更通知の受信・確認',         group:'コミュニケーション' },
   { key:'hr_view',              label:'人事・労務 閲覧',           desc:'人事・労務情報の閲覧',             group:'人事・労務' },
   { key:'hr_edit',              label:'人事・労務 編集',           desc:'人事・労務情報の登録・変更',       group:'人事・労務' },
+  { key:'acct_view',            label:'現金出納簿 閲覧',           desc:'自社グループの現金出納簿を閲覧',   group:'経理・事務' },
+  { key:'acct_edit',            label:'現金出納簿 記帳・編集',     desc:'明細の入力・修正・行追加・削除',   group:'経理・事務' },
+  { key:'acct_all_depts',       label:'全部署閲覧・管理',          desc:'全社全部署の出納簿を横断閲覧・操作', group:'経理・事務' },
+  { key:'acct_lock',            label:'月次締め・締め解除',        desc:'月次締め処理および締め解除の実行', group:'経理・事務' },
 ];
 const PERM_DEFAULT = {
   system_settings:      { system:true,  soumu:false, admin:false, manager:false, user:false },
@@ -4823,6 +4822,10 @@ const PERM_DEFAULT = {
   comm_evnotif:         { system:true,  soumu:true,  admin:true,  manager:true,  user:true  },
   hr_view:              { system:true,  soumu:true,  admin:false, manager:false, user:false },
   hr_edit:              { system:true,  soumu:true,  admin:false, manager:false, user:false },
+  acct_view:            { system:true,  soumu:true,  admin:true,  manager:true,  user:true  },
+  acct_edit:            { system:true,  soumu:true,  admin:true,  manager:true,  user:true  },
+  acct_all_depts:       { system:true,  soumu:true,  admin:false, manager:false, user:false },
+  acct_lock:            { system:true,  soumu:true,  admin:false, manager:false, user:false },
 };
 const ROLES = ['system','soumu','admin','manager','user'];
 
