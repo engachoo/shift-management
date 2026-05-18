@@ -1781,6 +1781,25 @@ function initData(){
   });
   if(deptsChanged || !depts.length) save('depts', depts);
 
+  // ---- 出納帳専用部署（pcDepts）：不足分だけ追加 ----
+  // groupId は load('depts') の部署IDと対応（アクセス制御用）
+  const defaultPcDepts = [
+    {id:'pc1', name:'大日-本社',        groupId:'d1a', order:0},
+    {id:'pc2', name:'BLOCK-サイクル',   groupId:'d1b', order:1},
+    {id:'pc3', name:'BLOCK-Eats',       groupId:'d1b', order:2},
+    {id:'pc4', name:'BLOCK-ボディ',     groupId:'d1b', order:3},
+    {id:'pc5', name:'AMUSE-本社',       groupId:'d2',  order:4},
+    {id:'pc6', name:'AMUSE-店舗',       groupId:'d2',  order:5},
+    {id:'pc7', name:'ウェルピア-本社',  groupId:'d3',  order:6},
+    {id:'pc8', name:'ウェルピア-羽島',  groupId:'d3',  order:7},
+    {id:'pc9', name:'ウェルピア-山県',  groupId:'d3',  order:8},
+  ];
+  let pcDepts = load('pcDepts',[]);
+  let pcDeptsChanged = false;
+  defaultPcDepts.forEach(dd=>{ if(!pcDepts.find(d=>d.id===dd.id)){ pcDepts.push(dd); pcDeptsChanged=true; } });
+  if(pcDeptsChanged||!pcDepts.length) save('pcDepts', pcDepts);
+
+
   // ---- ユーザー：不足分だけ追加 ----
   const defaultUsers = [
     {id:'admin',       loginId:'admin',       password:'admin123', name:'システム管理者', deptId:'',    role:'system',  active:true},
@@ -2654,11 +2673,23 @@ function pcCanAccessAllDepts(){
 }
 function openPettyCash(){
   const s=getS();
-  _pcDeptId = s?.deptId || (load('depts',[])[0]?.id||'');
+  if(!_pcDeptId){
+    const pcDs=load('pcDepts',[]);
+    if(pcCanAccessAllDepts()){
+      _pcDeptId=pcDs[0]?.id||'';
+    } else {
+      const myDId=s?.deptId||'';
+      const sysDepts=load('depts',[]);
+      const myUserDept=sysDepts.find(d=>d.id===myDId)||{};
+      const myGroupIds=new Set([myDId,myUserDept.parentId].filter(Boolean));
+      const myPc=pcDs.find(d=>myGroupIds.has(d.groupId));
+      _pcDeptId=myPc?.id||pcDs[0]?.id||'';
+    }
+  }
   const now=new Date();
   _pcYearMonth = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
   _pcDirty=false;
-  _pcData=null; // ストレージから再読み込みさせる
+  _pcData=null;
   renderPettyCash();
 }
 function pcKey(){ return 'pettyCash_'+_pcDeptId+'_'+_pcYearMonth.replace('-',''); }
@@ -2676,14 +2707,22 @@ function renderPettyCash(){
   }
   _pcData.entries.sort((a,b)=>(a.date||'').localeCompare(b.date||''));
 
-  const depts=load('depts',[]);
+  const pcDepts=load('pcDepts',[]);
   const canAll=pcCanAccessAllDepts();
   const myDeptId=getS()?.deptId||'';
-  // 部署セレクト（管理者・システムは全部署、それ以外は自部署のみ）
-  const visibleDepts=canAll?depts:depts.filter(d=>d.id===myDeptId);
-  if(!canAll&&!_pcDeptId) _pcDeptId=myDeptId;
+  // 出納帳部署セレクト（管理者は全9部署、一般は所属会社グループの部署のみ）
+  let visibleDepts;
+  if(canAll){
+    visibleDepts=pcDepts;
+  } else {
+    const sysDepts=load('depts',[]);
+    const myUserDept=sysDepts.find(d=>d.id===myDeptId)||{};
+    const myGroupIds=new Set([myDeptId,myUserDept.parentId].filter(Boolean));
+    visibleDepts=pcDepts.filter(d=>myGroupIds.has(d.groupId));
+  }
+  if(!_pcDeptId&&visibleDepts.length>0) _pcDeptId=visibleDepts[0].id;
   const deptOpts=visibleDepts.map(d=>`<option value="${d.id}"${d.id===_pcDeptId?' selected':''}>${esc(d.name)}</option>`).join('');
-  const deptName=(depts.find(d=>d.id===_pcDeptId)||{}).name||'';
+  const deptName=(pcDepts.find(d=>d.id===_pcDeptId)||{}).name||'';
 
   // 年月直接入力用：現在の令和年・月を算出
   const [_pyISO,_pmISO]=_pcYearMonth.split('-');
@@ -3000,7 +3039,7 @@ function pcSave(ev){
 }
 function pcExportCSV(){
   if(!_pcData) return;
-  const depts=load('depts',[]);
+  const depts=load('pcDepts',[]);
   const deptName=(depts.find(d=>d.id===_pcDeptId)||{}).name||'';
   const [py,pm]=_pcYearMonth.split('-');
   const wr=toWareki(_pcYearMonth+'-01');
