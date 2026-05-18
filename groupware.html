@@ -2657,11 +2657,9 @@ function pcKey(){ return 'pettyCash_'+_pcDeptId+'_'+_pcYearMonth.replace('-','')
 function renderPettyCash(){
   const el=document.getElementById('devAppsContent');
   if(!el) return;
-  // 初回（_pcDataがnull）のみストレージから読み込む。再描画時は既存データを保持する
-  if(!_pcData){
-    _pcData=JSON.parse(JSON.stringify(load(pcKey(),{openingBalance:0,entries:[]})));
-    if(!_pcData.entries) _pcData.entries=[];
-  }
+  // 毎回ストレージから最新データを読み込む（pcAddRowは事前にsaveするため整合性が保たれる）
+  _pcData=JSON.parse(JSON.stringify(load(pcKey(),{openingBalance:0,entries:[]})));
+  if(!_pcData.entries) _pcData.entries=[];
   _pcData.entries.sort((a,b)=>(a.date||'').localeCompare(b.date||''));
 
   const depts=load('depts',[]);
@@ -2882,27 +2880,19 @@ function pcRowHTML(e,i){
   </tr>`;
 }
 function pcAddRow(){
-  if(!_pcData) return;
-  const newEntry={date:todayStr(),department:'',purchaser:'',invoiceCheck:false,payee:'',receiptDate:'',content:'',income:0,expense:0};
-  _pcData.entries.push(newEntry);
+  // 現在のストレージデータを読み込み、新行を追加してから保存→再描画
+  const cur=JSON.parse(JSON.stringify(load(pcKey(),{openingBalance:0,entries:[]})));
+  if(!cur.entries) cur.entries=[];
+  cur.entries.push({date:todayStr(),department:'',purchaser:'',invoiceCheck:false,payee:'',receiptDate:'',content:'',income:0,expense:0});
+  save(pcKey(),cur); // 先にストレージに保存
   _pcDirty=true;
-  const i=_pcData.entries.length-1;
-  const tbody=document.getElementById('pcTbody');
-  if(!tbody) return;
-  // 空状態メッセージ行を削除
-  if(tbody.querySelector('td[colspan]')) tbody.innerHTML='';
-  // 新しい行をDOMに直接追加
-  const tr=document.createElement('tr');
-  tr.outerHTML; // dummy
-  tbody.insertAdjacentHTML('beforeend', pcRowHTML(newEntry,i));
-  pcUpdateTotals();
-  const badge=document.getElementById('pcDirtyBadge');
-  if(badge) badge.style.display='inline';
+  const newIdx=cur.entries.length-1;
+  renderPettyCash(); // 再描画（ストレージから読み直すため必ず新行が表示される）
   setTimeout(()=>{
-    const yInp=document.getElementById('pcY'+i);
+    const yInp=document.getElementById('pcY'+newIdx);
     if(yInp){ yInp.focus(); yInp.select(); }
-    tbody.lastElementChild?.scrollIntoView({block:'nearest'});
-  },30);
+    document.getElementById('pcTbody')?.lastElementChild?.scrollIntoView({block:'nearest'});
+  },60);
 }
 function pcDeleteRow(i){
   if(!_pcData||!confirm('この行を削除しますか？')) return;
