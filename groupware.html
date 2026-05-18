@@ -3742,9 +3742,12 @@ function renderCiList(){
 
   // 申請者（author）視点：全員承認済になるまで「未承認」タブに表示
   const _allConf=(c)=>c.recipients.every(id=>c.responses[id]?.status==='confirmed');
-  const ciPending=(c)=>c.author===me ? !_allConf(c) : (!c.responses[me]||c.responses[me]?.status==='pending');
-  const ciChecking=(c)=>c.author===me ? false : c.responses[me]?.status==='checking';
-  const ciDone=(c)=>c.author===me ? _allConf(c) : c.responses[me]?.status==='confirmed';
+  const ciPending=(c)=>{
+    if(c.withdrawn) return false; // 取り下げ済は未承認に出さない
+    return c.author===me ? !_allConf(c) : (!c.responses[me]||c.responses[me]?.status==='pending');
+  };
+  const ciChecking=(c)=>(!c.withdrawn&&c.author!==me&&c.responses[me]?.status==='checking');
+  const ciDone=(c)=>c.withdrawn||(c.author===me ? _allConf(c) : c.responses[me]?.status==='confirmed');
 
   const cntPend=all.filter(c=>ciPending(c)&&!ciChecking(c)).length;
   const cntCheck=all.filter(c=>ciChecking(c)).length;
@@ -3766,11 +3769,11 @@ function renderCiList(){
     const priLbl=c.priority==='top'?'最優先':c.priority==='high'?'優先':'普通';
     // 申請者は全体進捗で表示、受信者は自分の回答状態で表示
     const isAuthor=(c.author===me);
-    const myStatus=isAuthor
+    const myStatus=c.withdrawn?'withdrawn':isAuthor
       ?(_allConf(c)?'all-confirmed':'author-pending')
       :(c.responses[me]?.status||'pending');
-    const myLbl=myStatus==='all-confirmed'?'全員承認済':myStatus==='author-pending'?'承認待ち中':myStatus==='confirmed'?'承認済':myStatus==='checking'?'保留中':'未承認';
-    const myDot=myStatus==='all-confirmed'||myStatus==='confirmed'?'🟢':myStatus==='checking'?'🟡':myStatus==='author-pending'?'🟠':'🔴';
+    const myLbl=myStatus==='withdrawn'?'取り下げ済':myStatus==='all-confirmed'?'全員承認済':myStatus==='author-pending'?'承認待ち中':myStatus==='confirmed'?'承認済':myStatus==='checking'?'保留中':'未承認';
+    const myDot=myStatus==='withdrawn'?'⬜':myStatus==='all-confirmed'||myStatus==='confirmed'?'🟢':myStatus==='checking'?'🟡':myStatus==='author-pending'?'🟠':'🔴';
     return `<div class="ci-item ${c.id===ciSelId?'sel':''}" onclick="selCi('${c.id}')">
       <div class="ci-title"><span class="ci-pri ${c.priority}">${priLbl}</span>${myDot} ${esc(c.title)}${isAuthor?'<span style="font-size:10px;color:#6b7280;margin-left:6px">（自分の申請）</span>':''}</div>
       <div class="ci-meta"><span>${c.deadline||''}</span><span>${esc(getUser(c.author).name)}</span></div>
@@ -3808,8 +3811,12 @@ function renderCiDetail(){
     <div class="ap-detail-pad">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap">
         <h3 style="flex:1;font-size:15px;color:#1a2b4a">${esc(c.title)}</h3>
+        ${c.withdrawn?`<span style="background:#f3f4f6;color:#6b7280;border:1px solid #d1d5db;border-radius:6px;padding:3px 10px;font-size:12px;font-weight:700">⬜ 取り下げ済</span>`:''}
+        ${c.author===myId()&&!c.withdrawn?`<button onclick="withdrawCi('${c.id}')" style="background:#fff7ed;border:1.5px solid #fed7aa;color:#c2410c;border-radius:6px;padding:4px 12px;font-size:12px;font-weight:600;cursor:pointer">取り下げ</button>`:''}
         ${canEdit?`<button class="btn-danger" style="padding:4px 12px;font-size:12px" onclick="delCi('${c.id}')">削除</button>`:''}
       </div>
+      ${c.withdrawn?`<div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:8px 14px;font-size:12px;color:#6b7280;margin-bottom:12px">この申請は${esc(c.withdrawnAt||'')}に取り下げられました。</div>`:''}
+
       <div class="cd-tabs">
         <div class="cd-tab ${ciTab==='content'?'active':''}" onclick="switchCiTab('content')">内容</div>
         <div class="cd-tab ${ciTab==='response'?'active':''}" onclick="switchCiTab('response')">回答状況</div>
@@ -3877,6 +3884,17 @@ function respondCi(id, status, label){
   renderCiList(); renderCiDetail();
 }
 
+function withdrawCi(id){
+  if(!confirm('この申請を取り下げますか？\n受信者に取り下げの通知が送られます。'))return;
+  const cis=load('circulars',[]);
+  const c=cis.find(x=>x.id===id);
+  if(!c||c.author!==myId())return;
+  c.withdrawn=true;
+  c.withdrawnAt=jstISO().slice(0,16).replace('T',' ');
+  save('circulars',cis);
+  sendEvNotif(c.recipients,'📝',`「${c.title}」の申請が取り下げられました`);
+  renderCiList(); renderCiDetail();
+}
 function delCi(id){
   if(!confirm('この申請を削除しますか？'))return;
   save('circulars',load('circulars',[]).filter(c=>c.id!==id));
