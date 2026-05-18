@@ -3097,33 +3097,42 @@ function pcHandleXLS(file){
 
       for(let i=headerRow+1;i<rows.length;i++){
         const r=rows[i];
-        const col0=String(r[0]||'');
+        // 行全体を文字列化（繰越・合計の検出に使用）
+        const rowStr=r.map(c=>String(c||'')).join('');
 
-        // 前月末残高繰越行: 「繰越」を含む行 → 差引残高列から金額取得
-        if(col0.includes('繰越')){
-          const balIdx=iBalance>=0?iBalance:r.length-2; // 残高列が不明なら末尾から2番目
-          const ob=Number(r[balIdx]);
-          if(!isNaN(ob)&&String(ob)!=='') newOpeningBalance=ob;
-          continue;
-        }
-
-        // 合計行・空行スキップ
-        if(col0.includes('合計')) continue;
-
-        // 日を取得（列名ベース優先、なければ位置固定フォールバック）
+        // 日を取得（列名ベース優先、なければA=0/B=1/C=2の位置固定フォールバック）
         const dayRaw=iDay>=0?r[iDay]:r[2];
         const rd=Number(dayRaw)||0;
-        if(!rd) continue;
 
-        // 年・月: Excelの値を優先（令和年は+2018で西暦変換）、なければ_pcYearMonthを使用
+        // 日がない行の特殊処理（前月末残高行・合計行など）
+        if(!rd){
+          // 前月末残高繰越行: 行のどこかに「繰越」がある → 差引残高列から金額取得
+          if(rowStr.includes('繰越')){
+            const balIdx=iBalance>=0?iBalance:r.length-1;
+            const ob=Number(r[balIdx]);
+            if(!isNaN(ob)&&ob!==0) newOpeningBalance=ob;
+          }
+          continue; // 日なし行は常にスキップ（繰越行も合計行も空行も）
+        }
+
+        // 年・月を特定：列名で見つかればその列、なければA列(r[0])・B列(r[1])を推定
         let adY=Number(isoY), adM=Number(isoM);
         if(iYear>=0){
           const ry=Number(r[iYear])||0;
           adY=ry>2000?ry:ry>0?ry+2018:Number(isoY);
+        } else {
+          // ヘッダーで年列未検出 → A列(r[0])の値を令和年または西暦年として試みる
+          const ry0=Number(r[0])||0;
+          if(ry0>=1&&ry0<=99)      adY=ry0+2018; // 令和年（1〜99）
+          else if(ry0>=2019)        adY=ry0;       // 西暦年
         }
         if(iMonth>=0){
           const rm=Number(r[iMonth])||0;
           if(rm>=1&&rm<=12) adM=rm;
+        } else {
+          // ヘッダーで月列未検出 → B列(r[1])の値を試みる
+          const rm1=Number(r[1])||0;
+          if(rm1>=1&&rm1<=12) adM=rm1;
         }
         const dateVal=`${adY}-${String(adM).padStart(2,'0')}-${String(rd).padStart(2,'0')}`;
 
