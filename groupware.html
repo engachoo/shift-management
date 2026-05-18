@@ -2649,6 +2649,7 @@ function openPettyCash(){
   const now=new Date();
   _pcYearMonth = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
   _pcDirty=false;
+  _pcData=null; // ストレージから再読み込みさせる
   renderPettyCash();
 }
 function pcKey(){ return 'pettyCash_'+_pcDeptId+'_'+_pcYearMonth.replace('-',''); }
@@ -2656,8 +2657,11 @@ function pcKey(){ return 'pettyCash_'+_pcDeptId+'_'+_pcYearMonth.replace('-','')
 function renderPettyCash(){
   const el=document.getElementById('devAppsContent');
   if(!el) return;
-  _pcData=JSON.parse(JSON.stringify(load(pcKey(),{openingBalance:0,entries:[]})));
-  if(!_pcData.entries) _pcData.entries=[];
+  // 初回（_pcDataがnull）のみストレージから読み込む。再描画時は既存データを保持する
+  if(!_pcData){
+    _pcData=JSON.parse(JSON.stringify(load(pcKey(),{openingBalance:0,entries:[]})));
+    if(!_pcData.entries) _pcData.entries=[];
+  }
   _pcData.entries.sort((a,b)=>(a.date||'').localeCompare(b.date||''));
 
   const depts=load('depts',[]);
@@ -2727,12 +2731,12 @@ function renderPettyCash(){
     <div style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:12px 16px;margin-bottom:12px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
       <div style="font-size:13px;font-weight:700;color:#1a2b4a">部署：
         ${canAll
-          ? `<select onchange="_pcDeptId=this.value;_pcDirty=false;renderPettyCash()" style="border:1px solid #e2e8f0;border-radius:5px;padding:4px 8px;font-size:13px;margin-left:4px">${deptOpts}</select>`
+          ? `<select onchange="_pcDeptId=this.value;_pcDirty=false;_pcData=null;renderPettyCash()" style="border:1px solid #e2e8f0;border-radius:5px;padding:4px 8px;font-size:13px;margin-left:4px">${deptOpts}</select>`
           : `<span style="margin-left:4px">${esc(deptName)}</span>`
         }
       </div>
       <div style="font-size:13px;font-weight:700;color:#1a2b4a">年月：
-        <select onchange="_pcYearMonth=this.value;_pcDirty=false;renderPettyCash()" style="border:1px solid #e2e8f0;border-radius:5px;padding:4px 8px;font-size:13px;margin-left:4px">${ymOpts}</select>
+        <select onchange="_pcYearMonth=this.value;_pcDirty=false;_pcData=null;renderPettyCash()" style="border:1px solid #e2e8f0;border-radius:5px;padding:4px 8px;font-size:13px;margin-left:4px">${ymOpts}</select>
       </div>
       <div style="font-size:12px;color:#6b7280">前月末残高繰越：
         <input type="number" value="${_pcData.openingBalance||0}" oninput="pcOpeningChange(this.value)" style="border:1px solid #e2e8f0;border-radius:5px;padding:4px 6px;font-size:13px;width:100px;text-align:right;margin:0 3px">円
