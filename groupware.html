@@ -3069,8 +3069,13 @@ function pcHandleXLS(file){
       }
       if(headerRow<0){ alert('列ヘッダーが見つかりません。\n「精算日（年）」「部門」「支払先」などの列名を含むExcelファイルを選択してください。'); return; }
 
-      // ===== 列名からインデックスを動的に特定 =====
-      const hdr=rows[headerRow].map(c=>String(c||''));
+      // ===== 2行ヘッダーに対応: メインヘッダー行＋サブヘッダー行を合成 =====
+      // 例) 行2:「精算日」「適用」「借方金額」/ 行3:「年」「月」「日」「支払先」「領収書日付」「内容」
+      const mergedHdr=rows[headerRow].map(c=>String(c||''));
+      if(headerRow+1<rows.length){
+        rows[headerRow+1].forEach((v,i)=>{ const s=String(v||''); if(s) mergedHdr[i]=s; });
+      }
+      const hdr=mergedHdr;
       const findCol=(...keys)=>{
         for(const k of keys){
           const idx=hdr.findIndex(h=>h===k||h.includes(k));
