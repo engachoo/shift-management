@@ -2670,7 +2670,8 @@ function renderPettyCash(){
   if(!_pcData.entries) _pcData.entries=[];
   // データが空の月はデフォルトで1行表示（未保存）
   if(_pcData.entries.length===0){
-    _pcData.entries.push({date:todayStr(),department:'',purchaser:'',invoiceCheck:false,payee:'',receiptDate:'',content:'',income:0,expense:0});
+    const defDate=_pcYearMonth?_pcYearMonth+'-01':todayStr();
+    _pcData.entries.push({date:defDate,department:'',purchaser:'',invoiceCheck:false,payee:'',receiptDate:'',content:'',income:0,expense:0});
   }
   _pcData.entries.sort((a,b)=>(a.date||'').localeCompare(b.date||''));
 
@@ -2728,9 +2729,13 @@ function renderPettyCash(){
       </div>
       <div style="font-size:13px;font-weight:700;color:#1a2b4a;display:flex;align-items:center;gap:4px">年月：
         <span style="margin-left:4px">R</span>
-        <input id="pcYearInp" type="number" value="${curRY}" onchange="pcYMChange(this.value,document.getElementById('pcMonthInp').value)" min="1" max="99" style="border:1px solid #e2e8f0;border-radius:5px;padding:4px 6px;font-size:13px;width:52px;text-align:center">
+        <select id="pcYearSel" onchange="pcYMChange(this.value,document.getElementById('pcMonthSel').value)" style="border:1px solid #e2e8f0;border-radius:5px;padding:4px 6px;font-size:13px">
+          ${Array.from({length:20},(_,k)=>`<option value="${k+1}"${k+1===curRY?' selected':''}>${k+1}</option>`).join('')}
+        </select>
         <span>年</span>
-        <input id="pcMonthInp" type="number" value="${curM}" onchange="pcYMChange(document.getElementById('pcYearInp').value,this.value)" min="1" max="12" style="border:1px solid #e2e8f0;border-radius:5px;padding:4px 6px;font-size:13px;width:44px;text-align:center">
+        <select id="pcMonthSel" onchange="pcYMChange(document.getElementById('pcYearSel').value,this.value)" style="border:1px solid #e2e8f0;border-radius:5px;padding:4px 6px;font-size:13px">
+          ${Array.from({length:12},(_,k)=>`<option value="${k+1}"${k+1===curM?' selected':''}>${k+1}</option>`).join('')}
+        </select>
         <span>月</span>
       </div>
       <div style="font-size:12px;color:#6b7280">前月末残高繰越：
@@ -2798,11 +2803,10 @@ function pcWarekiToDate(y,m,d){
 function pcDateField(i,part,val){
   if(!_pcData||!_pcData.entries[i]) return;
   const e=_pcData.entries[i];
-  const wr=toWareki(e.date||'');
-  const y=part==='y'?val:(wr.y||'');
-  const m=part==='m'?val:(wr.m||'');
-  const d=part==='d'?val:(wr.d||'');
-  e.date=pcWarekiToDate(y,m,d);
+  // 年・月はヘッダー選択（_pcYearMonth）から固定、日だけ入力
+  const [isoY,isoM]=_pcYearMonth.split('-');
+  const d=part==='d'?val:(e.date?Number(e.date.split('-')[2])||'':'');
+  e.date=d?`${isoY}-${isoM}-${String(Number(d)).padStart(2,'0')}`:'';
   _pcDirty=true;
   pcUpdateTotals();
 }
@@ -2858,11 +2862,9 @@ function pcFieldKey(e,i,field){
   const isLast=(_pcData&&i===_pcData.entries.length-1);
   if(e.key==='Enter'){
     e.preventDefault();
-    if(field==='y')      { document.getElementById('pcM'+i)?.focus(); }
-    else if(field==='m') { document.getElementById('pcD'+i)?.focus(); }
-    else if(field==='d') { document.querySelector(`#pcTbody tr:nth-child(${i+1}) td:nth-child(4) input`)?.focus(); }
+    if(field==='d')      { document.querySelector(`#pcTbody tr:nth-child(${i+1}) td:nth-child(4) input`)?.focus(); }
     else if(field==='income') { document.querySelector(`#pcTbody tr:nth-child(${i+1}) td:nth-child(11) input`)?.focus(); }
-    else if(field==='expense'){ if(isLast) pcAddRow(); else document.getElementById('pcY'+(i+1))?.focus(); }
+    else if(field==='expense'){ if(isLast) pcAddRow(); else document.getElementById('pcD'+(i+1))?.focus(); }
     return;
   }
   if(e.key==='Tab'&&!e.shiftKey&&field==='expense'&&isLast){
@@ -2871,15 +2873,20 @@ function pcFieldKey(e,i,field){
   }
 }
 function pcRowHTML(e,i){
-  const wr=toWareki(e.date||'');
+  // 年・月はヘッダー選択（_pcYearMonth）から自動取得
+  const [isoY,isoM]=_pcYearMonth.split('-');
+  const ryYear=Number(isoY)-2018;
+  const ryMonth=Number(isoM);
+  // 日だけe.dateから取り出す
+  const dayVal=e.date?Number(e.date.split('-')[2])||'':'';
   const ist=(w,r)=>`border:1px solid #e2e8f0;border-radius:4px;padding:4px 6px;font-size:12px;width:${w}px${r?';text-align:right':''}`;
   const inp=(id,val,ph,w,r)=>`<input type="text" value="${esc(String(val||''))}" oninput="pcField(${i},'${id}',this.value)" placeholder="${ph}" style="${ist(w,r)}">`;
   const num=(id,val,w,col)=>`<input type="number" value="${val||''}" oninput="pcField(${i},'${id}',this.value)" onkeydown="pcFieldKey(event,${i},'${id}')" placeholder="0" min="0" style="border:1px solid #e2e8f0;border-radius:4px;padding:4px 6px;font-size:12px;width:${w}px;text-align:right;color:${col}">`;
   const ta=(id,val,ph,w)=>`<textarea oninput="pcField(${i},'${id}',this.value)" placeholder="${ph}" rows="2" style="border:1px solid #e2e8f0;border-radius:4px;padding:4px 6px;font-size:12px;width:${w}px;resize:vertical;min-height:36px;font-family:inherit;line-height:1.5">${esc(String(val||''))}</textarea>`;
   return `<tr style="border-bottom:1px solid #f1f5f9;vertical-align:top">
-    <td style="padding:4px 3px;text-align:center"><input id="pcY${i}" type="number" value="${wr.y||''}" oninput="pcDateField(${i},'y',this.value)" onkeydown="pcFieldKey(event,${i},'y')" placeholder="年" min="1" style="border:1px solid #e2e8f0;border-radius:4px;padding:4px 4px;font-size:12px;width:40px;text-align:center"></td>
-    <td style="padding:4px 3px;text-align:center"><input id="pcM${i}" type="number" value="${wr.m||''}" oninput="pcDateField(${i},'m',this.value)" onkeydown="pcFieldKey(event,${i},'m')" placeholder="月" min="1" max="12" style="border:1px solid #e2e8f0;border-radius:4px;padding:4px 4px;font-size:12px;width:36px;text-align:center"></td>
-    <td style="padding:4px 3px;text-align:center"><input id="pcD${i}" type="number" value="${wr.d||''}" oninput="pcDateField(${i},'d',this.value)" onkeydown="pcFieldKey(event,${i},'d')" placeholder="日" min="1" max="31" style="border:1px solid #e2e8f0;border-radius:4px;padding:4px 4px;font-size:12px;width:36px;text-align:center"></td>
+    <td style="padding:4px 3px;text-align:center;font-size:12px;color:#475569;white-space:nowrap">${ryYear}</td>
+    <td style="padding:4px 3px;text-align:center;font-size:12px;color:#475569;white-space:nowrap">${ryMonth}</td>
+    <td style="padding:4px 3px;text-align:center"><input id="pcD${i}" type="number" value="${dayVal}" oninput="pcDateField(${i},'d',this.value)" onkeydown="pcFieldKey(event,${i},'d')" placeholder="日" min="1" max="31" style="border:1px solid #e2e8f0;border-radius:4px;padding:4px 4px;font-size:12px;width:36px;text-align:center"></td>
     <td style="padding:4px 3px">${inp('department',e.department,'部門',60)}</td>
     <td style="padding:4px 3px">${inp('purchaser',e.purchaser,'購入者',64)}</td>
     <td style="padding:4px 3px;text-align:center;padding-top:10px"><input type="checkbox"${e.invoiceCheck?' checked':''} onchange="pcField(${i},'invoiceCheck',this.checked)" style="width:17px;height:17px;cursor:pointer"></td>
@@ -2896,14 +2903,15 @@ function pcAddRow(){
   // 現在のストレージデータを読み込み、新行を追加してから保存→再描画
   const cur=JSON.parse(JSON.stringify(load(pcKey(),{openingBalance:0,entries:[]})));
   if(!cur.entries) cur.entries=[];
-  cur.entries.push({date:todayStr(),department:'',purchaser:'',invoiceCheck:false,payee:'',receiptDate:'',content:'',income:0,expense:0});
+  const defDate=_pcYearMonth?_pcYearMonth+'-01':todayStr();
+  cur.entries.push({date:defDate,department:'',purchaser:'',invoiceCheck:false,payee:'',receiptDate:'',content:'',income:0,expense:0});
   save(pcKey(),cur); // 先にストレージに保存
   _pcDirty=true;
   const newIdx=cur.entries.length-1;
   renderPettyCash(); // 再描画（ストレージから読み直すため必ず新行が表示される）
   setTimeout(()=>{
-    const yInp=document.getElementById('pcY'+newIdx);
-    if(yInp){ yInp.focus(); yInp.select(); }
+    const dInp=document.getElementById('pcD'+newIdx);
+    if(dInp){ dInp.focus(); dInp.select(); }
     document.getElementById('pcTbody')?.lastElementChild?.scrollIntoView({block:'nearest'});
   },60);
 }
