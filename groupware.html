@@ -3058,9 +3058,16 @@ function pcHandleXLS(file){
   const reader=new FileReader();
   reader.onload=function(ev){
     try{
-      const wb=XLSX.read(ev.target.result,{type:'array'});
+      const wb=XLSX.read(ev.target.result,{type:'array',cellDates:true});
       const ws=wb.Sheets[wb.SheetNames[0]];
       const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+      // 日付セル（Date型）→ M/D 形式の文字列に変換するヘルパー
+      const toMD=(v)=>{
+        if(!v) return '';
+        if(v instanceof Date) return `${v.getMonth()+1}/${v.getDate()}`;
+        const s=String(v).trim();
+        return s;
+      };
 
       // ヘッダー行を探す（複数キーワードで柔軟に判定）
       let headerRow=-1;
@@ -3152,7 +3159,7 @@ function pcHandleXLS(file){
           purchaser:String(get(iPurch,4)||''),
           invoiceCheck:String(get(iInv,5)||'').includes('☑'),
           payee:String(get(iPayee,6)||''),
-          receiptDate:String(get(iReceipt,7)||''),
+          receiptDate:toMD(get(iReceipt,7)),
           content:String(get(iContent,8)||''),
           income:Number(get(iIncome,9))||0,
           expense:Number(get(iExpense,10))||0,
