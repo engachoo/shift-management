@@ -2667,14 +2667,12 @@ function toWareki(dateStr){
   return {y:ey,m,d};
 }
 function pcCanAccessAllDepts(){
-  // systemのみ全社・全部署を閲覧・操作可
-  return getS()?.role==='system';
-}
-function pcCanEditLocked(){
-  // system・adminは締済月も編集可
+  // system・adminは全社・全部署を閲覧・操作可
   const r=getS()?.role;
   return r==='system'||r==='admin';
 }
+// pcCanEditLocked は pcCanAccessAllDepts と同等
+function pcCanEditLocked(){ return pcCanAccessAllDepts(); }
 // ===== 決算期情報 =====
 // 大日/AMUSE/BLOCK: 7〜6月末決算  ウェルピア(d3): 4〜3月末決算
 function pcFYInfo(){
@@ -2725,10 +2723,7 @@ function openPettyCash(){
       const sysDepts=load('depts',[]);
       const myUserDept=sysDepts.find(d=>d.id===myDId)||{};
       const myGroupIds=new Set([myDId,myUserDept.parentId].filter(Boolean));
-      const isAdminRole=(s?.role==='admin');
-      const myPc=isAdminRole
-        ? pcDs.find(d=>myGroupIds.has(d.groupId))
-        : pcDs.find(d=>!d.adminOnly&&myGroupIds.has(d.groupId));
+      const myPc=pcDs.find(d=>!d.adminOnly&&myGroupIds.has(d.groupId));
       _pcDeptId=myPc?.id||'';
     }
   }
@@ -2756,8 +2751,7 @@ function renderPettyCash(){
   const pcDepts=load('pcDepts',[]);
   const canAll=pcCanAccessAllDepts();
   const myDeptId=getS()?.deptId||'';
-  const myRole=getS()?.role||'';
-  // system: 全部署 / admin: 自社グループ全部署（本社含む） / 責任者・一般: 自社グループの本社除く部署
+  // system・admin: 全9部署 / 責任者・一般: 自社グループの本社除く部署
   let visibleDepts;
   if(canAll){
     visibleDepts=pcDepts;
@@ -2765,13 +2759,7 @@ function renderPettyCash(){
     const sysDepts=load('depts',[]);
     const myUserDept=sysDepts.find(d=>d.id===myDeptId)||{};
     const myGroupIds=new Set([myDeptId,myUserDept.parentId].filter(Boolean));
-    if(myRole==='admin'){
-      // admin: 自社グループ全部署（本社adminOnlyも含む）
-      visibleDepts=pcDepts.filter(d=>myGroupIds.has(d.groupId));
-    } else {
-      // 責任者・一般: 本社（adminOnly）は非表示、自部署グループのみ
-      visibleDepts=pcDepts.filter(d=>!d.adminOnly&&myGroupIds.has(d.groupId));
-    }
+    visibleDepts=pcDepts.filter(d=>!d.adminOnly&&myGroupIds.has(d.groupId));
   }
   if(!_pcDeptId&&visibleDepts.length>0) _pcDeptId=visibleDepts[0].id;
   const deptOpts=visibleDepts.map(d=>`<option value="${d.id}"${d.id===_pcDeptId?' selected':''}>${esc(d.name)}</option>`).join('');
