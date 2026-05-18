@@ -2771,6 +2771,7 @@ function renderPettyCash(){
       <table style="width:100%;border-collapse:collapse;min-width:1050px">
         <thead>
           <tr style="background:#1a2b4a;color:#fff">
+            ${canEdit?`<th rowspan="2" style="${thSt}"><input type="checkbox" onchange="pcSelectAll(this.checked)" style="width:15px;height:15px;cursor:pointer" title="全選択/解除"></th>`:''}
             <th colspan="3" style="padding:7px 5px;font-size:11px;border:1px solid #374151">精　算　日</th>
             <th rowspan="2" style="${thSt}">部門</th>
             <th rowspan="2" style="${thSt}">購入者</th>
@@ -2798,7 +2799,7 @@ function renderPettyCash(){
         <tbody id="pcTbody">${rows||'<tr><td colspan="13" style="text-align:center;padding:20px;color:#9ca3af;font-size:13px">行を追加してください</td></tr>'}</tbody>
         <tfoot>
           <tr>
-            <td colspan="9" style="${tfSt('text-align:center')}">合　計</td>
+            <td colspan="${canEdit?10:9}" style="${tfSt('text-align:center')}">合　計</td>
             <td style="${tfSt('text-align:right;color:#166534')}">${totalIn.toLocaleString()}</td>
             <td style="${tfSt('text-align:right;color:#dc2626')}">${totalOut.toLocaleString()}</td>
             <td style="${tfSt('text-align:right;color:'+(finalBal<0?'#dc2626':'#1a2b4a'))}">${finalBal.toLocaleString()}</td>
@@ -2812,6 +2813,7 @@ function renderPettyCash(){
 
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       ${canEdit?`<button onclick="pcAddRow()" style="background:#eff6ff;border:1.5px solid #bfdbfe;color:#1d4ed8;border-radius:7px;padding:8px 18px;cursor:pointer;font-size:13px;font-weight:600">＋ 行を追加</button>
+      <button onclick="pcDeleteSelected()" style="background:#fff1f2;border:1.5px solid #fecdd3;color:#be123c;border-radius:7px;padding:8px 16px;cursor:pointer;font-size:13px;font-weight:600">🗑 選択行を削除</button>
       <span style="font-size:11px;color:#9ca3af">最終行の支払金額欄で Enter / Tab → 自動で次行追加</span>`:''}
       <div style="flex:1"></div>
       ${canEdit?`<button onclick="pcSave(event)" style="background:linear-gradient(135deg,#1a56db,#1e40af);color:#fff;border:none;border-radius:7px;padding:8px 22px;cursor:pointer;font-size:13px;font-weight:700;box-shadow:0 2px 6px rgba(26,86,219,.3)">💾 保存</button>`:''}
@@ -2928,6 +2930,7 @@ function pcRowHTML(e,i){
     ?`<span style="font-size:14px">${e.invoiceCheck?'☑':'□'}</span>`
     :`<input type="checkbox"${e.invoiceCheck?' checked':''} onchange="pcField(${i},'invoiceCheck',this.checked)" style="width:17px;height:17px;cursor:pointer">`;
   return `<tr style="border-bottom:1px solid #f1f5f9;vertical-align:top">
+    ${ro?'':`<td style="padding:4px 3px;text-align:center;padding-top:10px"><input type="checkbox" class="pcRowCheck" data-idx="${i}" style="width:15px;height:15px;cursor:pointer"></td>`}
     <td style="padding:4px 3px;text-align:center;font-size:12px;color:#475569;white-space:nowrap">${ryYear}</td>
     <td style="padding:4px 3px;text-align:center;font-size:12px;color:#475569;white-space:nowrap">${ryMonth}</td>
     <td style="padding:4px 3px;text-align:center">${dayCell}</td>
@@ -2965,6 +2968,21 @@ function pcDeleteRow(i){
   if(!_pcData||!confirm('この行を削除しますか？')) return;
   _pcData.entries.splice(i,1);
   save(pcKey(),_pcData); // 先に保存してからrenderPettyCash（ストレージ再読込のため）
+  _pcDirty=false;
+  renderPettyCash();
+}
+function pcSelectAll(checked){
+  document.querySelectorAll('.pcRowCheck').forEach(cb=>cb.checked=checked);
+}
+function pcDeleteSelected(){
+  if(_pcData?.locked&&!pcCanAccessAllDepts()){ alert('この月は締め済みです。'); return; }
+  const checked=Array.from(document.querySelectorAll('.pcRowCheck:checked'));
+  if(checked.length===0){ alert('削除する行にチェックを入れてください。'); return; }
+  if(!confirm(`選択した ${checked.length} 行を削除しますか？`)) return;
+  // インデックスを降順にして後ろから削除（インデックスのズレを防ぐ）
+  const indices=checked.map(cb=>Number(cb.dataset.idx)).sort((a,b)=>b-a);
+  indices.forEach(i=>_pcData.entries.splice(i,1));
+  save(pcKey(),_pcData);
   _pcDirty=false;
   renderPettyCash();
 }
