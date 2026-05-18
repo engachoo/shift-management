@@ -597,8 +597,10 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
       <div class="side-item" id="m-ad" onclick="showMod('admin','depts')"><span class="si-icon">🏢</span>部署管理</div>
       <div class="side-item" id="m-ap" onclick="showMod('admin','perms')"><span class="si-icon">🔐</span>権限設定</div>
     </div>
-    <div class="side-group">ツール</div>
-    <div class="side-item" id="m-dev" onclick="showMod('devapps')"><span class="si-icon">💰</span>現金出納帳</div>
+    <div id="devMenu" style="display:none">
+      <div class="side-group">開発中アプリ</div>
+      <div class="side-item" id="m-dev" onclick="showMod('devapps')"><span class="si-icon">💰</span>現金出納帳</div>
+    </div>
   </div>
 
   <!-- メインコンテンツ -->
@@ -4800,6 +4802,10 @@ function startApp(){
   // 管理者メニューは system・admin のみ表示
   if(isAdmin()){
     document.getElementById('adminMenu').style.display='block';
+  }
+  // 開発中アプリはシステム管理者のみ表示
+  if(isSystem()){
+    document.getElementById('devMenu').style.display='block';
   }
   // 前回ログイン時刻を保存してからTOPへ
   const uid = s.userId;
