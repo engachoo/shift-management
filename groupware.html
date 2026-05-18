@@ -3035,8 +3035,8 @@ function pcRowHTML(e,i){
     :`<input type="text" id="${numIdMap[id]||''}" value="${fmtNum(val)}" oninput="pcField(${i},'${id}',this.value.replace(/,/g,''))" onblur="this.value=this.value.replace(/,/g,'')?(Number(this.value.replace(/,/g,''))||0).toLocaleString():''" onkeydown="pcFieldKey(event,${i},'${id}')" placeholder="0" style="border:1px solid #e2e8f0;border-radius:4px;padding:4px 6px;font-size:12px;width:${w}px;text-align:right;color:${col}">`;
   const taIdMap={payee:`pcPay${i}`,content:`pcCon${i}`};
   const ta=(id,val,ph,w)=>ro
-    ?`<span style="${txtSt()};width:${w}px;display:inline-block;white-space:pre-wrap;word-break:break-all">${esc(String(val||''))}</span>`
-    :`<textarea id="${taIdMap[id]||''}" oninput="pcField(${i},'${id}',this.value)" onkeydown="pcFieldKey(event,${i},'${id}')" placeholder="${ph}" rows="2" style="border:1px solid #e2e8f0;border-radius:4px;padding:4px 6px;font-size:12px;width:${w}px;resize:vertical;min-height:36px;font-family:inherit;line-height:1.5;word-break:break-all">${esc(String(val||''))}</textarea>`;
+    ?`<span style="${txtSt()};width:100%;min-width:${w}px;display:inline-block;white-space:pre-wrap;word-break:break-all">${esc(String(val||''))}</span>`
+    :`<textarea id="${taIdMap[id]||''}" oninput="pcField(${i},'${id}',this.value)" onkeydown="pcFieldKey(event,${i},'${id}')" placeholder="${ph}" rows="2" style="border:1px solid #e2e8f0;border-radius:4px;padding:4px 6px;font-size:12px;width:100%;min-width:${w}px;box-sizing:border-box;resize:vertical;min-height:36px;font-family:inherit;line-height:1.5;word-break:break-all">${esc(String(val||''))}</textarea>`;
   const dayCell=ro
     ?`<span style="${txtSt()}">${dayVal}</span>`
     :`<input id="pcD${i}" type="number" value="${dayVal}" oninput="pcDateField(${i},'d',this.value)" onkeydown="pcFieldKey(event,${i},'d')" placeholder="日" min="1" max="31" style="border:1px solid #e2e8f0;border-radius:4px;padding:4px 4px;font-size:12px;width:36px;text-align:center">`;
@@ -3051,9 +3051,9 @@ function pcRowHTML(e,i){
     <td style="padding:4px 3px">${inp('department',e.department,'部門',60)}</td>
     <td style="padding:4px 3px">${inp('purchaser',e.purchaser,'購入者',64)}</td>
     <td style="padding:4px 3px;text-align:center;padding-top:10px">${chkCell}</td>
-    <td style="padding:4px 3px">${ta('payee',e.payee,'支払先',160)}</td>
+    <td style="padding:4px 3px;width:18%">${ta('payee',e.payee,'支払先',120)}</td>
     <td style="padding:4px 3px">${inp('receiptDate',e.receiptDate,'M/D',48)}</td>
-    <td style="padding:4px 3px">${ta('content',e.content,'内容',220)}</td>
+    <td style="padding:4px 3px;width:28%">${ta('content',e.content,'内容',160)}</td>
     <td style="padding:4px 3px">${num('income',e.income||'',86,'#166534')}</td>
     <td style="padding:4px 3px">${num('expense',e.expense||'',86,'#dc2626')}</td>
     <td style="padding:4px 6px;text-align:right;font-weight:700;font-size:12px;white-space:nowrap;color:#1a2b4a">0</td>
