@@ -722,6 +722,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
                 <tr style="background:#f5f7fb">
                   <th style="text-align:left;padding:10px 12px;border:1px solid #dde3ec;min-width:200px">機能</th>
                   <th style="text-align:center;padding:10px 16px;border:1px solid #dde3ec;color:#1a56db;min-width:80px">システム</th>
+                  <th style="text-align:center;padding:10px 16px;border:1px solid #dde3ec;color:#7c3aed;min-width:80px">総務経理</th>
                   <th style="text-align:center;padding:10px 16px;border:1px solid #dde3ec;color:#047857;min-width:80px">管理者</th>
                   <th style="text-align:center;padding:10px 16px;border:1px solid #dde3ec;color:#b45309;min-width:80px">責任者</th>
                   <th style="text-align:center;padding:10px 16px;border:1px solid #dde3ec;color:#374151;min-width:80px">一般</th>
@@ -1446,9 +1447,10 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
             </thead>
             <tbody>
               <tr><td style="padding:7px 8px;border:1px solid #dde3ec;font-weight:600">システム</td><td style="text-align:center;border:1px solid #dde3ec">✅</td><td style="text-align:center;border:1px solid #dde3ec">全グループ</td><td style="text-align:center;border:1px solid #dde3ec">全体</td></tr>
-              <tr style="background:#f9fafb"><td style="padding:7px 8px;border:1px solid #dde3ec;font-weight:600">管理者</td><td style="text-align:center;border:1px solid #dde3ec">—</td><td style="text-align:center;border:1px solid #dde3ec">全グループ</td><td style="text-align:center;border:1px solid #dde3ec">全体</td></tr>
-              <tr><td style="padding:7px 8px;border:1px solid #dde3ec;font-weight:600">責任者</td><td style="text-align:center;border:1px solid #dde3ec">—</td><td style="text-align:center;border:1px solid #dde3ec">自グループのみ</td><td style="text-align:center;border:1px solid #dde3ec">全体</td></tr>
-              <tr style="background:#f9fafb"><td style="padding:7px 8px;border:1px solid #dde3ec;font-weight:600">一般</td><td style="text-align:center;border:1px solid #dde3ec">—</td><td style="text-align:center;border:1px solid #dde3ec">自グループのみ</td><td style="text-align:center;border:1px solid #dde3ec">全体</td></tr>
+              <tr style="background:#f5f0ff"><td style="padding:7px 8px;border:1px solid #dde3ec;font-weight:600;color:#7c3aed">総務経理</td><td style="text-align:center;border:1px solid #dde3ec">—</td><td style="text-align:center;border:1px solid #dde3ec">全グループ</td><td style="text-align:center;border:1px solid #dde3ec">全体</td></tr>
+              <tr><td style="padding:7px 8px;border:1px solid #dde3ec;font-weight:600">管理者</td><td style="text-align:center;border:1px solid #dde3ec">—</td><td style="text-align:center;border:1px solid #dde3ec">全グループ</td><td style="text-align:center;border:1px solid #dde3ec">全体</td></tr>
+              <tr style="background:#f9fafb"><td style="padding:7px 8px;border:1px solid #dde3ec;font-weight:600">責任者</td><td style="text-align:center;border:1px solid #dde3ec">—</td><td style="text-align:center;border:1px solid #dde3ec">自グループのみ</td><td style="text-align:center;border:1px solid #dde3ec">全体</td></tr>
+              <tr><td style="padding:7px 8px;border:1px solid #dde3ec;font-weight:600">一般</td><td style="text-align:center;border:1px solid #dde3ec">—</td><td style="text-align:center;border:1px solid #dde3ec">自グループのみ</td><td style="text-align:center;border:1px solid #dde3ec">全体</td></tr>
             </tbody>
           </table>
 
@@ -1684,9 +1686,9 @@ function isSystem(){ return getS()?.role==='system'; }
 function isAdmin(){ return isSystem(); } // 管理者メニューはシステムのみ
 function canSeeAllSchedules(userId){
   const u = userId ? getUser(userId) : (getS() ? getUser(myId()) : null);
-  return u && (u.role==='system' || u.role==='admin');
+  return u && (u.role==='system' || u.role==='soumu' || u.role==='admin');
 }
-const ROLE_LABEL = {system:'システム', admin:'管理者', manager:'責任者', user:'一般'};
+const ROLE_LABEL = {system:'システム', soumu:'総務経理', admin:'管理者', manager:'責任者', user:'一般'};
 
 function doLogin(){
   const lid = document.getElementById('loginId').value.trim();
@@ -1805,7 +1807,7 @@ function initData(){
     {id:'iwashimizu',  loginId:'iwashimizu',  password:'pass123',  name:'岩清水 克尚',   deptId:'d1a', role:'admin',   active:true},
     {id:'hayashi',     loginId:'hayashi',     password:'pass123',  name:'林 幹根',       deptId:'d1a', role:'user',    active:true},
     {id:'onda',        loginId:'onda',        password:'pass123',  name:'恩田 賢一',     deptId:'d1a', role:'user',    active:true},
-    {id:'matsubara',   loginId:'matsubara',   password:'pass123',  name:'松原',          deptId:'d1a', role:'user',    active:true},
+    {id:'matsubara',   loginId:'matsubara',   password:'pass123',  name:'松原美沙子',    deptId:'d1a', role:'soumu',   active:true},
     {id:'narita',      loginId:'narita',      password:'BL001',    name:'成田',          deptId:'d1b', role:'user',    active:true},
     {id:'nakasima',    loginId:'nakasima',    password:'BL002',    name:'中島',          deptId:'d1b', role:'user',    active:true},
     {id:'hanamura',    loginId:'hanamura',    password:'pass123',  name:'花村 現太',     deptId:'d2',  role:'user',    active:true},
@@ -1845,6 +1847,15 @@ function initData(){
     users.forEach(u=>{ if(pwDefaults[u.id]) u.password=pwDefaults[u.id]; });
     save('migrated_pw_reset','1');
     usersChanged=true;
+  }
+
+  // ---- 総務経理ロール新設マイグレーション（一回限り） ----
+  if(load('migrated_soumu_v1','')!=='1'){
+    const uu=load('users',[]);
+    const mu=uu.find(u=>u.id==='matsubara');
+    if(mu){ mu.role='soumu'; mu.name='松原美沙子'; }
+    save('users',uu);
+    save('migrated_soumu_v1','1');
   }
 
   if(usersChanged || !users.length) save('users', users);
@@ -2667,9 +2678,9 @@ function toWareki(dateStr){
   return {y:ey,m,d};
 }
 function pcCanAccessAllDepts(){
-  // system・adminは全社・全部署を閲覧・操作可
+  // system・soumuは全社・全部署を閲覧・操作可
   const r=getS()?.role;
-  return r==='system'||r==='admin';
+  return r==='system'||r==='soumu';
 }
 // pcCanEditLocked は pcCanAccessAllDepts と同等
 function pcCanEditLocked(){ return pcCanAccessAllDepts(); }
@@ -4788,28 +4799,32 @@ function saveTd(){
 // 権限設定マトリックス
 // =========================================================
 const PERM_DEFS = [
-  { key:'system_settings',      label:'システム設定',         desc:'ユーザー管理・部署管理・権限設定',   group:'システム' },
-  { key:'schedule_all',         label:'全グループスケジュール閲覧', desc:'全社のスケジュールを閲覧・確認', group:'スケジュール' },
-  { key:'schedule_register',    label:'スケジュール登録',      desc:'予定の新規登録・参加',             group:'スケジュール' },
-  { key:'schedule_edit_own',    label:'自分の予定編集・削除',  desc:'自分が参加する予定の変更・削除',   group:'スケジュール' },
-  { key:'schedule_edit_others', label:'他者の予定編集・削除',  desc:'他者が作成した予定の変更・削除',   group:'スケジュール' },
-  { key:'comm_bulletin',        label:'連絡事項',              desc:'連絡事項の閲覧・投稿・確認',       group:'コミュニケーション' },
-  { key:'comm_circular',        label:'承認申請',              desc:'承認申請の作成・回答・閲覧',       group:'コミュニケーション' },
-  { key:'comm_todo',            label:'ToDo管理',              desc:'ToDoの作成・管理・確認',           group:'コミュニケーション' },
-  { key:'comm_evnotif',         label:'予定変更のお知らせ',    desc:'予定変更通知の受信・確認',         group:'コミュニケーション' },
+  { key:'system_settings',      label:'システム設定',             desc:'ユーザー管理・部署管理・権限設定',   group:'システム' },
+  { key:'schedule_all',         label:'全グループスケジュール閲覧', desc:'全社のスケジュールを閲覧・確認',   group:'スケジュール' },
+  { key:'schedule_register',    label:'スケジュール登録',          desc:'予定の新規登録・参加',             group:'スケジュール' },
+  { key:'schedule_edit_own',    label:'自分の予定編集・削除',      desc:'自分が参加する予定の変更・削除',   group:'スケジュール' },
+  { key:'schedule_edit_others', label:'他者の予定編集・削除',      desc:'他者が作成した予定の変更・削除',   group:'スケジュール' },
+  { key:'comm_bulletin',        label:'連絡事項',                  desc:'連絡事項の閲覧・投稿・確認',       group:'コミュニケーション' },
+  { key:'comm_circular',        label:'承認申請',                  desc:'承認申請の作成・回答・閲覧',       group:'コミュニケーション' },
+  { key:'comm_todo',            label:'ToDo管理',                  desc:'ToDoの作成・管理・確認',           group:'コミュニケーション' },
+  { key:'comm_evnotif',         label:'予定変更のお知らせ',        desc:'予定変更通知の受信・確認',         group:'コミュニケーション' },
+  { key:'hr_view',              label:'人事・労務 閲覧',           desc:'人事・労務情報の閲覧',             group:'人事・労務' },
+  { key:'hr_edit',              label:'人事・労務 編集',           desc:'人事・労務情報の登録・変更',       group:'人事・労務' },
 ];
 const PERM_DEFAULT = {
-  system_settings:      { system:true,  admin:false, manager:false, user:false },
-  schedule_all:         { system:true,  admin:true,  manager:false, user:false },
-  schedule_register:    { system:true,  admin:true,  manager:true,  user:true  },
-  schedule_edit_own:    { system:true,  admin:true,  manager:true,  user:true  },
-  schedule_edit_others: { system:true,  admin:false, manager:false, user:false },
-  comm_bulletin:        { system:true,  admin:true,  manager:true,  user:true  },
-  comm_circular:        { system:true,  admin:true,  manager:true,  user:true  },
-  comm_todo:            { system:true,  admin:true,  manager:true,  user:true  },
-  comm_evnotif:         { system:true,  admin:true,  manager:true,  user:true  },
+  system_settings:      { system:true,  soumu:false, admin:false, manager:false, user:false },
+  schedule_all:         { system:true,  soumu:true,  admin:true,  manager:false, user:false },
+  schedule_register:    { system:true,  soumu:true,  admin:true,  manager:true,  user:true  },
+  schedule_edit_own:    { system:true,  soumu:true,  admin:true,  manager:true,  user:true  },
+  schedule_edit_others: { system:true,  soumu:false, admin:false, manager:false, user:false },
+  comm_bulletin:        { system:true,  soumu:true,  admin:true,  manager:true,  user:true  },
+  comm_circular:        { system:true,  soumu:true,  admin:true,  manager:true,  user:true  },
+  comm_todo:            { system:true,  soumu:true,  admin:true,  manager:true,  user:true  },
+  comm_evnotif:         { system:true,  soumu:true,  admin:true,  manager:true,  user:true  },
+  hr_view:              { system:true,  soumu:true,  admin:false, manager:false, user:false },
+  hr_edit:              { system:true,  soumu:true,  admin:false, manager:false, user:false },
 };
-const ROLES = ['system','admin','manager','user'];
+const ROLES = ['system','soumu','admin','manager','user'];
 
 function getPerms(){ return Object.assign({}, PERM_DEFAULT, load('permissions',{})); }
 function hasPerm(key){
@@ -4907,6 +4922,7 @@ function renderUserTable(){
       <option value="user"${u.role==='user'?' selected':''}>一般</option>
       <option value="manager"${u.role==='manager'?' selected':''}>責任者</option>
       <option value="admin"${u.role==='admin'?' selected':''}>管理者</option>
+      <option value="soumu"${u.role==='soumu'?' selected':''}>総務経理</option>
       <option value="system"${u.role==='system'?' selected':''}>システム</option>
     </select>`;
     const activeSel=`<select class="inline-input" id="active-${u.id}" oninput="markRowDirty('${u.id}')">
