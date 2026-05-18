@@ -2977,13 +2977,21 @@ function pcUpdateTotals(){
   if(badge) badge.style.display=_pcDirty?'inline':'none';
 }
 function pcFieldKey(e,i,field){
-  // Enterキー → 行内の次フィールドへ移動。最終行のexpenseではEnter・Tabで新行追加
+  // Shift+Enter → textarea内改行（デフォルト動作を許可）
+  if(e.key==='Enter'&&e.shiftKey) return;
   const isLast=(_pcData&&i===_pcData.entries.length-1);
   if(e.key==='Enter'){
     e.preventDefault();
-    if(field==='d')      { document.querySelector(`#pcTbody tr:nth-child(${i+1}) td:nth-child(4) input`)?.focus(); }
-    else if(field==='income') { document.querySelector(`#pcTbody tr:nth-child(${i+1}) td:nth-child(11) input`)?.focus(); }
-    else if(field==='expense'){ if(isLast) pcAddRow(); else document.getElementById('pcD'+(i+1))?.focus(); }
+    switch(field){
+      case 'd':           document.getElementById('pcDep'+i)?.focus(); break;
+      case 'department':  document.getElementById('pcPu'+i)?.focus(); break;
+      case 'purchaser':   document.getElementById('pcPay'+i)?.focus(); break;
+      case 'payee':       document.getElementById('pcR'+i)?.focus(); break;
+      case 'receiptDate': document.getElementById('pcCon'+i)?.focus(); break;
+      case 'content':     document.getElementById('pcIn'+i)?.focus(); break;
+      case 'income':      document.getElementById('pcEx'+i)?.focus(); break;
+      case 'expense':     isLast?pcAddRow():document.getElementById('pcD'+(i+1))?.focus(); break;
+    }
     return;
   }
   if(e.key==='Tab'&&!e.shiftKey&&field==='expense'&&isLast){
@@ -3006,17 +3014,20 @@ function pcRowHTML(e,i){
     if(ro) return `<span style="${txtSt()};width:${w}px;display:inline-block">${esc(String(val||''))}</span>`;
     const isRD=(id==='receiptDate');
     const rdErr=isRD?pcCheckReceiptDate(String(val||'')):null;
-    const idAttr=isRD?`id="pcR${i}" `:'';
+    const idMap={department:`pcDep${i}`,purchaser:`pcPu${i}`,receiptDate:`pcR${i}`};
+    const idAttr=idMap[id]?`id="${idMap[id]}" `:'';
     const errSt=rdErr?'border-color:#dc2626!important;background:#fff1f2;':'';
-    return `<input type="text" ${idAttr}value="${esc(String(val||''))}" oninput="pcField(${i},'${id}',this.value)" placeholder="${ph}" title="${esc(rdErr||'')}" style="${ist(w,r)};${errSt}">`;
+    return `<input type="text" ${idAttr}value="${esc(String(val||''))}" oninput="pcField(${i},'${id}',this.value)" onkeydown="pcFieldKey(event,${i},'${id}')" placeholder="${ph}" title="${esc(rdErr||'')}" style="${ist(w,r)};${errSt}">`;
   };
   const fmtNum=(v)=>v?(Number(v)||0).toLocaleString():'';
+  const numIdMap={income:`pcIn${i}`,expense:`pcEx${i}`};
   const num=(id,val,w,col)=>ro
     ?`<span style="${txtSt(col)};width:${w}px;display:inline-block;text-align:right">${fmtNum(val)}</span>`
-    :`<input type="text" value="${fmtNum(val)}" oninput="pcField(${i},'${id}',this.value.replace(/,/g,''))" onblur="this.value=this.value.replace(/,/g,'')?(Number(this.value.replace(/,/g,''))||0).toLocaleString():''" onkeydown="pcFieldKey(event,${i},'${id}')" placeholder="0" style="border:1px solid #e2e8f0;border-radius:4px;padding:4px 6px;font-size:12px;width:${w}px;text-align:right;color:${col}">`;
+    :`<input type="text" id="${numIdMap[id]||''}" value="${fmtNum(val)}" oninput="pcField(${i},'${id}',this.value.replace(/,/g,''))" onblur="this.value=this.value.replace(/,/g,'')?(Number(this.value.replace(/,/g,''))||0).toLocaleString():''" onkeydown="pcFieldKey(event,${i},'${id}')" placeholder="0" style="border:1px solid #e2e8f0;border-radius:4px;padding:4px 6px;font-size:12px;width:${w}px;text-align:right;color:${col}">`;
+  const taIdMap={payee:`pcPay${i}`,content:`pcCon${i}`};
   const ta=(id,val,ph,w)=>ro
     ?`<span style="${txtSt()};width:${w}px;display:inline-block;white-space:pre-wrap;word-break:break-all">${esc(String(val||''))}</span>`
-    :`<textarea oninput="pcField(${i},'${id}',this.value)" placeholder="${ph}" rows="2" style="border:1px solid #e2e8f0;border-radius:4px;padding:4px 6px;font-size:12px;width:${w}px;resize:vertical;min-height:36px;font-family:inherit;line-height:1.5;word-break:break-all">${esc(String(val||''))}</textarea>`;
+    :`<textarea id="${taIdMap[id]||''}" oninput="pcField(${i},'${id}',this.value)" onkeydown="pcFieldKey(event,${i},'${id}')" placeholder="${ph}" rows="2" style="border:1px solid #e2e8f0;border-radius:4px;padding:4px 6px;font-size:12px;width:${w}px;resize:vertical;min-height:36px;font-family:inherit;line-height:1.5;word-break:break-all">${esc(String(val||''))}</textarea>`;
   const dayCell=ro
     ?`<span style="${txtSt()}">${dayVal}</span>`
     :`<input id="pcD${i}" type="number" value="${dayVal}" oninput="pcDateField(${i},'d',this.value)" onkeydown="pcFieldKey(event,${i},'d')" placeholder="日" min="1" max="31" style="border:1px solid #e2e8f0;border-radius:4px;padding:4px 4px;font-size:12px;width:36px;text-align:center">`;
