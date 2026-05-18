@@ -2673,14 +2673,10 @@ function renderPettyCash(){
   const deptOpts=visibleDepts.map(d=>`<option value="${d.id}"${d.id===_pcDeptId?' selected':''}>${esc(d.name)}</option>`).join('');
   const deptName=(depts.find(d=>d.id===_pcDeptId)||{}).name||'';
 
-  // 年月セレクト（前後12ヶ月）
-  let ymOpts=''; const now=new Date();
-  for(let i=-12;i<=12;i++){
-    const d=new Date(now.getFullYear(),now.getMonth()+i,1);
-    const ym=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
-    const wr=toWareki(ym+'-01');
-    ymOpts+=`<option value="${ym}"${ym===_pcYearMonth?' selected':''}>R${wr.y} ${wr.m}月 (${d.getFullYear()}/${d.getMonth()+1})</option>`;
-  }
+  // 年月直接入力用：現在の令和年・月を算出
+  const [_pyISO,_pmISO]=_pcYearMonth.split('-');
+  const curRY=Number(_pyISO)-2018;
+  const curM=Number(_pmISO);
 
   // 前月繰越年月ラベル
   const [py,pm]=_pcYearMonth.split('-');
@@ -2735,8 +2731,12 @@ function renderPettyCash(){
           : `<span style="margin-left:4px">${esc(deptName)}</span>`
         }
       </div>
-      <div style="font-size:13px;font-weight:700;color:#1a2b4a">年月：
-        <select onchange="_pcYearMonth=this.value;_pcDirty=false;_pcData=null;renderPettyCash()" style="border:1px solid #e2e8f0;border-radius:5px;padding:4px 8px;font-size:13px;margin-left:4px">${ymOpts}</select>
+      <div style="font-size:13px;font-weight:700;color:#1a2b4a;display:flex;align-items:center;gap:4px">年月：
+        <span style="margin-left:4px">R</span>
+        <input id="pcYearInp" type="number" value="${curRY}" onchange="pcYMChange(this.value,document.getElementById('pcMonthInp').value)" min="1" max="99" style="border:1px solid #e2e8f0;border-radius:5px;padding:4px 6px;font-size:13px;width:52px;text-align:center">
+        <span>年</span>
+        <input id="pcMonthInp" type="number" value="${curM}" onchange="pcYMChange(document.getElementById('pcYearInp').value,this.value)" min="1" max="12" style="border:1px solid #e2e8f0;border-radius:5px;padding:4px 6px;font-size:13px;width:44px;text-align:center">
+        <span>月</span>
       </div>
       <div style="font-size:12px;color:#6b7280">前月末残高繰越：
         <input type="number" value="${_pcData.openingBalance||0}" oninput="pcOpeningChange(this.value)" style="border:1px solid #e2e8f0;border-radius:5px;padding:4px 6px;font-size:13px;width:100px;text-align:right;margin:0 3px">円
@@ -2817,6 +2817,15 @@ function pcField(i,field,val){
   _pcData.entries[i][field]=numFields.includes(field)?(Number(val)||0):(field==='invoiceCheck'?!!val:val);
   _pcDirty=true;
   pcUpdateTotals();
+}
+function pcYMChange(ry,m){
+  const adY=Number(ry)+2018;
+  const mn=Number(m);
+  if(!adY||adY<2019||mn<1||mn>12) return;
+  _pcYearMonth=adY+'-'+String(mn).padStart(2,'0');
+  _pcDirty=false;
+  _pcData=null;
+  renderPettyCash();
 }
 function pcOpeningChange(val){
   if(!_pcData) return;
