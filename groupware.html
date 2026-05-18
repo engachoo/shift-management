@@ -2780,7 +2780,7 @@ function renderPettyCash(){
             <th rowspan="2" style="${thSt}">借方金額<br><span style="color:#166534">(収入金額)</span></th>
             <th rowspan="2" style="${thSt}">貸方金額<br><span style="color:#dc2626">(支払金額)</span></th>
             <th rowspan="2" style="${thSt}">差引残高</th>
-            <th rowspan="2" style="${thSt}">操作</th>
+            ${canEdit?`<th rowspan="2" style="${thSt}">操作</th>`:''}
           </tr>
           <tr style="background:#f5f7fb">
             <th style="${thSt}">年</th>
@@ -2791,12 +2791,12 @@ function renderPettyCash(){
             <th style="${thSt}">内　容</th>
           </tr>
           <tr style="background:#fef9c3">
-            <td colspan="11" style="padding:6px 10px;font-size:12px;font-weight:700;border:1px solid #d1d5db;color:#78350f">${prevLabel}</td>
+            <td colspan="${canEdit?12:11}" style="padding:6px 10px;font-size:12px;font-weight:700;border:1px solid #d1d5db;color:#78350f">${prevLabel}</td>
             <td style="padding:6px 8px;text-align:right;font-weight:700;font-size:13px;border:1px solid #d1d5db;color:#1a2b4a">${Number(_pcData.openingBalance||0).toLocaleString()}</td>
-            <td style="border:1px solid #d1d5db"></td>
+            ${canEdit?`<td style="border:1px solid #d1d5db"></td>`:''}
           </tr>
         </thead>
-        <tbody id="pcTbody">${rows||'<tr><td colspan="13" style="text-align:center;padding:20px;color:#9ca3af;font-size:13px">行を追加してください</td></tr>'}</tbody>
+        <tbody id="pcTbody">${rows||`<tr><td colspan="${canEdit?14:12}" style="text-align:center;padding:20px;color:#9ca3af;font-size:13px">行を追加してください</td></tr>`}</tbody>
         <tfoot>
           <tr>
             <td colspan="${canEdit?10:9}" style="${tfSt('text-align:center')}">合　計</td>
@@ -2874,7 +2874,9 @@ function pcUpdateTotals(){
     totalIn+=inc; totalOut+=exp; bal+=inc-exp;
     if(trs[i]){
       const cells=trs[i].querySelectorAll('td');
-      if(cells[11]){ cells[11].textContent=bal.toLocaleString(); cells[11].style.color=bal<0?'#dc2626':'#1a2b4a'; }
+      // canEdit=true: checkbox列が先頭に入るため残高列は12番目(0-based)、falseなら11番目
+      const balIdx=document.querySelector('.pcRowCheck')?12:11;
+      if(cells[balIdx]){ cells[balIdx].textContent=bal.toLocaleString(); cells[balIdx].style.color=bal<0?'#dc2626':'#1a2b4a'; }
     }
   });
   const finalBal=(Number(_pcData.openingBalance)||0)+totalIn-totalOut;
@@ -2917,12 +2919,13 @@ function pcRowHTML(e,i){
   const inp=(id,val,ph,w,r)=>ro
     ?`<span style="${txtSt()};width:${w}px;display:inline-block">${esc(String(val||''))}</span>`
     :`<input type="text" value="${esc(String(val||''))}" oninput="pcField(${i},'${id}',this.value)" placeholder="${ph}" style="${ist(w,r)}">`;
+  const fmtNum=(v)=>v?(Number(v)||0).toLocaleString():'';
   const num=(id,val,w,col)=>ro
-    ?`<span style="${txtSt(col)};width:${w}px;display:inline-block;text-align:right">${val||''}</span>`
-    :`<input type="number" value="${val||''}" oninput="pcField(${i},'${id}',this.value)" onkeydown="pcFieldKey(event,${i},'${id}')" placeholder="0" min="0" style="border:1px solid #e2e8f0;border-radius:4px;padding:4px 6px;font-size:12px;width:${w}px;text-align:right;color:${col}">`;
+    ?`<span style="${txtSt(col)};width:${w}px;display:inline-block;text-align:right">${fmtNum(val)}</span>`
+    :`<input type="text" value="${fmtNum(val)}" oninput="pcField(${i},'${id}',this.value.replace(/,/g,''))" onblur="this.value=this.value.replace(/,/g,'')?(Number(this.value.replace(/,/g,''))||0).toLocaleString():''" onkeydown="pcFieldKey(event,${i},'${id}')" placeholder="0" style="border:1px solid #e2e8f0;border-radius:4px;padding:4px 6px;font-size:12px;width:${w}px;text-align:right;color:${col}">`;
   const ta=(id,val,ph,w)=>ro
-    ?`<span style="${txtSt()};width:${w}px;display:inline-block;white-space:pre-wrap">${esc(String(val||''))}</span>`
-    :`<textarea oninput="pcField(${i},'${id}',this.value)" placeholder="${ph}" rows="2" style="border:1px solid #e2e8f0;border-radius:4px;padding:4px 6px;font-size:12px;width:${w}px;resize:vertical;min-height:36px;font-family:inherit;line-height:1.5">${esc(String(val||''))}</textarea>`;
+    ?`<span style="${txtSt()};width:${w}px;display:inline-block;white-space:pre-wrap;word-break:break-all">${esc(String(val||''))}</span>`
+    :`<textarea oninput="pcField(${i},'${id}',this.value)" placeholder="${ph}" rows="2" style="border:1px solid #e2e8f0;border-radius:4px;padding:4px 6px;font-size:12px;width:${w}px;resize:vertical;min-height:36px;font-family:inherit;line-height:1.5;word-break:break-all">${esc(String(val||''))}</textarea>`;
   const dayCell=ro
     ?`<span style="${txtSt()}">${dayVal}</span>`
     :`<input id="pcD${i}" type="number" value="${dayVal}" oninput="pcDateField(${i},'d',this.value)" onkeydown="pcFieldKey(event,${i},'d')" placeholder="日" min="1" max="31" style="border:1px solid #e2e8f0;border-radius:4px;padding:4px 4px;font-size:12px;width:36px;text-align:center">`;
@@ -2937,9 +2940,9 @@ function pcRowHTML(e,i){
     <td style="padding:4px 3px">${inp('department',e.department,'部門',60)}</td>
     <td style="padding:4px 3px">${inp('purchaser',e.purchaser,'購入者',64)}</td>
     <td style="padding:4px 3px;text-align:center;padding-top:10px">${chkCell}</td>
-    <td style="padding:4px 3px">${ta('payee',e.payee,'支払先',160)}</td>
+    <td style="padding:4px 3px">${ta('payee',e.payee,'支払先',130)}</td>
     <td style="padding:4px 3px">${inp('receiptDate',e.receiptDate,'M/D',48)}</td>
-    <td style="padding:4px 3px">${ta('content',e.content,'内容',200)}</td>
+    <td style="padding:4px 3px">${ta('content',e.content,'内容',160)}</td>
     <td style="padding:4px 3px">${num('income',e.income||'',86,'#166534')}</td>
     <td style="padding:4px 3px">${num('expense',e.expense||'',86,'#dc2626')}</td>
     <td style="padding:4px 6px;text-align:right;font-weight:700;font-size:12px;white-space:nowrap;color:#1a2b4a">0</td>
