@@ -2795,7 +2795,7 @@ function renderPettyCash(){
         </select>
       </div>
       <div style="font-size:12px;color:#6b7280">前月末残高繰越：
-        <input type="number" value="${_pcData.openingBalance||0}" oninput="pcOpeningChange(this.value)" style="border:1px solid #e2e8f0;border-radius:5px;padding:4px 6px;font-size:13px;width:100px;text-align:right;margin:0 3px">円
+        <input type="text" value="${(_pcData.openingBalance||0).toLocaleString()}" oninput="pcOpeningChange(this.value.replace(/,/g,''))" onblur="this.value=this.value.replace(/,/g,'')?(Number(this.value.replace(/,/g,''))||0).toLocaleString():'0'" style="border:1px solid #e2e8f0;border-radius:5px;padding:4px 6px;font-size:13px;width:110px;text-align:right;margin:0 3px">円
       </div>
     </div>
 
