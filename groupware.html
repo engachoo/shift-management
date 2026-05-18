@@ -503,6 +503,10 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
 .btn-danger{background:#e53e3e;color:#fff;border:none;padding:8px 20px;border-radius:4px;cursor:pointer;font-size:13px}
 .pass-note{font-size:11px;color:#6b7280;margin-top:3px}
 .section-divider{border:none;border-top:1px solid #e5e7eb;margin:14px 0}
+/* 現金出納帳 numberスピナー非表示 */
+#devAppsContent input[type="number"]::-webkit-inner-spin-button,
+#devAppsContent input[type="number"]::-webkit-outer-spin-button { -webkit-appearance:none; margin:0; }
+#devAppsContent input[type="number"] { -moz-appearance:textfield; }
 /* 現金出納帳 行フォーカスハイライト */
 #pcTbody tr:focus-within { background:#eff6ff; }
 #pcTbody tr:focus-within td { background:#eff6ff; }
