@@ -3043,11 +3043,11 @@ function pcUnlock(){
 }
 
 // ===== Excel取込 =====
-// CSVエクスポートの列構成:
-//  [0]精算日(年/令和)  [1]精算日(月)  [2]精算日(日)  [3]部門  [4]購入者
-//  [5]インボイスチェック  [6]支払先  [7]領収書日付  [8]内容
-//  [9]借方金額(収入)  [10]貸方金額(支払)  [11]差引残高
-// 前月末残高行: [0]="R○年○月末残高繰越額"  [11]=金額
+// CSVエクスポートの列構成（参考）:
+//  [0]精算日（年）[1]精算日（月）[2]精算日（日）[3]部門[4]購入者
+//  [5]インボイス登録番号チェック [6]支払先 [7]領収書日付 [8]内容
+//  [9]借方金額（収入金額）[10]貸方金額（支払金額）[11]差引残高
+// 前月末残高行: [0]=繰越ラベル  [差引残高列]=金額
 function pcHandleXLS(file){
   if(!file) return;
   if(!_pcData){ alert('データが読み込まれていません。'); return; }
@@ -3059,14 +3059,37 @@ function pcHandleXLS(file){
       const ws=wb.Sheets[wb.SheetNames[0]];
       const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
 
-      // ヘッダー行を探す（「精算日」を含む行）
+      // ヘッダー行を探す（複数キーワードで柔軟に判定）
       let headerRow=-1;
       for(let i=0;i<rows.length;i++){
-        if(rows[i].some(c=>String(c).includes('精算日'))){
+        const rowStr=rows[i].map(c=>String(c||'')).join('');
+        if(rowStr.includes('精算日')||(rowStr.includes('部門')&&rowStr.includes('支払先'))||(rowStr.includes('購入者')&&rowStr.includes('内容'))){
           headerRow=i; break;
         }
       }
-      if(headerRow<0){ alert('対応フォーマットが見つかりません。\nCSV出力と同じ形式のExcelファイルを選択してください。'); return; }
+      if(headerRow<0){ alert('列ヘッダーが見つかりません。\n「精算日（年）」「部門」「支払先」などの列名を含むExcelファイルを選択してください。'); return; }
+
+      // ===== 列名からインデックスを動的に特定 =====
+      const hdr=rows[headerRow].map(c=>String(c||''));
+      const findCol=(...keys)=>{
+        for(const k of keys){
+          const idx=hdr.findIndex(h=>h===k||h.includes(k));
+          if(idx>=0) return idx;
+        }
+        return -1;
+      };
+      const iYear   =findCol('精算日（年）','（年）');
+      const iMonth  =findCol('精算日（月）','（月）');
+      const iDay    =findCol('精算日（日）','（日）');
+      const iDept   =findCol('部門');
+      const iPurch  =findCol('購入者');
+      const iInv    =findCol('インボイス');
+      const iPayee  =findCol('支払先');
+      const iReceipt=findCol('領収書日付','領収書');
+      const iContent=findCol('内容','摘要');
+      const iIncome =findCol('借方金額','収入金額','収入','借方');
+      const iExpense=findCol('貸方金額','支払金額','支出','貸方');
+      const iBalance=findCol('差引残高','残高');
 
       const [isoY,isoM]=_pcYearMonth.split('-');
       let newOpeningBalance=_pcData.openingBalance||0;
@@ -3076,33 +3099,46 @@ function pcHandleXLS(file){
         const r=rows[i];
         const col0=String(r[0]||'');
 
-        // 前月末残高繰越行: col[11]から前月末残高を取得
-        if(col0.includes('繰越')||col0.includes('残高繰越')){
-          const ob=Number(r[11]);
-          if(!isNaN(ob)) newOpeningBalance=ob;
+        // 前月末残高繰越行: 「繰越」を含む行 → 差引残高列から金額取得
+        if(col0.includes('繰越')){
+          const balIdx=iBalance>=0?iBalance:r.length-2; // 残高列が不明なら末尾から2番目
+          const ob=Number(r[balIdx]);
+          if(!isNaN(ob)&&String(ob)!=='') newOpeningBalance=ob;
           continue;
         }
 
-        // 合計行スキップ
+        // 合計行・空行スキップ
         if(col0.includes('合計')) continue;
 
-        // 日(col[2])を取得。日がない行（空行等）はスキップ
-        const rd=Number(r[2])||0;
+        // 日を取得（列名ベース優先、なければ位置固定フォールバック）
+        const dayRaw=iDay>=0?r[iDay]:r[2];
+        const rd=Number(dayRaw)||0;
         if(!rd) continue;
 
-        // 日付: ヘッダー選択年月 + 日（col[2]のみ使用）
-        const dateVal=`${isoY}-${isoM}-${String(rd).padStart(2,'0')}`;
+        // 年・月: Excelの値を優先（令和年は+2018で西暦変換）、なければ_pcYearMonthを使用
+        let adY=Number(isoY), adM=Number(isoM);
+        if(iYear>=0){
+          const ry=Number(r[iYear])||0;
+          adY=ry>2000?ry:ry>0?ry+2018:Number(isoY);
+        }
+        if(iMonth>=0){
+          const rm=Number(r[iMonth])||0;
+          if(rm>=1&&rm<=12) adM=rm;
+        }
+        const dateVal=`${adY}-${String(adM).padStart(2,'0')}-${String(rd).padStart(2,'0')}`;
 
+        // 各フィールドを列名ベースで取得（なければ位置固定フォールバック）
+        const get=(idx,pos)=>idx>=0?r[idx]:r[pos];
         entries.push({
           date:dateVal,
-          department:String(r[3]||''),
-          purchaser:String(r[4]||''),
-          invoiceCheck:String(r[5]||'').includes('☑'),
-          payee:String(r[6]||''),
-          receiptDate:String(r[7]||''),
-          content:String(r[8]||''),
-          income:Number(r[9])||0,
-          expense:Number(r[10])||0,
+          department:String(get(iDept,3)||''),
+          purchaser:String(get(iPurch,4)||''),
+          invoiceCheck:String(get(iInv,5)||'').includes('☑'),
+          payee:String(get(iPayee,6)||''),
+          receiptDate:String(get(iReceipt,7)||''),
+          content:String(get(iContent,8)||''),
+          income:Number(get(iIncome,9))||0,
+          expense:Number(get(iExpense,10))||0,
         });
       }
 
