@@ -18,6 +18,7 @@
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef2f7;color:#2d3748;min-height:100vh;font-size:13px}
@@ -2695,6 +2696,23 @@ function renderPettyCash(){
   const prevWr=toWareki(dateStr(prevD));
   const prevLabel=`R${prevWr.y}/${String(prevWr.m).padStart(2,'0')}月末残高繰越額`;
 
+  // 締め状態
+  const locked=!!_pcData.locked;
+  const canEdit=!locked||canAll; // 管理者は締め中でも編集可
+
+  // 過去3ヶ月ボタン（当月含む4ヶ月）
+  const [curIsoY,curIsoM]=_pcYearMonth.split('-');
+  const monthNavBtns=[];
+  for(let i=3;i>=0;i--){
+    const d=new Date(Number(curIsoY),Number(curIsoM)-1-i,1);
+    const ny=d.getFullYear(),nm=d.getMonth()+1;
+    const nym=ny+'-'+String(nm).padStart(2,'0');
+    const nry=ny-2018;
+    const isCur=nym===_pcYearMonth;
+    const hasData=Object.keys(load('pettyCash_'+_pcDeptId+'_'+nym.replace('-',''),{entries:[]})).length>0||!!(load('pettyCash_'+_pcDeptId+'_'+nym.replace('-',''),null));
+    monthNavBtns.push(`<button onclick="pcYMChange(${nry},${nm})" style="background:${isCur?'#1a2b4a':'#f8fafc'};color:${isCur?'#fff':'#475569'};border:1.5px solid ${isCur?'#1a2b4a':'#e2e8f0'};border-radius:6px;padding:5px 14px;cursor:pointer;font-size:12px;font-weight:${isCur?'700':'500'}">${isCur?'▶ ':''}R${nry}/${nm}月</button>`);
+  }
+
   // 残高計算
   let bal=Number(_pcData.openingBalance)||0;
   let totalIn=0,totalOut=0;
@@ -2714,10 +2732,16 @@ function renderPettyCash(){
   const tfSt=(c)=>`padding:7px 6px;font-size:12px;font-weight:700;border:1px solid #d1d5db;background:#f0fdf4;${c||''}`;
 
   el.innerHTML=`
-    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">
       <button onclick="renderDevApps()" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#475569;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:12px">← アプリ一覧</button>
       <span style="font-size:16px;font-weight:700;color:#1a2b4a">💰 現金出納帳</span>
       <span id="pcDirtyBadge" style="display:${_pcDirty?'inline':'none'};background:#fef9c3;color:#78350f;border:1px solid #fde68a;border-radius:10px;font-size:11px;padding:2px 8px;font-weight:700">未保存</span>
+      ${locked?`<span style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5;border-radius:10px;font-size:11px;padding:2px 10px;font-weight:700">🔒 締め済み</span>`:''}
+    </div>
+
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;align-items:center">
+      <span style="font-size:11px;color:#9ca3af;font-weight:600;white-space:nowrap">月を選択：</span>
+      ${monthNavBtns.join('')}
     </div>
 
     <div style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:12px 16px;margin-bottom:12px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
@@ -2784,12 +2808,17 @@ function renderPettyCash(){
       </table>
     </div>
 
+    ${locked&&!canAll?`<div style="background:#fff7ed;border:1.5px solid #fed7aa;border-radius:7px;padding:10px 16px;margin-bottom:10px;font-size:13px;color:#9a3412;font-weight:600">🔒 この月は締め処理済みです。閲覧のみ可能です（変更は管理者にお問い合わせください）。</div>`:''}
+
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-      <button onclick="pcAddRow()" style="background:#eff6ff;border:1.5px solid #bfdbfe;color:#1d4ed8;border-radius:7px;padding:8px 18px;cursor:pointer;font-size:13px;font-weight:600">＋ 行を追加</button>
-      <span style="font-size:11px;color:#9ca3af">最終行の支払金額欄で Enter / Tab → 自動で次行追加</span>
+      ${canEdit?`<button onclick="pcAddRow()" style="background:#eff6ff;border:1.5px solid #bfdbfe;color:#1d4ed8;border-radius:7px;padding:8px 18px;cursor:pointer;font-size:13px;font-weight:600">＋ 行を追加</button>
+      <span style="font-size:11px;color:#9ca3af">最終行の支払金額欄で Enter / Tab → 自動で次行追加</span>`:''}
       <div style="flex:1"></div>
-      <button onclick="pcSave(event)" style="background:linear-gradient(135deg,#1a56db,#1e40af);color:#fff;border:none;border-radius:7px;padding:8px 22px;cursor:pointer;font-size:13px;font-weight:700;box-shadow:0 2px 6px rgba(26,86,219,.3)">💾 保存</button>
+      ${canEdit?`<button onclick="pcSave(event)" style="background:linear-gradient(135deg,#1a56db,#1e40af);color:#fff;border:none;border-radius:7px;padding:8px 22px;cursor:pointer;font-size:13px;font-weight:700;box-shadow:0 2px 6px rgba(26,86,219,.3)">💾 保存</button>`:''}
       <button onclick="pcExportCSV()" style="background:#f0fdf4;border:1.5px solid #bbf7d0;color:#166534;border-radius:7px;padding:8px 18px;cursor:pointer;font-size:13px;font-weight:600">📥 CSV出力</button>
+      <button onclick="document.getElementById('pcXlsInput').click()" style="background:#faf5ff;border:1.5px solid #e9d5ff;color:#7c3aed;border-radius:7px;padding:8px 18px;cursor:pointer;font-size:13px;font-weight:600">📂 Excel取込</button>
+      <input type="file" id="pcXlsInput" accept=".xlsx,.xls,.csv" style="display:none" onchange="pcHandleXLS(this.files[0]);this.value=''">
+      ${canAll?`<button onclick="${locked?'pcUnlock':'pcLock'}()" style="background:${locked?'#fef9c3':'#fff1f2'};border:1.5px solid ${locked?'#fde68a':'#fecdd3'};color:${locked?'#92400e':'#be123c'};border-radius:7px;padding:8px 18px;cursor:pointer;font-size:13px;font-weight:600">${locked?'🔓 締め解除':'🔒 月次締め'}</button>`:''}
     </div>`;
 }
 
@@ -2879,27 +2908,43 @@ function pcRowHTML(e,i){
   const ryMonth=Number(isoM);
   // 日だけe.dateから取り出す
   const dayVal=e.date?Number(e.date.split('-')[2])||'':'';
+  // 締め中かつ非管理者は閲覧のみ
+  const ro=!!(_pcData?.locked&&!pcCanAccessAllDepts());
+  const txtSt=(c)=>`font-size:12px;color:${c||'#1a2b4a'};padding:4px 2px`;
   const ist=(w,r)=>`border:1px solid #e2e8f0;border-radius:4px;padding:4px 6px;font-size:12px;width:${w}px${r?';text-align:right':''}`;
-  const inp=(id,val,ph,w,r)=>`<input type="text" value="${esc(String(val||''))}" oninput="pcField(${i},'${id}',this.value)" placeholder="${ph}" style="${ist(w,r)}">`;
-  const num=(id,val,w,col)=>`<input type="number" value="${val||''}" oninput="pcField(${i},'${id}',this.value)" onkeydown="pcFieldKey(event,${i},'${id}')" placeholder="0" min="0" style="border:1px solid #e2e8f0;border-radius:4px;padding:4px 6px;font-size:12px;width:${w}px;text-align:right;color:${col}">`;
-  const ta=(id,val,ph,w)=>`<textarea oninput="pcField(${i},'${id}',this.value)" placeholder="${ph}" rows="2" style="border:1px solid #e2e8f0;border-radius:4px;padding:4px 6px;font-size:12px;width:${w}px;resize:vertical;min-height:36px;font-family:inherit;line-height:1.5">${esc(String(val||''))}</textarea>`;
+  const inp=(id,val,ph,w,r)=>ro
+    ?`<span style="${txtSt()};width:${w}px;display:inline-block">${esc(String(val||''))}</span>`
+    :`<input type="text" value="${esc(String(val||''))}" oninput="pcField(${i},'${id}',this.value)" placeholder="${ph}" style="${ist(w,r)}">`;
+  const num=(id,val,w,col)=>ro
+    ?`<span style="${txtSt(col)};width:${w}px;display:inline-block;text-align:right">${val||''}</span>`
+    :`<input type="number" value="${val||''}" oninput="pcField(${i},'${id}',this.value)" onkeydown="pcFieldKey(event,${i},'${id}')" placeholder="0" min="0" style="border:1px solid #e2e8f0;border-radius:4px;padding:4px 6px;font-size:12px;width:${w}px;text-align:right;color:${col}">`;
+  const ta=(id,val,ph,w)=>ro
+    ?`<span style="${txtSt()};width:${w}px;display:inline-block;white-space:pre-wrap">${esc(String(val||''))}</span>`
+    :`<textarea oninput="pcField(${i},'${id}',this.value)" placeholder="${ph}" rows="2" style="border:1px solid #e2e8f0;border-radius:4px;padding:4px 6px;font-size:12px;width:${w}px;resize:vertical;min-height:36px;font-family:inherit;line-height:1.5">${esc(String(val||''))}</textarea>`;
+  const dayCell=ro
+    ?`<span style="${txtSt()}">${dayVal}</span>`
+    :`<input id="pcD${i}" type="number" value="${dayVal}" oninput="pcDateField(${i},'d',this.value)" onkeydown="pcFieldKey(event,${i},'d')" placeholder="日" min="1" max="31" style="border:1px solid #e2e8f0;border-radius:4px;padding:4px 4px;font-size:12px;width:36px;text-align:center">`;
+  const chkCell=ro
+    ?`<span style="font-size:14px">${e.invoiceCheck?'☑':'□'}</span>`
+    :`<input type="checkbox"${e.invoiceCheck?' checked':''} onchange="pcField(${i},'invoiceCheck',this.checked)" style="width:17px;height:17px;cursor:pointer">`;
   return `<tr style="border-bottom:1px solid #f1f5f9;vertical-align:top">
     <td style="padding:4px 3px;text-align:center;font-size:12px;color:#475569;white-space:nowrap">${ryYear}</td>
     <td style="padding:4px 3px;text-align:center;font-size:12px;color:#475569;white-space:nowrap">${ryMonth}</td>
-    <td style="padding:4px 3px;text-align:center"><input id="pcD${i}" type="number" value="${dayVal}" oninput="pcDateField(${i},'d',this.value)" onkeydown="pcFieldKey(event,${i},'d')" placeholder="日" min="1" max="31" style="border:1px solid #e2e8f0;border-radius:4px;padding:4px 4px;font-size:12px;width:36px;text-align:center"></td>
+    <td style="padding:4px 3px;text-align:center">${dayCell}</td>
     <td style="padding:4px 3px">${inp('department',e.department,'部門',60)}</td>
     <td style="padding:4px 3px">${inp('purchaser',e.purchaser,'購入者',64)}</td>
-    <td style="padding:4px 3px;text-align:center;padding-top:10px"><input type="checkbox"${e.invoiceCheck?' checked':''} onchange="pcField(${i},'invoiceCheck',this.checked)" style="width:17px;height:17px;cursor:pointer"></td>
+    <td style="padding:4px 3px;text-align:center;padding-top:10px">${chkCell}</td>
     <td style="padding:4px 3px">${ta('payee',e.payee,'支払先',160)}</td>
     <td style="padding:4px 3px">${inp('receiptDate',e.receiptDate,'M/D',48)}</td>
     <td style="padding:4px 3px">${ta('content',e.content,'内容',200)}</td>
     <td style="padding:4px 3px">${num('income',e.income||'',86,'#166534')}</td>
     <td style="padding:4px 3px">${num('expense',e.expense||'',86,'#dc2626')}</td>
     <td style="padding:4px 6px;text-align:right;font-weight:700;font-size:12px;white-space:nowrap;color:#1a2b4a">0</td>
-    <td style="padding:4px 3px;text-align:center;padding-top:10px"><button onclick="pcDeleteRow(${i})" style="background:#fee2e2;color:#dc2626;border:none;border-radius:4px;padding:3px 8px;cursor:pointer;font-size:11px">✕</button></td>
+    <td style="padding:4px 3px;text-align:center;padding-top:10px">${ro?'':`<button onclick="pcDeleteRow(${i})" style="background:#fee2e2;color:#dc2626;border:none;border-radius:4px;padding:3px 8px;cursor:pointer;font-size:11px">✕</button>`}</td>
   </tr>`;
 }
 function pcAddRow(){
+  if(_pcData?.locked&&!pcCanAccessAllDepts()){ alert('この月は締め済みです。管理者に連絡してください。'); return; }
   // 現在のストレージデータを読み込み、新行を追加してから保存→再描画
   const cur=JSON.parse(JSON.stringify(load(pcKey(),{openingBalance:0,entries:[]})));
   if(!cur.entries) cur.entries=[];
@@ -2916,6 +2961,7 @@ function pcAddRow(){
   },60);
 }
 function pcDeleteRow(i){
+  if(_pcData?.locked&&!pcCanAccessAllDepts()){ alert('この月は締め済みです。'); return; }
   if(!_pcData||!confirm('この行を削除しますか？')) return;
   _pcData.entries.splice(i,1);
   _pcDirty=true;
@@ -2957,6 +3003,81 @@ function pcExportCSV(){
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob); a.download=`現金出納帳_${deptName}_R${wr.y}年${wr.m}月.csv`; a.click();
   URL.revokeObjectURL(a.href);
+}
+
+// ===== 月次締め =====
+function pcLock(){
+  if(!pcCanAccessAllDepts()) return;
+  if(!confirm('この月を締めますか？\n締め後は管理者以上のみ変更可能になります。')) return;
+  if(!_pcData) return;
+  _pcData.locked=true;
+  save(pcKey(),_pcData);
+  renderPettyCash();
+}
+function pcUnlock(){
+  if(!pcCanAccessAllDepts()) return;
+  if(!confirm('締めを解除しますか？')) return;
+  if(!_pcData) return;
+  _pcData.locked=false;
+  save(pcKey(),_pcData);
+  renderPettyCash();
+}
+
+// ===== Excel取込 =====
+function pcHandleXLS(file){
+  if(!file) return;
+  if(!_pcData){ alert('データが読み込まれていません。'); return; }
+  if(_pcData.locked&&!pcCanAccessAllDepts()){ alert('この月は締め済みです。'); return; }
+  const reader=new FileReader();
+  reader.onload=function(ev){
+    try{
+      const wb=XLSX.read(ev.target.result,{type:'array'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+      // ヘッダー行を探す（「精算日」を含む行の次から）
+      let startRow=-1;
+      for(let i=0;i<rows.length;i++){
+        if(rows[i].some(c=>String(c).includes('精算日')||String(c).includes('借方')||String(c).includes('収入金額'))){
+          startRow=i+1; break;
+        }
+      }
+      if(startRow<0){ alert('対応フォーマットが見つかりません。\nCSV出力と同じ形式のExcelファイルを選択してください。'); return; }
+      const [isoY,isoM]=_pcYearMonth.split('-');
+      const entries=[];
+      for(let i=startRow;i<rows.length;i++){
+        const r=rows[i];
+        const ry=Number(r[0])||0,rm=Number(r[1])||0,rd=Number(r[2])||0;
+        // 前月末残高行・合計行・空行はスキップ
+        if(!rd&&!(Number(r[9])||Number(r[10]))) continue;
+        if(String(r[0]).includes('合計')||String(r[0]).includes('繰越')) continue;
+        // 年月はヘッダー選択を優先、日だけ取り込む
+        const adY=ry?ry+2018:Number(isoY);
+        const useM=rm||Number(isoM);
+        const dateVal=rd?`${adY}-${String(useM).padStart(2,'0')}-${String(rd).padStart(2,'0')}`:'';
+        entries.push({
+          date:dateVal,
+          department:String(r[3]||''),
+          purchaser:String(r[4]||''),
+          invoiceCheck:String(r[5]||'').includes('☑'),
+          payee:String(r[6]||''),
+          receiptDate:String(r[7]||''),
+          content:String(r[8]||''),
+          income:Number(r[9])||0,
+          expense:Number(r[10])||0,
+        });
+      }
+      if(entries.length===0){ alert('取り込めるデータが見つかりませんでした。'); return; }
+      if(!confirm(`${entries.length}件のデータを取り込みます。\n現在のデータは上書きされます。続けますか？`)) return;
+      _pcData.entries=entries;
+      _pcDirty=true;
+      save(pcKey(),_pcData);
+      renderPettyCash();
+      alert(`✅ ${entries.length}件を取り込みました。`);
+    }catch(err){
+      alert('読み込みに失敗しました: '+err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
 }
 
 // ===== ダブルブッキング検出 =====
