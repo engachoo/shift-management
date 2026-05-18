@@ -602,9 +602,9 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
       <div class="side-item" id="m-ad" onclick="showMod('admin','depts')"><span class="si-icon">🏢</span>部署管理</div>
       <div class="side-item" id="m-ap" onclick="showMod('admin','perms')"><span class="si-icon">🔐</span>権限設定</div>
     </div>
-    <div id="devMenu" style="display:none">
-      <div class="side-group">開発中アプリ</div>
-      <div class="side-item" id="m-dev" onclick="showMod('devapps')"><span class="si-icon">💰</span>現金出納帳</div>
+    <div id="acctMenu" style="display:none">
+      <div class="side-group">経理・事務</div>
+      <div class="side-item" id="m-pc" onclick="showMod('pettycash')"><span class="si-icon">💰</span>現金出納簿</div>
     </div>
   </div>
 
@@ -740,9 +740,6 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
 
     <!-- 開発中アプリ（システム専用） -->
     <div id="devAppsView" style="display:none;padding:16px">
-      <div class="page-hdr" style="position:static;margin-bottom:16px">
-        <h2>🧪 開発中アプリ</h2>
-      </div>
       <div id="devAppsContent"></div>
     </div>
 
@@ -2251,11 +2248,11 @@ function showMod(mod,sub,_fromPop){
     document.getElementById('m-a'+sideId).classList.add('active');
     adminTab=sub||'users';
     switchAdminTab(adminTab);
-  } else if(mod==='devapps'){
+  } else if(mod==='pettycash'||mod==='devapps'){
     if(!getS()) return;
     document.getElementById('devAppsView').style.display='block';
-    document.getElementById('m-dev').classList.add('active');
-    renderDevApps();
+    document.getElementById('m-pc').classList.add('active');
+    openPettyCash();
   }
   updateBadges();
 }
@@ -5205,10 +5202,8 @@ function startApp(){
   if(isAdmin()){
     document.getElementById('adminMenu').style.display='block';
   }
-  // 開発中アプリはシステム管理者のみ表示
-  if(isSystem()){
-    document.getElementById('devMenu').style.display='block';
-  }
+  // 経理・事務メニューはログイン済み全ユーザーに表示
+  document.getElementById('acctMenu').style.display='block';
   // 前回ログイン時刻を保存してからTOPへ
   const uid = s.userId;
   const prevLogin = load('lastLogin_'+uid, null);
