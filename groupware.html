@@ -2836,7 +2836,7 @@ function renderPettyCash(){
     </div>
 
     <div style="background:#fff;border:1px solid #d1d5db;border-radius:8px;overflow:auto;margin-bottom:12px">
-      <table style="width:100%;border-collapse:collapse;min-width:1250px">
+      <table style="width:100%;border-collapse:collapse;min-width:1050px">
         <thead>
           <tr style="background:#1a2b4a;color:#fff">
             ${canEdit?`<th rowspan="2" style="${thSt}"><input type="checkbox" onchange="pcSelectAll(this.checked)" style="width:15px;height:15px;cursor:pointer" title="全選択/解除"></th>`:''}
@@ -3037,9 +3037,9 @@ function pcRowHTML(e,i){
     <td style="padding:4px 3px">${inp('department',e.department,'部門',60)}</td>
     <td style="padding:4px 3px">${inp('purchaser',e.purchaser,'購入者',64)}</td>
     <td style="padding:4px 3px;text-align:center;padding-top:10px">${chkCell}</td>
-    <td style="padding:4px 3px">${ta('payee',e.payee,'支払先',200)}</td>
+    <td style="padding:4px 3px">${ta('payee',e.payee,'支払先',160)}</td>
     <td style="padding:4px 3px">${inp('receiptDate',e.receiptDate,'M/D',48)}</td>
-    <td style="padding:4px 3px">${ta('content',e.content,'内容',280)}</td>
+    <td style="padding:4px 3px">${ta('content',e.content,'内容',220)}</td>
     <td style="padding:4px 3px">${num('income',e.income||'',86,'#166534')}</td>
     <td style="padding:4px 3px">${num('expense',e.expense||'',86,'#dc2626')}</td>
     <td style="padding:4px 6px;text-align:right;font-weight:700;font-size:12px;white-space:nowrap;color:#1a2b4a">0</td>
