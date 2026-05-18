@@ -2528,7 +2528,11 @@ function confirmBl(blId){
 function updateBadges(){
   const cis=load('circulars',[]);
   // 未承認（pending）＋保留中（checking）の合計をバッジに表示
+  // 申請者は全員承認済になるまでカウント、受信者は自分の回答が未完の間カウント
   const pending=cis.filter(c=>{
+    if(c.author===myId()){
+      return c.recipients&&!c.recipients.every(id=>c.responses[id]?.status==='confirmed');
+    }
     if(!c.recipients||!c.recipients.includes(myId()))return false;
     const r=c.responses[myId()];
     return !r||r.status==='pending'||r.status==='checking';
@@ -3733,18 +3737,24 @@ function filterCi(f){
 function renderCiList(){
   updateBadges();
   const cis=load('circulars',[]);
-  const all=cis.filter(c=>c.recipients&&c.recipients.includes(myId())||c.author===myId());
-  // 各タブの件数を算出してバッジに表示
-  const cntPend=all.filter(c=>{const r=c.responses[myId()];return !r||r.status==='pending';}).length;
-  const cntCheck=all.filter(c=>{const r=c.responses[myId()];return r&&r.status==='checking';}).length;
-  const cntDone=all.filter(c=>{const r=c.responses[myId()];return r&&r.status==='confirmed';}).length;
+  const me=myId();
+  const all=cis.filter(c=>c.recipients&&c.recipients.includes(me)||c.author===me);
+
+  // 申請者（author）視点：全員承認済になるまで「未承認」タブに表示
+  const _allConf=(c)=>c.recipients.every(id=>c.responses[id]?.status==='confirmed');
+  const ciPending=(c)=>c.author===me ? !_allConf(c) : (!c.responses[me]||c.responses[me]?.status==='pending');
+  const ciChecking=(c)=>c.author===me ? false : c.responses[me]?.status==='checking';
+  const ciDone=(c)=>c.author===me ? _allConf(c) : c.responses[me]?.status==='confirmed';
+
+  const cntPend=all.filter(c=>ciPending(c)&&!ciChecking(c)).length;
+  const cntCheck=all.filter(c=>ciChecking(c)).length;
   const setCnt=(id,n)=>{const el=document.getElementById(id);if(el){el.textContent=n>0?n:'';el.style.display=n>0?'':'none';}};
   setCnt('cnt-pending',cntPend); setCnt('cnt-checking',cntCheck);
 
   let list=[...all];
-  if(ciFilter==='pending') list=list.filter(c=>{const r=c.responses[myId()];return !r||r.status==='pending';});
-  else if(ciFilter==='checking') list=list.filter(c=>{const r=c.responses[myId()];return r&&r.status==='checking';});
-  else if(ciFilter==='done') list=list.filter(c=>{const r=c.responses[myId()];return r&&r.status==='confirmed';});
+  if(ciFilter==='pending') list=list.filter(c=>ciPending(c)&&!ciChecking(c));
+  else if(ciFilter==='checking') list=list.filter(c=>ciChecking(c));
+  else if(ciFilter==='done') list=list.filter(c=>ciDone(c));
 
   const el=document.getElementById('ciItems');
   if(!list.length){el.innerHTML='<div style="padding:20px;text-align:center;color:#8899aa">該当なし</div>';return;}
@@ -3753,12 +3763,16 @@ function renderCiList(){
     const check=c.recipients.filter(id=>c.responses[id]?.status==='checking').length;
     const pend=c.recipients.filter(id=>!c.responses[id]||c.responses[id]?.status==='pending').length;
     const total=c.recipients.length;
-    const myStatus=c.responses[myId()]?.status||'pending';
     const priLbl=c.priority==='top'?'最優先':c.priority==='high'?'優先':'普通';
-    const myLbl=myStatus==='confirmed'?'承認済':myStatus==='checking'?'保留中':'未承認';
-    const myDot=myStatus==='confirmed'?'🟢':myStatus==='checking'?'🟡':'🔴';
+    // 申請者は全体進捗で表示、受信者は自分の回答状態で表示
+    const isAuthor=(c.author===me);
+    const myStatus=isAuthor
+      ?(_allConf(c)?'all-confirmed':'author-pending')
+      :(c.responses[me]?.status||'pending');
+    const myLbl=myStatus==='all-confirmed'?'全員承認済':myStatus==='author-pending'?'承認待ち中':myStatus==='confirmed'?'承認済':myStatus==='checking'?'保留中':'未承認';
+    const myDot=myStatus==='all-confirmed'||myStatus==='confirmed'?'🟢':myStatus==='checking'?'🟡':myStatus==='author-pending'?'🟠':'🔴';
     return `<div class="ci-item ${c.id===ciSelId?'sel':''}" onclick="selCi('${c.id}')">
-      <div class="ci-title"><span class="ci-pri ${c.priority}">${priLbl}</span>${myDot} ${esc(c.title)}</div>
+      <div class="ci-title"><span class="ci-pri ${c.priority}">${priLbl}</span>${myDot} ${esc(c.title)}${isAuthor?'<span style="font-size:10px;color:#6b7280;margin-left:6px">（自分の申請）</span>':''}</div>
       <div class="ci-meta"><span>${c.deadline||''}</span><span>${esc(getUser(c.author).name)}</span></div>
       <div class="ci-prog">承認済 ${conf}/${total}　保留中 ${check}　未承認 ${pend}</div>
     </div>`;
