@@ -2673,6 +2673,45 @@ function pcCanAccessAllDepts(){
   const r=getS()?.role;
   return r==='system'||r==='admin';
 }
+// ===== 決算期情報 =====
+// 大日/AMUSE/BLOCK: 7〜6月末決算  ウェルピア(d3): 4〜3月末決算
+function pcFYInfo(){
+  const pcDs=load('pcDepts',[]);
+  const pcD=pcDs.find(d=>d.id===_pcDeptId)||{};
+  const isWelpia=(pcD.groupId==='d3');
+  const [isoY,isoM]=(_pcYearMonth||'2025-01').split('-');
+  const y=Number(isoY),m=Number(isoM);
+  let fyStart,fyEnd,fyLabel;
+  if(isWelpia){
+    if(m>=4){ fyStart=new Date(y,3,1);fyEnd=new Date(y+1,2,31); }
+    else     { fyStart=new Date(y-1,3,1);fyEnd=new Date(y,2,31); }
+    fyLabel=`令和${fyStart.getFullYear()-2018}年4月〜令和${fyEnd.getFullYear()-2018}年3月末`;
+  } else {
+    if(m>=7){ fyStart=new Date(y,6,1);fyEnd=new Date(y+1,5,30); }
+    else     { fyStart=new Date(y-1,6,1);fyEnd=new Date(y,5,30); }
+    fyLabel=`令和${fyStart.getFullYear()-2018}年7月〜令和${fyEnd.getFullYear()-2018}年6月末`;
+  }
+  return {fyStart,fyEnd,fyLabel};
+}
+// 領収書日付（M/D形式）が決算期内か検証。問題あれば error メッセージを返す
+function pcCheckReceiptDate(val){
+  if(!val||!String(val).trim()) return null;
+  const s=String(val).trim();
+  const parts=s.split('/');
+  if(parts.length<2) return null; // パース不可はスキップ
+  const rm=Number(parts[0]),rd=Number(parts[1]);
+  if(!rm||!rd||rm<1||rm>12||rd<1||rd>31) return null;
+  const {fyStart,fyEnd,fyLabel}=pcFYInfo();
+  const ly=Number((_pcYearMonth||'2025-01').split('-')[0]);
+  // 台帳年で候補日生成、FY外なら翌年・前年でも試みる
+  let rDate=new Date(ly,rm-1,rd);
+  if(rDate<fyStart){ const n=new Date(ly+1,rm-1,rd); if(n>=fyStart&&n<=fyEnd) rDate=n; }
+  if(rDate>fyEnd)  { const p=new Date(ly-1,rm-1,rd); if(p>=fyStart&&p<=fyEnd) rDate=p; }
+  if(rDate<fyStart||rDate>fyEnd){
+    return `「${s}」は決算期（${fyLabel}）外です`;
+  }
+  return null;
+}
 function openPettyCash(){
   const s=getS();
   if(!_pcDeptId){
@@ -2879,6 +2918,16 @@ function pcField(i,field,val){
   _pcData.entries[i][field]=numFields.includes(field)?(Number(val)||0):(field==='invoiceCheck'?!!val:val);
   _pcDirty=true;
   pcUpdateTotals();
+  // 領収書日付の決算期リアルタイムチェック
+  if(field==='receiptDate'){
+    const errMsg=pcCheckReceiptDate(val);
+    const el=document.getElementById('pcR'+i);
+    if(el){
+      el.style.borderColor=errMsg?'#dc2626':'#e2e8f0';
+      el.style.background=errMsg?'#fff1f2':'';
+      el.title=errMsg||'';
+    }
+  }
 }
 function pcYMChange(ry,m){
   const adY=Number(ry)+2018;
@@ -2953,9 +3002,14 @@ function pcRowHTML(e,i){
   const ro=!!(_pcData?.locked&&!pcCanAccessAllDepts());
   const txtSt=(c)=>`font-size:12px;color:${c||'#1a2b4a'};padding:4px 2px`;
   const ist=(w,r)=>`border:1px solid #e2e8f0;border-radius:4px;padding:4px 6px;font-size:12px;width:${w}px${r?';text-align:right':''}`;
-  const inp=(id,val,ph,w,r)=>ro
-    ?`<span style="${txtSt()};width:${w}px;display:inline-block">${esc(String(val||''))}</span>`
-    :`<input type="text" value="${esc(String(val||''))}" oninput="pcField(${i},'${id}',this.value)" placeholder="${ph}" style="${ist(w,r)}">`;
+  const inp=(id,val,ph,w,r)=>{
+    if(ro) return `<span style="${txtSt()};width:${w}px;display:inline-block">${esc(String(val||''))}</span>`;
+    const isRD=(id==='receiptDate');
+    const rdErr=isRD?pcCheckReceiptDate(String(val||'')):null;
+    const idAttr=isRD?`id="pcR${i}" `:'';
+    const errSt=rdErr?'border-color:#dc2626!important;background:#fff1f2;':'';
+    return `<input type="text" ${idAttr}value="${esc(String(val||''))}" oninput="pcField(${i},'${id}',this.value)" placeholder="${ph}" title="${esc(rdErr||'')}" style="${ist(w,r)};${errSt}">`;
+  };
   const fmtNum=(v)=>v?(Number(v)||0).toLocaleString():'';
   const num=(id,val,w,col)=>ro
     ?`<span style="${txtSt(col)};width:${w}px;display:inline-block;text-align:right">${fmtNum(val)}</span>`
@@ -3028,6 +3082,17 @@ function pcDeleteSelected(){
 }
 function pcSave(ev){
   if(!_pcData) return;
+  // 決算期チェック：エラーがあれば保存をブロック
+  const rdErrors=[];
+  _pcData.entries.forEach((e,idx)=>{
+    const err=pcCheckReceiptDate(e.receiptDate||'');
+    if(err) rdErrors.push(`${idx+1}行目: ${err}`);
+  });
+  if(rdErrors.length){
+    const {fyLabel}=pcFYInfo();
+    alert(`【決算期エラー】領収書日付が決算期（${fyLabel}）外の行があります。\n\n${rdErrors.slice(0,10).join('\n')}\n\n修正してから保存してください。`);
+    return;
+  }
   save(pcKey(),_pcData);
   _pcDirty=false;
   const badge=document.getElementById('pcDirtyBadge');
