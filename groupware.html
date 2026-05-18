@@ -2964,7 +2964,8 @@ function pcDeleteRow(i){
   if(_pcData?.locked&&!pcCanAccessAllDepts()){ alert('この月は締め済みです。'); return; }
   if(!_pcData||!confirm('この行を削除しますか？')) return;
   _pcData.entries.splice(i,1);
-  _pcDirty=true;
+  save(pcKey(),_pcData); // 先に保存してからrenderPettyCash（ストレージ再読込のため）
+  _pcDirty=false;
   renderPettyCash();
 }
 function pcSave(ev){
