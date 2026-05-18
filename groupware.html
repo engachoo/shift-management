@@ -503,6 +503,13 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
 .btn-danger{background:#e53e3e;color:#fff;border:none;padding:8px 20px;border-radius:4px;cursor:pointer;font-size:13px}
 .pass-note{font-size:11px;color:#6b7280;margin-top:3px}
 .section-divider{border:none;border-top:1px solid #e5e7eb;margin:14px 0}
+/* 現金出納帳 行フォーカスハイライト */
+#pcTbody tr:focus-within { background:#eff6ff; }
+#pcTbody tr:focus-within td { background:#eff6ff; }
+#pcTbody tr:focus-within input[type="text"],
+#pcTbody tr:focus-within input[type="number"] { border-color:#93c5fd; }
+#pcTbody input[type="text"]:focus,
+#pcTbody input[type="number"]:focus { outline:2px solid #3b82f6; outline-offset:1px; border-color:#3b82f6; }
 </style>
 </head>
 <body>
@@ -2684,20 +2691,21 @@ function renderPettyCash(){
     totalIn+=inc; totalOut+=exp; bal+=inc-exp;
     const wr=toWareki(e.date||'');
     const balColor=bal<0?'#dc2626':'#1a2b4a';
-    const inp=(id,val,ph,w,right)=>`<input type="text" value="${esc(String(val||''))}" oninput="pcField(${i},'${id}',this.value)" placeholder="${ph}" style="border:1px solid #e2e8f0;border-radius:4px;padding:3px 5px;font-size:11px;width:${w}px${right?';text-align:right':''}">`;
-    const numInp=(id,val,w,color)=>`<input type="number" value="${val||''}" oninput="pcField(${i},'${id}',this.value)" placeholder="0" min="0" style="border:1px solid #e2e8f0;border-radius:4px;padding:3px 5px;font-size:11px;width:${w}px;text-align:right;color:${color}">`;
+    const inpSt=(w,right)=>`border:1px solid #e2e8f0;border-radius:4px;padding:4px 6px;font-size:12px;width:${w}px${right?';text-align:right':''}`;
+    const inp=(id,val,ph,w,right)=>`<input type="text" value="${esc(String(val||''))}" oninput="pcField(${i},'${id}',this.value)" placeholder="${ph}" style="${inpSt(w,right)}">`;
+    const numInp=(id,val,w,color,extra)=>`<input type="number" value="${val||''}" oninput="pcField(${i},'${id}',this.value)" placeholder="0" min="0" style="border:1px solid #e2e8f0;border-radius:4px;padding:4px 6px;font-size:12px;width:${w}px;text-align:right;color:${color}"${extra||''}>`;
     return `<tr style="border-bottom:1px solid #f1f5f9">
-      <td style="padding:4px 3px;text-align:center"><input type="number" value="${wr.y||''}" oninput="pcDateField(${i},'y',this.value)" placeholder="年" min="1" style="border:1px solid #e2e8f0;border-radius:4px;padding:3px 4px;font-size:11px;width:38px;text-align:center"></td>
-      <td style="padding:4px 3px;text-align:center"><input type="number" value="${wr.m||''}" oninput="pcDateField(${i},'m',this.value)" placeholder="月" min="1" max="12" style="border:1px solid #e2e8f0;border-radius:4px;padding:3px 4px;font-size:11px;width:34px;text-align:center"></td>
-      <td style="padding:4px 3px;text-align:center"><input type="number" value="${wr.d||''}" oninput="pcDateField(${i},'d',this.value)" placeholder="日" min="1" max="31" style="border:1px solid #e2e8f0;border-radius:4px;padding:3px 4px;font-size:11px;width:34px;text-align:center"></td>
-      <td style="padding:4px 3px">${inp('department',e.department,'部門',56)}</td>
-      <td style="padding:4px 3px">${inp('purchaser',e.purchaser,'購入者',60)}</td>
-      <td style="padding:4px 3px;text-align:center"><input type="checkbox"${e.invoiceCheck?' checked':''} onchange="pcField(${i},'invoiceCheck',this.checked)" style="width:16px;height:16px;cursor:pointer"></td>
-      <td style="padding:4px 3px">${inp('payee',e.payee,'支払先',110)}</td>
-      <td style="padding:4px 3px">${inp('receiptDate',e.receiptDate,'M/D',46)}</td>
-      <td style="padding:4px 3px">${inp('content',e.content,'内容',140)}</td>
-      <td style="padding:4px 3px">${numInp('income',e.income||'',82,'#166534')}</td>
-      <td style="padding:4px 3px">${numInp('expense',e.expense||'',82,'#dc2626')}</td>
+      <td style="padding:4px 3px;text-align:center"><input id="pcY${i}" type="number" value="${wr.y||''}" oninput="pcDateField(${i},'y',this.value)" onkeydown="pcFieldKey(event,${i},'y')" placeholder="年" min="1" style="border:1px solid #e2e8f0;border-radius:4px;padding:4px 4px;font-size:12px;width:40px;text-align:center"></td>
+      <td style="padding:4px 3px;text-align:center"><input id="pcM${i}" type="number" value="${wr.m||''}" oninput="pcDateField(${i},'m',this.value)" onkeydown="pcFieldKey(event,${i},'m')" placeholder="月" min="1" max="12" style="border:1px solid #e2e8f0;border-radius:4px;padding:4px 4px;font-size:12px;width:36px;text-align:center"></td>
+      <td style="padding:4px 3px;text-align:center"><input id="pcD${i}" type="number" value="${wr.d||''}" oninput="pcDateField(${i},'d',this.value)" onkeydown="pcFieldKey(event,${i},'d')" placeholder="日" min="1" max="31" style="border:1px solid #e2e8f0;border-radius:4px;padding:4px 4px;font-size:12px;width:36px;text-align:center"></td>
+      <td style="padding:4px 3px">${inp('department',e.department,'部門',60)}</td>
+      <td style="padding:4px 3px">${inp('purchaser',e.purchaser,'購入者',64)}</td>
+      <td style="padding:4px 3px;text-align:center"><input type="checkbox"${e.invoiceCheck?' checked':''} onchange="pcField(${i},'invoiceCheck',this.checked)" style="width:17px;height:17px;cursor:pointer"></td>
+      <td style="padding:4px 3px">${inp('payee',e.payee,'支払先',116)}</td>
+      <td style="padding:4px 3px">${inp('receiptDate',e.receiptDate,'M/D',48)}</td>
+      <td style="padding:4px 3px">${inp('content',e.content,'内容',148)}</td>
+      <td style="padding:4px 3px">${numInp('income',e.income||'',86,'#166534',' onkeydown="pcFieldKey(event,'+i+',\'income\')"')}</td>
+      <td style="padding:4px 3px">${numInp('expense',e.expense||'',86,'#dc2626',' onkeydown="pcFieldKey(event,'+i+',\'expense\')"')}</td>
       <td style="padding:4px 6px;text-align:right;font-weight:700;font-size:12px;white-space:nowrap;color:${balColor}">${bal.toLocaleString()}</td>
       <td style="padding:4px 3px;text-align:center"><button onclick="pcDeleteRow(${i})" style="background:#fee2e2;color:#dc2626;border:none;border-radius:4px;padding:3px 8px;cursor:pointer;font-size:11px">✕</button></td>
     </tr>`;
@@ -2772,6 +2780,7 @@ function renderPettyCash(){
 
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <button onclick="pcAddRow()" style="background:#eff6ff;border:1.5px solid #bfdbfe;color:#1d4ed8;border-radius:7px;padding:8px 18px;cursor:pointer;font-size:13px;font-weight:600">＋ 行を追加</button>
+      <span style="font-size:11px;color:#9ca3af">最終行の支払金額欄で Enter / Tab → 自動で次行追加</span>
       <div style="flex:1"></div>
       <button onclick="pcSave(event)" style="background:linear-gradient(135deg,#1a56db,#1e40af);color:#fff;border:none;border-radius:7px;padding:8px 22px;cursor:pointer;font-size:13px;font-weight:700;box-shadow:0 2px 6px rgba(26,86,219,.3)">💾 保存</button>
       <button onclick="pcExportCSV()" style="background:#f0fdf4;border:1.5px solid #bbf7d0;color:#166534;border-radius:7px;padding:8px 18px;cursor:pointer;font-size:13px;font-weight:600">📥 CSV出力</button>
@@ -2834,13 +2843,34 @@ function pcUpdateTotals(){
   const badge=document.getElementById('pcDirtyBadge');
   if(badge) badge.style.display=_pcDirty?'inline':'none';
 }
+function pcFieldKey(e,i,field){
+  // Enterキー → 行内の次フィールドへ移動。最終行のexpenseではEnter・Tabで新行追加
+  const isLast=(_pcData&&i===_pcData.entries.length-1);
+  if(e.key==='Enter'){
+    e.preventDefault();
+    if(field==='y')      { document.getElementById('pcM'+i)?.focus(); }
+    else if(field==='m') { document.getElementById('pcD'+i)?.focus(); }
+    else if(field==='d') { document.querySelector(`#pcTbody tr:nth-child(${i+1}) td:nth-child(4) input`)?.focus(); }
+    else if(field==='income') { document.querySelector(`#pcTbody tr:nth-child(${i+1}) td:nth-child(11) input`)?.focus(); }
+    else if(field==='expense'){ if(isLast) pcAddRow(); else document.getElementById('pcY'+(i+1))?.focus(); }
+    return;
+  }
+  if(e.key==='Tab'&&!e.shiftKey&&field==='expense'&&isLast){
+    e.preventDefault();
+    pcAddRow();
+  }
+}
 function pcAddRow(){
   if(!_pcData) return;
-  const wr=toWareki(todayStr());
   _pcData.entries.push({date:todayStr(),department:'',purchaser:'',invoiceCheck:false,payee:'',receiptDate:'',content:'',income:0,expense:0});
   _pcDirty=true;
+  const newIdx=_pcData.entries.length-1;
   renderPettyCash();
-  setTimeout(()=>document.getElementById('pcTbody')?.lastElementChild?.scrollIntoView({block:'center'}),60);
+  setTimeout(()=>{
+    const yInp=document.getElementById('pcY'+newIdx);
+    if(yInp){ yInp.focus(); yInp.select(); }
+    document.getElementById('pcTbody')?.lastElementChild?.scrollIntoView({block:'nearest'});
+  },60);
 }
 function pcDeleteRow(i){
   if(!_pcData||!confirm('この行を削除しますか？')) return;
