@@ -2982,16 +2982,14 @@ function pcFieldKey(e,i,field){
   const isLast=(_pcData&&i===_pcData.entries.length-1);
   if(e.key==='Enter'){
     e.preventDefault();
-    switch(field){
-      case 'd':           document.getElementById('pcDep'+i)?.focus(); break;
-      case 'department':  document.getElementById('pcPu'+i)?.focus(); break;
-      case 'purchaser':   document.getElementById('pcPay'+i)?.focus(); break;
-      case 'payee':       document.getElementById('pcR'+i)?.focus(); break;
-      case 'receiptDate': document.getElementById('pcCon'+i)?.focus(); break;
-      case 'content':     document.getElementById('pcIn'+i)?.focus(); break;
-      case 'income':      document.getElementById('pcEx'+i)?.focus(); break;
-      case 'expense':     isLast?pcAddRow():document.getElementById('pcD'+(i+1))?.focus(); break;
-    }
+    // 最終行の貸方金額はEnterで新行追加
+    if(field==='expense'&&isLast){ pcAddRow(); return; }
+    // tbody内のinput/textareaをDOM順で取得し、現在の要素の次にフォーカス
+    const tbody=document.getElementById('pcTbody');
+    if(!tbody) return;
+    const all=Array.from(tbody.querySelectorAll('input:not([type=checkbox]),textarea'));
+    const curIdx=all.indexOf(e.target);
+    if(curIdx>=0&&curIdx<all.length-1) all[curIdx+1].focus();
     return;
   }
   if(e.key==='Tab'&&!e.shiftKey&&field==='expense'&&isLast){
