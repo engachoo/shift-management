@@ -4208,6 +4208,7 @@ let _ciRecips = []; // 選択済み宛先（To）
 let _ciCcs    = []; // 選択済み宛先（Cc）
 let _ciCustomBtns = ['確認中','確認済']; // 返信ボタン
 let _ciMode = 'approval'; // 'approval' | 'petty'
+let _ciEditId = null;    // null=新規, 文字列=編集中ID
 
 function filterCi(f){
   ciFilter=f;
@@ -4320,6 +4321,7 @@ function renderCiDetail(){
         <h3 style="flex:1;font-size:15px;color:#1a2b4a">${isPettyDetail?'<span style="background:#ea580c;color:#fff;font-size:11px;border-radius:4px;padding:1px 6px;margin-right:4px;font-weight:700">小口申請</span>':''}${esc(c.title)}</h3>
         ${c.withdrawn?`<span style="background:#f3f4f6;color:#6b7280;border:1px solid #d1d5db;border-radius:6px;padding:3px 10px;font-size:12px;font-weight:700">⬜ 取り下げ済</span>`:''}
         ${c.author===myId()&&!c.withdrawn?`<button onclick="withdrawCi('${c.id}')" style="background:#fff7ed;border:1.5px solid #fed7aa;color:#c2410c;border-radius:6px;padding:4px 12px;font-size:12px;font-weight:600;cursor:pointer">取り下げ</button>`:''}
+        ${isSystem()?`<button onclick="openCiEdit('${c.id}')" style="background:#eff6ff;border:1.5px solid #93c5fd;color:#1d4ed8;border-radius:6px;padding:4px 12px;font-size:12px;font-weight:600;cursor:pointer">✏️ 編集</button>`:''}
         ${canEdit?`<button class="btn-danger" style="padding:4px 12px;font-size:12px" onclick="delCi('${c.id}')">削除</button>`:''}
       </div>
       ${c.withdrawn?`<div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:8px 14px;font-size:12px;color:#6b7280;margin-bottom:12px">この申請は${esc(c.withdrawnAt||'')}に取り下げられました。</div>`:''}
@@ -4416,6 +4418,47 @@ function delCi(id){
   save('circulars',load('circulars',[]).filter(c=>c.id!==id));
   ciSelId=null; renderCiList();
   document.getElementById('ciDetail').innerHTML='<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:60%;color:#8899aa;gap:8px"><span style="font-size:48px">📝</span><span>申請を選択してください</span></div>';
+}
+
+function openCiEdit(id){
+  if(!isSystem()){alert('システム権限が必要です');return;}
+  const c=load('circulars',[]).find(x=>x.id===id);
+  if(!c)return;
+  _ciEditId=id;
+  // フォームフィールドを読み込み
+  document.getElementById('ci-title').value=c.title||'';
+  document.getElementById('ci-body').value=c.body||'';
+  document.getElementById('ci-deadline').value=c.deadline||'';
+  document.getElementById('ci-priority').value=c.priority||'normal';
+  document.getElementById('ci-to-schedule').checked=!!c.addToSchedule;
+  document.getElementById('ci-route-seq').checked=!!c.routeSequential;
+  document.querySelectorAll('input[name="ci-vis"]').forEach(r=>r.checked=r.value===(c.visibility||'public'));
+  // 宛先・Cc・ボタン・ファイルを読み込み
+  _ciRecips=[...(c.recipients||[])];
+  _ciCcs=[...(c.cc||[])];
+  _ciCustomBtns=[...(c.customButtons||['承認','保留','見送り'])];
+  _ciFiles=[...(c.files||[])];
+  buildCiRecipDeptFilter();
+  buildCiCcDeptFilter();
+  renderCiRecipSel(); renderCiRecipCand();
+  renderCiCcSel();   renderCiCcCand();
+  renderCiCustomTags();
+  renderCiFileList();
+  // モード切り替え（ヘッダー色・タイトルのみ。recips/btnsは上書き済みのため再設定しない）
+  const mode=c.ciType||'approval';
+  _ciMode=mode;
+  const isPetty=(mode==='petty');
+  const hdr=document.getElementById('ciModalHdr');
+  const title=document.getElementById('ciModalTitle');
+  if(hdr) hdr.style.background=isPetty?'#ea580c':'#1a3a6b';
+  if(title) title.textContent=isPetty?'小口申請 - 編集':'承認申請 - 編集';
+  ['approval','petty'].forEach(m=>{
+    const btn=document.getElementById('ciModeBtn-'+m);
+    if(!btn)return;
+    if(m===mode){btn.style.background='rgba(255,255,255,0.95)';btn.style.color=isPetty?'#c2410c':'#1a3a6b';btn.style.border='none';}
+    else{btn.style.background='rgba(255,255,255,0.25)';btn.style.color='#fff';btn.style.border='1px solid rgba(255,255,255,0.55)';}
+  });
+  document.getElementById('ciModal').classList.add('open');
 }
 
 // ----- 宛先デュアルリスト -----
@@ -4627,6 +4670,7 @@ function switchCiMode(mode){
 }
 
 function openCiModal(){
+  _ciEditId=null;
   _ciMode='approval';
   _ciRecips=[];
   _ciCcs=[];
@@ -4670,6 +4714,29 @@ function saveCi(){
   const visibility=document.querySelector('input[name="ci-vis"]:checked')?.value||'public';
   const priority=document.getElementById('ci-priority').value;
   const cc=[..._ciCcs].filter(id=>!recipients.includes(id)); // Toと重複しない
+  const cis=load('circulars',[]);
+
+  if(_ciEditId){
+    // ---- 編集モード：既存データを更新 ----
+    const idx=cis.findIndex(c=>c.id===_ciEditId);
+    if(idx>=0){
+      cis[idx]={
+        ...cis[idx], title, body, priority, deadline,
+        addToSchedule:addToSched, routeSequential:routeSeq,
+        visibility, ciType:_ciMode, recipients, cc,
+        customButtons:[..._ciCustomBtns], files:[..._ciFiles],
+        updatedAt:now
+        // responses・author・createdAtは保持
+      };
+    }
+    save('circulars',cis);
+    closeModal('ciModal');
+    renderCiList(); renderCiDetail();
+    alert('申請を更新しました');
+    return;
+  }
+
+  // ---- 新規作成 ----
   const newCi={
     id:uid(), title, body, priority, deadline,
     addToSchedule:addToSched, routeSequential:routeSeq,
@@ -4679,7 +4746,6 @@ function saveCi(){
     customButtons:[..._ciCustomBtns],
     files:[..._ciFiles]
   };
-  const cis=load('circulars',[]);
   cis.unshift(newCi);
   save('circulars',cis);
   // スケジュール反映
