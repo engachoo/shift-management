@@ -4496,6 +4496,8 @@ function renderCiCcCand(){
   const search=document.getElementById('ci-cc-search')?.value?.toLowerCase()||'';
   const dept=document.getElementById('ci-cc-dept')?.value||'';
   let users=normalUsers().filter(u=>!_ciCcs.includes(u.id)&&!_ciRecips.includes(u.id));
+  // 小口申請モードでは総務経理（soumu）はToに自動セットされるのでCc候補から除外
+  if(_ciMode==='petty') users=users.filter(u=>u.role!=='soumu');
   if(dept) users=users.filter(u=>u.deptId===dept);
   if(search) users=users.filter(u=>u.name.toLowerCase().includes(search)||u.loginId.includes(search));
   cand.innerHTML=users.map(u=>`<option value="${u.id}">${esc(u.name)}（${esc(getDept(u.deptId).name)}）</option>`).join('');
