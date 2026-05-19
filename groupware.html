@@ -966,9 +966,9 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
     </div>
     <div class="modal-body" style="padding:0">
       <table class="ap-table">
-        <!-- 宛先 -->
+        <!-- 宛先（To） -->
         <tr>
-          <td class="ap-lbl req">宛先</td>
+          <td class="ap-lbl req">宛先（To）</td>
           <td class="ap-val" colspan="3">
             <div class="ap-dual">
               <!-- 選択済（左） -->
@@ -996,6 +996,30 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
             </div>
           </td>
         </tr>
+        <!-- 宛先（Cc） -->
+        <tr>
+          <td class="ap-lbl" style="color:#6b7280">宛先（Cc）<div style="font-size:10px;color:#9ca3af;font-weight:400;margin-top:2px">閲覧のみ・回答不要</div></td>
+          <td class="ap-val" colspan="3">
+            <div class="ap-dual">
+              <!-- 選択済（左） -->
+              <div style="flex:1">
+                <div class="ap-dual-box"><select id="ci-cc-sel" multiple size="4" style="min-height:70px"></select></div>
+              </div>
+              <div class="ap-dual-center">
+                <button class="ap-dual-btn" onclick="addCiCc()">← 追加</button>
+                <button class="ap-dual-btn" onclick="removeCiCc()">削除 →</button>
+              </div>
+              <!-- 候補（右） -->
+              <div style="flex:1">
+                <div class="ap-dual-search">
+                  <input id="ci-cc-search" placeholder="名前検索" oninput="filterCiCcCand()">
+                  <select id="ci-cc-dept" onchange="filterCiCcCand()"><option value="">全部署</option></select>
+                </div>
+                <div class="ap-dual-box"><select id="ci-cc-cand" multiple size="4" style="min-height:70px"></select></div>
+              </div>
+            </div>
+          </td>
+        </tr>
         <!-- タイトル -->
         <tr>
           <td class="ap-lbl req">タイトル</td>
@@ -1016,7 +1040,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
           <td class="ap-lbl">ルート設定</td>
           <td class="ap-val">
             <label style="font-size:12px;display:flex;align-items:center;gap:4px">
-              <input type="checkbox" id="ci-route-seq"> 宛先の上から順番に回覧します
+              <input type="checkbox" id="ci-route-seq"> 宛先（To）の上から順番に回覧します
             </label>
           </td>
         </tr>
@@ -4107,7 +4131,8 @@ function doReaction(evId){
 // =========================================================
 // 承認申請
 // =========================================================
-let _ciRecips = []; // 選択済み宛先
+let _ciRecips = []; // 選択済み宛先（To）
+let _ciCcs    = []; // 選択済み宛先（Cc）
 let _ciCustomBtns = ['確認中','確認済']; // 返信ボタン
 
 function filterCi(f){
@@ -4126,16 +4151,18 @@ function renderCiList(){
   updateBadges();
   const cis=load('circulars',[]);
   const me=myId();
-  const all=cis.filter(c=>c.recipients&&c.recipients.includes(me)||c.author===me);
+  const all=cis.filter(c=>(c.recipients&&c.recipients.includes(me))||(c.cc&&c.cc.includes(me))||c.author===me);
 
+  // Ccのみ（Toには含まれない）かどうか
+  const isCcOnly=(c)=>!!(c.cc&&c.cc.includes(me)&&!(c.recipients&&c.recipients.includes(me))&&c.author!==me);
   // 申請者（author）視点：全員承認済になるまで「未承認」タブに表示
   const _allConf=(c)=>c.recipients.every(id=>c.responses[id]?.status==='confirmed');
   const ciPending=(c)=>{
-    if(c.withdrawn) return false; // 取り下げ済は未承認に出さない
+    if(c.withdrawn||isCcOnly(c)) return false; // 取り下げ済・Cc専用は未承認に出さない
     return c.author===me ? !_allConf(c) : (!c.responses[me]||c.responses[me]?.status==='pending');
   };
-  const ciChecking=(c)=>(!c.withdrawn&&c.author!==me&&c.responses[me]?.status==='checking');
-  const ciDone=(c)=>c.withdrawn||(c.author===me ? _allConf(c) : c.responses[me]?.status==='confirmed');
+  const ciChecking=(c)=>(!c.withdrawn&&!isCcOnly(c)&&c.author!==me&&c.responses[me]?.status==='checking');
+  const ciDone=(c)=>c.withdrawn||isCcOnly(c)||(c.author===me ? _allConf(c) : c.responses[me]?.status==='confirmed');
 
   const cntPend=all.filter(c=>ciPending(c)&&!ciChecking(c)).length;
   const cntCheck=all.filter(c=>ciChecking(c)).length;
@@ -4170,15 +4197,16 @@ function renderCiList(){
     const pend=c.recipients.filter(id=>!c.responses[id]||c.responses[id]?.status==='pending').length;
     const total=c.recipients.length;
     const priLbl=c.priority==='top'?'最優先':c.priority==='high'?'優先':'普通';
-    // 申請者は全体進捗で表示、受信者は自分の回答状態で表示
+    // 申請者は全体進捗で表示、受信者は自分の回答状態で表示、Ccのみは「Cc共有」
     const isAuthor=(c.author===me);
-    const myStatus=c.withdrawn?'withdrawn':isAuthor
+    const ccOnly=isCcOnly(c);
+    const myStatus=c.withdrawn?'withdrawn':ccOnly?'cc':isAuthor
       ?(_allConf(c)?'all-confirmed':'author-pending')
       :(c.responses[me]?.status||'pending');
-    const myLbl=myStatus==='withdrawn'?'取り下げ済':myStatus==='all-confirmed'?'全員承認済':myStatus==='author-pending'?'承認待ち中':myStatus==='confirmed'?'承認済':myStatus==='checking'?'保留中':'未承認';
-    const myDot=myStatus==='withdrawn'?'⬜':myStatus==='all-confirmed'||myStatus==='confirmed'?'🟢':myStatus==='checking'?'🟡':myStatus==='author-pending'?'🟠':'🔴';
+    const myLbl=myStatus==='withdrawn'?'取り下げ済':myStatus==='cc'?'Cc共有':myStatus==='all-confirmed'?'全員承認済':myStatus==='author-pending'?'承認待ち中':myStatus==='confirmed'?'承認済':myStatus==='checking'?'保留中':'未承認';
+    const myDot=myStatus==='withdrawn'?'⬜':myStatus==='cc'?'📋':myStatus==='all-confirmed'||myStatus==='confirmed'?'🟢':myStatus==='checking'?'🟡':myStatus==='author-pending'?'🟠':'🔴';
     return `<div class="ci-item ${c.id===ciSelId?'sel':''}" onclick="selCi('${c.id}')">
-      <div class="ci-title"><span class="ci-pri ${c.priority}">${priLbl}</span>${myDot} ${esc(c.title)}${isAuthor?'<span style="font-size:10px;color:#6b7280;margin-left:6px">（自分の申請）</span>':''}</div>
+      <div class="ci-title"><span class="ci-pri ${c.priority}">${priLbl}</span>${myDot} ${esc(c.title)}${isAuthor?'<span style="font-size:10px;color:#6b7280;margin-left:6px">（自分の申請）</span>':ccOnly?'<span style="font-size:10px;color:#6b7280;margin-left:6px">（Cc）</span>':''}</div>
       <div class="ci-meta"><span>${c.deadline||''}</span><span>${esc(getUser(c.author).name)}</span></div>
       <div class="ci-prog">承認済 ${conf}/${total}　保留中 ${check}　未承認 ${pend}</div>
     </div>`;
@@ -4228,7 +4256,8 @@ function renderCiDetail(){
 
       ${ciTab==='content'?`
         <table class="ap-table" style="margin-bottom:12px">
-          <tr><td class="ap-lbl">宛先</td><td class="ap-val" colspan="3">${c.recipients.map(id=>`<span style="display:inline-block;background:#e8f0fe;border-radius:3px;padding:2px 7px;margin:2px;font-size:12px">${esc(getUser(id).name)}</span>`).join('')}</td></tr>
+          <tr><td class="ap-lbl">宛先（To）</td><td class="ap-val" colspan="3">${c.recipients.map(id=>`<span style="display:inline-block;background:#e8f0fe;border-radius:3px;padding:2px 7px;margin:2px;font-size:12px">${esc(getUser(id).name)}</span>`).join('')}</td></tr>
+          ${c.cc&&c.cc.length?`<tr><td class="ap-lbl" style="color:#6b7280">宛先（Cc）</td><td class="ap-val" colspan="3">${c.cc.map(id=>`<span style="display:inline-block;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:3px;padding:2px 7px;margin:2px;font-size:12px;color:#166534">${esc(getUser(id).name)}</span>`).join('')}</td></tr>`:''}
           <tr><td class="ap-lbl">回答期日</td><td class="ap-val">${esc(c.deadline||'-')}</td><td class="ap-lbl">ルート</td><td class="ap-val">${routeLabel}</td></tr>
           <tr><td class="ap-lbl">優先度</td><td class="ap-val">${c.priority==='top'?'最優先':c.priority==='high'?'優先':'普通'}</td><td class="ap-lbl">公開</td><td class="ap-val">${visLabel}</td></tr>
           <tr><td class="ap-lbl">申請者</td><td class="ap-val">${esc(getUser(c.author).name)}</td><td class="ap-lbl">申請日時</td><td class="ap-val">${esc(c.createdAt)}</td></tr>
@@ -4242,25 +4271,33 @@ function renderCiDetail(){
           全体 ${total}人 ／ 承認済 <b style="color:#059669">${conf}</b> ／ 保留中 <b style="color:#d97706">${check}</b> ／ 未承認 <b style="color:#e53e3e">${pend}</b>
         </div>
         <table class="resp-table">
-          <thead><tr><th>宛先</th><th>回答</th><th>コメント</th><th>更新日時</th></tr></thead>
+          <thead><tr><th>宛先（To）</th><th>回答</th><th>コメント</th><th>更新日時</th></tr></thead>
           <tbody>${c.recipients.map(rid=>{
             const r=c.responses[rid]||{status:'pending'};
             return `<tr><td>${esc(getUser(rid).name)}</td><td class="${statusCls(r.status)}">${statusLabel(r.status)}</td><td>${esc(r.comment||'')}</td><td>${esc(r.updatedAt||'')}</td></tr>`;
-          }).join('')}</tbody>
+          }).join('')}
+          ${c.cc&&c.cc.length?c.cc.map(rid=>`<tr style="opacity:.7"><td>${esc(getUser(rid).name)} <span style="font-size:10px;color:#6b7280;background:#f0fdf4;border-radius:3px;padding:0 4px">Cc</span></td><td style="color:#6b7280;font-size:11px">閲覧のみ</td><td>-</td><td>-</td></tr>`).join(''):''}
+          </tbody>
         </table>
       `:''}
 
       ${ciTab==='myresp'?`
         <div class="cd-card">
-          <div style="font-size:12px;color:#6b7280;margin-bottom:8px">現在の状態：<span class="${statusCls(myR.status)}">${statusLabel(myR.status)}</span></div>
-          <textarea class="resp-textarea" id="myComment" placeholder="コメント（任意）">${esc(myR.comment||'')}</textarea>
-          <div class="ap-resp-btns">
-            ${btns.map(btn=>{
-              const key=btn==='確認済'?'confirmed':btn==='承認済'?'confirmed':btn==='確認中'?'checking':btn==='保留中'?'checking':btn==='承認'?'confirmed':btn;
-              const cls=btn==='確認済'||btn==='承認済'||btn==='承認'?'confirmed':btn==='確認中'||btn==='保留中'?'checking':'';
-              return `<button class="ap-resp-btn ${cls}" onclick="respondCi('${c.id}','${key}','${esc(btn)}')">${esc(btn)}</button>`;
-            }).join('')}
-          </div>
+          ${(c.cc&&c.cc.includes(myId())&&!(c.recipients&&c.recipients.includes(myId())))?`
+            <div style="background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:6px;padding:14px 18px;color:#166534;font-size:13px;text-align:center">
+              📋 あなたはCcとして共有されています。<br>この申請への回答は不要です。
+            </div>
+          `:`
+            <div style="font-size:12px;color:#6b7280;margin-bottom:8px">現在の状態：<span class="${statusCls(myR.status)}">${statusLabel(myR.status)}</span></div>
+            <textarea class="resp-textarea" id="myComment" placeholder="コメント（任意）">${esc(myR.comment||'')}</textarea>
+            <div class="ap-resp-btns">
+              ${btns.map(btn=>{
+                const key=btn==='確認済'?'confirmed':btn==='承認済'?'confirmed':btn==='確認中'?'checking':btn==='保留中'?'checking':btn==='承認'?'confirmed':btn;
+                const cls=btn==='確認済'||btn==='承認済'||btn==='承認'?'confirmed':btn==='確認中'||btn==='保留中'?'checking':'';
+                return `<button class="ap-resp-btn ${cls}" onclick="respondCi('${c.id}','${key}','${esc(btn)}')">${esc(btn)}</button>`;
+              }).join('')}
+            </div>
+          `}
         </div>
       `:''}
     </div>`;
@@ -4295,7 +4332,7 @@ function withdrawCi(id){
   c.withdrawn=true;
   c.withdrawnAt=jstISO().slice(0,16).replace('T',' ');
   save('circulars',cis);
-  sendEvNotif(c.recipients,'📝',`「${c.title}」の申請が取り下げられました`);
+  sendEvNotif([...c.recipients,...(c.cc||[])],'📝',`「${c.title}」の申請が取り下げられました`);
   renderCiList(); renderCiDetail();
 }
 function delCi(id){
@@ -4324,13 +4361,51 @@ function renderCiRecipCand(){
   if(!cand)return;
   const search=document.getElementById('ci-recip-search')?.value?.toLowerCase()||'';
   const dept=document.getElementById('ci-recip-dept')?.value||'';
-  let users=normalUsers().filter(u=>!_ciRecips.includes(u.id));
+  let users=normalUsers().filter(u=>!_ciRecips.includes(u.id)&&!_ciCcs.includes(u.id));
   if(dept) users=users.filter(u=>u.deptId===dept);
   if(search) users=users.filter(u=>u.name.toLowerCase().includes(search)||u.loginId.includes(search));
   cand.innerHTML=users.map(u=>`<option value="${u.id}">${esc(u.name)}（${esc(getDept(u.deptId).name)}）</option>`).join('');
 }
 
 function filterCiRecipCand(){ renderCiRecipCand(); }
+
+// ----- 宛先（Cc）デュアルリスト -----
+function buildCiCcDeptFilter(){
+  const sel=document.getElementById('ci-cc-dept');
+  if(!sel)return;
+  const depts=load('depts',[]);
+  sel.innerHTML='<option value="">全部署</option>'+depts.map(d=>`<option value="${d.id}">${esc(d.name)}</option>`).join('');
+}
+function renderCiCcSel(){
+  const sel=document.getElementById('ci-cc-sel');
+  if(!sel)return;
+  sel.innerHTML=_ciCcs.map(id=>`<option value="${id}">${esc(getUser(id).name)}</option>`).join('');
+}
+function renderCiCcCand(){
+  const cand=document.getElementById('ci-cc-cand');
+  if(!cand)return;
+  const search=document.getElementById('ci-cc-search')?.value?.toLowerCase()||'';
+  const dept=document.getElementById('ci-cc-dept')?.value||'';
+  let users=normalUsers().filter(u=>!_ciCcs.includes(u.id)&&!_ciRecips.includes(u.id));
+  if(dept) users=users.filter(u=>u.deptId===dept);
+  if(search) users=users.filter(u=>u.name.toLowerCase().includes(search)||u.loginId.includes(search));
+  cand.innerHTML=users.map(u=>`<option value="${u.id}">${esc(u.name)}（${esc(getDept(u.deptId).name)}）</option>`).join('');
+}
+function filterCiCcCand(){ renderCiCcCand(); }
+function addCiCc(){
+  const cand=document.getElementById('ci-cc-cand');
+  if(!cand)return;
+  const ids=[...cand.selectedOptions].map(o=>o.value);
+  ids.forEach(id=>{ if(!_ciCcs.includes(id)) _ciCcs.push(id); });
+  renderCiCcSel(); renderCiCcCand();
+}
+function removeCiCc(){
+  const sel=document.getElementById('ci-cc-sel');
+  if(!sel)return;
+  const ids=[...sel.selectedOptions].map(o=>o.value);
+  _ciCcs=_ciCcs.filter(id=>!ids.includes(id));
+  renderCiCcSel(); renderCiCcCand();
+}
 
 function addCiRecip(){
   const cand=document.getElementById('ci-recip-cand');
@@ -4436,6 +4511,7 @@ function removeCiCustomBtn(idx){
 // ----- モーダル開閉・保存 -----
 function openCiModal(){
   _ciRecips=[];
+  _ciCcs=[];
   _ciCustomBtns=['承認','保留','見送り'];
   const presetSel=document.getElementById('ci-preset-sel');
   if(presetSel) presetSel.value='approval';
@@ -4450,6 +4526,9 @@ function openCiModal(){
   buildCiRecipDeptFilter();
   renderCiRecipSel();
   renderCiRecipCand();
+  buildCiCcDeptFilter();
+  renderCiCcSel();
+  renderCiCcCand();
   renderCiCustomTags();
   renderCiFileList();
   document.getElementById('ciModal').classList.add('open');
@@ -4475,11 +4554,13 @@ function saveCi(){
   const routeSeq=document.getElementById('ci-route-seq').checked;
   const visibility=document.querySelector('input[name="ci-vis"]:checked')?.value||'public';
   const priority=document.getElementById('ci-priority').value;
+  const cc=[..._ciCcs].filter(id=>!recipients.includes(id)); // Toと重複しない
   const newCi={
     id:uid(), title, body, priority, deadline,
     addToSchedule:addToSched, routeSequential:routeSeq,
     visibility, author:myId(), createdAt:now,
-    recipients, responses, customButtons:[..._ciCustomBtns],
+    recipients, responses, cc,
+    customButtons:[..._ciCustomBtns],
     files:[..._ciFiles]
   };
   const cis=load('circulars',[]);
@@ -4490,6 +4571,10 @@ function saveCi(){
     const events=load('events',[]);
     events.push({id:uid(),evTab:'normal',memberIds:[myId()],date:deadline,startTime:'',endTime:'',type:'alert',title:'【申請期日】'+title,memo:'',visibility:'public'});
     save('events',events);
+  }
+  // Cc宛先に共有通知（回答不要の旨を明示）
+  if(cc.length){
+    sendEvNotif(cc,'📝',`【Cc共有】「${title}」の申請が共有されました（閲覧のみ・回答不要）`);
   }
   closeModal('ciModal');
   renderCiList();
