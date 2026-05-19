@@ -963,8 +963,9 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
     <div class="modal-hdr" id="ciModalHdr" style="background:#1a3a6b;color:#fff;flex-wrap:wrap;gap:6px">
       <h3 id="ciModalTitle" style="color:#fff;margin:0">承認申請 - 作成</h3>
       <div style="display:flex;gap:6px;margin-left:8px">
-        <button id="ciModeBtn-approval" onclick="switchCiMode('approval')" style="background:rgba(255,255,255,0.95);color:#1a3a6b;border:none;border-radius:5px;padding:3px 12px;font-size:12px;font-weight:700;cursor:pointer">承認申請</button>
-        <button id="ciModeBtn-petty" onclick="switchCiMode('petty')" style="background:rgba(255,255,255,0.3);color:#fff;border:1px solid rgba(255,255,255,0.6);border-radius:5px;padding:3px 12px;font-size:12px;font-weight:600;cursor:pointer">小口申請</button>
+        <button id="ciModeBtn-approval" onclick="switchCiMode('approval')" style="background:rgba(255,255,255,0.95);color:#1a3a6b;border:none;border-radius:6px;padding:5px 16px;font-size:13px;font-weight:700;cursor:pointer">承認申請</button>
+        <button id="ciModeBtn-petty"    onclick="switchCiMode('petty')"    style="background:rgba(255,255,255,0.3);color:#fff;border:1px solid rgba(255,255,255,0.6);border-radius:6px;padding:5px 16px;font-size:13px;font-weight:600;cursor:pointer">小口申請</button>
+        <button id="ciModeBtn-hr"       onclick="switchCiMode('hr')"       style="background:rgba(255,255,255,0.3);color:#fff;border:1px solid rgba(255,255,255,0.6);border-radius:6px;padding:5px 16px;font-size:13px;font-weight:600;cursor:pointer">人事推薦</button>
       </div>
       <div style="flex:1"></div>
       <button class="modal-close" onclick="closeModal('ciModal')" style="color:#fff">×</button>
@@ -4442,15 +4443,18 @@ function openCiEdit(id){
   // モード切り替え（ヘッダー色・タイトルのみ。recips/btnsは上書き済みのため再設定しない）
   const mode=c.ciType||'approval';
   _ciMode=mode;
-  const isPetty=(mode==='petty');
+  const isPetty=(mode==='petty'),isHr=(mode==='hr');
+  const hdrBg=isPetty?'#ea580c':isHr?'#166534':'#1a3a6b';
+  const titleMap={approval:'承認申請 - 編集',petty:'小口申請 - 編集',hr:'人事推薦 - 編集'};
+  const activeColor={approval:'#1a3a6b',petty:'#c2410c',hr:'#166534'};
   const hdr=document.getElementById('ciModalHdr');
   const title=document.getElementById('ciModalTitle');
-  if(hdr) hdr.style.background=isPetty?'#ea580c':'#1a3a6b';
-  if(title) title.textContent=isPetty?'小口申請 - 編集':'承認申請 - 編集';
-  ['approval','petty'].forEach(m=>{
+  if(hdr) hdr.style.background=hdrBg;
+  if(title) title.textContent=titleMap[mode]||'承認申請 - 編集';
+  ['approval','petty','hr'].forEach(m=>{
     const btn=document.getElementById('ciModeBtn-'+m);
     if(!btn)return;
-    if(m===mode){btn.style.background='rgba(255,255,255,0.95)';btn.style.color=isPetty?'#c2410c':'#1a3a6b';btn.style.border='none';}
+    if(m===mode){btn.style.background='rgba(255,255,255,0.95)';btn.style.color=activeColor[m];btn.style.border='none';}
     else{btn.style.background='rgba(255,255,255,0.25)';btn.style.color='#fff';btn.style.border='1px solid rgba(255,255,255,0.55)';}
   });
   document.getElementById('ciModal').classList.add('open');
@@ -4628,17 +4632,22 @@ function removeCiCustomBtn(idx){
 function switchCiMode(mode){
   _ciMode=mode;
   const isPetty=(mode==='petty');
+  const isHr=(mode==='hr');
+  // ヘッダー色・タイトル
+  const hdrBg=isPetty?'#ea580c':isHr?'#166534':'#1a3a6b';
+  const titleMap={approval:'承認申請 - 作成',petty:'小口申請 - 作成',hr:'人事推薦 - 作成'};
   const hdr=document.getElementById('ciModalHdr');
   const title=document.getElementById('ciModalTitle');
-  if(hdr) hdr.style.background=isPetty?'#ea580c':'#1a3a6b';
-  if(title) title.textContent=isPetty?'小口申請 - 作成':'承認申請 - 作成';
+  if(hdr) hdr.style.background=hdrBg;
+  if(title) title.textContent=titleMap[mode]||'承認申請 - 作成';
   // タブボタンのアクティブ表示
-  ['approval','petty'].forEach(m=>{
+  const activeColor={approval:'#1a3a6b',petty:'#c2410c',hr:'#166534'};
+  ['approval','petty','hr'].forEach(m=>{
     const btn=document.getElementById('ciModeBtn-'+m);
     if(!btn)return;
     if(m===mode){
       btn.style.background='rgba(255,255,255,0.95)';
-      btn.style.color=isPetty?'#c2410c':'#1a3a6b';
+      btn.style.color=activeColor[m];
       btn.style.border='none';
       btn.style.fontWeight='700';
     } else {
@@ -4650,7 +4659,6 @@ function switchCiMode(mode){
   });
   // 宛先（To）・返信ボタンのデフォルト設定
   if(isPetty){
-    // soumuロールのユーザーを自動選択
     _ciRecips=normalUsers().filter(u=>u.role==='soumu').map(u=>u.id);
     _ciCustomBtns=['確認済','保留'];
     const presetSel=document.getElementById('ci-preset-sel');
