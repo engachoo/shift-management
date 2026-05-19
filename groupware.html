@@ -1112,7 +1112,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
 <!-- 掲示板 -->
 <div class="modal-bg" id="blModal">
   <div class="modal">
-    <div class="modal-hdr"><h3>連絡事項 投稿</h3><button class="modal-close" onclick="closeModal('blModal')">×</button></div>
+    <div class="modal-hdr"><h3 id="blModalTitle">連絡事項 投稿</h3><button class="modal-close" onclick="closeModal('blModal')">×</button></div>
     <div class="modal-body">
       <div class="f-row"><label class="f-label">タイトル *</label><input class="f-input" id="bl-title" placeholder="タイトル"></div>
       <div class="f-row"><label class="f-label">本文 *</label><textarea class="f-input" id="bl-body" rows="5" placeholder="内容を入力"></textarea></div>
@@ -1148,7 +1148,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
     </div>
     <div class="modal-foot">
       <button class="btn-secondary" onclick="closeModal('blModal')">キャンセル</button>
-      <button class="btn-primary" onclick="saveBl()">投稿</button>
+      <button class="btn-primary" id="blModalSaveBtn" onclick="saveBl()">投稿</button>
     </div>
   </div>
 </div>
@@ -1160,6 +1160,10 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
     <div class="modal-body" id="blDetailBody"></div>
     <div class="modal-foot">
       <button class="btn-secondary" onclick="closeModal('blDetailModal')">閉じる</button>
+      <div style="display:flex;gap:8px;margin-left:auto" id="blDetailAdminBtns" style="display:none">
+        <button class="btn-secondary" onclick="openBlEdit(_blDetailId)" style="border-color:#93c5fd;color:#1d4ed8">✏️ 編集</button>
+        <button class="btn-danger" onclick="deleteBl(_blDetailId)">🗑 削除</button>
+      </div>
       <button class="btn-primary" id="blDetailReactBtn" onclick="reactBlFromDetail()">🔔 要確認</button>
     </div>
   </div>
@@ -4756,6 +4760,9 @@ function openBlDetail(id){
   const btn=document.getElementById('blDetailReactBtn');
   if(myReacted){btn.textContent='🌟 確認済み';btn.className='btn-primary';btn.style.background='#059669';}
   else{btn.textContent='🔔 要確認';btn.className='btn-primary';btn.style.background='';}
+  // system権限者のみ編集・削除ボタンを表示
+  const adminBtns=document.getElementById('blDetailAdminBtns');
+  if(adminBtns) adminBtns.style.display=isSystem()?'flex':'none';
   document.getElementById('blDetailModal').classList.add('open');
 }
 function reactBlFromDetail(){
@@ -4834,7 +4841,12 @@ function downloadBlFile(blId,fileIdx){
   const a=document.createElement('a');
   a.href=f.data; a.download=f.name; a.click();
 }
+let _blEditId=null; // null=新規, 文字列=編集中ID
+
 function openBlModal(){
+  _blEditId=null;
+  document.getElementById('blModalTitle').textContent='連絡事項 投稿';
+  document.getElementById('blModalSaveBtn').textContent='投稿';
   document.getElementById('bl-title').value='';
   document.getElementById('bl-body').value='';
   document.getElementById('bl-target').value='all';
@@ -4845,6 +4857,41 @@ function openBlModal(){
   renderBlFileList();
   document.getElementById('blModal').classList.add('open');
 }
+
+function openBlEdit(id){
+  if(!isSystem()){alert('システム権限が必要です');return;}
+  const b=load('bulletins',[]).find(x=>x.id===id);
+  if(!b)return;
+  _blEditId=id;
+  document.getElementById('blModalTitle').textContent='連絡事項 編集';
+  document.getElementById('blModalSaveBtn').textContent='更新';
+  document.getElementById('bl-title').value=b.title||'';
+  document.getElementById('bl-body').value=b.body||'';
+  const target=b.target||'all';
+  document.getElementById('bl-target').value=target;
+  blTargetChange();
+  if(target!=='all'){
+    const sub=document.getElementById('bl-target-id');
+    if(sub) sub.value=b.targetId||'';
+  }
+  if(target==='hierarchy'){
+    const roleEl=document.getElementById('bl-target-role');
+    if(roleEl) roleEl.value=b.targetRole||'all';
+  }
+  _blFiles=[...(b.files||[])];
+  renderBlFileList();
+  closeModal('blDetailModal');
+  document.getElementById('blModal').classList.add('open');
+}
+
+function deleteBl(id){
+  if(!isSystem()){alert('システム権限が必要です');return;}
+  if(!confirm('この連絡事項を削除しますか？\nこの操作は取り消せません。'))return;
+  save('bulletins',load('bulletins',[]).filter(b=>b.id!==id));
+  closeModal('blDetailModal');
+  renderBl();
+}
+
 function saveBl(){
   const title=document.getElementById('bl-title').value.trim();
   const body=document.getElementById('bl-body').value.trim();
@@ -4853,7 +4900,17 @@ function saveBl(){
   const targetId=target!=='all'?document.getElementById('bl-target-id').value:'';
   const targetRole=target==='hierarchy'?document.getElementById('bl-target-role').value:'all';
   const bls=load('bulletins',[]);
-  bls.unshift({id:uid(),title,body,author:myId(),createdAt:jstISO().slice(0,16).replace('T',' '),reactions:{},target,targetId,targetRole,files:[..._blFiles]});
+  if(_blEditId){
+    // 編集モード：既存データを更新
+    const idx=bls.findIndex(b=>b.id===_blEditId);
+    if(idx>=0){
+      bls[idx]={...bls[idx],title,body,target,targetId,targetRole,
+        files:[..._blFiles],updatedAt:jstISO().slice(0,16).replace('T',' ')};
+    }
+  } else {
+    // 新規投稿
+    bls.unshift({id:uid(),title,body,author:myId(),createdAt:jstISO().slice(0,16).replace('T',' '),reactions:{},target,targetId,targetRole,files:[..._blFiles]});
+  }
   save('bulletins',bls);closeModal('blModal');renderBl();
 }
 function blVisibleToMe(b){
