@@ -2359,7 +2359,7 @@ function showMod(mod,sub,_fromPop){
     document.getElementById('m-td').classList.add('active');
     renderTd();
   } else if(mod==='admin'){
-    if(!isAdmin()) return; // system・admin のみ
+    if(!isSystem()) return; // system のみ
     document.getElementById('adminView').style.display='block';
     const sideId = sub==='depts'?'d': sub==='perms'?'p':'u';
     document.getElementById('m-a'+sideId).classList.add('active');
@@ -5636,12 +5636,9 @@ function startApp(){
   }
   // 経理・事務メニューはログイン済み全ユーザーに表示
   document.getElementById('acctMenu').style.display='block';
-  // 管理者メニューは system・admin のみ表示
-  if(isAdmin()){
-    document.getElementById('adminMenu').style.display='block';
-  }
-  // 開発中のアプリは system のみ表示
+  // システム設定・開発中のアプリは system のみ表示
   if(isSystem()){
+    document.getElementById('adminMenu').style.display='block';
     document.getElementById('systemMenu').style.display='block';
   }
   // 前回ログイン時刻を保存してからTOPへ
