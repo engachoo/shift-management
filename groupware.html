@@ -2662,7 +2662,11 @@ function updateBadges(){
   }).length;
   document.getElementById('badge-ci').textContent=pending||'';
   const me=myId();
-  const tds=load('todos',[]).filter(t=>!t.done&&(t.userId===me)).length;
+  const _todos=load('todos',[]);
+  const tdMine     =_todos.filter(t=>!t.done&&t.userId===me&&(!t.assignedBy||t.assignedBy===me)).length;
+  const tdRequested=_todos.filter(t=>!t.done&&t.userId===me&&t.assignedBy&&t.assignedBy!==me).length;
+  const tdDelegated=_todos.filter(t=>!t.done&&t.assignedBy===me&&t.userId!==me).length;
+  const tds=tdMine+tdRequested+tdDelegated;
   document.getElementById('badge-td').textContent=tds||'';
   // 連絡事項：未確認（reactionsで未確認＋自分宛て）
   const blBadge=document.getElementById('badge-bl');
@@ -2681,7 +2685,8 @@ function updateBadges(){
   if(topBadge){
     const cis=load('circulars',[]).filter(c=>{if(!c.recipients?.includes(me))return false;const r=c.responses[me];return !r||r.status==='pending'||r.status==='checking';}).length;
     const bls2=load('bulletins',[]).filter(b=>blVisibleToMe(b)&&!(b.reactions&&b.reactions[me]?.confirmed)).length;
-    const todos2=load('todos',[]).filter(t=>!t.done&&t.userId===me&&t.due&&Math.ceil(((t.dueTime?new Date(t.due+'T'+t.dueTime+':00'):new Date(t.due+'T23:59:59'))-new Date())/(1000*60*60*24))<=3).length;
+    const _todos2=load('todos',[]);
+    const todos2=_todos2.filter(t=>!t.done&&(t.userId===me||t.assignedBy===me)&&t.due&&Math.ceil(((t.dueTime?new Date(t.due+'T'+t.dueTime+':00'):new Date(t.due+'T23:59:59'))-new Date())/(1000*60*60*24))<=3).length;
     const total=cis+bls2+todos2+evNotifCount;
     topBadge.textContent=total||''; topBadge.style.display=total?'':'none';
   }
