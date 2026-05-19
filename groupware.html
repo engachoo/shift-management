@@ -649,6 +649,11 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
           <button id="cf-checking" onclick="filterCi('checking')">保留中<span class="ci-filter-cnt" id="cnt-checking"></span></button>
           <button id="cf-done" onclick="filterCi('done')">承認済</button>
         </div>
+        <div id="ci-author-filter-wrap" style="display:none;padding:6px 10px;border-bottom:1px solid #e2e8f0;background:#f8fafc">
+          <select id="ci-author-select" onchange="ciAuthorFilter=this.value;renderCiList()" style="border:1px solid #cbd5e1;border-radius:6px;padding:5px 10px;font-size:12px;width:100%;color:#1a2b4a;background:#fff">
+            <option value="">申請者を絞り込む（全員）</option>
+          </select>
+        </div>
         <div class="ci-items" id="ciItems"></div>
       </div>
       <div class="ci-detail" id="ciDetail">
@@ -2062,7 +2067,7 @@ function deptPath(id){
 // =========================================================
 // モジュール切替
 // =========================================================
-let curMod='', calSub='gw', calDate=new Date(), ciFilter='pending', ciSelId=null, ciTab='content', editEvId=null, editUserId=null, editDeptId=null, adminTab='users';
+let curMod='', calSub='gw', calDate=new Date(), ciFilter='pending', ciSelId=null, ciTab='content', editEvId=null, editUserId=null, editDeptId=null, adminTab='users', ciAuthorFilter='';
 // 予定モーダル状態
 let _evTab='normal', _evParts=[], _evFacs=[], _viewEvId=null, _viewDate=null;
 
@@ -4098,10 +4103,13 @@ let _ciCustomBtns = ['確認中','確認済']; // 返信ボタン
 
 function filterCi(f){
   ciFilter=f;
+  ciAuthorFilter='';
   ['pending','checking','done'].forEach(k=>{
     const b=document.getElementById('cf-'+k);
     if(b) b.classList.toggle('active',k===f);
   });
+  const wrap=document.getElementById('ci-author-filter-wrap');
+  if(wrap) wrap.style.display=(f==='done')?'block':'none';
   renderCiList();
 }
 
@@ -4128,7 +4136,22 @@ function renderCiList(){
   let list=[...all];
   if(ciFilter==='pending') list=list.filter(c=>ciPending(c)&&!ciChecking(c));
   else if(ciFilter==='checking') list=list.filter(c=>ciChecking(c));
-  else if(ciFilter==='done') list=list.filter(c=>ciDone(c));
+  else if(ciFilter==='done'){
+    list=list.filter(c=>ciDone(c));
+    // 申請者プルダウンの選択肢を動的生成（承認済リスト内の申請者のみ）
+    const sel=document.getElementById('ci-author-select');
+    if(sel){
+      const authorIds=[...new Set(list.map(c=>c.author))];
+      const curVal=ciAuthorFilter;
+      sel.innerHTML='<option value="">申請者を絞り込む（全員）</option>'+
+        authorIds.map(id=>{
+          const n=getUser(id)?.name||id;
+          return `<option value="${id}"${id===curVal?' selected':''}>${esc(n)}</option>`;
+        }).join('');
+    }
+    // 申請者フィルタ適用
+    if(ciAuthorFilter) list=list.filter(c=>c.author===ciAuthorFilter);
+  }
 
   const el=document.getElementById('ciItems');
   if(!list.length){el.innerHTML='<div style="padding:20px;text-align:center;color:#8899aa">該当なし</div>';return;}
