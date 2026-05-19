@@ -4523,7 +4523,7 @@ function addCiRecip(){
   if(!cand)return;
   const ids=[...cand.selectedOptions].map(o=>o.value);
   ids.forEach(id=>{ if(!_ciRecips.includes(id)) _ciRecips.push(id); });
-  renderCiRecipSel(); renderCiRecipCand();
+  renderCiRecipSel(); renderCiRecipCand(); renderCiCcCand();
 }
 
 function removeCiRecip(){
@@ -4531,7 +4531,7 @@ function removeCiRecip(){
   if(!sel)return;
   const ids=[...sel.selectedOptions].map(o=>o.value);
   _ciRecips=_ciRecips.filter(id=>!ids.includes(id));
-  renderCiRecipSel(); renderCiRecipCand();
+  renderCiRecipSel(); renderCiRecipCand(); renderCiCcCand();
 }
 
 function moveCiRecip(dir){
