@@ -596,15 +596,19 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
     <div class="side-item" id="m-bl" onclick="showMod('bulletin')"><span class="si-icon">📌</span>連絡事項<span class="side-badge" id="badge-bl" style="display:none"></span></div>
     <div class="side-item" id="m-en" onclick="showMod('evnotif')"><span class="si-icon">🔔</span>更新・変更の通知<span class="side-badge" id="badge-en" style="display:none"></span></div>
     <div class="side-item" id="m-td" onclick="showMod('todo')"><span class="si-icon">✅</span>ToDo<span class="side-badge gray" id="badge-td">0</span></div>
+    <div id="acctMenu" style="display:none">
+      <div class="side-group">経理・事務</div>
+      <div class="side-item" id="m-pc" onclick="showMod('pettycash')"><span class="si-icon">💰</span>現金出納簿</div>
+    </div>
     <div id="adminMenu" style="display:none">
       <div class="side-group">システム設定</div>
       <div class="side-item" id="m-au" onclick="showMod('admin','users')"><span class="si-icon">👤</span>ユーザー管理</div>
       <div class="side-item" id="m-ad" onclick="showMod('admin','depts')"><span class="si-icon">🏢</span>部署管理</div>
       <div class="side-item" id="m-ap" onclick="showMod('admin','perms')"><span class="si-icon">🔐</span>権限設定</div>
     </div>
-    <div id="acctMenu" style="display:none">
-      <div class="side-group">経理・事務</div>
-      <div class="side-item" id="m-pc" onclick="showMod('pettycash')"><span class="si-icon">💰</span>現金出納簿</div>
+    <div id="systemMenu" style="display:none">
+      <div class="side-group">開発中のアプリ</div>
+      <div class="side-item" id="m-da" onclick="showMod('devapps')"><span class="si-icon">🧪</span>アプリ一覧</div>
     </div>
   </div>
 
@@ -2361,11 +2365,16 @@ function showMod(mod,sub,_fromPop){
     document.getElementById('m-a'+sideId).classList.add('active');
     adminTab=sub||'users';
     switchAdminTab(adminTab);
-  } else if(mod==='pettycash'||mod==='devapps'){
+  } else if(mod==='pettycash'){
     if(!getS()) return;
     document.getElementById('devAppsView').style.display='block';
     document.getElementById('m-pc').classList.add('active');
     openPettyCash();
+  } else if(mod==='devapps'){
+    if(!getS()) return;
+    document.getElementById('devAppsView').style.display='block';
+    document.getElementById('m-da').classList.add('active');
+    renderDevApps();
   }
   updateBadges();
 }
@@ -5625,12 +5634,16 @@ function startApp(){
     el.textContent=ROLE_LABEL[s.role]||s.role;
     el.style.display='inline';
   }
+  // 経理・事務メニューはログイン済み全ユーザーに表示
+  document.getElementById('acctMenu').style.display='block';
   // 管理者メニューは system・admin のみ表示
   if(isAdmin()){
     document.getElementById('adminMenu').style.display='block';
   }
-  // 経理・事務メニューはログイン済み全ユーザーに表示
-  document.getElementById('acctMenu').style.display='block';
+  // 開発中のアプリは system のみ表示
+  if(isSystem()){
+    document.getElementById('systemMenu').style.display='block';
+  }
   // 前回ログイン時刻を保存してからTOPへ
   const uid = s.userId;
   const prevLogin = load('lastLogin_'+uid, null);
