@@ -4055,8 +4055,8 @@ function dismissEvNotif(notifId){
 function renderEvNotif(){
   const me=myId();
   const allNotifs=load('evNotifs',[]);
-  // 自分宛の通知のみ（既読含む）
-  const mine=allNotifs.filter(n=>n.targetUserIds?.includes(me));
+  // 自分宛で、自分が削除していない通知のみ
+  const mine=allNotifs.filter(n=>n.targetUserIds?.includes(me)&&!n.deletedBy?.includes(me));
   const el=document.getElementById('evnotifList');
   if(!el) return;
   if(!mine.length){
@@ -4083,12 +4083,29 @@ function renderEvNotif(){
         <div style="font-size:14px;color:#1f2937;margin-bottom:2px">${esc(n.message)}</div>
         <div style="font-size:11px;color:#6b7280">${esc(n.actorName)} ・ ${n.createdAt}</div>
       </div>
-      ${isRead
-        ? '<span style="font-size:11px;color:#9ca3af;white-space:nowrap;align-self:center">既読</span>'
-        : `<button onclick="dismissEvNotif('${n.id}')" style="white-space:nowrap;background:#f3f4f6;border:1px solid #d1d5db;border-radius:6px;padding:3px 10px;font-size:12px;cursor:pointer;color:#374151;align-self:center">✓ 既読にする</button>`
-      }
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;align-self:center;white-space:nowrap">
+        ${isRead
+          ? `<button onclick="deleteEvNotif('${n.id}')" style="background:#fff1f2;border:1px solid #fecdd3;border-radius:6px;padding:3px 10px;font-size:12px;cursor:pointer;color:#be123c">🗑 削除</button>`
+          : `<button onclick="dismissEvNotif('${n.id}')" style="background:#f3f4f6;border:1px solid #d1d5db;border-radius:6px;padding:3px 10px;font-size:12px;cursor:pointer;color:#374151">✓ 既読にする</button>`
+        }
+      </div>
     </div>`;
   }).join('');
+}
+
+function deleteEvNotif(notifId){
+  const me=myId();
+  const notifs=load('evNotifs',[]);
+  const n=notifs.find(x=>x.id===notifId);
+  if(n){
+    if(!n.deletedBy) n.deletedBy=[];
+    if(!n.deletedBy.includes(me)) n.deletedBy.push(me);
+  }
+  save('evNotifs',notifs);
+  const row=document.getElementById('evnotif-'+notifId);
+  if(row){ row.style.opacity='0'; setTimeout(()=>renderEvNotif(),280); }
+  else renderEvNotif();
+  updateBadges();
 }
 // すべて既読にする
 function dismissAllEvNotifs(){
