@@ -649,10 +649,18 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
           <button id="cf-checking" onclick="filterCi('checking')">保留中<span class="ci-filter-cnt" id="cnt-checking"></span></button>
           <button id="cf-done" onclick="filterCi('done')">承認済</button>
         </div>
-        <div id="ci-author-filter-wrap" style="display:none;padding:6px 10px;border-bottom:1px solid #e2e8f0;background:#f8fafc">
-          <select id="ci-author-select" onchange="ciAuthorFilter=this.value;renderCiList()" style="border:1px solid #cbd5e1;border-radius:6px;padding:5px 10px;font-size:12px;width:100%;color:#1a2b4a;background:#fff">
-            <option value="">申請者を絞り込む（全員）</option>
-          </select>
+        <div id="ci-author-filter-wrap" style="display:none;border-bottom:1px solid #e2e8f0;background:#f8fafc">
+          <div style="padding:6px 10px 4px">
+            <div style="display:flex;gap:6px;margin-bottom:6px">
+              <button id="ci-type-btn-all"      onclick="ciTypeFilter='';renderCiList()"      style="flex:1;padding:4px 0;font-size:11px;font-weight:700;border-radius:5px;cursor:pointer;border:1.5px solid #94a3b8;background:#1a2b4a;color:#fff">全て</button>
+              <button id="ci-type-btn-approval" onclick="ciTypeFilter='approval';renderCiList()" style="flex:1;padding:4px 0;font-size:11px;font-weight:600;border-radius:5px;cursor:pointer;border:1.5px solid #93c5fd;background:#fff;color:#1a3a6b">承認申請</button>
+              <button id="ci-type-btn-hr"       onclick="ciTypeFilter='hr';renderCiList()"      style="flex:1;padding:4px 0;font-size:11px;font-weight:600;border-radius:5px;cursor:pointer;border:1.5px solid #86efac;background:#fff;color:#166534">人事推薦</button>
+              <button id="ci-type-btn-petty"    onclick="ciTypeFilter='petty';renderCiList()"   style="flex:1;padding:4px 0;font-size:11px;font-weight:600;border-radius:5px;cursor:pointer;border:1.5px solid #fdba74;background:#fff;color:#c2410c">小口申請</button>
+            </div>
+            <select id="ci-author-select" onchange="ciAuthorFilter=this.value;renderCiList()" style="border:1px solid #cbd5e1;border-radius:6px;padding:5px 10px;font-size:12px;width:100%;color:#1a2b4a;background:#fff;margin-bottom:6px">
+              <option value="">申請者を絞り込む（全員）</option>
+            </select>
+          </div>
         </div>
         <div class="ci-items" id="ciItems"></div>
       </div>
@@ -2156,7 +2164,7 @@ function deptPath(id){
 // =========================================================
 // モジュール切替
 // =========================================================
-let curMod='', calSub='gw', calDate=new Date(), ciFilter='pending', ciSelId=null, ciTab='content', editEvId=null, editUserId=null, editDeptId=null, adminTab='users', ciAuthorFilter='';
+let curMod='', calSub='gw', calDate=new Date(), ciFilter='pending', ciSelId=null, ciTab='content', editEvId=null, editUserId=null, editDeptId=null, adminTab='users', ciAuthorFilter='', ciTypeFilter='';
 // 予定モーダル状態
 let _evTab='normal', _evParts=[], _evFacs=[], _viewEvId=null, _viewDate=null;
 
@@ -4209,6 +4217,7 @@ let _ciEditId = null;    // null=新規, 文字列=編集中ID
 function filterCi(f){
   ciFilter=f;
   ciAuthorFilter='';
+  ciTypeFilter='';
   ['pending','checking','done'].forEach(k=>{
     const b=document.getElementById('cf-'+k);
     if(b) b.classList.toggle('active',k===f);
@@ -4245,7 +4254,24 @@ function renderCiList(){
   else if(ciFilter==='checking') list=list.filter(c=>ciChecking(c));
   else if(ciFilter==='done'){
     list=list.filter(c=>ciDone(c));
-    // 申請者プルダウンの選択肢を動的生成（承認済リスト内の申請者のみ）
+    // 種別フィルターボタンの活性表示
+    ['all','approval','hr','petty'].forEach(t=>{
+      const btn=document.getElementById('ci-type-btn-'+t);
+      if(!btn)return;
+      const active=(t==='all'&&!ciTypeFilter)||(t===ciTypeFilter);
+      if(active){
+        const bg={all:'#1a2b4a',approval:'#1a3a6b',hr:'#166534',petty:'#c2410c'};
+        const bd={all:'#94a3b8',approval:'#93c5fd',hr:'#86efac',petty:'#fdba74'};
+        btn.style.background=bg[t]; btn.style.color='#fff'; btn.style.borderColor=bd[t]; btn.style.fontWeight='700';
+      } else {
+        const tc={all:'#475569',approval:'#1a3a6b',hr:'#166534',petty:'#c2410c'};
+        const bd={all:'#94a3b8',approval:'#93c5fd',hr:'#86efac',petty:'#fdba74'};
+        btn.style.background='#fff'; btn.style.color=tc[t]; btn.style.borderColor=bd[t]; btn.style.fontWeight='600';
+      }
+    });
+    // 種別フィルタ適用
+    if(ciTypeFilter) list=list.filter(c=>(c.ciType||'approval')===ciTypeFilter);
+    // 申請者プルダウンの選択肢を動的生成（フィルター後のリスト内の申請者のみ）
     const sel=document.getElementById('ci-author-select');
     if(sel){
       const authorIds=[...new Set(list.map(c=>c.author))];
@@ -4277,8 +4303,10 @@ function renderCiList(){
     const myLbl=myStatus==='withdrawn'?'取り下げ済':myStatus==='cc'?'Cc共有':myStatus==='all-confirmed'?'全員承認済':myStatus==='author-pending'?'承認待ち中':myStatus==='confirmed'?'承認済':myStatus==='checking'?'保留中':'未承認';
     const myDot=myStatus==='withdrawn'?'⬜':myStatus==='cc'?'📋':myStatus==='all-confirmed'||myStatus==='confirmed'?'🟢':myStatus==='checking'?'🟡':myStatus==='author-pending'?'🟠':'🔴';
     const isPettyItem=(c.ciType==='petty');
+    const isHrItem=(c.ciType==='hr');
+    const typeBadge=isPettyItem?'<span style="background:#ea580c;color:#fff;font-size:10px;border-radius:4px;padding:1px 5px;margin-right:3px;font-weight:700">小口</span>':isHrItem?'<span style="background:#166534;color:#fff;font-size:10px;border-radius:4px;padding:1px 5px;margin-right:3px;font-weight:700">人事</span>':'';
     return `<div class="ci-item ${c.id===ciSelId?'sel':''}" onclick="selCi('${c.id}')">
-      <div class="ci-title"><span class="ci-pri ${c.priority}">${priLbl}</span>${isPettyItem?'<span style="background:#ea580c;color:#fff;font-size:10px;border-radius:4px;padding:1px 5px;margin-right:3px;font-weight:700">小口</span>':''}${myDot} ${esc(c.title)}${isAuthor?'<span style="font-size:10px;color:#6b7280;margin-left:6px">（自分の申請）</span>':ccOnly?'<span style="font-size:10px;color:#6b7280;margin-left:6px">（Cc）</span>':''}</div>
+      <div class="ci-title"><span class="ci-pri ${c.priority}">${priLbl}</span>${typeBadge}${myDot} ${esc(c.title)}${isAuthor?'<span style="font-size:10px;color:#6b7280;margin-left:6px">（自分の申請）</span>':ccOnly?'<span style="font-size:10px;color:#6b7280;margin-left:6px">（Cc）</span>':''}</div>
       <div class="ci-meta"><span>${c.deadline||''}</span><span>${esc(getUser(c.author).name)}</span></div>
       <div class="ci-prog">承認済 ${conf}/${total}　保留中 ${check}　未承認 ${pend}</div>
     </div>`;
