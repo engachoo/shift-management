@@ -960,8 +960,13 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
 <!-- 承認申請フォーム（モーダル） -->
 <div class="modal-bg" id="ciModal">
   <div class="modal" style="max-width:780px;width:95%;max-height:92vh">
-    <div class="modal-hdr" style="background:#1a3a6b;color:#fff">
-      <h3 id="ciModalTitle" style="color:#fff">承認申請 - 作成</h3>
+    <div class="modal-hdr" id="ciModalHdr" style="background:#1a3a6b;color:#fff;flex-wrap:wrap;gap:6px">
+      <h3 id="ciModalTitle" style="color:#fff;margin:0">承認申請 - 作成</h3>
+      <div style="display:flex;gap:6px;margin-left:8px">
+        <button id="ciModeBtn-approval" onclick="switchCiMode('approval')" style="background:rgba(255,255,255,0.95);color:#1a3a6b;border:none;border-radius:5px;padding:3px 12px;font-size:12px;font-weight:700;cursor:pointer">承認申請</button>
+        <button id="ciModeBtn-petty" onclick="switchCiMode('petty')" style="background:rgba(255,255,255,0.3);color:#fff;border:1px solid rgba(255,255,255,0.6);border-radius:5px;padding:3px 12px;font-size:12px;font-weight:600;cursor:pointer">小口申請</button>
+      </div>
+      <div style="flex:1"></div>
       <button class="modal-close" onclick="closeModal('ciModal')" style="color:#fff">×</button>
     </div>
     <div class="modal-body" style="padding:0">
@@ -4134,6 +4139,7 @@ function doReaction(evId){
 let _ciRecips = []; // 選択済み宛先（To）
 let _ciCcs    = []; // 選択済み宛先（Cc）
 let _ciCustomBtns = ['確認中','確認済']; // 返信ボタン
+let _ciMode = 'approval'; // 'approval' | 'petty'
 
 function filterCi(f){
   ciFilter=f;
@@ -4205,8 +4211,9 @@ function renderCiList(){
       :(c.responses[me]?.status||'pending');
     const myLbl=myStatus==='withdrawn'?'取り下げ済':myStatus==='cc'?'Cc共有':myStatus==='all-confirmed'?'全員承認済':myStatus==='author-pending'?'承認待ち中':myStatus==='confirmed'?'承認済':myStatus==='checking'?'保留中':'未承認';
     const myDot=myStatus==='withdrawn'?'⬜':myStatus==='cc'?'📋':myStatus==='all-confirmed'||myStatus==='confirmed'?'🟢':myStatus==='checking'?'🟡':myStatus==='author-pending'?'🟠':'🔴';
+    const isPettyItem=(c.ciType==='petty');
     return `<div class="ci-item ${c.id===ciSelId?'sel':''}" onclick="selCi('${c.id}')">
-      <div class="ci-title"><span class="ci-pri ${c.priority}">${priLbl}</span>${myDot} ${esc(c.title)}${isAuthor?'<span style="font-size:10px;color:#6b7280;margin-left:6px">（自分の申請）</span>':ccOnly?'<span style="font-size:10px;color:#6b7280;margin-left:6px">（Cc）</span>':''}</div>
+      <div class="ci-title"><span class="ci-pri ${c.priority}">${priLbl}</span>${isPettyItem?'<span style="background:#ea580c;color:#fff;font-size:10px;border-radius:4px;padding:1px 5px;margin-right:3px;font-weight:700">小口</span>':''}${myDot} ${esc(c.title)}${isAuthor?'<span style="font-size:10px;color:#6b7280;margin-left:6px">（自分の申請）</span>':ccOnly?'<span style="font-size:10px;color:#6b7280;margin-left:6px">（Cc）</span>':''}</div>
       <div class="ci-meta"><span>${c.deadline||''}</span><span>${esc(getUser(c.author).name)}</span></div>
       <div class="ci-prog">承認済 ${conf}/${total}　保留中 ${check}　未承認 ${pend}</div>
     </div>`;
@@ -4238,10 +4245,11 @@ function renderCiDetail(){
   const statusLabel=(st)=>st==='confirmed'?'承認済':st==='checking'?'保留中':'未承認';
   const statusCls=(st)=>st==='confirmed'?'ap-status-confirmed':st==='checking'?'ap-status-checking':'ap-status-pending';
 
+  const isPettyDetail=(c.ciType==='petty');
   document.getElementById('ciDetail').innerHTML=`
     <div class="ap-detail-pad">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap">
-        <h3 style="flex:1;font-size:15px;color:#1a2b4a">${esc(c.title)}</h3>
+        <h3 style="flex:1;font-size:15px;color:#1a2b4a">${isPettyDetail?'<span style="background:#ea580c;color:#fff;font-size:11px;border-radius:4px;padding:1px 6px;margin-right:4px;font-weight:700">小口申請</span>':''}${esc(c.title)}</h3>
         ${c.withdrawn?`<span style="background:#f3f4f6;color:#6b7280;border:1px solid #d1d5db;border-radius:6px;padding:3px 10px;font-size:12px;font-weight:700">⬜ 取り下げ済</span>`:''}
         ${c.author===myId()&&!c.withdrawn?`<button onclick="withdrawCi('${c.id}')" style="background:#fff7ed;border:1.5px solid #fed7aa;color:#c2410c;border-radius:6px;padding:4px 12px;font-size:12px;font-weight:600;cursor:pointer">取り下げ</button>`:''}
         ${canEdit?`<button class="btn-danger" style="padding:4px 12px;font-size:12px" onclick="delCi('${c.id}')">削除</button>`:''}
@@ -4509,12 +4517,52 @@ function removeCiCustomBtn(idx){
 }
 
 // ----- モーダル開閉・保存 -----
+function switchCiMode(mode){
+  _ciMode=mode;
+  const isPetty=(mode==='petty');
+  const hdr=document.getElementById('ciModalHdr');
+  const title=document.getElementById('ciModalTitle');
+  if(hdr) hdr.style.background=isPetty?'#ea580c':'#1a3a6b';
+  if(title) title.textContent=isPetty?'小口申請 - 作成':'承認申請 - 作成';
+  // タブボタンのアクティブ表示
+  ['approval','petty'].forEach(m=>{
+    const btn=document.getElementById('ciModeBtn-'+m);
+    if(!btn)return;
+    if(m===mode){
+      btn.style.background='rgba(255,255,255,0.95)';
+      btn.style.color=isPetty?'#c2410c':'#1a3a6b';
+      btn.style.border='none';
+      btn.style.fontWeight='700';
+    } else {
+      btn.style.background='rgba(255,255,255,0.25)';
+      btn.style.color='#fff';
+      btn.style.border='1px solid rgba(255,255,255,0.55)';
+      btn.style.fontWeight='600';
+    }
+  });
+  // 宛先（To）・返信ボタンのデフォルト設定
+  if(isPetty){
+    // soumuロールのユーザーを自動選択
+    _ciRecips=normalUsers().filter(u=>u.role==='soumu').map(u=>u.id);
+    _ciCustomBtns=['確認済','保留'];
+    const presetSel=document.getElementById('ci-preset-sel');
+    if(presetSel) presetSel.value='confirm';
+  } else {
+    _ciRecips=[];
+    _ciCustomBtns=['承認','保留','見送り'];
+    const presetSel=document.getElementById('ci-preset-sel');
+    if(presetSel) presetSel.value='approval';
+  }
+  renderCiRecipSel();
+  renderCiRecipCand();
+  renderCiCustomTags();
+}
+
 function openCiModal(){
+  _ciMode='approval';
   _ciRecips=[];
   _ciCcs=[];
   _ciCustomBtns=['承認','保留','見送り'];
-  const presetSel=document.getElementById('ci-preset-sel');
-  if(presetSel) presetSel.value='approval';
   _ciFiles=[];
   document.getElementById('ci-title').value='';
   document.getElementById('ci-body').value='';
@@ -4524,14 +4572,13 @@ function openCiModal(){
   document.getElementById('ci-route-seq').checked=false;
   document.querySelectorAll('input[name="ci-vis"]').forEach(r=>r.checked=r.value==='public');
   buildCiRecipDeptFilter();
-  renderCiRecipSel();
-  renderCiRecipCand();
   buildCiCcDeptFilter();
   renderCiCcSel();
   renderCiCcCand();
-  renderCiCustomTags();
   renderCiFileList();
   document.getElementById('ciModal').classList.add('open');
+  // モード初期化（ヘッダー色・ボタン・宛先も設定）
+  switchCiMode('approval');
 }
 
 function saveCi(){
@@ -4559,6 +4606,7 @@ function saveCi(){
     id:uid(), title, body, priority, deadline,
     addToSchedule:addToSched, routeSequential:routeSeq,
     visibility, author:myId(), createdAt:now,
+    ciType:_ciMode, // 'approval' | 'petty'
     recipients, responses, cc,
     customButtons:[..._ciCustomBtns],
     files:[..._ciFiles]
