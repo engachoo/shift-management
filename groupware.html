@@ -1402,6 +1402,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
               <li>稟議・申請書などを回覧形式で送付できます</li>
               <li>未対応の申請はサイドバーのバッジでお知らせします</li>
               <li>申請者はメンバーから回答があると<strong>更新・変更の通知</strong>で知らせを受け取ります</li>
+              <li>宛先は <strong>To（回答必須）</strong> と <strong>Cc（閲覧共有のみ・回答不要）</strong> を分けて指定できます</li>
             </ul>
             <div style="display:grid;grid-template-columns:110px 1fr;gap:6px 12px;align-items:start;background:#f8fafc;border-radius:6px;padding:12px">
               <span style="font-weight:600;color:#1a56db">一斉送信</span><span>指定した全メンバーに同時に送付します。全員が個別に回答します</span>
@@ -1410,13 +1411,24 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
             <div style="margin-top:10px;font-size:12px;color:#6b7280;background:#fef9c3;border-radius:4px;padding:8px 12px">
               ⚠️ 回答ボタンの種類（確認中・承認・差し戻し など）は申請者が作成時に自由に設定できます
             </div>
+            <!-- 小口申請 -->
+            <div style="margin-top:12px;background:#fff7ed;border:1.5px solid #fed7aa;border-radius:6px;padding:12px">
+              <div style="font-weight:700;color:#c2410c;margin-bottom:6px">🟠 小口申請モード</div>
+              <ul style="margin:0;padding-left:18px;color:#334;line-height:2">
+                <li>申請フォーム上部の <strong>「小口申請」ボタン</strong> を押すと小口申請モードに切り替わります</li>
+                <li>ヘッダーがオレンジ色になり、一覧に <span style="background:#ea580c;color:#fff;font-size:11px;border-radius:4px;padding:1px 5px;font-weight:700">小口</span> バッジが表示されます</li>
+                <li>宛先（To）に <strong>総務経理</strong> が自動でセットされます</li>
+                <li>返信ボタンはデフォルトで <strong>「確認済・保留」</strong> が設定されます</li>
+                <li>現金出納帳の月次締め後、「本社へ申請」ボタンからも申請できます</li>
+              </ul>
+            </div>
+            <!-- 承認済フィルター -->
             <div style="margin-top:12px;background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:6px;padding:12px">
-              <div style="font-weight:700;color:#166534;margin-bottom:6px">🆕 承認済タブ：申請者で絞り込み</div>
+              <div style="font-weight:700;color:#166534;margin-bottom:6px">🔎 承認済タブ：申請者で絞り込み</div>
               <ul style="margin:0;padding-left:18px;color:#334;line-height:2">
                 <li>「承認済」タブを開くと、一覧上部に <strong>申請者フィルター（プルダウン）</strong> が表示されます</li>
                 <li>プルダウンから申請者名を選択すると、その人の申請のみに絞り込まれます</li>
-                <li>「申請者を絞り込む（全員）」を選択すると絞り込みを解除します</li>
-                <li>他のタブ（未承認・保留中）へ切り替えるとフィルターは自動でリセットされます</li>
+                <li>「申請者を絞り込む（全員）」で絞り込み解除。他タブへ切り替えると自動リセットされます</li>
               </ul>
             </div>
           </div>
@@ -1452,6 +1464,41 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
             <li>未読がある場合はサイドバーのバッジ（数字）で表示されます</li>
             <li>「✓ 既読にする」ボタンで個別に、または「すべて既読にする」でまとめて既読にできます</li>
           </ul>
+        </div>
+
+        <!-- 経理・事務 -->
+        <div style="margin-bottom:20px" data-help-new="2026-05-19">
+          <div class="help-section-title" style="font-size:15px;font-weight:700;color:#1a2b4a;border-bottom:2px solid #dde3ec;padding-bottom:6px;margin-bottom:10px">💰 経理・事務（現金出納帳）</div>
+          <div style="font-size:13px;color:#334;line-height:1.8">
+            <ul style="padding-left:18px;margin:0 0 12px 0">
+              <li>サイドバーの「経理・事務」→「💰 現金出納帳」からアクセスします</li>
+              <li>各部署の小口現金の <strong>収入・支出・差引残高</strong> を月次で管理します</li>
+              <li>日付・摘要・支払先・金額などを入力すると差引残高が自動計算されます</li>
+              <li>最終行の支払金額欄で <strong>Enter</strong> または <strong>Tab</strong> を押すと次の行が自動追加されます</li>
+            </ul>
+            <div style="display:grid;grid-template-columns:120px 1fr;gap:6px 12px;align-items:start;background:#f8fafc;border-radius:6px;padding:12px;margin-bottom:12px">
+              <span style="font-weight:600;color:#1a56db">部署切り替え</span><span>閲覧権限のある部署をプルダウンで切り替えられます</span>
+              <span style="font-weight:600;color:#1a56db">年月切り替え</span><span>令和年・月を選択して過去月も閲覧・編集できます</span>
+              <span style="font-weight:600;color:#1a56db">CSV出力</span><span>表示中の月のデータをCSV形式でダウンロードできます</span>
+              <span style="font-weight:600;color:#1a56db">Excel取込</span><span>.xlsx / .csv ファイルを取り込んで一括入力できます</span>
+            </div>
+            <div style="background:#fff1f2;border:1.5px solid #fecdd3;border-radius:6px;padding:12px;margin-bottom:12px">
+              <div style="font-weight:700;color:#be123c;margin-bottom:6px">🔒 月次締め（総務経理・システムのみ）</div>
+              <ul style="margin:0;padding-left:18px;color:#334;line-height:2">
+                <li>画面右上の <strong>「🔒 月次締め」ボタン</strong> を押すと当月を締めて編集不可になります</li>
+                <li>締め済みの月は <strong>「🔒 締済」</strong> バッジで表示されます</li>
+                <li>締め解除も同じボタンから行えます</li>
+                <li>締め後は <strong>「本社へ申請」ボタン</strong> で総務経理へ提出通知が送信されます</li>
+              </ul>
+            </div>
+            <div style="background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:6px;padding:12px">
+              <div style="font-weight:700;color:#166534;margin-bottom:6px">👁️ 閲覧できる部署の範囲</div>
+              <div style="display:grid;grid-template-columns:100px 1fr;gap:4px 12px;align-items:start;font-size:12px">
+                <span style="font-weight:600;color:#1a56db">システム・総務経理</span><span>全グループ・全9部署を閲覧・管理できます</span>
+                <span style="font-weight:600;color:#1a56db">管理者以下</span><span>自グループの本社を除く部署のみ（例：BLOCK47ユーザー → BLOCK-サイクル・Eats・ボディ）</span>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- 権限 -->
