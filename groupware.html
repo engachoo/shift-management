@@ -3209,7 +3209,7 @@ function renderPettyCash(){
       <span style="background:${locked?'#fee2e2':'#eff6ff'};color:${locked?'#b91c1c':'#1d4ed8'};border:2px solid ${locked?'#fca5a5':'#93c5fd'};border-radius:10px;font-size:13px;padding:4px 14px;font-weight:700;white-space:nowrap">${locked?'🔒':'✏️'} 令和${curWr.y}年${curWr.m}月　${locked?'締済':'記載中'}</span>
       <span id="pcDirtyBadge" style="display:${_pcDirty?'inline':'none'};background:#fef9c3;color:#78350f;border:1px solid #fde68a;border-radius:10px;font-size:11px;padding:2px 8px;font-weight:700">未保存</span>
       <div style="flex:1"></div>
-      <button onclick="pcOpenSearch()" style="background:#f0fdf4;border:1.5px solid #bbf7d0;color:#166534;border-radius:7px;padding:6px 14px;cursor:pointer;font-size:13px;font-weight:600">🔍 領収書検索</button>
+      ${['system','soumu'].includes(_sess?.role)?`<button onclick="pcOpenSearch()" style="background:#f0fdf4;border:1.5px solid #bbf7d0;color:#166534;border-radius:7px;padding:6px 14px;cursor:pointer;font-size:13px;font-weight:600">🔍 領収書検索</button>`:''}
       ${pcCanEditLocked()?`<button onclick="${locked?'pcUnlock':'pcLock'}()" style="background:${locked?'#fef9c3':'#fff1f2'};border:1.5px solid ${locked?'#fde68a':'#fecdd3'};color:${locked?'#92400e':'#be123c'};border-radius:7px;padding:6px 16px;cursor:pointer;font-size:13px;font-weight:600">${locked?'🔓 締め解除':'🔒 月次締め'}</button>`:''}
     </div>
 
@@ -3278,9 +3278,11 @@ function renderPettyCash(){
       <span style="font-size:11px;color:#9ca3af">最終行の支払金額欄で Enter / Tab → 自動で次行追加</span>`:''}
       <div style="flex:1"></div>
       ${canEdit?`<button onclick="pcSave(event)" style="background:linear-gradient(135deg,#1a56db,#1e40af);color:#fff;border:none;border-radius:7px;padding:8px 22px;cursor:pointer;font-size:13px;font-weight:700;box-shadow:0 2px 6px rgba(26,86,219,.3)">💾 保存</button>`:''}
-      <button onclick="pcExportCSV()" style="background:#f0fdf4;border:1.5px solid #bbf7d0;color:#166534;border-radius:7px;padding:8px 18px;cursor:pointer;font-size:13px;font-weight:600">📥 CSV出力</button>
-      <button onclick="document.getElementById('pcXlsInput').click()" style="background:#faf5ff;border:1.5px solid #e9d5ff;color:#7c3aed;border-radius:7px;padding:8px 18px;cursor:pointer;font-size:13px;font-weight:600">📂 Excel取込</button>
-      <input type="file" id="pcXlsInput" accept=".xlsx,.xls,.csv" style="display:none" onchange="pcHandleXLS(this.files[0]);this.value=''">
+      ${['system','soumu'].includes(_sess?.role)?`
+        <button onclick="pcExportCSV()" style="background:#f0fdf4;border:1.5px solid #bbf7d0;color:#166534;border-radius:7px;padding:8px 18px;cursor:pointer;font-size:13px;font-weight:600">📥 CSV出力</button>
+        <button onclick="document.getElementById('pcXlsInput').click()" style="background:#faf5ff;border:1.5px solid #e9d5ff;color:#7c3aed;border-radius:7px;padding:8px 18px;cursor:pointer;font-size:13px;font-weight:600">📂 Excel取込</button>
+        <input type="file" id="pcXlsInput" accept=".xlsx,.xls,.csv" style="display:none" onchange="pcHandleXLS(this.files[0]);this.value=''">`
+      :''}
       ${!pcCanEditLocked()?`<button onclick="pcRequestToHQ()" style="background:linear-gradient(135deg,#0f766e,#0d9488);color:#fff;border:none;border-radius:7px;padding:8px 18px;cursor:pointer;font-size:13px;font-weight:700;box-shadow:0 2px 6px rgba(15,118,110,.3)">📨 本社へ申請</button>`:''}
     </div>`;
   pcUpdateTotals();
