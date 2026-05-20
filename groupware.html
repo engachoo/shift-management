@@ -62,7 +62,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
 
 /* ===== ヘッダー ===== */
 #appHeader{background:#1a2b4a;color:#fff;display:flex;align-items:center;height:42px;padding:0 14px;gap:10px;position:fixed;top:0;left:0;right:0;z-index:1000}
-.hdr-logo{font-size:13px;font-weight:700;color:#7ec8e3;letter-spacing:0.5px;line-height:1.25;text-align:center;white-space:nowrap}
+.hdr-logo{font-size:14px;font-weight:700;color:#7ec8e3;letter-spacing:1px;white-space:nowrap}
 .hdr-spacer{flex:1}
 .hdr-user{font-size:12px;opacity:.85;display:flex;align-items:center;gap:6px}
 .hdr-dept{font-size:11px;background:rgba(255,255,255,.15);padding:2px 7px;border-radius:3px}
@@ -412,7 +412,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
 @media(max-width:700px){
   #appHeader{padding:0 8px;gap:6px}
   #menuToggle{display:block}
-  .hdr-logo{font-size:10px;letter-spacing:0;line-height:1.25}
+  .hdr-logo{font-size:10px;letter-spacing:0;line-height:1.3}
   #hdrDept,#hdrRole,.hdr-btn-help{display:none!important}
   .hdr-btn{font-size:11px;padding:3px 8px}
   .hdr-btn-logout{font-size:11px;padding:3px 8px}
@@ -610,7 +610,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
   <!-- ヘッダー -->
   <div id="appHeader">
     <button id="menuToggle" onclick="toggleSidebar()"><span style="display:block;font-size:8px;letter-spacing:1px;line-height:1;margin-bottom:1px">MENU</span>☰</button>
-    <div class="hdr-logo">大日産業<br>グループ<br>ウェア</div>
+    <div class="hdr-logo">大日産業 グループウェア</div>
     <button class="hdr-btn-help" onclick="showHelp()">📖 説明書<span class="hdr-help-new helpNewBadge" style="display:none">New</span></button>
     <div class="hdr-spacer"></div>
     <div class="hdr-user">
