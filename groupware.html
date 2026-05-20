@@ -388,10 +388,16 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
 .inline-input{border:1px solid #d1d5db;border-radius:4px;padding:4px 7px;font-size:12px;font-family:inherit;width:100%;min-width:110px;color:#2d3748;background:#fff;transition:border-color .15s,box-shadow .15s}
 .inline-input:focus{outline:none;border-color:#1a56db;box-shadow:0 0 0 2px rgba(26,86,219,.15)}
 .inline-input.saved{border-color:#059669;background:#f0fdf4}
-.inline-pw-wrap{display:flex;align-items:center;gap:4px}
-.inline-pw-wrap .inline-input{min-width:100px}
-.inline-eye{background:none;border:none;cursor:pointer;font-size:15px;color:#9ca3af;padding:0 2px;line-height:1}
+.inline-input[readonly]{background:#f3f4f6;color:#9ca3af;cursor:not-allowed;border-color:#e5e7eb}
+.inline-pw-wrap{display:flex;align-items:center;gap:3px;flex-wrap:nowrap}
+.inline-pw-wrap .inline-input{min-width:90px;flex:1}
+.inline-eye{background:none;border:none;cursor:pointer;font-size:15px;color:#9ca3af;padding:0 2px;line-height:1;flex-shrink:0}
 .inline-eye:hover{color:#374151}
+.inline-lock{background:none;border:1px solid #e5e7eb;border-radius:4px;cursor:pointer;font-size:13px;padding:2px 4px;line-height:1;flex-shrink:0;transition:background .15s}
+.inline-lock:hover{background:#fef3c7}
+.inline-lock.unlocked{border-color:#f59e0b;background:#fffbeb}
+.inline-copy{background:none;border:1px solid #e5e7eb;border-radius:4px;cursor:pointer;font-size:12px;padding:2px 5px;line-height:1;flex-shrink:0;color:#6b7280;transition:background .15s}
+.inline-copy:hover{background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe}
 .update-btn{background:#1a56db;color:#fff;border-color:#1a56db;font-weight:600}
 .update-btn:hover{background:#1339a8;color:#fff;border-color:#1339a8}
 
@@ -1930,10 +1936,48 @@ function applyGenPass(inputId, noteId){
   if(noteId) updatePassStrength(inputId, noteId);
 }
 
-// インライン行（既存ユーザーテーブル）用：生成→行をdirtyマーク
-function applyGenPassInline(uid){
+// インライン行：🔒ロック切り替え
+function toggleInlinePwLock(uid){
+  const inp  = document.getElementById('pw-'+uid);
+  const btn  = document.getElementById('pwlock-'+uid);
+  if(!inp || !btn) return;
+  const isLocked = inp.readOnly;
+  if(isLocked){
+    // 解除確認
+    if(!confirm('パスワードの編集ロックを解除しますか？\n解除後は「更新」ボタンで保存されます。')) return;
+    inp.readOnly = false;
+    inp.style.cursor = '';
+    btn.textContent = '🔓';
+    btn.classList.add('unlocked');
+    btn.title = 'ロック中（クリックで再ロック）';
+    inp.focus();
+  } else {
+    inp.readOnly = true;
+    btn.textContent = '🔒';
+    btn.classList.remove('unlocked');
+    btn.title = 'クリックして編集解除';
+  }
+}
+
+// インライン行：📋コピー
+function copyInlinePw(uid){
   const inp = document.getElementById('pw-'+uid);
+  if(!inp || !inp.value) return;
+  navigator.clipboard.writeText(inp.value).then(()=>{
+    showToast('パスワードをコピーしました 📋');
+  }).catch(()=>{
+    showToast('コピーできませんでした');
+  });
+}
+
+// インライン行（既存ユーザーテーブル）用：生成→ロック解除→行をdirtyマーク
+function applyGenPassInline(uid){
+  const inp  = document.getElementById('pw-'+uid);
+  const btn  = document.getElementById('pwlock-'+uid);
   if(!inp) return;
+  // ロックを自動解除
+  inp.readOnly = false;
+  if(btn){ btn.textContent='🔓'; btn.classList.add('unlocked'); btn.title='ロック中（クリックで再ロック）'; }
   const pw = genStrongPassword(14);
   inp.value = pw;
   inp.type = 'text';
@@ -5632,9 +5676,11 @@ function renderUserTable(){
       <td><input class="inline-input" id="name-${u.id}" value="${esc(u.name)}" oninput="markRowDirty('${u.id}')" style="min-width:80px"></td>
       <td><input class="inline-input" id="lid-${u.id}" value="${esc(u.loginId)}" oninput="markRowDirty('${u.id}')"></td>
       <td><div class="inline-pw-wrap">
-        <input class="inline-input" id="pw-${u.id}" type="text" value="${esc(u.password)}" oninput="markRowDirty('${u.id}')" style="min-width:90px">
+        <input class="inline-input" id="pw-${u.id}" type="password" value="${esc(u.password)}" oninput="markRowDirty('${u.id}')" readonly>
+        <button class="inline-lock" id="pwlock-${u.id}" type="button" onclick="toggleInlinePwLock('${u.id}')" title="クリックして編集解除">🔒</button>
         <button class="inline-eye" type="button" onclick="toggleInlinePw('${u.id}')" title="表示/非表示">🙈</button>
-        <button class="inline-eye" type="button" onclick="applyGenPassInline('${u.id}')" title="強力なパスワードを生成" style="font-size:13px;padding:2px 5px">🎲</button>
+        <button class="inline-copy" type="button" onclick="copyInlinePw('${u.id}')" title="パスワードをコピー">📋</button>
+        <button class="inline-eye" type="button" onclick="applyGenPassInline('${u.id}')" title="強力なパスワードを生成">🎲</button>
       </div></td>
       <td>${deptSel}</td>
       <td>${roleSel}</td>
@@ -5705,6 +5751,11 @@ function saveInlineRow(uid){
   r.u.name=r.newName; r.u.loginId=r.newLid; r.u.password=r.newPw;
   r.u.deptId=r.newDept; r.u.role=r.newRole; r.u.active=r.newActive;
   save('users', users);
+  // 保存後にパスワードを再ロック
+  const pwInp = document.getElementById('pw-'+uid);
+  const lockBtn = document.getElementById('pwlock-'+uid);
+  if(pwInp){ pwInp.readOnly=true; pwInp.type='password'; }
+  if(lockBtn){ lockBtn.textContent='🔒'; lockBtn.classList.remove('unlocked'); lockBtn.title='クリックして編集解除'; }
   const updBtn=document.getElementById('upd-'+uid);
   if(updBtn){
     updBtn.textContent='✅ 保存済';
@@ -5718,9 +5769,13 @@ function toggleInlinePw(uid){
   if(!inp) return;
   const show = inp.type==='password';
   inp.type = show ? 'text' : 'password';
-  // ボタンのラベルを更新
-  const btn = inp.parentElement && inp.parentElement.querySelector('.inline-eye');
-  if(btn) btn.textContent = show ? '🐵' : '🙈';
+  // 🙈ボタンのみ更新（data属性で特定）
+  const wrap = inp.parentElement;
+  if(wrap){
+    const eyeBtns = wrap.querySelectorAll('.inline-eye');
+    // 最初の .inline-eye が🙈ボタン
+    if(eyeBtns[0]) eyeBtns[0].textContent = show ? '🐵' : '🙈';
+  }
 }
 function toggleUserActive(id){
   const users=load('users',[]);
