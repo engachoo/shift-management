@@ -62,7 +62,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
 
 /* ===== ヘッダー ===== */
 #appHeader{background:#1a2b4a;color:#fff;display:flex;align-items:center;height:42px;padding:0 14px;gap:10px;position:fixed;top:0;left:0;right:0;z-index:1000}
-.hdr-logo{font-size:14px;font-weight:700;color:#7ec8e3;letter-spacing:1px;white-space:nowrap}
+.hdr-logo{font-size:13px;font-weight:700;color:#7ec8e3;letter-spacing:0.5px;line-height:1.25;text-align:center;white-space:nowrap}
 .hdr-spacer{flex:1}
 .hdr-user{font-size:12px;opacity:.85;display:flex;align-items:center;gap:6px}
 .hdr-dept{font-size:11px;background:rgba(255,255,255,.15);padding:2px 7px;border-radius:3px}
@@ -412,7 +412,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
 @media(max-width:700px){
   #appHeader{padding:0 8px;gap:6px}
   #menuToggle{display:block}
-  .hdr-logo{font-size:11px;letter-spacing:0}
+  .hdr-logo{font-size:10px;letter-spacing:0;line-height:1.25}
   #hdrDept,#hdrRole,.hdr-btn-help{display:none!important}
   .hdr-btn{font-size:11px;padding:3px 8px}
   .hdr-btn-logout{font-size:11px;padding:3px 8px}
@@ -446,6 +446,48 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
   .f-checks{max-height:200px}
   .page-hdr{flex-wrap:wrap;gap:6px}
   .f-row-2{grid-template-columns:1fr}
+
+  /* ===== 承認申請フォーム モバイル対応 ===== */
+  /* ciModal ヘッダー：モードボタンを3等分で並べる */
+  #ciModalHdr{flex-direction:column;gap:8px;padding:10px 12px}
+  #ciModalHdr h3{font-size:14px;margin:0}
+  #ciModalHdr>div:nth-child(2){display:grid!important;grid-template-columns:1fr 1fr 1fr;gap:5px;width:100%;margin-left:0!important}
+  #ciModalHdr>div:nth-child(2) button{padding:8px 4px!important;font-size:12px!important;border-radius:6px!important;text-align:center}
+  #ciModalHdr .modal-close{position:absolute;top:10px;right:10px;font-size:20px}
+  #ciModalHdr>div:nth-child(3){display:none}/* flex:1 spacer不要 */
+
+  /* ap-table: 縦積みレイアウト */
+  .ap-table tr{display:block;border:none}
+  .ap-table td{display:block;width:100%!important;box-sizing:border-box;border-left:none;border-right:none}
+  .ap-table td.ap-lbl{min-width:0;width:100%!important;border-bottom:0;padding:10px 12px 4px;font-size:13px;background:#eef2fa}
+  .ap-table td.ap-val{padding:8px 12px 10px;border-top:0}
+  .ap-val input[type=text],.ap-val input[type=date],.ap-val textarea,.ap-val select{font-size:14px;padding:8px 10px;border-radius:6px}
+  .ap-val textarea{min-height:120px}
+
+  /* 宛先セレクター：縦積み */
+  .ap-dual{flex-direction:column;gap:8px}
+  .ap-dual>div:first-child,.ap-dual>div:last-child{width:100%}
+  .ap-dual-box select{min-height:80px!important;font-size:14px;padding:6px}
+  .ap-dual-center{flex-direction:row;justify-content:center;gap:12px;padding:4px 0}
+  .ap-dual-btn{padding:8px 20px;font-size:13px;border-radius:6px}
+  .ap-dual-search{padding:6px 8px}
+  .ap-dual-search input,.ap-dual-search select{font-size:13px;padding:4px 8px}
+
+  /* 並び替えボタン */
+  .ap-order{justify-content:flex-start;gap:4px;margin-bottom:6px}
+  .ap-order button{padding:5px 10px;font-size:12px}
+
+  /* 返信ボタン プリセット */
+  #ci-preset-sel{font-size:14px;padding:8px 10px;width:100%}
+  .ap-custom-add{display:flex;gap:6px}
+  .ap-custom-add input{font-size:13px;padding:7px 10px}
+
+  /* モーダルフッター */
+  #ciModal .modal-foot{gap:8px;padding:12px}
+  #ciModal .modal-foot button{flex:1;padding:10px;font-size:14px;font-weight:700}
+
+  /* 回答期日・ルート設定行は縦積み */
+  #ciModal .ap-table tr:has(#ci-deadline){display:block}
 }
 .top-card{background:#fff;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,.08);overflow:hidden}
 .top-card-hdr{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:2px solid #eef2f7;font-weight:700;font-size:13px;color:#1a2b4a}
@@ -568,7 +610,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
   <!-- ヘッダー -->
   <div id="appHeader">
     <button id="menuToggle" onclick="toggleSidebar()"><span style="display:block;font-size:8px;letter-spacing:1px;line-height:1;margin-bottom:1px">MENU</span>☰</button>
-    <div class="hdr-logo">大日産業 グループウェア</div>
+    <div class="hdr-logo">大日産業<br>グループ<br>ウェア</div>
     <button class="hdr-btn-help" onclick="showHelp()">📖 説明書<span class="hdr-help-new helpNewBadge" style="display:none">New</span></button>
     <div class="hdr-spacer"></div>
     <div class="hdr-user">
@@ -583,7 +625,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
   <div id="sidebar">
     <!-- スマホ用ヘッダー -->
     <div id="spHelpBtn" style="display:none;background:#1a2b4a;position:absolute;top:0;left:0;right:0;height:52px;align-items:center;padding:0 12px;gap:8px">
-      <span style="color:#7ec8e3;font-size:12px;font-weight:700;flex:1">大日産業 グループウェア</span>
+      <span style="color:#7ec8e3;font-size:12px;font-weight:700;flex:1;line-height:1.3">大日産業<br>グループ<br>ウェア</span>
       <button onclick="showHelp();closeSidebar();" style="background:none;border:1px solid rgba(255,255,255,.4);color:#fff;padding:3px 8px;border-radius:4px;font-size:11px;cursor:pointer">📖 説明書<span class="helpNewBadge" style="display:none;background:#ef4444;color:#fff;border-radius:9px;font-size:10px;padding:1px 5px;margin-left:4px;font-weight:700;vertical-align:middle">New</span></button>
       <button onclick="closeSidebar()" style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer;line-height:1;padding:0 2px">×</button>
     </div>
@@ -972,8 +1014,8 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
 
 <!-- 承認申請フォーム（モーダル） -->
 <div class="modal-bg" id="ciModal">
-  <div class="modal" style="max-width:780px;width:95%;max-height:92vh">
-    <div class="modal-hdr" id="ciModalHdr" style="background:#1a3a6b;color:#fff;flex-wrap:wrap;gap:6px">
+  <div class="modal" style="max-width:780px;width:95%;max-height:92vh;position:relative">
+    <div class="modal-hdr" id="ciModalHdr" style="background:#1a3a6b;color:#fff;flex-wrap:wrap;gap:6px;position:relative">
       <h3 id="ciModalTitle" style="color:#fff;margin:0">承認申請 - 作成</h3>
       <div style="display:flex;gap:6px;margin-left:8px">
         <button id="ciModeBtn-approval" onclick="switchCiMode('approval')" style="background:rgba(255,255,255,0.95);color:#1a3a6b;border:none;border-radius:6px;padding:5px 16px;font-size:13px;font-weight:700;cursor:pointer">承認申請</button>
