@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <rect width="200" height="200" fill="white"/>
+  <!-- 太陽紋章（18枚の三角スパイク） -->
+  <polygon fill="#C8A855"
+    points="
+      100,9  112,35  131,16  133,43  158,31  150,57
+      177,54  161,78  188,84  165,100  188,116  161,122
+      177,146  150,143  158,169  133,157  131,184  112,165
+      100,191  88,165  69,184  67,157  42,169  50,143
+      23,146  39,122  12,116  35,100  12,84  39,78
+      23,54  50,57  42,31  67,43  69,16  88,35
+    "/>
+  <!-- 外枠リング -->
+  <circle cx="100" cy="100" r="93" fill="none" stroke="#C8A855" stroke-width="3.5"/>
+  <!-- ネイビー内円 -->
+  <circle cx="100" cy="100" r="65" fill="#1C2B6E"/>
+  <!-- 内円ゴールドリング -->
+  <circle cx="100" cy="100" r="65" fill="none" stroke="#C8A855" stroke-width="2"/>
+  <!-- D の文字（大きめ、左寄り） -->
+  <text x="84" y="118" font-family="Georgia,Times New Roman,serif"
+        font-size="62" font-weight="bold" fill="#C8A855" text-anchor="middle">D</text>
+  <!-- N の文字（小さめ、右下） -->
+  <text x="118" y="118" font-family="Georgia,Times New Roman,serif"
+        font-size="54" font-weight="bold" fill="#C8A855" text-anchor="middle">N</text>
+</svg>

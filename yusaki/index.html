@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>麺処 湯咲 | 岐阜・岐南</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@300;400;700&family=Shippori+Mincho:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --black:   #0a0a0a;
+      --dark:    #111111;
+      --card:    #161616;
+      --border:  #2a2a2a;
+      --gold:    #c9a84c;
+      --gold-lt: #e8c87a;
+      --white:   #f0ece4;
+      --gray:    #888;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--black);
+      color: var(--white);
+      font-family: 'Noto Serif JP', serif;
+      line-height: 1.8;
+      overflow-x: hidden;
+    }
+
+    /* ─── HEADER / NAV ─────────────────────────────── */
+    header {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 5vw;
+      height: 64px;
+      background: rgba(10,10,10,.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+    .logo {
+      font-family: 'Shippori Mincho', serif;
+      font-size: 1.1rem;
+      letter-spacing: .25em;
+      color: var(--gold);
+      text-decoration: none;
+    }
+    nav a {
+      color: var(--gray);
+      text-decoration: none;
+      font-size: .8rem;
+      letter-spacing: .12em;
+      margin-left: 2.4rem;
+      transition: color .3s;
+    }
+    nav a:hover { color: var(--gold); }
+
+    /* ─── HERO ──────────────────────────────────────── */
+    #hero {
+      position: relative;
+      height: 100svh;
+      display: flex; align-items: center; justify-content: center;
+      text-align: center;
+      overflow: hidden;
+    }
+    #hero::before {
+      content: '';
+      position: absolute; inset: 0;
+      background:
+        linear-gradient(135deg,
+          #1a0a00 0%,
+          #0d0600 30%,
+          #160c02 60%,
+          #0a0a0a 100%);
+    }
+    #hero::after {
+      content: '';
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse at center, transparent 40%, var(--black) 100%);
+    }
+    .hero-inner {
+      position: relative; z-index: 1;
+      padding: 0 1.5rem;
+    }
+    .hero-sub {
+      font-size: .75rem;
+      letter-spacing: .45em;
+      color: var(--gold);
+      margin-bottom: 1.4rem;
+      text-transform: uppercase;
+    }
+    .hero-title {
+      font-family: 'Shippori Mincho', serif;
+      font-size: clamp(3rem, 10vw, 7rem);
+      font-weight: 700;
+      letter-spacing: .18em;
+      line-height: 1.1;
+      color: var(--white);
+    }
+    .hero-title span { color: var(--gold); }
+    .hero-desc {
+      margin-top: 1.8rem;
+      font-size: clamp(.8rem, 1.4vw, 1rem);
+      color: #aaa;
+      letter-spacing: .1em;
+      max-width: 480px;
+      margin-left: auto; margin-right: auto;
+    }
+    .hero-cta {
+      display: inline-block;
+      margin-top: 3rem;
+      padding: .85rem 2.8rem;
+      border: 1px solid var(--gold);
+      color: var(--gold);
+      text-decoration: none;
+      font-size: .8rem;
+      letter-spacing: .3em;
+      transition: background .3s, color .3s;
+    }
+    .hero-cta:hover { background: var(--gold); color: var(--black); }
+
+    /* ─── SECTION COMMON ───────────────────────────── */
+    section { padding: 7rem 5vw; }
+    .section-label {
+      display: block;
+      font-size: .7rem;
+      letter-spacing: .5em;
+      color: var(--gold);
+      text-transform: uppercase;
+      margin-bottom: .8rem;
+    }
+    .section-title {
+      font-family: 'Shippori Mincho', serif;
+      font-size: clamp(1.6rem, 3.5vw, 2.8rem);
+      letter-spacing: .15em;
+      margin-bottom: 1.2rem;
+      color: var(--white);
+    }
+    .divider {
+      width: 48px; height: 1px;
+      background: var(--gold);
+      margin: 1.8rem 0 3rem;
+    }
+
+    /* ─── CONCEPT ───────────────────────────────────── */
+    #concept {
+      max-width: 900px; margin: 0 auto;
+      text-align: center;
+    }
+    #concept .divider { margin: 1.8rem auto 3rem; }
+    #concept p {
+      font-size: clamp(.9rem, 1.3vw, 1.1rem);
+      color: #bbb;
+      line-height: 2.2;
+      letter-spacing: .08em;
+    }
+    #concept p + p { margin-top: 1.6rem; }
+
+    /* ─── PHOTO GRID ────────────────────────────────── */
+    #gallery { background: var(--dark); }
+    .photo-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: auto auto;
+      gap: 6px;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    .photo-grid .item {
+      overflow: hidden;
+      aspect-ratio: 1 / 1;
+      background: var(--card);
+    }
+    .photo-grid .item:first-child {
+      grid-column: span 2;
+      aspect-ratio: 2 / 1;
+    }
+    .photo-grid .item .photo-bg {
+      width: 100%; height: 100%;
+      transition: transform .6s ease, filter .4s;
+      filter: brightness(.85);
+    }
+    .photo-grid .item:hover .photo-bg {
+      transform: scale(1.06);
+      filter: brightness(1);
+    }
+    /* 各マスのグラデーション */
+    .photo-bg-1 {
+      background: linear-gradient(135deg, #3a1c00 0%, #1a0900 40%, #2e1500 100%);
+      position: relative; display: flex; align-items: center; justify-content: center;
+      width:100%; height:100%;
+    }
+    .photo-bg-2 { background: linear-gradient(135deg, #1a1200 0%, #2d2000 50%, #100d00 100%); }
+    .photo-bg-3 { background: linear-gradient(135deg, #0d1a1a 0%, #0a1210 50%, #161e1c 100%); }
+    .photo-bg-4 { background: linear-gradient(135deg, #200a00 0%, #3a1800 50%, #1a0900 100%); }
+    .photo-bg-5 { background: linear-gradient(135deg, #111800 0%, #1e2800 50%, #0c1000 100%); }
+    .photo-bg-6 { background: linear-gradient(135deg, #1a0d10 0%, #2a1520 50%, #100810 100%); }
+    .photo-bg-2,.photo-bg-3,.photo-bg-4,.photo-bg-5,.photo-bg-6 {
+      position: relative; display: flex; align-items: center; justify-content: center;
+      width:100%; height:100%;
+    }
+    /* 丼アイコン */
+    .photo-icon {
+      font-size: clamp(2.5rem, 5vw, 4rem);
+      opacity: .18;
+      user-select: none;
+    }
+    .photo-label {
+      position: absolute; bottom: 1rem; left: 1rem;
+      font-size: .7rem; letter-spacing: .2em;
+      color: var(--gold); opacity: .7;
+    }
+
+    /* ─── MENU ──────────────────────────────────────── */
+    #menu { max-width: 800px; margin: 0 auto; }
+    .menu-list {
+      list-style: none;
+      border-top: 1px solid var(--border);
+    }
+    .menu-list li {
+      display: flex; justify-content: space-between; align-items: baseline;
+      padding: 1.4rem 0;
+      border-bottom: 1px solid var(--border);
+      gap: 1rem;
+    }
+    .menu-name {
+      font-family: 'Shippori Mincho', serif;
+      font-size: 1.05rem;
+      letter-spacing: .1em;
+      color: var(--white);
+    }
+    .menu-note {
+      font-size: .75rem;
+      color: var(--gray);
+      margin-top: .25rem;
+      letter-spacing: .06em;
+    }
+    .menu-price {
+      font-size: 1rem;
+      color: var(--gold);
+      white-space: nowrap;
+      letter-spacing: .05em;
+    }
+    .menu-badge {
+      display: inline-block;
+      font-size: .62rem;
+      letter-spacing: .12em;
+      border: 1px solid var(--gold);
+      color: var(--gold);
+      padding: .15em .55em;
+      margin-left: .6rem;
+      vertical-align: middle;
+    }
+
+    /* ─── INFO ──────────────────────────────────────── */
+    #info { background: var(--dark); }
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 3rem 5rem;
+      max-width: 900px;
+    }
+    @media (max-width: 640px) { .info-grid { grid-template-columns: 1fr; } }
+    .info-item dt {
+      font-size: .7rem;
+      letter-spacing: .35em;
+      color: var(--gold);
+      text-transform: uppercase;
+      margin-bottom: .5rem;
+    }
+    .info-item dd {
+      font-size: .95rem;
+      color: #ccc;
+      letter-spacing: .06em;
+    }
+    .info-item dd small {
+      display: block;
+      font-size: .78rem;
+      color: var(--gray);
+      margin-top: .3rem;
+    }
+
+    /* ─── MAP ───────────────────────────────────────── */
+    #map-section { padding: 0; }
+    #map-section iframe {
+      width: 100%; height: 420px;
+      border: none;
+      display: block;
+      filter: grayscale(1) invert(1) brightness(.7) contrast(1.1);
+    }
+
+    /* ─── FOOTER ────────────────────────────────────── */
+    footer {
+      background: var(--black);
+      border-top: 1px solid var(--border);
+      padding: 3.5rem 5vw;
+      display: flex; flex-wrap: wrap;
+      justify-content: space-between; align-items: center;
+      gap: 1.5rem;
+    }
+    .footer-logo {
+      font-family: 'Shippori Mincho', serif;
+      font-size: 1.4rem;
+      letter-spacing: .3em;
+      color: var(--gold);
+    }
+    footer p {
+      font-size: .72rem;
+      color: var(--gray);
+      letter-spacing: .1em;
+    }
+
+    /* ─── SCROLL FADE ───────────────────────────────── */
+    .fade-in {
+      opacity: 0;
+      transform: translateY(30px);
+      transition: opacity .9s ease, transform .9s ease;
+    }
+    .fade-in.visible { opacity: 1; transform: none; }
+
+    /* ─── RESPONSIVE ────────────────────────────────── */
+    @media (max-width: 768px) {
+      nav { display: none; }
+      .photo-grid { grid-template-columns: repeat(2,1fr); }
+      .photo-grid .item:first-child { grid-column: span 2; }
+    }
+    @media (max-width: 480px) {
+      .photo-grid { grid-template-columns: 1fr; }
+      .photo-grid .item:first-child { grid-column: 1; aspect-ratio: 1/1; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ─ HEADER ─────────────────────────────────────── -->
+<header>
+  <a class="logo" href="#">麺処 湯咲</a>
+  <nav>
+    <a href="#concept">CONCEPT</a>
+    <a href="#gallery">GALLERY</a>
+    <a href="#menu">MENU</a>
+    <a href="#info">ACCESS</a>
+  </nav>
+</header>
+
+<!-- ─ HERO ───────────────────────────────────────── -->
+<section id="hero">
+  <div class="hero-inner">
+    <p class="hero-sub">Ramen &amp; Tsukemen — Gifu, Ginan</p>
+    <h1 class="hero-title">麺処<br><span>湯咲</span></h1>
+    <p class="hero-desc">一杯に宿る、醤油の美学。<br>淡麗と濃厚、二つの顔が織りなす麺の世界。</p>
+    <a class="hero-cta" href="#menu">MENU を見る</a>
+  </div>
+</section>
+
+<!-- ─ CONCEPT ─────────────────────────────────────── -->
+<section id="concept" class="fade-in">
+  <span class="section-label">Concept</span>
+  <h2 class="section-title">醤油、一本の道。</h2>
+  <div class="divider"></div>
+  <p>
+    麺処 湯咲が追い求めるのは、醤油ラーメンの純粋な美しさ。<br>
+    余計なものを削ぎ落とした「淡麗醤油ラーメン」と、<br>
+    深みを重ねた「濃厚醤油つけ麺」——対極にある二つの表情が、<br>
+    一枚の暖簾の下に共存する。
+  </p>
+  <p>
+    カウンター10席の小さな空間で、<br>
+    一杯一杯、妥協なく仕上げるその姿勢が<br>
+    岐阜・岐南の食通たちを惹きつける。
+  </p>
+</section>
+
+<!-- ─ GALLERY ─────────────────────────────────────── -->
+<section id="gallery">
+  <div style="max-width:1100px;margin:0 auto 2.5rem;">
+    <span class="section-label fade-in">Gallery</span>
+    <h2 class="section-title fade-in">一杯の情景</h2>
+    <div class="divider fade-in"></div>
+  </div>
+  <div class="photo-grid">
+    <div class="item fade-in">
+      <div class="photo-bg photo-bg-1 photo-bg">
+        <span class="photo-icon">🍜</span>
+        <span class="photo-label">SHOYU RAMEN</span>
+      </div>
+    </div>
+    <div class="item fade-in">
+      <div class="photo-bg photo-bg-2">
+        <span class="photo-icon">🍥</span>
+        <span class="photo-label">TSUKEMEN</span>
+      </div>
+    </div>
+    <div class="item fade-in">
+      <div class="photo-bg photo-bg-3">
+        <span class="photo-icon">🥢</span>
+        <span class="photo-label">NOODLE</span>
+      </div>
+    </div>
+    <div class="item fade-in">
+      <div class="photo-bg photo-bg-4">
+        <span class="photo-icon">🍱</span>
+        <span class="photo-label">TOPPINGS</span>
+      </div>
+    </div>
+    <div class="item fade-in">
+      <div class="photo-bg photo-bg-5">
+        <span class="photo-icon">🫙</span>
+        <span class="photo-label">SOUP</span>
+      </div>
+    </div>
+    <div class="item fade-in">
+      <div class="photo-bg photo-bg-6">
+        <span class="photo-icon">🏮</span>
+        <span class="photo-label">INTERIOR</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─ MENU ────────────────────────────────────────── -->
+<section id="menu">
+  <div id="menu" class="fade-in">
+    <span class="section-label">Menu</span>
+    <h2 class="section-title">メニュー</h2>
+    <div class="divider"></div>
+    <ul class="menu-list">
+      <li>
+        <div>
+          <div class="menu-name">淡麗醤油ラーメン</div>
+          <div class="menu-note">清湯スープの繊細な醤油の風味</div>
+        </div>
+        <div class="menu-price">〜¥999</div>
+      </li>
+      <li>
+        <div>
+          <div class="menu-name">濃厚醤油つけ麺</div>
+          <div class="menu-note">力強いタレと太麺の組み合わせ</div>
+        </div>
+        <div class="menu-price">〜¥999</div>
+      </li>
+      <li>
+        <div>
+          <div class="menu-name">期間限定メニュー <span class="menu-badge">LIMITED</span></div>
+          <div class="menu-note">季節ごとに変わる特別な一杯</div>
+        </div>
+        <div class="menu-price">要確認</div>
+      </li>
+    </ul>
+    <p style="margin-top:2rem;font-size:.78rem;color:var(--gray);letter-spacing:.08em;">
+      ※ 食券先購入制・現金のみ / 呼び出しベル方式
+    </p>
+  </div>
+</section>
+
+<!-- ─ INFO ────────────────────────────────────────── -->
+<section id="info">
+  <span class="section-label fade-in">Access &amp; Info</span>
+  <h2 class="section-title fade-in">店舗情報</h2>
+  <div class="divider fade-in"></div>
+  <dl class="info-grid fade-in">
+    <div class="info-item">
+      <dt>Address</dt>
+      <dd>岐阜県羽島郡岐南町<br>上印食2-113<small>細畑駅より徒歩約5分（320m）</small></dd>
+    </div>
+    <div class="info-item">
+      <dt>Hours</dt>
+      <dd>10:00 — 14:00<small>月・火・木・金・土・日</small></dd>
+    </div>
+    <div class="info-item">
+      <dt>Holiday</dt>
+      <dd>水曜日<small>臨時休業あり（SNS等でご確認ください）</small></dd>
+    </div>
+    <div class="info-item">
+      <dt>Seats</dt>
+      <dd>10席（カウンターのみ）<small>予約不可 / 禁煙</small></dd>
+    </div>
+    <div class="info-item">
+      <dt>Payment</dt>
+      <dd>現金のみ</dd>
+    </div>
+    <div class="info-item">
+      <dt>Parking</dt>
+      <dd>テナント共同駐車場 29台</dd>
+    </div>
+  </dl>
+</section>
+
+<!-- ─ MAP ─────────────────────────────────────────── -->
+<section id="map-section">
+  <iframe
+    src="https://maps.google.com/maps?q=岐阜県羽島郡岐南町上印食2-113&output=embed&z=16"
+    allowfullscreen loading="lazy"
+    title="麺処 湯咲 地図">
+  </iframe>
+</section>
+
+<!-- ─ FOOTER ──────────────────────────────────────── -->
+<footer>
+  <div class="footer-logo">麺処 湯咲</div>
+  <p>岐阜県羽島郡岐南町上印食2-113<br>営業時間 10:00–14:00（水曜定休）</p>
+  <p>© 2025 麺処 湯咲 All Rights Reserved.</p>
+</footer>
+
+<!-- ─ SCROLL ANIMATION ─────────────────────────────── -->
+<script>
+  const observer = new IntersectionObserver(
+    entries => entries.forEach(e => {
+      if (e.isIntersecting) { e.target.classList.add('visible'); observer.unobserve(e.target); }
+    }),
+    { threshold: 0.12 }
+  );
+  document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+</script>
+
+</body>
+</html>
