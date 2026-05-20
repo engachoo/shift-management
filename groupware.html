@@ -3039,7 +3039,7 @@ function renderPettyCash(){
         <thead>
           <tr style="background:#1a2b4a;color:#fff">
             ${canEdit?`<th rowspan="2" style="${thSt}"><input type="checkbox" onchange="pcSelectAll(this.checked)" style="width:15px;height:15px;cursor:pointer" title="全選択/解除"></th>`:''}
-            <th rowspan="2" style="${thSt};width:90px;min-width:90px;background:#e8f5e9;color:#166534"><span style="font-size:26px;line-height:1.1;display:block">📷</span><span style="font-size:11px;font-weight:700">領収書</span></th>
+            <th rowspan="2" style="${thSt};width:100px;min-width:100px;background:#ecfdf5;color:#065f46"><span style="font-size:36px;line-height:1.1;display:block">📷</span><span style="font-size:11px;font-weight:700">領収書</span></th>
             <th rowspan="2" style="${thSt}">精算日<br><span style="font-size:10px;font-weight:400">(日)</span></th>
             <th rowspan="2" style="${thSt}">部門</th>
             <th rowspan="2" style="${thSt}">購入者</th>
@@ -3221,31 +3221,31 @@ function pcRowHTML(e,i){
   const chkCell=ro
     ?`<span style="font-size:14px">${e.invoiceCheck?'☑':'□'}</span>`
     :`<input type="checkbox"${e.invoiceCheck?' checked':''} onchange="pcField(${i},'invoiceCheck',this.checked)" style="width:17px;height:17px;cursor:pointer">`;
-  // 領収書セル（大きく表示・色分け）
+  // 領収書セル（カメラ大・淡色・見やすい文字）
   const hasRcp=!!e.receiptUrl;
-  const rcpCellBg=hasRcp?'#f0fdf4':'#fffbeb'; // 撮影済:極薄緑 / 未撮影:極薄黄
+  const rcpCellBg=hasRcp?'#f0fdf4':'#fffbeb';
   const rcpCell=hasRcp
-    ? `<div style="display:flex;flex-direction:column;gap:4px;align-items:center">
+    ? `<div style="display:flex;flex-direction:column;gap:5px;align-items:center">
         <button onclick="pcViewReceipt('${e.receiptUrl.replace(/'/g,"\\'")}','${esc((e.payee||'')+' '+(e.date||''))}')"
-          style="background:#d1fae5;color:#065f46;border:2px solid #6ee7b7;border-radius:8px;padding:6px 4px;cursor:pointer;width:76px;line-height:1.3;font-weight:700">
-          <span style="font-size:24px;display:block;line-height:1">📎</span>
-          <span style="font-size:11px">確認</span></button>
-        ${ro?'':`<button onclick="pcDeleteReceipt(${i})" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5;border-radius:5px;padding:3px 4px;cursor:pointer;font-size:10px;width:76px">🗑 削除</button>`}
-        <span style="font-size:9px;color:#065f46;font-weight:700;background:#a7f3d0;border-radius:3px;padding:1px 5px">✅ 撮影済</span>
+          style="background:#fff;color:#065f46;border:3px solid #34d399;border-radius:10px;padding:8px 4px;cursor:pointer;width:82px;line-height:1.4;font-weight:700;box-shadow:0 1px 4px rgba(52,211,153,.2)">
+          <span style="font-size:36px;display:block;line-height:1">📎</span>
+          <span style="font-size:12px;font-weight:700">確認</span></button>
+        ${ro?'':`<button onclick="pcDeleteReceipt(${i})" style="background:#fff0f0;color:#dc2626;border:1.5px solid #fca5a5;border-radius:6px;padding:4px 4px;cursor:pointer;font-size:11px;width:82px;font-weight:600">🗑 削除</button>`}
+        <span style="font-size:10px;color:#047857;font-weight:700;background:#d1fae5;border-radius:4px;padding:2px 6px;letter-spacing:.3px">✅ 撮影済</span>
        </div>`
     : ro
-      ? `<div style="text-align:center"><span style="font-size:22px">📭</span><br><span style="font-size:9px;color:#9ca3af">未撮影</span></div>`
-      : `<div style="display:flex;flex-direction:column;gap:3px;align-items:center">
+      ? `<div style="text-align:center;padding:4px 0"><span style="font-size:30px;display:block">📭</span><span style="font-size:10px;color:#9ca3af;font-weight:600">未撮影</span></div>`
+      : `<div style="display:flex;flex-direction:column;gap:5px;align-items:center">
           <button id="pcRcpBtn${i}" onclick="pcUploadReceipt(${i})"
-            style="background:#fff7ed;color:#7c2d12;border:2px solid #fb923c;border-radius:8px;padding:8px 4px;cursor:pointer;width:76px;line-height:1.3;font-weight:700">
-            <span style="font-size:26px;display:block;line-height:1">📷</span>
-            <span style="font-size:11px">撮影</span></button>
-          <span style="font-size:9px;color:#92400e;font-weight:700;background:#fde68a;border-radius:3px;padding:1px 5px">未撮影</span>
+            style="background:#fff;color:#92400e;border:3px solid #fbbf24;border-radius:10px;padding:8px 4px;cursor:pointer;width:82px;line-height:1.4;font-weight:700;box-shadow:0 1px 4px rgba(251,191,36,.25)">
+            <span style="font-size:36px;display:block;line-height:1">📷</span>
+            <span style="font-size:12px;font-weight:700">撮影</span></button>
+          <span style="font-size:10px;color:#92400e;font-weight:700;background:#fef3c7;border-radius:4px;padding:2px 6px;letter-spacing:.3px">⚠ 未撮影</span>
          </div>`;
-  const rowBorderLeft=hasRcp?'4px solid #6ee7b7':'4px solid #fbbf24';
+  const rowBorderLeft=hasRcp?'5px solid #34d399':'5px solid #fbbf24';
   return `<tr style="border-bottom:1px solid #f1f5f9;vertical-align:middle;border-left:${rowBorderLeft}">
     ${ro?'':`<td style="padding:4px 3px;text-align:center"><input type="checkbox" class="pcRowCheck" data-idx="${i}" style="width:15px;height:15px;cursor:pointer"></td>`}
-    <td style="padding:6px 4px;text-align:center;background:${rcpCellBg};width:90px;min-width:90px">${rcpCell}</td>
+    <td style="padding:8px 4px;text-align:center;background:${rcpCellBg};width:100px;min-width:100px">${rcpCell}</td>
     <td style="padding:4px 3px;text-align:center">${dayCell}</td>
     <td style="padding:4px 3px">${inp('department',e.department,'部門',60)}</td>
     <td style="padding:4px 3px">${inp('purchaser',e.purchaser,'購入者',64)}</td>
