@@ -18,6 +18,7 @@
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -1698,6 +1699,7 @@ const _fbConfig = {
 };
 firebase.initializeApp(_fbConfig);
 const _db = firebase.firestore();
+const _storage = firebase.storage();
 const _COL = 'gw2data'; // Firestoreコレクション名
 
 // =========================================================
@@ -2897,7 +2899,7 @@ function renderPettyCash(){
   // データが空の月はデフォルトで1行表示（未保存）
   if(_pcData.entries.length===0){
     const defDate=_pcYearMonth?_pcYearMonth+'-01':todayStr();
-    _pcData.entries.push({date:defDate,department:'',purchaser:'',invoiceCheck:false,payee:'',receiptDate:'',content:'',income:0,expense:0});
+    _pcData.entries.push({date:defDate,department:'',purchaser:'',invoiceCheck:false,payee:'',receiptDate:'',content:'',income:0,expense:0,receiptUrl:'',receiptKey:''});
   }
   _pcData.entries.sort((a,b)=>(a.date||'').localeCompare(b.date||''));
 
@@ -2969,6 +2971,7 @@ function renderPettyCash(){
       <span style="background:${locked?'#fee2e2':'#eff6ff'};color:${locked?'#b91c1c':'#1d4ed8'};border:2px solid ${locked?'#fca5a5':'#93c5fd'};border-radius:10px;font-size:13px;padding:4px 14px;font-weight:700;white-space:nowrap">${locked?'🔒':'✏️'} 令和${curWr.y}年${curWr.m}月　${locked?'締済':'記載中'}</span>
       <span id="pcDirtyBadge" style="display:${_pcDirty?'inline':'none'};background:#fef9c3;color:#78350f;border:1px solid #fde68a;border-radius:10px;font-size:11px;padding:2px 8px;font-weight:700">未保存</span>
       <div style="flex:1"></div>
+      <button onclick="pcOpenSearch()" style="background:#f0fdf4;border:1.5px solid #bbf7d0;color:#166534;border-radius:7px;padding:6px 14px;cursor:pointer;font-size:13px;font-weight:600">🔍 領収書検索</button>
       ${pcCanEditLocked()?`<button onclick="${locked?'pcUnlock':'pcLock'}()" style="background:${locked?'#fef9c3':'#fff1f2'};border:1.5px solid ${locked?'#fde68a':'#fecdd3'};color:${locked?'#92400e':'#be123c'};border-radius:7px;padding:6px 16px;cursor:pointer;font-size:13px;font-weight:600">${locked?'🔓 締め解除':'🔒 月次締め'}</button>`:''}
     </div>
 
@@ -3002,6 +3005,7 @@ function renderPettyCash(){
             <th rowspan="2" style="${thSt}">借方金額<br><span style="color:#166534">(収入金額)</span></th>
             <th rowspan="2" style="${thSt}">貸方金額<br><span style="color:#dc2626">(支払金額)</span></th>
             <th rowspan="2" style="${thSt}">差引残高</th>
+            <th rowspan="2" style="${thSt}">領収書<br>画像</th>
             ${canEdit?`<th rowspan="2" style="${thSt}">操作</th>`:''}
           </tr>
           <tr style="background:#f5f7fb">
@@ -3013,19 +3017,21 @@ function renderPettyCash(){
             <th style="${thSt}">内　容</th>
           </tr>
           <tr style="background:#fef9c3">
-            <td colspan="${canEdit?12:11}" style="padding:6px 10px;font-size:12px;font-weight:700;border:1px solid #d1d5db;color:#78350f">${prevLabel}</td>
+            <td colspan="${canEdit?13:12}" style="padding:6px 10px;font-size:12px;font-weight:700;border:1px solid #d1d5db;color:#78350f">${prevLabel}</td>
             <td style="padding:6px 8px;text-align:right;font-weight:700;font-size:13px;border:1px solid #d1d5db;color:#1a2b4a">${Number(_pcData.openingBalance||0).toLocaleString()}</td>
+            <td style="border:1px solid #d1d5db"></td>
             ${canEdit?`<td style="border:1px solid #d1d5db"></td>`:''}
           </tr>
         </thead>
-        <tbody id="pcTbody">${rows||`<tr><td colspan="${canEdit?14:12}" style="text-align:center;padding:20px;color:#9ca3af;font-size:13px">行を追加してください</td></tr>`}</tbody>
+        <tbody id="pcTbody">${rows||`<tr><td colspan="${canEdit?15:13}" style="text-align:center;padding:20px;color:#9ca3af;font-size:13px">行を追加してください</td></tr>`}</tbody>
         <tfoot>
           <tr>
-            <td colspan="${canEdit?10:9}" style="${tfSt('text-align:center')}">合　計</td>
+            <td colspan="${canEdit?11:10}" style="${tfSt('text-align:center')}">合　計</td>
             <td style="${tfSt('text-align:right;color:#166534')}">${totalIn.toLocaleString()}</td>
             <td style="${tfSt('text-align:right;color:#dc2626')}">${totalOut.toLocaleString()}</td>
             <td style="${tfSt('text-align:right;color:'+(finalBal<0?'#dc2626':'#1a2b4a'))}">${finalBal.toLocaleString()}</td>
             <td style="${tfSt('')}"></td>
+            ${canEdit?`<td style="${tfSt('')}"></td>`:''}
           </tr>
         </tfoot>
       </table>
@@ -3192,6 +3198,16 @@ function pcRowHTML(e,i){
     <td style="padding:4px 3px;width:80px;min-width:80px">${num('income',e.income||'',74,'#166534')}</td>
     <td style="padding:4px 3px;width:80px;min-width:80px">${num('expense',e.expense||'',74,'#dc2626')}</td>
     <td id="pcBal${i}" style="padding:4px 6px;text-align:right;font-weight:700;font-size:12px;white-space:nowrap;color:#1a2b4a;width:80px;min-width:80px">0</td>
+    <td style="padding:4px 3px;text-align:center;vertical-align:top;padding-top:8px">
+      ${e.receiptUrl
+        ? `<div style="display:flex;flex-direction:column;gap:3px;align-items:center">
+            <button onclick="pcViewReceipt('${e.receiptUrl.replace(/'/g,"\\'")}','${esc((e.payee||'')+' '+(e.date||''))}')" style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;border-radius:4px;padding:2px 6px;cursor:pointer;font-size:11px;font-weight:700;white-space:nowrap">📎 表示</button>
+            ${ro?'':` <button onclick="pcDeleteReceipt(${i})" style="background:#fee2e2;color:#dc2626;border:1px solid #fecdd3;border-radius:4px;padding:2px 6px;cursor:pointer;font-size:10px;white-space:nowrap">🗑</button>`}
+           </div>`
+        : (ro ? '<span style="color:#d1d5db;font-size:11px">－</span>'
+                : `<button id="pcRcpBtn${i}" onclick="pcUploadReceipt(${i})" style="background:#f0fdf4;color:#166534;border:1px solid #bbf7d0;border-radius:4px;padding:2px 6px;cursor:pointer;font-size:11px;white-space:nowrap">📷</button>`)
+      }
+    </td>
     <td style="padding:4px 3px;text-align:center;padding-top:10px">${ro?'':`<button onclick="pcDeleteRow(${i})" style="background:#fee2e2;color:#dc2626;border:none;border-radius:4px;padding:3px 8px;cursor:pointer;font-size:11px">✕</button>`}</td>
   </tr>`;
 }
@@ -3201,7 +3217,7 @@ function pcAddRow(){
   const cur=JSON.parse(JSON.stringify(load(pcKey(),{openingBalance:0,entries:[]})));
   if(!cur.entries) cur.entries=[];
   const defDate=_pcYearMonth?_pcYearMonth+'-01':todayStr();
-  cur.entries.push({date:defDate,department:'',purchaser:'',invoiceCheck:false,payee:'',receiptDate:'',content:'',income:0,expense:0});
+  cur.entries.push({date:defDate,department:'',purchaser:'',invoiceCheck:false,payee:'',receiptDate:'',content:'',income:0,expense:0,receiptUrl:'',receiptKey:''});
   save(pcKey(),cur); // 先にストレージに保存
   _pcDirty=true;
   const newIdx=cur.entries.length-1;
@@ -5743,6 +5759,296 @@ function startApp(){
     document.getElementById('loginScreen').style.display = 'flex';
   }
 })();
+
+// =========================================================
+// 現金出納帳 領収書管理（Step1: 検索 / Step2: 画像保存）
+// =========================================================
+
+// --- 画像圧縮 ---
+function pcCompressImage(file){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onerror=reject;
+    reader.onload=ev=>{
+      const img=new Image();
+      img.onerror=reject;
+      img.onload=()=>{
+        const MAX=1200;
+        let w=img.width,h=img.height;
+        if(w>MAX||h>MAX){
+          if(w>h){ h=Math.round(h*MAX/w); w=MAX; }
+          else { w=Math.round(w*MAX/h); h=MAX; }
+        }
+        const canvas=document.createElement('canvas');
+        canvas.width=w; canvas.height=h;
+        canvas.getContext('2d').drawImage(img,0,0,w,h);
+        canvas.toBlob(blob=>{
+          if(!blob){ reject(new Error('compress failed')); return; }
+          resolve(blob);
+        },'image/jpeg',0.82);
+      };
+      img.src=ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+// --- 領収書アップロード ---
+async function pcUploadReceipt(i){
+  if(!_pcData||!_pcData.entries[i]){ return; }
+  const input=document.createElement('input');
+  input.type='file';
+  input.accept='image/*';
+  // モバイルの場合はカメラ優先
+  if(/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) input.capture='environment';
+  input.onchange=async()=>{
+    const file=input.files[0];
+    if(!file) return;
+    const btn=document.getElementById('pcRcpBtn'+i);
+    if(btn){ btn.textContent='⏳'; btn.disabled=true; }
+    try{
+      const blob=await pcCompressImage(file);
+      const key=_pcData.entries[i].receiptKey||('receipt_'+Date.now()+'_'+Math.random().toString(36).slice(2));
+      const path=`receipts/${pcKey()}/${key}.jpg`;
+      const ref=_storage.ref(path);
+      await ref.put(blob,{contentType:'image/jpeg'});
+      const url=await ref.getDownloadURL();
+      _pcData.entries[i].receiptUrl=url;
+      _pcData.entries[i].receiptKey=key;
+      _pcDirty=true;
+      save(pcKey(),_pcData);
+      _pcDirty=false;
+      renderPettyCash();
+    } catch(err){
+      console.error('upload error',err);
+      alert('アップロードに失敗しました。Firebase StorageのCORSルール設定を確認してください。\n\n'+err.message);
+      if(btn){ btn.textContent='📷'; btn.disabled=false; }
+    }
+  };
+  input.click();
+}
+
+// --- 領収書削除 ---
+async function pcDeleteReceipt(i){
+  if(!_pcData||!_pcData.entries[i]) return;
+  if(!confirm('この領収書画像を削除しますか？')) return;
+  const entry=_pcData.entries[i];
+  if(entry.receiptKey){
+    try{
+      const path=`receipts/${pcKey()}/${entry.receiptKey}.jpg`;
+      await _storage.ref(path).delete();
+    } catch(e){ /* 既に削除済みでも続行 */ }
+  }
+  delete entry.receiptUrl;
+  delete entry.receiptKey;
+  _pcDirty=true;
+  save(pcKey(),_pcData);
+  _pcDirty=false;
+  renderPettyCash();
+}
+
+// --- 領収書プレビュー ---
+function pcViewReceipt(url,label){
+  const m=document.getElementById('pcReceiptModal');
+  if(!m) return;
+  document.getElementById('pcReceiptImg').src=url;
+  document.getElementById('pcReceiptLabel').textContent=label||'領収書';
+  document.getElementById('pcReceiptLink').href=url;
+  m.style.display='flex';
+}
+function pcCloseReceiptModal(){
+  const m=document.getElementById('pcReceiptModal');
+  if(m) m.style.display='none';
+}
+
+// --- 領収書検索（Step1: テキスト検索） ---
+function pcOpenSearch(){
+  const m=document.getElementById('pcSearchModal');
+  if(m) m.style.display='flex';
+  // 部署プルダウン再構築
+  const sel=document.getElementById('pcSrchDept');
+  if(sel){
+    const pcDepts=load('pcDepts',[]);
+    sel.innerHTML='<option value="">全部署</option>'+pcDepts.map(d=>`<option value="${esc(d.name)}">${esc(d.name)}</option>`).join('');
+  }
+}
+function pcCloseSearch(){
+  const m=document.getElementById('pcSearchModal');
+  if(m) m.style.display='none';
+}
+
+async function pcDoSearch(){
+  const q={
+    payee:(document.getElementById('pcSrchPayee')?.value||'').trim(),
+    content:(document.getElementById('pcSrchContent')?.value||'').trim(),
+    dept:(document.getElementById('pcSrchDept')?.value||'').trim(),
+    purchaser:(document.getElementById('pcSrchPurchaser')?.value||'').trim(),
+    dateFrom:(document.getElementById('pcSrchDateFrom')?.value||'').trim(),
+    dateTo:(document.getElementById('pcSrchDateTo')?.value||'').trim(),
+    amtMin:(document.getElementById('pcSrchAmtMin')?.value||'').trim(),
+    amtMax:(document.getElementById('pcSrchAmtMax')?.value||'').trim(),
+    receiptOnly:document.getElementById('pcSrchReceiptOnly')?.checked,
+  };
+
+  const resEl=document.getElementById('pcSearchResults');
+  resEl.innerHTML='<div style="padding:12px;color:#6b7280;font-size:13px">検索中...</div>';
+
+  // _cache内の全 pettyCash_* キーを収集
+  const allKeys=Object.keys(_cache).filter(k=>k.startsWith('pettyCash_'));
+
+  // Firestoreから全月データを取得（キャッシュにない月も含む）
+  let rows=[];
+  try{
+    // キャッシュからまず全データを確認
+    const pcDepts=load('pcDepts',[]);
+    const deptMap={};
+    pcDepts.forEach(d=>deptMap[d.id]=d.name);
+
+    for(const k of allKeys){
+      const data=_cache[k];
+      if(!data||!data.entries) continue;
+      // キーから部署IDと年月を逆引き: pettyCash_<deptId>_<YYYY-MM>
+      const parts=k.replace('pettyCash_','').split('_');
+      const deptId=parts[0];
+      const ym=parts[1];
+      const deptName=deptMap[deptId]||deptId;
+      data.entries.forEach((e,idx)=>{
+        rows.push({...e, _key:k, _deptName:deptName, _ym:ym, _idx:idx});
+      });
+    }
+
+    // フィルタリング
+    rows=rows.filter(r=>{
+      if(q.payee&&!String(r.payee||'').includes(q.payee)) return false;
+      if(q.content&&!String(r.content||'').includes(q.content)) return false;
+      if(q.dept&&String(r.department||'')!==q.dept) return false;
+      if(q.purchaser&&!String(r.purchaser||'').includes(q.purchaser)) return false;
+      if(q.dateFrom&&(r.date||'')<q.dateFrom) return false;
+      if(q.dateTo&&(r.date||'')>q.dateTo) return false;
+      const exp=Number(r.expense)||0;
+      if(q.amtMin&&exp<Number(q.amtMin)) return false;
+      if(q.amtMax&&exp>Number(q.amtMax)) return false;
+      if(q.receiptOnly&&!r.receiptUrl) return false;
+      return true;
+    });
+
+    // 日付順ソート
+    rows.sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+
+    if(rows.length===0){
+      resEl.innerHTML='<div style="padding:16px;color:#9ca3af;text-align:center;font-size:13px">該当するデータがありません</div>';
+      return;
+    }
+
+    const thS='padding:6px 8px;font-size:11px;font-weight:700;background:#1a2b4a;color:#fff;border:1px solid #374151;white-space:nowrap;text-align:center';
+    const tdS='padding:5px 7px;font-size:12px;border:1px solid #e5e7eb;vertical-align:middle';
+    const html=`<div style="font-size:12px;color:#475569;margin-bottom:6px">${rows.length}件 ヒット</div>
+      <div style="overflow:auto;max-height:400px;border-radius:6px;border:1px solid #e5e7eb">
+      <table style="width:100%;border-collapse:collapse;min-width:700px">
+        <thead>
+          <tr>
+            <th style="${thS}">日付</th>
+            <th style="${thS}">部署</th>
+            <th style="${thS}">購入者</th>
+            <th style="${thS}">支払先</th>
+            <th style="${thS}">内容</th>
+            <th style="${thS}">支払金額</th>
+            <th style="${thS}">領収書</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map(r=>{
+            const wrD=r.date?toWareki(r.date):'-';
+            const dateLabel=r.date?`R${wrD.y}/${String(wrD.m).padStart(2,'0')}/${String(wrD.d).padStart(2,'0')}`:'-';
+            const rcpBtn=r.receiptUrl
+              ?`<button onclick="pcViewReceipt('${r.receiptUrl.replace(/'/g,"\\'")}','${esc(r.payee||'')} ${esc(r.date||'')}')" style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;border-radius:4px;padding:2px 8px;cursor:pointer;font-size:11px;font-weight:600">📎 表示</button>`
+              :'<span style="color:#d1d5db;font-size:11px">なし</span>';
+            return `<tr style="background:#fff">
+              <td style="${tdS};white-space:nowrap">${dateLabel}</td>
+              <td style="${tdS}">${esc(r.department||r._deptName||'')}</td>
+              <td style="${tdS}">${esc(r.purchaser||'')}</td>
+              <td style="${tdS}">${esc(r.payee||'')}</td>
+              <td style="${tdS};max-width:200px;word-break:break-all">${esc(r.content||'')}</td>
+              <td style="${tdS};text-align:right;color:#dc2626;font-weight:600">${(Number(r.expense)||0).toLocaleString()}</td>
+              <td style="${tdS};text-align:center">${rcpBtn}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table></div>`;
+    resEl.innerHTML=html;
+  } catch(err){
+    resEl.innerHTML=`<div style="color:#dc2626;padding:12px;font-size:13px">エラーが発生しました：${esc(err.message)}</div>`;
+  }
+}
 </script>
+
+<!-- 領収書プレビューモーダル -->
+<div id="pcReceiptModal" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.7);align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this)pcCloseReceiptModal()">
+  <div style="background:#fff;border-radius:12px;max-width:700px;width:100%;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.4)">
+    <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid #e5e7eb">
+      <span id="pcReceiptLabel" style="font-size:14px;font-weight:700;color:#1a2b4a;flex:1">領収書</span>
+      <a id="pcReceiptLink" href="#" target="_blank" style="font-size:12px;color:#1d4ed8;text-decoration:none;border:1px solid #bfdbfe;border-radius:5px;padding:3px 10px;background:#eff6ff">🔗 別タブで開く</a>
+      <button onclick="pcCloseReceiptModal()" style="background:#f1f5f9;border:none;border-radius:6px;padding:4px 12px;cursor:pointer;font-size:13px;color:#475569">✕ 閉じる</button>
+    </div>
+    <div style="overflow:auto;padding:12px;flex:1;display:flex;align-items:center;justify-content:center;background:#f8fafc">
+      <img id="pcReceiptImg" src="" alt="領収書" style="max-width:100%;max-height:70vh;border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,.15)">
+    </div>
+  </div>
+</div>
+
+<!-- 領収書検索モーダル -->
+<div id="pcSearchModal" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.5);align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this)pcCloseSearch()">
+  <div style="background:#fff;border-radius:12px;max-width:640px;width:100%;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+    <div style="display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid #e5e7eb;background:#1a2b4a;border-radius:12px 12px 0 0">
+      <span style="font-size:15px;font-weight:700;color:#fff;flex:1">🔍 領収書・取引検索</span>
+      <button onclick="pcCloseSearch()" style="background:rgba(255,255,255,.15);border:none;border-radius:6px;padding:4px 12px;cursor:pointer;font-size:13px;color:#fff">✕ 閉じる</button>
+    </div>
+    <div style="padding:16px 18px;overflow:auto;flex:1">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+        <div>
+          <label style="font-size:11px;color:#6b7280;font-weight:600;display:block;margin-bottom:3px">支払先</label>
+          <input id="pcSrchPayee" type="text" placeholder="支払先を入力" style="width:100%;border:1px solid #e5e7eb;border-radius:6px;padding:6px 10px;font-size:12px">
+        </div>
+        <div>
+          <label style="font-size:11px;color:#6b7280;font-weight:600;display:block;margin-bottom:3px">内容</label>
+          <input id="pcSrchContent" type="text" placeholder="内容を入力" style="width:100%;border:1px solid #e5e7eb;border-radius:6px;padding:6px 10px;font-size:12px">
+        </div>
+        <div>
+          <label style="font-size:11px;color:#6b7280;font-weight:600;display:block;margin-bottom:3px">部署</label>
+          <select id="pcSrchDept" style="width:100%;border:1px solid #e5e7eb;border-radius:6px;padding:6px 10px;font-size:12px">
+            <option value="">全部署</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:11px;color:#6b7280;font-weight:600;display:block;margin-bottom:3px">購入者</label>
+          <input id="pcSrchPurchaser" type="text" placeholder="購入者名" style="width:100%;border:1px solid #e5e7eb;border-radius:6px;padding:6px 10px;font-size:12px">
+        </div>
+        <div>
+          <label style="font-size:11px;color:#6b7280;font-weight:600;display:block;margin-bottom:3px">日付（開始）</label>
+          <input id="pcSrchDateFrom" type="date" style="width:100%;border:1px solid #e5e7eb;border-radius:6px;padding:6px 10px;font-size:12px">
+        </div>
+        <div>
+          <label style="font-size:11px;color:#6b7280;font-weight:600;display:block;margin-bottom:3px">日付（終了）</label>
+          <input id="pcSrchDateTo" type="date" style="width:100%;border:1px solid #e5e7eb;border-radius:6px;padding:6px 10px;font-size:12px">
+        </div>
+        <div>
+          <label style="font-size:11px;color:#6b7280;font-weight:600;display:block;margin-bottom:3px">支払金額（最小）</label>
+          <input id="pcSrchAmtMin" type="number" placeholder="0" min="0" style="width:100%;border:1px solid #e5e7eb;border-radius:6px;padding:6px 10px;font-size:12px">
+        </div>
+        <div>
+          <label style="font-size:11px;color:#6b7280;font-weight:600;display:block;margin-bottom:3px">支払金額（最大）</label>
+          <input id="pcSrchAmtMax" type="number" placeholder="上限なし" min="0" style="width:100%;border:1px solid #e5e7eb;border-radius:6px;padding:6px 10px;font-size:12px">
+        </div>
+      </div>
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#475569;margin-bottom:14px;cursor:pointer">
+        <input id="pcSrchReceiptOnly" type="checkbox" style="width:14px;height:14px">
+        領収書画像が添付されているものだけ表示
+      </label>
+      <button onclick="pcDoSearch()" style="width:100%;background:linear-gradient(135deg,#1a56db,#1e40af);color:#fff;border:none;border-radius:8px;padding:10px;cursor:pointer;font-size:14px;font-weight:700;margin-bottom:14px">🔍 検索する</button>
+      <div id="pcSearchResults"></div>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
