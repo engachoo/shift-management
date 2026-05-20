@@ -2997,7 +2997,8 @@ function renderPettyCash(){
         <thead>
           <tr style="background:#1a2b4a;color:#fff">
             ${canEdit?`<th rowspan="2" style="${thSt}"><input type="checkbox" onchange="pcSelectAll(this.checked)" style="width:15px;height:15px;cursor:pointer" title="全選択/解除"></th>`:''}
-            <th colspan="3" style="padding:7px 5px;font-size:11px;border:1px solid #374151">精　算　日</th>
+            <th rowspan="2" style="${thSt};width:80px;min-width:80px;background:#0f4c2a">📷<br>領収書</th>
+            <th rowspan="2" style="${thSt}">精算日<br><span style="font-size:10px;font-weight:400">(日)</span></th>
             <th rowspan="2" style="${thSt}">部門</th>
             <th rowspan="2" style="${thSt}">購入者</th>
             <th rowspan="2" style="${thSt}">インボイス<br>登録番号<br>チェック</th>
@@ -3005,32 +3006,26 @@ function renderPettyCash(){
             <th rowspan="2" style="${thSt}">借方金額<br><span style="color:#166534">(収入金額)</span></th>
             <th rowspan="2" style="${thSt}">貸方金額<br><span style="color:#dc2626">(支払金額)</span></th>
             <th rowspan="2" style="${thSt}">差引残高</th>
-            <th rowspan="2" style="${thSt}">領収書<br>画像</th>
             ${canEdit?`<th rowspan="2" style="${thSt}">操作</th>`:''}
           </tr>
           <tr style="background:#f5f7fb">
-            <th style="${thSt}">年</th>
-            <th style="${thSt}">月</th>
-            <th style="${thSt}">日</th>
             <th style="${thSt}">支払先</th>
             <th style="${thSt}">領収書日付</th>
             <th style="${thSt}">内　容</th>
           </tr>
           <tr style="background:#fef9c3">
-            <td colspan="${canEdit?13:12}" style="padding:6px 10px;font-size:12px;font-weight:700;border:1px solid #d1d5db;color:#78350f">${prevLabel}</td>
+            <td colspan="${canEdit?11:10}" style="padding:6px 10px;font-size:12px;font-weight:700;border:1px solid #d1d5db;color:#78350f">${prevLabel}</td>
             <td style="padding:6px 8px;text-align:right;font-weight:700;font-size:13px;border:1px solid #d1d5db;color:#1a2b4a">${Number(_pcData.openingBalance||0).toLocaleString()}</td>
-            <td style="border:1px solid #d1d5db"></td>
             ${canEdit?`<td style="border:1px solid #d1d5db"></td>`:''}
           </tr>
         </thead>
-        <tbody id="pcTbody">${rows||`<tr><td colspan="${canEdit?15:13}" style="text-align:center;padding:20px;color:#9ca3af;font-size:13px">行を追加してください</td></tr>`}</tbody>
+        <tbody id="pcTbody">${rows||`<tr><td colspan="${canEdit?13:11}" style="text-align:center;padding:20px;color:#9ca3af;font-size:13px">行を追加してください</td></tr>`}</tbody>
         <tfoot>
           <tr>
-            <td colspan="${canEdit?11:10}" style="${tfSt('text-align:center')}">合　計</td>
+            <td colspan="${canEdit?9:8}" style="${tfSt('text-align:center')}">合　計</td>
             <td style="${tfSt('text-align:right;color:#166534')}">${totalIn.toLocaleString()}</td>
             <td style="${tfSt('text-align:right;color:#dc2626')}">${totalOut.toLocaleString()}</td>
             <td style="${tfSt('text-align:right;color:'+(finalBal<0?'#dc2626':'#1a2b4a'))}">${finalBal.toLocaleString()}</td>
-            <td style="${tfSt('')}"></td>
             ${canEdit?`<td style="${tfSt('')}"></td>`:''}
           </tr>
         </tfoot>
@@ -3184,31 +3179,31 @@ function pcRowHTML(e,i){
   const chkCell=ro
     ?`<span style="font-size:14px">${e.invoiceCheck?'☑':'□'}</span>`
     :`<input type="checkbox"${e.invoiceCheck?' checked':''} onchange="pcField(${i},'invoiceCheck',this.checked)" style="width:17px;height:17px;cursor:pointer">`;
-  return `<tr style="border-bottom:1px solid #f1f5f9;vertical-align:top">
-    ${ro?'':`<td style="padding:4px 3px;text-align:center;padding-top:10px"><input type="checkbox" class="pcRowCheck" data-idx="${i}" style="width:15px;height:15px;cursor:pointer"></td>`}
-    <td style="padding:4px 3px;text-align:center;font-size:12px;color:#475569;white-space:nowrap">${ryYear}</td>
-    <td style="padding:4px 3px;text-align:center;font-size:12px;color:#475569;white-space:nowrap">${ryMonth}</td>
+  // 領収書セル（大きく表示）
+  const rcpCell=e.receiptUrl
+    ? `<div style="display:flex;flex-direction:column;gap:4px;align-items:center">
+        <button onclick="pcViewReceipt('${e.receiptUrl.replace(/'/g,"\\'")}','${esc((e.payee||'')+' '+(e.date||''))}')"
+          style="background:#1d4ed8;color:#fff;border:none;border-radius:6px;padding:6px 4px;cursor:pointer;font-size:13px;font-weight:700;width:68px;line-height:1.3">📎<br><span style="font-size:10px">表示</span></button>
+        ${ro?'':`<button onclick="pcDeleteReceipt(${i})" style="background:#fee2e2;color:#dc2626;border:1px solid #fecdd3;border-radius:5px;padding:3px 4px;cursor:pointer;font-size:10px;width:68px">🗑 削除</button>`}
+       </div>`
+    : ro
+      ? `<span style="color:#d1d5db;font-size:20px">－</span>`
+      : `<button id="pcRcpBtn${i}" onclick="pcUploadReceipt(${i})"
+           style="background:linear-gradient(135deg,#166534,#15803d);color:#fff;border:none;border-radius:6px;padding:8px 4px;cursor:pointer;font-size:14px;font-weight:700;width:68px;line-height:1.4;box-shadow:0 2px 4px rgba(22,101,52,.3)">📷<br><span style="font-size:10px">撮影・選択</span></button>`;
+  return `<tr style="border-bottom:1px solid #f1f5f9;vertical-align:middle">
+    ${ro?'':`<td style="padding:4px 3px;text-align:center"><input type="checkbox" class="pcRowCheck" data-idx="${i}" style="width:15px;height:15px;cursor:pointer"></td>`}
+    <td style="padding:6px 4px;text-align:center;background:#f0fdf4;width:80px;min-width:80px">${rcpCell}</td>
     <td style="padding:4px 3px;text-align:center">${dayCell}</td>
     <td style="padding:4px 3px">${inp('department',e.department,'部門',60)}</td>
     <td style="padding:4px 3px">${inp('purchaser',e.purchaser,'購入者',64)}</td>
-    <td style="padding:4px 3px;text-align:center;padding-top:10px">${chkCell}</td>
+    <td style="padding:4px 3px;text-align:center">${chkCell}</td>
     <td style="padding:4px 3px;width:17%">${ta('payee',e.payee,'支払先',100)}</td>
     <td style="padding:4px 3px">${inp('receiptDate',e.receiptDate,'M/D',48)}</td>
     <td style="padding:4px 3px;width:25%">${ta('content',e.content,'内容',140)}</td>
     <td style="padding:4px 3px;width:80px;min-width:80px">${num('income',e.income||'',74,'#166534')}</td>
     <td style="padding:4px 3px;width:80px;min-width:80px">${num('expense',e.expense||'',74,'#dc2626')}</td>
     <td id="pcBal${i}" style="padding:4px 6px;text-align:right;font-weight:700;font-size:12px;white-space:nowrap;color:#1a2b4a;width:80px;min-width:80px">0</td>
-    <td style="padding:4px 3px;text-align:center;vertical-align:top;padding-top:8px">
-      ${e.receiptUrl
-        ? `<div style="display:flex;flex-direction:column;gap:3px;align-items:center">
-            <button onclick="pcViewReceipt('${e.receiptUrl.replace(/'/g,"\\'")}','${esc((e.payee||'')+' '+(e.date||''))}')" style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;border-radius:4px;padding:2px 6px;cursor:pointer;font-size:11px;font-weight:700;white-space:nowrap">📎 表示</button>
-            ${ro?'':` <button onclick="pcDeleteReceipt(${i})" style="background:#fee2e2;color:#dc2626;border:1px solid #fecdd3;border-radius:4px;padding:2px 6px;cursor:pointer;font-size:10px;white-space:nowrap">🗑</button>`}
-           </div>`
-        : (ro ? '<span style="color:#d1d5db;font-size:11px">－</span>'
-                : `<button id="pcRcpBtn${i}" onclick="pcUploadReceipt(${i})" style="background:#f0fdf4;color:#166534;border:1px solid #bbf7d0;border-radius:4px;padding:2px 6px;cursor:pointer;font-size:11px;white-space:nowrap">📷</button>`)
-      }
-    </td>
-    <td style="padding:4px 3px;text-align:center;padding-top:10px">${ro?'':`<button onclick="pcDeleteRow(${i})" style="background:#fee2e2;color:#dc2626;border:none;border-radius:4px;padding:3px 8px;cursor:pointer;font-size:11px">✕</button>`}</td>
+    <td style="padding:4px 3px;text-align:center">${ro?'':`<button onclick="pcDeleteRow(${i})" style="background:#fee2e2;color:#dc2626;border:none;border-radius:4px;padding:3px 8px;cursor:pointer;font-size:11px">✕</button>`}</td>
   </tr>`;
 }
 function pcAddRow(){
