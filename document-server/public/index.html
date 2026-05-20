@@ -1,0 +1,1252 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>書類管理システム｜電子帳簿保存法対応</title>
+<style>
+:root {
+  --pri:#1e40af; --pri2:#3b82f6; --pri-light:#eff6ff;
+  --ok:#16a34a;  --ok-light:#f0fdf4;
+  --warn:#d97706; --warn-light:#fffbeb;
+  --ng:#dc2626;  --ng-light:#fef2f2;
+  --bg:#f1f5f9;  --surface:#fff; --border:#e2e8f0;
+  --text:#1e293b; --muted:#64748b;
+  --sidebar:220px; --header:58px;
+  --radius:8px; --shadow:0 1px 3px rgba(0,0,0,.1),0 1px 2px rgba(0,0,0,.06);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Hiragino Sans',sans-serif;
+  background:var(--bg);color:var(--text);font-size:14px}
+
+/* ── LOGIN ── */
+#loginPage{display:flex;align-items:center;justify-content:center;
+  min-height:100vh;background:linear-gradient(135deg,#1e3a8a,#1e40af)}
+.login-card{background:var(--surface);border-radius:12px;padding:40px 36px;
+  width:380px;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.login-logo{text-align:center;margin-bottom:28px}
+.login-logo h1{font-size:20px;color:var(--pri);font-weight:700;margin-top:8px}
+.login-logo p{font-size:12px;color:var(--muted);margin-top:4px}
+.form-group{margin-bottom:16px}
+.form-group label{display:block;font-size:12px;font-weight:600;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.form-group input,.form-group select,.form-group textarea{
+  width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:var(--radius);
+  font-size:14px;outline:none;transition:border-color .15s}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--pri2)}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 18px;border:none;
+  border-radius:var(--radius);font-size:14px;font-weight:600;cursor:pointer;transition:all .15s}
+.btn-primary{background:var(--pri);color:#fff}
+.btn-primary:hover{background:#1e3a8a}
+.btn-success{background:var(--ok);color:#fff}
+.btn-success:hover{background:#15803d}
+.btn-danger{background:var(--ng);color:#fff}
+.btn-danger:hover{background:#b91c1c}
+.btn-ghost{background:transparent;color:var(--muted);border:1.5px solid var(--border)}
+.btn-ghost:hover{background:var(--bg)}
+.btn-sm{padding:6px 12px;font-size:13px}
+.btn-block{width:100%;justify-content:center;padding:12px}
+.error-msg{background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;
+  padding:10px 12px;border-radius:var(--radius);margin-bottom:16px;font-size:13px}
+
+/* ── LAYOUT ── */
+#app{display:none}
+.header{position:fixed;top:0;left:0;right:0;height:var(--header);
+  background:var(--pri);color:#fff;display:flex;align-items:center;
+  padding:0 20px;z-index:100;gap:12px;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+.header-logo{font-weight:700;font-size:16px;flex:1}
+.header-logo span{font-size:12px;opacity:.7;margin-left:6px;font-weight:400}
+.header-user{display:flex;align-items:center;gap:12px;font-size:13px}
+.header-user .role-badge{background:rgba(255,255,255,.2);padding:2px 8px;
+  border-radius:20px;font-size:11px}
+.sidebar{position:fixed;top:var(--header);left:0;width:var(--sidebar);
+  height:calc(100vh - var(--header));background:var(--surface);
+  border-right:1px solid var(--border);overflow-y:auto;padding:12px 0}
+.nav-section{padding:8px 16px 4px;font-size:11px;font-weight:700;
+  color:var(--muted);text-transform:uppercase;letter-spacing:.8px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 16px;
+  cursor:pointer;color:var(--text);transition:all .12s;font-size:13px;
+  border-left:3px solid transparent}
+.nav-item:hover{background:var(--pri-light);color:var(--pri)}
+.nav-item.active{background:var(--pri-light);color:var(--pri);
+  border-left-color:var(--pri);font-weight:600}
+.nav-item .badge{margin-left:auto;background:var(--warn);color:#fff;
+  border-radius:20px;padding:1px 7px;font-size:11px;font-weight:700}
+.main{margin-left:var(--sidebar);margin-top:var(--header);
+  min-height:calc(100vh - var(--header));padding:24px}
+.page{display:none}
+.page.active{display:block}
+.page-title{font-size:20px;font-weight:700;margin-bottom:20px;
+  display:flex;align-items:center;gap:10px}
+.page-title small{font-size:13px;color:var(--muted);font-weight:400}
+
+/* ── CARDS ── */
+.card{background:var(--surface);border-radius:var(--radius);
+  border:1px solid var(--border);box-shadow:var(--shadow)}
+.card-header{padding:16px 20px;border-bottom:1px solid var(--border);
+  font-weight:600;display:flex;align-items:center;justify-content:space-between}
+.card-body{padding:20px}
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;margin-bottom:24px}
+.stat-card{background:var(--surface);border-radius:var(--radius);
+  border:1px solid var(--border);padding:20px;text-align:center}
+.stat-card .val{font-size:36px;font-weight:700;line-height:1}
+.stat-card .lbl{font-size:12px;color:var(--muted);margin-top:6px}
+.stat-card.c-blue .val{color:var(--pri)}
+.stat-card.c-orange .val{color:var(--warn)}
+.stat-card.c-green .val{color:var(--ok)}
+.stat-card.c-red .val{color:var(--ng)}
+
+/* ── TABLE ── */
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th{background:#f8fafc;padding:10px 14px;text-align:left;font-size:12px;
+  font-weight:700;color:var(--muted);border-bottom:2px solid var(--border);
+  white-space:nowrap}
+td{padding:10px 14px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#f8fafc}
+.clickable{cursor:pointer}
+.clickable:hover td{background:var(--pri-light)!important}
+
+/* ── BADGES ── */
+.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700}
+.badge-pending{background:var(--warn-light);color:var(--warn)}
+.badge-approved{background:var(--ok-light);color:var(--ok)}
+.badge-rejected{background:var(--ng-light);color:var(--ng)}
+.badge-invoice{background:#eff6ff;color:#1e40af}
+.badge-receipt{background:#f0fdf4;color:#15803d}
+.badge-other{background:#f8fafc;color:#64748b}
+
+/* ── SEARCH PANEL ── */
+.search-panel{background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);padding:16px 20px;margin-bottom:16px}
+.search-row{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}
+.search-group{display:flex;flex-direction:column;gap:4px}
+.search-group label{font-size:11px;font-weight:600;color:var(--muted)}
+.search-group input,.search-group select{
+  padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;
+  font-size:13px;outline:none;min-width:120px}
+.search-group input:focus,.search-group select:focus{border-color:var(--pri2)}
+
+/* ── UPLOAD ── */
+.drop-zone{border:2px dashed var(--border);border-radius:var(--radius);
+  padding:40px 20px;text-align:center;cursor:pointer;transition:all .15s;background:var(--bg)}
+.drop-zone:hover,.drop-zone.drag-over{border-color:var(--pri2);background:var(--pri-light)}
+.drop-zone .ico{font-size:48px;line-height:1;margin-bottom:12px}
+.drop-zone p{color:var(--muted);font-size:14px}
+.drop-zone strong{color:var(--pri)}
+#fileInput{display:none}
+.file-preview-row{display:flex;align-items:center;gap:10px;
+  background:var(--pri-light);padding:10px 14px;border-radius:var(--radius);margin-bottom:12px}
+
+/* ── PAGINATION ── */
+.pagination{display:flex;align-items:center;gap:8px;margin-top:16px;justify-content:center}
+.pagination button{padding:6px 12px;border:1.5px solid var(--border);background:var(--surface);
+  border-radius:6px;cursor:pointer;font-size:13px}
+.pagination button.active{background:var(--pri);color:#fff;border-color:var(--pri)}
+.pagination button:disabled{opacity:.4;cursor:default}
+.pag-info{font-size:13px;color:var(--muted)}
+
+/* ── MODAL ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);
+  z-index:200;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:var(--surface);border-radius:12px;
+  width:min(960px,95vw);max-height:90vh;display:flex;flex-direction:column;
+  box-shadow:0 25px 50px rgba(0,0,0,.3);overflow:hidden}
+.modal-head{padding:16px 20px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:12px}
+.modal-head h3{flex:1;font-size:16px;font-weight:700}
+.modal-body{display:flex;flex:1;overflow:hidden}
+.modal-preview{flex:1;background:#1e293b;display:flex;align-items:center;justify-content:center;
+  min-height:400px;position:relative}
+.modal-preview iframe,.modal-preview img{width:100%;height:100%;object-fit:contain}
+.modal-preview .no-preview{color:rgba(255,255,255,.5);text-align:center;padding:20px}
+.modal-meta{width:320px;border-left:1px solid var(--border);
+  display:flex;flex-direction:column;overflow:hidden}
+.modal-meta-body{flex:1;overflow-y:auto;padding:16px}
+.meta-item{margin-bottom:14px}
+.meta-item .lbl{font-size:11px;font-weight:700;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.meta-item .val{font-size:14px;color:var(--text);word-break:break-all}
+.history-item{display:flex;gap:8px;margin-bottom:10px;font-size:13px}
+.history-dot{width:8px;height:8px;border-radius:50%;margin-top:5px;flex-shrink:0}
+.history-dot.submitted{background:var(--muted)}
+.history-dot.approved{background:var(--ok)}
+.history-dot.rejected{background:var(--ng)}
+.modal-foot{padding:12px 16px;border-top:1px solid var(--border);
+  display:flex;gap:8px;justify-content:flex-end;background:#f8fafc}
+
+/* ── TOAST ── */
+#toast{position:fixed;bottom:24px;right:24px;z-index:999;display:flex;flex-direction:column;gap:8px}
+.toast-item{padding:12px 20px;border-radius:var(--radius);color:#fff;font-size:14px;
+  box-shadow:0 4px 12px rgba(0,0,0,.2);animation:slideIn .2s ease}
+.toast-item.ok{background:var(--ok)}
+.toast-item.err{background:var(--ng)}
+.toast-item.info{background:var(--pri)}
+@keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+
+/* ── UTILS ── */
+.text-muted{color:var(--muted)}
+.text-right{text-align:right}
+.gap-8{display:flex;gap:8px}
+.mt-12{margin-top:12px}
+.empty{text-align:center;padding:40px;color:var(--muted)}
+.loading{text-align:center;padding:40px;color:var(--muted)}
+hr{border:none;border-top:1px solid var(--border);margin:16px 0}
+.compliance-banner{background:linear-gradient(135deg,#1e3a8a,#1e40af);color:#fff;
+  border-radius:var(--radius);padding:16px 20px;margin-bottom:20px}
+.compliance-banner h3{font-size:14px;margin-bottom:6px}
+.compliance-banner ul{font-size:12px;opacity:.85;list-style:none;display:flex;gap:16px;flex-wrap:wrap}
+.compliance-banner ul li::before{content:"✓ ";font-weight:700}
+</style>
+</head>
+<body>
+
+<!-- ===== LOGIN ===== -->
+<div id="loginPage">
+  <div class="login-card">
+    <div class="login-logo">
+      <div style="font-size:40px">📂</div>
+      <h1>書類管理システム</h1>
+      <p>電子帳簿保存法対応 請求書・領収書保管</p>
+    </div>
+    <div id="loginError" class="error-msg" style="display:none"></div>
+    <form id="loginForm">
+      <div class="form-group">
+        <label>メールアドレス</label>
+        <input type="email" id="loginEmail" placeholder="admin@dainichi.co.jp" required autocomplete="username">
+      </div>
+      <div class="form-group">
+        <label>パスワード</label>
+        <input type="password" id="loginPassword" required autocomplete="current-password">
+      </div>
+      <button type="submit" class="btn btn-primary btn-block" id="loginBtn">ログイン</button>
+    </form>
+  </div>
+</div>
+
+<!-- ===== APP ===== -->
+<div id="app">
+  <!-- HEADER -->
+  <header class="header">
+    <div class="header-logo">📂 書類管理システム <span>電子帳簿保存法対応</span></div>
+    <div class="header-user">
+      <span id="hdrCompany" class="text-muted" style="font-size:12px"></span>
+      <span id="hdrName"></span>
+      <span id="hdrRole" class="role-badge"></span>
+      <button class="btn btn-ghost btn-sm" onclick="logout()">ログアウト</button>
+    </div>
+  </header>
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="nav-section">メニュー</div>
+    <div class="nav-item active" onclick="navigate('dashboard')" data-page="dashboard">
+      📊 ダッシュボード
+    </div>
+    <div class="nav-item" onclick="navigate('upload')" data-page="upload">
+      ⬆️ 書類登録
+    </div>
+    <div class="nav-item" onclick="navigate('documents')" data-page="documents">
+      📋 書類一覧
+    </div>
+    <div class="nav-item" onclick="navigate('approval')" data-page="approval">
+      ✅ 承認待ち <span class="badge" id="pendingBadge" style="display:none">0</span>
+    </div>
+    <div class="nav-section admin-only">管理</div>
+    <div class="nav-item admin-only" onclick="navigate('users')" data-page="users">
+      👥 ユーザー管理
+    </div>
+    <div class="nav-item admin-only" onclick="navigate('companies')" data-page="companies">
+      🏢 会社管理
+    </div>
+    <div class="nav-item admin-only" onclick="navigate('audit')" data-page="audit">
+      📜 監査ログ
+    </div>
+    <div style="padding:16px;margin-top:auto">
+      <button class="btn btn-ghost btn-sm" style="width:100%" onclick="showChangePw()">
+        🔑 パスワード変更
+      </button>
+    </div>
+  </nav>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- DASHBOARD -->
+    <section class="page active" id="pageDashboard">
+      <div class="page-title">📊 ダッシュボード</div>
+      <div class="compliance-banner">
+        <h3>電子帳簿保存法 対応状況</h3>
+        <ul>
+          <li>真実性の確保（SHA-256ハッシュ・改ざん検知）</li>
+          <li>可視性の確保（全文書の検索・表示可能）</li>
+          <li>検索要件（取引日・金額・取引先で検索）</li>
+          <li>承認ワークフロー（提出→承認の証跡記録）</li>
+          <li>監査ログ（全操作の記録）</li>
+        </ul>
+      </div>
+      <div class="stat-grid" id="statGrid">
+        <div class="stat-card c-blue"><div class="val" id="statTotal">-</div><div class="lbl">総文書数</div></div>
+        <div class="stat-card c-orange"><div class="val" id="statPending">-</div><div class="lbl">承認待ち</div></div>
+        <div class="stat-card c-green"><div class="val" id="statApproved">-</div><div class="lbl">承認済み</div></div>
+        <div class="stat-card c-blue"><div class="val" id="statMonth">-</div><div class="lbl">今月登録</div></div>
+        <div class="stat-card"><div class="val" id="statYear">-</div><div class="lbl">今年度登録</div></div>
+      </div>
+      <div class="card">
+        <div class="card-header">最近の書類（直近20件）</div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>種別</th><th>取引日</th><th>取引先</th><th>金額</th><th>ステータス</th><th>登録者</th><th>登録日時</th></tr>
+            </thead>
+            <tbody id="recentDocs"><tr><td colspan="7" class="loading">読み込み中...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- UPLOAD -->
+    <section class="page" id="pageUpload">
+      <div class="page-title">⬆️ 書類登録</div>
+      <div class="card" style="max-width:700px">
+        <div class="card-header">新規書類をアップロード</div>
+        <div class="card-body">
+          <div id="dupWarn" class="error-msg" style="display:none;background:#fffbeb;border-color:#fcd34d;color:#b45309"></div>
+          <div id="uploadError" class="error-msg" style="display:none"></div>
+
+          <!-- ファイル選択 -->
+          <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+            <div class="ico">📄</div>
+            <p><strong>クリックしてファイルを選択</strong>またはここにドラッグ＆ドロップ</p>
+            <p style="font-size:12px;margin-top:8px">対応形式: PDF・JPEG・PNG・TIFF・WEBP（最大50MB）</p>
+          </div>
+          <input type="file" id="fileInput" accept=".pdf,.jpg,.jpeg,.png,.tif,.tiff,.webp">
+          <div id="fileSelectedRow" class="file-preview-row" style="display:none">
+            <span id="fileIcon" style="font-size:24px">📄</span>
+            <div style="flex:1">
+              <div id="fileName" style="font-weight:600;font-size:13px"></div>
+              <div id="fileSize" class="text-muted" style="font-size:12px"></div>
+            </div>
+            <button class="btn btn-ghost btn-sm" onclick="clearFile()">✕ 削除</button>
+          </div>
+
+          <!-- フォーム -->
+          <div id="uploadForm" style="display:none">
+            <div class="form-group admin-only" id="companySelectGroup">
+              <label>会社</label>
+              <select id="upCompany"></select>
+            </div>
+            <div class="form-group">
+              <label>書類種別 <span style="color:var(--ng)">*</span></label>
+              <select id="upType">
+                <option value="invoice">請求書</option>
+                <option value="receipt">領収書</option>
+                <option value="other">その他</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>取引年月日 <span style="color:var(--ng)">*</span></label>
+              <input type="date" id="upDate">
+            </div>
+            <div class="form-group">
+              <label>取引先（相手先）<span style="color:var(--ng)">*</span></label>
+              <input type="text" id="upCounterparty" placeholder="例：株式会社○○">
+            </div>
+            <div class="form-group">
+              <label>金額（税込・円）</label>
+              <input type="number" id="upAmount" placeholder="例：110000" min="0">
+            </div>
+            <div class="form-group">
+              <label>摘要・備考</label>
+              <textarea id="upDescription" rows="3" placeholder="内容の説明（任意）"></textarea>
+            </div>
+            <div class="gap-8">
+              <button class="btn btn-primary" onclick="submitUpload()">📤 登録する</button>
+              <button class="btn btn-ghost" onclick="clearUploadForm()">リセット</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- DOCUMENTS -->
+    <section class="page" id="pageDocuments">
+      <div class="page-title">
+        📋 書類一覧
+        <div style="margin-left:auto;display:flex;gap:8px">
+          <button class="btn btn-ghost btn-sm" onclick="exportCSV()">📥 CSV出力</button>
+        </div>
+      </div>
+
+      <div class="search-panel">
+        <div class="search-row">
+          <div class="search-group">
+            <label>書類種別</label>
+            <select id="srType">
+              <option value="">すべて</option>
+              <option value="invoice">請求書</option>
+              <option value="receipt">領収書</option>
+              <option value="other">その他</option>
+            </select>
+          </div>
+          <div class="search-group">
+            <label>取引日（開始）</label>
+            <input type="date" id="srDateFrom">
+          </div>
+          <div class="search-group">
+            <label>取引日（終了）</label>
+            <input type="date" id="srDateTo">
+          </div>
+          <div class="search-group">
+            <label>取引先</label>
+            <input type="text" id="srCounterparty" placeholder="部分一致">
+          </div>
+          <div class="search-group">
+            <label>金額（以上）</label>
+            <input type="number" id="srAmtMin" placeholder="円" style="width:100px">
+          </div>
+          <div class="search-group">
+            <label>金額（以下）</label>
+            <input type="number" id="srAmtMax" placeholder="円" style="width:100px">
+          </div>
+          <div class="search-group">
+            <label>ステータス</label>
+            <select id="srStatus">
+              <option value="">すべて</option>
+              <option value="pending">承認待ち</option>
+              <option value="approved">承認済み</option>
+              <option value="rejected">却下</option>
+            </select>
+          </div>
+          <div class="search-group admin-only" id="srCompanyGroup">
+            <label>会社</label>
+            <select id="srCompany"><option value="">すべて</option></select>
+          </div>
+          <div style="display:flex;gap:8px;align-self:flex-end">
+            <button class="btn btn-primary btn-sm" onclick="loadDocuments(1)">🔍 検索</button>
+            <button class="btn btn-ghost btn-sm" onclick="clearSearch()">クリア</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span id="docCount">-件</span>
+          <span id="docRange" class="text-muted" style="font-size:12px"></span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>種別</th><th>取引日</th><th>取引先</th><th>金額</th>
+                <th>ステータス</th><th>登録者</th><th>登録日時</th>
+              </tr>
+            </thead>
+            <tbody id="docTable"><tr><td colspan="7" class="loading">読み込み中...</td></tr></tbody>
+          </table>
+        </div>
+        <div class="pagination" id="docPaging"></div>
+      </div>
+    </section>
+
+    <!-- APPROVAL -->
+    <section class="page" id="pageApproval">
+      <div class="page-title">✅ 承認待ち書類</div>
+      <div class="card">
+        <div class="card-header" id="approvalCount">読み込み中...</div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>種別</th><th>取引日</th><th>取引先</th><th>金額</th><th>登録者</th><th>登録日時</th><th>操作</th></tr>
+            </thead>
+            <tbody id="approvalTable"><tr><td colspan="7" class="loading">読み込み中...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- USERS -->
+    <section class="page" id="pageUsers">
+      <div class="page-title">
+        👥 ユーザー管理
+        <button class="btn btn-primary btn-sm" style="margin-left:auto" onclick="showAddUser()">＋ ユーザー追加</button>
+      </div>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>名前</th><th>メール</th><th>会社</th><th>権限</th><th>ステータス</th><th>最終ログイン</th><th>操作</th></tr>
+            </thead>
+            <tbody id="userTable"><tr><td colspan="7" class="loading">読み込み中...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- COMPANIES -->
+    <section class="page" id="pageCompanies">
+      <div class="page-title">
+        🏢 会社管理
+        <button class="btn btn-primary btn-sm" style="margin-left:auto" onclick="showAddCompany()">＋ 会社追加</button>
+      </div>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>会社名</th><th>コード</th><th>登録日</th></tr></thead>
+            <tbody id="companyTable"><tr><td colspan="3" class="loading">読み込み中...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- AUDIT LOG -->
+    <section class="page" id="pageAudit">
+      <div class="page-title">📜 監査ログ <small>（直近1,000件）</small></div>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>日時</th><th>操作者</th><th>アクション</th><th>文書ID</th><th>詳細</th><th>IPアドレス</th></tr></thead>
+            <tbody id="auditTable"><tr><td colspan="6" class="loading">読み込み中...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ===== MODALS ===== -->
+
+<!-- Document Detail Modal -->
+<div class="modal-overlay" id="docModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="modalTitle">書類詳細</h3>
+      <span id="modalStatus"></span>
+      <button class="btn btn-ghost btn-sm" onclick="closeModal('docModal')">✕ 閉じる</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-preview" id="modalPreview">
+        <div class="no-preview">プレビューを読み込み中...</div>
+      </div>
+      <div class="modal-meta">
+        <div class="modal-meta-body" id="modalMetaBody">読み込み中...</div>
+        <div class="modal-foot" id="modalFoot"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Approve/Reject Confirm Modal -->
+<div class="modal-overlay" id="actionModal">
+  <div class="modal" style="max-width:440px;width:440px">
+    <div class="modal-head"><h3 id="actionModalTitle">確認</h3></div>
+    <div class="card-body" style="padding:20px">
+      <p id="actionModalMsg" style="margin-bottom:14px"></p>
+      <div class="form-group">
+        <label id="actionModalLabel">コメント</label>
+        <textarea id="actionModalComment" rows="3" style="width:100%;padding:8px;border:1.5px solid var(--border);border-radius:6px"></textarea>
+      </div>
+    </div>
+    <div class="modal-foot" style="padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="closeModal('actionModal')">キャンセル</button>
+      <button class="btn" id="actionModalBtn" onclick="confirmAction()">実行</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add User Modal -->
+<div class="modal-overlay" id="userModal">
+  <div class="modal" style="max-width:440px;width:440px">
+    <div class="modal-head"><h3>ユーザー追加</h3></div>
+    <div class="card-body" style="padding:20px">
+      <div id="userModalError" class="error-msg" style="display:none"></div>
+      <div class="form-group"><label>名前 *</label><input type="text" id="umName"></div>
+      <div class="form-group"><label>メールアドレス *</label><input type="email" id="umEmail"></div>
+      <div class="form-group"><label>パスワード *</label><input type="password" id="umPassword"></div>
+      <div class="form-group">
+        <label>権限 *</label>
+        <select id="umRole">
+          <option value="uploader">登録者（アップロードのみ）</option>
+          <option value="approver">承認者（承認・却下可能）</option>
+          <option value="admin">管理者（全権限）</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>所属会社 *</label>
+        <select id="umCompany"></select>
+      </div>
+    </div>
+    <div class="modal-foot" style="padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="closeModal('userModal')">キャンセル</button>
+      <button class="btn btn-primary" onclick="submitAddUser()">追加する</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Company Modal -->
+<div class="modal-overlay" id="companyModal">
+  <div class="modal" style="max-width:380px;width:380px">
+    <div class="modal-head"><h3>会社追加</h3></div>
+    <div class="card-body" style="padding:20px">
+      <div id="companyModalError" class="error-msg" style="display:none"></div>
+      <div class="form-group"><label>会社名 *</label><input type="text" id="cmName" placeholder="例：大日産業"></div>
+      <div class="form-group"><label>コード *</label><input type="text" id="cmCode" placeholder="例：DAINICHI" style="text-transform:uppercase"></div>
+    </div>
+    <div class="modal-foot" style="padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="closeModal('companyModal')">キャンセル</button>
+      <button class="btn btn-primary" onclick="submitAddCompany()">追加する</button>
+    </div>
+  </div>
+</div>
+
+<!-- Change Password Modal -->
+<div class="modal-overlay" id="changePwModal">
+  <div class="modal" style="max-width:380px;width:380px">
+    <div class="modal-head"><h3>🔑 パスワード変更</h3></div>
+    <div class="card-body" style="padding:20px">
+      <div id="pwModalError" class="error-msg" style="display:none"></div>
+      <div class="form-group"><label>現在のパスワード</label><input type="password" id="pwCurrent"></div>
+      <div class="form-group"><label>新しいパスワード</label><input type="password" id="pwNew"></div>
+      <div class="form-group"><label>新しいパスワード（確認）</label><input type="password" id="pwConfirm"></div>
+    </div>
+    <div class="modal-foot" style="padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="closeModal('changePwModal')">キャンセル</button>
+      <button class="btn btn-primary" onclick="submitChangePw()">変更する</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<script>
+// ── STATE ──────────────────────────────────────────────
+let token = localStorage.getItem('docToken');
+let me    = JSON.parse(localStorage.getItem('docUser') || 'null');
+let docPage = 1;
+let pendingDocId = null;
+let pendingAction = null;
+let blobUrl = null;
+let companies = [];
+
+// ── INIT ───────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  if (token && me) initApp();
+  else showLogin();
+
+  // Drag & drop
+  const dz = document.getElementById('dropZone');
+  dz.addEventListener('dragover',  e => { e.preventDefault(); dz.classList.add('drag-over'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault(); dz.classList.remove('drag-over');
+    const f = e.dataTransfer.files[0];
+    if (f) handleFile(f);
+  });
+  document.getElementById('fileInput').addEventListener('change', e => {
+    if (e.target.files[0]) handleFile(e.target.files[0]);
+  });
+
+  // Close modals on overlay click
+  document.querySelectorAll('.modal-overlay').forEach(el => {
+    el.addEventListener('click', e => { if (e.target === el) closeModal(el.id); });
+  });
+});
+
+// ── API ────────────────────────────────────────────────
+async function api(method, path, data = null) {
+  const opts = {
+    method,
+    headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }
+  };
+  if (data instanceof FormData) {
+    delete opts.headers['Content-Type'];
+    opts.body = data;
+  } else if (data) {
+    opts.body = JSON.stringify(data);
+  }
+  const r = await fetch(path, opts);
+  if (r.status === 401) { logout(); return null; }
+  const json = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(json.error || `エラー (${r.status})`);
+  return json;
+}
+
+async function apiFile(path) {
+  const r = await fetch(path, { headers: { Authorization: `Bearer ${token}` } });
+  if (!r.ok) throw new Error('ファイルの取得に失敗しました');
+  return r.blob();
+}
+
+// ── AUTH ───────────────────────────────────────────────
+function showLogin() {
+  document.getElementById('loginPage').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+}
+
+function showLogin() {
+  document.getElementById('loginPage').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+}
+
+document.getElementById('loginForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const btn = document.getElementById('loginBtn');
+  btn.textContent = 'ログイン中...'; btn.disabled = true;
+  document.getElementById('loginError').style.display = 'none';
+  try {
+    const res = await api('POST', '/api/auth/login', {
+      email:    document.getElementById('loginEmail').value,
+      password: document.getElementById('loginPassword').value
+    });
+    token = res.token; me = res.user;
+    localStorage.setItem('docToken', token);
+    localStorage.setItem('docUser', JSON.stringify(me));
+    initApp();
+  } catch (err) {
+    const el = document.getElementById('loginError');
+    el.textContent = err.message; el.style.display = 'block';
+  } finally {
+    btn.textContent = 'ログイン'; btn.disabled = false;
+  }
+});
+
+function logout() {
+  token = null; me = null;
+  localStorage.removeItem('docToken'); localStorage.removeItem('docUser');
+  showLogin();
+}
+
+function initApp() {
+  document.getElementById('loginPage').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('hdrName').textContent = me.name;
+  document.getElementById('hdrCompany').textContent = me.company_name;
+  document.getElementById('hdrRole').textContent = roleLabel(me.role);
+
+  // Admin-only elements
+  if (me.role !== 'admin') {
+    document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
+  }
+  // Approver+ can see approval nav
+  if (me.role === 'uploader') {
+    document.querySelector('[data-page="approval"]').style.display = 'none';
+  }
+
+  loadCompanyList();
+  navigate('dashboard');
+}
+
+// ── NAVIGATION ────────────────────────────────────────
+function navigate(page) {
+  document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  document.getElementById('page' + cap(page))?.classList.add('active');
+  document.querySelector(`[data-page="${page}"]`)?.classList.add('active');
+  if (page === 'dashboard') loadDashboard();
+  if (page === 'documents') { docPage = 1; loadDocuments(1); }
+  if (page === 'approval')  loadApproval();
+  if (page === 'users')     loadUsers();
+  if (page === 'companies') loadCompanies();
+  if (page === 'audit')     loadAuditLog();
+}
+const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+
+// ── DASHBOARD ─────────────────────────────────────────
+async function loadDashboard() {
+  try {
+    const s = await api('GET', '/api/stats');
+    document.getElementById('statTotal').textContent   = s.total.toLocaleString();
+    document.getElementById('statPending').textContent = s.pending.toLocaleString();
+    document.getElementById('statApproved').textContent= s.approved.toLocaleString();
+    document.getElementById('statMonth').textContent   = s.this_month.toLocaleString();
+    document.getElementById('statYear').textContent    = s.this_year.toLocaleString();
+
+    const badge = document.getElementById('pendingBadge');
+    if (s.pending > 0) { badge.textContent = s.pending; badge.style.display = ''; }
+    else               badge.style.display = 'none';
+
+    const r = await api('GET', '/api/documents?limit=20&page=1');
+    const tbody = document.getElementById('recentDocs');
+    if (!r.documents.length) { tbody.innerHTML = '<tr><td colspan="7" class="empty">書類がありません</td></tr>'; return; }
+    tbody.innerHTML = r.documents.map(d => `
+      <tr class="clickable" onclick="viewDocument(${d.id})">
+        <td>${typeBadge(d.document_type)}</td>
+        <td>${d.document_date}</td>
+        <td>${esc(d.counterparty)}</td>
+        <td class="text-right">${d.amount != null ? '¥'+d.amount.toLocaleString() : '-'}</td>
+        <td>${statusBadge(d.status)}</td>
+        <td>${esc(d.uploader_name)}</td>
+        <td class="text-muted" style="font-size:12px">${d.uploaded_at?.slice(0,16) ?? '-'}</td>
+      </tr>`).join('');
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+// ── DOCUMENTS ─────────────────────────────────────────
+async function loadDocuments(page = 1) {
+  docPage = page;
+  const params = new URLSearchParams({ page, limit: 50 });
+  const v = id => document.getElementById(id)?.value;
+  if (v('srType'))        params.set('document_type', v('srType'));
+  if (v('srDateFrom'))    params.set('date_from', v('srDateFrom'));
+  if (v('srDateTo'))      params.set('date_to', v('srDateTo'));
+  if (v('srCounterparty'))params.set('counterparty', v('srCounterparty'));
+  if (v('srAmtMin'))      params.set('amount_min', v('srAmtMin'));
+  if (v('srAmtMax'))      params.set('amount_max', v('srAmtMax'));
+  if (v('srStatus'))      params.set('status', v('srStatus'));
+  if (v('srCompany'))     params.set('company_id', v('srCompany'));
+
+  const tbody = document.getElementById('docTable');
+  tbody.innerHTML = '<tr><td colspan="7" class="loading">読み込み中...</td></tr>';
+  try {
+    const r = await api('GET', `/api/documents?${params}`);
+    document.getElementById('docCount').textContent = `${r.total.toLocaleString()} 件`;
+    const from = (page - 1) * 50 + 1, to = Math.min(page * 50, r.total);
+    document.getElementById('docRange').textContent = r.total ? `${from}–${to} 件目を表示` : '';
+
+    if (!r.documents.length) {
+      tbody.innerHTML = '<tr><td colspan="7" class="empty">条件に一致する書類がありません</td></tr>';
+      document.getElementById('docPaging').innerHTML = '';
+      return;
+    }
+    tbody.innerHTML = r.documents.map(d => `
+      <tr class="clickable" onclick="viewDocument(${d.id})">
+        <td>${typeBadge(d.document_type)}</td>
+        <td>${d.document_date}</td>
+        <td>${esc(d.counterparty)}</td>
+        <td class="text-right">${d.amount != null ? '¥'+d.amount.toLocaleString() : '-'}</td>
+        <td>${statusBadge(d.status)}</td>
+        <td>${esc(d.uploader_name)}</td>
+        <td class="text-muted" style="font-size:12px">${d.uploaded_at?.slice(0,16) ?? '-'}</td>
+      </tr>`).join('');
+
+    // Pagination
+    const pages = Math.ceil(r.total / 50);
+    let pag = `<button onclick="loadDocuments(${page - 1})" ${page <= 1 ? 'disabled' : ''}>‹ 前</button>`;
+    const start = Math.max(1, page - 2), end = Math.min(pages, start + 4);
+    for (let p = start; p <= end; p++)
+      pag += `<button class="${p === page ? 'active' : ''}" onclick="loadDocuments(${p})">${p}</button>`;
+    pag += `<button onclick="loadDocuments(${page + 1})" ${page >= pages ? 'disabled' : ''}>次 ›</button>`;
+    document.getElementById('docPaging').innerHTML = pag;
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+function clearSearch() {
+  ['srType','srDateFrom','srDateTo','srCounterparty','srAmtMin','srAmtMax','srStatus','srCompany'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  loadDocuments(1);
+}
+
+function exportCSV() {
+  const params = new URLSearchParams();
+  const v = id => document.getElementById(id)?.value;
+  if (v('srDateFrom')) params.set('date_from', v('srDateFrom'));
+  if (v('srDateTo'))   params.set('date_to', v('srDateTo'));
+  if (v('srCompany'))  params.set('company_id', v('srCompany'));
+  const a = document.createElement('a');
+  a.href = `/api/export?${params}&_t=${token}`;
+  // Use fetch for auth
+  fetch(`/api/export?${params}`, { headers: { Authorization: `Bearer ${token}` } })
+    .then(r => r.blob())
+    .then(blob => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `documents_${new Date().toISOString().slice(0,10)}.csv`;
+      a.click(); URL.revokeObjectURL(url);
+      toast('CSVをダウンロードしました', 'ok');
+    });
+}
+
+// ── APPROVAL ──────────────────────────────────────────
+async function loadApproval() {
+  const tbody = document.getElementById('approvalTable');
+  tbody.innerHTML = '<tr><td colspan="7" class="loading">読み込み中...</td></tr>';
+  try {
+    const r = await api('GET', '/api/documents?status=pending&limit=100');
+    document.getElementById('approvalCount').textContent = `承認待ち：${r.total} 件`;
+    if (!r.documents.length) {
+      tbody.innerHTML = '<tr><td colspan="7" class="empty">承認待ちの書類はありません ✓</td></tr>'; return;
+    }
+    tbody.innerHTML = r.documents.map(d => `
+      <tr>
+        <td>${typeBadge(d.document_type)}</td>
+        <td>${d.document_date}</td>
+        <td><span class="clickable" style="color:var(--pri2)" onclick="viewDocument(${d.id})">${esc(d.counterparty)}</span></td>
+        <td class="text-right">${d.amount != null ? '¥'+d.amount.toLocaleString() : '-'}</td>
+        <td>${esc(d.uploader_name)}</td>
+        <td class="text-muted" style="font-size:12px">${d.uploaded_at?.slice(0,16) ?? '-'}</td>
+        <td>
+          <div class="gap-8">
+            <button class="btn btn-success btn-sm" onclick="openApprove(${d.id})">✓ 承認</button>
+            <button class="btn btn-danger btn-sm" onclick="openReject(${d.id})">✕ 却下</button>
+          </div>
+        </td>
+      </tr>`).join('');
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+function openApprove(id) {
+  pendingDocId = id; pendingAction = 'approve';
+  document.getElementById('actionModalTitle').textContent = '✓ 承認確認';
+  document.getElementById('actionModalMsg').textContent   = 'この書類を承認しますか？';
+  document.getElementById('actionModalLabel').textContent = 'コメント（任意）';
+  document.getElementById('actionModalComment').value     = '';
+  const btn = document.getElementById('actionModalBtn');
+  btn.textContent = '承認する'; btn.className = 'btn btn-success';
+  document.getElementById('actionModal').classList.add('open');
+}
+
+function openReject(id) {
+  pendingDocId = id; pendingAction = 'reject';
+  document.getElementById('actionModalTitle').textContent = '✕ 却下確認';
+  document.getElementById('actionModalMsg').textContent   = 'この書類を却下しますか？却下理由を入力してください。';
+  document.getElementById('actionModalLabel').textContent = '却下理由 *';
+  document.getElementById('actionModalComment').value     = '';
+  const btn = document.getElementById('actionModalBtn');
+  btn.textContent = '却下する'; btn.className = 'btn btn-danger';
+  document.getElementById('actionModal').classList.add('open');
+}
+
+async function confirmAction() {
+  const comment = document.getElementById('actionModalComment').value;
+  if (pendingAction === 'reject' && !comment) { toast('却下理由を入力してください', 'err'); return; }
+  try {
+    if (pendingAction === 'approve') {
+      await api('POST', `/api/documents/${pendingDocId}/approve`, { comment });
+      toast('承認しました', 'ok');
+    } else {
+      await api('POST', `/api/documents/${pendingDocId}/reject`, { reason: comment });
+      toast('却下しました', 'info');
+    }
+    closeModal('actionModal');
+    closeModal('docModal');
+    loadApproval();
+    loadDashboard();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+// ── VIEW DOCUMENT ─────────────────────────────────────
+async function viewDocument(id) {
+  revokeBlobUrl();
+  document.getElementById('modalPreview').innerHTML = '<div class="no-preview">読み込み中...</div>';
+  document.getElementById('modalMetaBody').innerHTML = '読み込み中...';
+  document.getElementById('modalFoot').innerHTML = '';
+  document.getElementById('docModal').classList.add('open');
+
+  try {
+    const doc = await api('GET', `/api/documents/${id}`);
+    document.getElementById('modalTitle').textContent = doc.original_name;
+    document.getElementById('modalStatus').innerHTML = statusBadge(doc.status);
+
+    // Preview
+    const blob = await apiFile(`/api/documents/${id}/file`);
+    blobUrl = URL.createObjectURL(blob);
+    const preview = document.getElementById('modalPreview');
+    if (doc.mime_type === 'application/pdf') {
+      preview.innerHTML = `<iframe src="${blobUrl}" style="width:100%;height:100%;border:none;min-height:500px"></iframe>`;
+    } else {
+      preview.innerHTML = `<img src="${blobUrl}" style="max-width:100%;max-height:100%;object-fit:contain;padding:8px">`;
+    }
+
+    // Metadata
+    const metaHtml = `
+      <div class="meta-item"><div class="lbl">書類種別</div><div class="val">${typeBadge(doc.document_type)}</div></div>
+      <div class="meta-item"><div class="lbl">取引年月日</div><div class="val">${doc.document_date}</div></div>
+      <div class="meta-item"><div class="lbl">取引先</div><div class="val">${esc(doc.counterparty)}</div></div>
+      <div class="meta-item"><div class="lbl">金額</div><div class="val">${doc.amount != null ? '¥' + doc.amount.toLocaleString() : '未入力'}</div></div>
+      ${doc.description ? `<div class="meta-item"><div class="lbl">摘要</div><div class="val">${esc(doc.description)}</div></div>` : ''}
+      <div class="meta-item"><div class="lbl">会社</div><div class="val">${esc(doc.company_name)}</div></div>
+      <hr>
+      <div class="meta-item"><div class="lbl">登録者</div><div class="val">${esc(doc.uploader_name)}</div></div>
+      <div class="meta-item"><div class="lbl">登録日時</div><div class="val">${doc.uploaded_at}</div></div>
+      ${doc.approver_name ? `<div class="meta-item"><div class="lbl">承認者</div><div class="val">${esc(doc.approver_name)}</div></div>` : ''}
+      ${doc.approved_at   ? `<div class="meta-item"><div class="lbl">承認日時</div><div class="val">${doc.approved_at}</div></div>` : ''}
+      ${doc.rejection_reason ? `<div class="meta-item"><div class="lbl">却下理由</div><div class="val" style="color:var(--ng)">${esc(doc.rejection_reason)}</div></div>` : ''}
+      <hr>
+      <div class="meta-item"><div class="lbl">ファイルサイズ</div><div class="val">${(doc.file_size/1024).toFixed(1)} KB</div></div>
+      <div class="meta-item"><div class="lbl">整合性ハッシュ（SHA-256）</div><div class="val" style="font-size:10px;word-break:break-all;color:var(--muted)">${doc.file_hash}</div></div>
+      <hr>
+      <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px">承認履歴</div>
+      ${(doc.history || []).map(h => `
+        <div class="history-item">
+          <div class="history-dot ${h.action}"></div>
+          <div>
+            <div style="font-weight:600">${actionLabel(h.action)} — ${esc(h.user_name)}</div>
+            <div class="text-muted" style="font-size:11px">${h.timestamp}</div>
+            ${h.comment ? `<div style="font-size:12px;margin-top:2px">${esc(h.comment)}</div>` : ''}
+          </div>
+        </div>`).join('')}
+    `;
+    document.getElementById('modalMetaBody').innerHTML = metaHtml;
+
+    // Footer buttons
+    let footHtml = `<button class="btn btn-ghost btn-sm" onclick="downloadFile(${id}, '${esc(doc.original_name)}')">⬇️ ダウンロード</button>`;
+    if (doc.status === 'pending' && (me.role === 'admin' || me.role === 'approver')) {
+      footHtml += `<button class="btn btn-success btn-sm" onclick="openApprove(${id})">✓ 承認</button>`;
+      footHtml += `<button class="btn btn-danger btn-sm" onclick="openReject(${id})">✕ 却下</button>`;
+    }
+    document.getElementById('modalFoot').innerHTML = footHtml;
+
+  } catch (e) {
+    toast(e.message, 'err');
+    document.getElementById('modalPreview').innerHTML = `<div class="no-preview" style="color:#f87171">${e.message}</div>`;
+  }
+}
+
+function downloadFile(id, name) {
+  fetch(`/api/documents/${id}/file`, { headers: { Authorization: `Bearer ${token}` } })
+    .then(r => r.blob())
+    .then(blob => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = name; a.click(); URL.revokeObjectURL(url);
+    });
+}
+
+function revokeBlobUrl() {
+  if (blobUrl) { URL.revokeObjectURL(blobUrl); blobUrl = null; }
+}
+
+// ── UPLOAD ────────────────────────────────────────────
+function handleFile(file) {
+  document.getElementById('dropZone').style.display = 'none';
+  document.getElementById('fileSelectedRow').style.display = 'flex';
+  document.getElementById('fileName').textContent = file.name;
+  document.getElementById('fileSize').textContent = (file.size / 1024).toFixed(1) + ' KB';
+  document.getElementById('fileIcon').textContent = file.type === 'application/pdf' ? '📄' : '🖼️';
+  document.getElementById('uploadForm').style.display = 'block';
+  document.getElementById('upDate').value = new Date().toISOString().slice(0, 10);
+}
+
+function clearFile() {
+  document.getElementById('fileInput').value = '';
+  document.getElementById('dropZone').style.display = '';
+  document.getElementById('fileSelectedRow').style.display = 'none';
+  document.getElementById('uploadForm').style.display = 'none';
+}
+
+function clearUploadForm() {
+  clearFile();
+  ['upType','upDate','upCounterparty','upAmount','upDescription'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = el.tagName === 'SELECT' ? el.options[0].value : '';
+  });
+  document.getElementById('uploadError').style.display = 'none';
+  document.getElementById('dupWarn').style.display = 'none';
+}
+
+async function submitUpload() {
+  const file = document.getElementById('fileInput').files[0];
+  if (!file) { toast('ファイルを選択してください', 'err'); return; }
+  document.getElementById('uploadError').style.display = 'none';
+  document.getElementById('dupWarn').style.display = 'none';
+
+  const fd = new FormData();
+  fd.append('file', file);
+  fd.append('document_type',  document.getElementById('upType').value);
+  fd.append('document_date',  document.getElementById('upDate').value);
+  fd.append('counterparty',   document.getElementById('upCounterparty').value);
+  fd.append('amount',         document.getElementById('upAmount').value);
+  fd.append('description',    document.getElementById('upDescription').value);
+  if (me.role === 'admin') fd.append('company_id', document.getElementById('upCompany').value);
+
+  try {
+    const r = await api('POST', '/api/documents', fd);
+    if (r.duplicate) {
+      const el = document.getElementById('dupWarn');
+      el.textContent = `⚠ 同一ファイルが既に登録されています（ID: ${r.duplicate.id} ／ ${r.duplicate.name}）。別ファイルとして保存しました。`;
+      el.style.display = 'block';
+    }
+    toast('書類を登録しました（ID: ' + r.id + '）', 'ok');
+    clearUploadForm();
+    loadDashboard();
+  } catch (e) {
+    const el = document.getElementById('uploadError');
+    el.textContent = e.message; el.style.display = 'block';
+  }
+}
+
+// ── USERS ─────────────────────────────────────────────
+async function loadUsers() {
+  try {
+    const users = await api('GET', '/api/users');
+    const tbody = document.getElementById('userTable');
+    if (!users.length) { tbody.innerHTML = '<tr><td colspan="7" class="empty">ユーザーがいません</td></tr>'; return; }
+    tbody.innerHTML = users.map(u => `
+      <tr>
+        <td>${esc(u.name)}</td>
+        <td>${esc(u.email)}</td>
+        <td>${esc(u.company_name)}</td>
+        <td><span class="badge ${u.role === 'admin' ? 'badge-invoice' : u.role === 'approver' ? 'badge-receipt' : 'badge-other'}">${roleLabel(u.role)}</span></td>
+        <td><span class="badge ${u.is_active ? 'badge-approved' : 'badge-rejected'}">${u.is_active ? '有効' : '無効'}</span></td>
+        <td class="text-muted" style="font-size:12px">${u.last_login?.slice(0,16) ?? '未ログイン'}</td>
+        <td>
+          <button class="btn btn-ghost btn-sm" onclick="toggleUser(${u.id}, ${u.is_active ? 0 : 1})">${u.is_active ? '無効化' : '有効化'}</button>
+        </td>
+      </tr>`).join('');
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+function showAddUser() {
+  document.getElementById('userModalError').style.display = 'none';
+  ['umName','umEmail','umPassword'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('umRole').value = 'uploader';
+  const sel = document.getElementById('umCompany');
+  sel.innerHTML = companies.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
+  document.getElementById('userModal').classList.add('open');
+}
+
+async function submitAddUser() {
+  const err = document.getElementById('userModalError');
+  err.style.display = 'none';
+  try {
+    await api('POST', '/api/users', {
+      name:       document.getElementById('umName').value,
+      email:      document.getElementById('umEmail').value,
+      password:   document.getElementById('umPassword').value,
+      role:       document.getElementById('umRole').value,
+      company_id: document.getElementById('umCompany').value
+    });
+    toast('ユーザーを追加しました', 'ok');
+    closeModal('userModal');
+    loadUsers();
+  } catch (e) { err.textContent = e.message; err.style.display = 'block'; }
+}
+
+async function toggleUser(id, active) {
+  try {
+    await api('PUT', `/api/users/${id}`, { is_active: active });
+    toast(active ? 'ユーザーを有効化しました' : 'ユーザーを無効化しました', 'ok');
+    loadUsers();
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+// ── COMPANIES ─────────────────────────────────────────
+async function loadCompanyList() {
+  try {
+    companies = await api('GET', '/api/companies') || [];
+    // Populate upload company selector
+    const sel = document.getElementById('upCompany');
+    if (sel) sel.innerHTML = companies.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
+    // Populate search company selector
+    const srSel = document.getElementById('srCompany');
+    if (srSel) srSel.innerHTML = `<option value="">すべて</option>` + companies.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
+  } catch {}
+}
+
+async function loadCompanies() {
+  try {
+    const list = await api('GET', '/api/companies');
+    const tbody = document.getElementById('companyTable');
+    if (!list.length) { tbody.innerHTML = '<tr><td colspan="3" class="empty">会社がありません</td></tr>'; return; }
+    tbody.innerHTML = list.map(c => `
+      <tr><td>${esc(c.name)}</td><td><code>${c.code}</code></td><td class="text-muted" style="font-size:12px">${c.created_at}</td></tr>`).join('');
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+function showAddCompany() {
+  document.getElementById('companyModalError').style.display = 'none';
+  document.getElementById('cmName').value = '';
+  document.getElementById('cmCode').value = '';
+  document.getElementById('companyModal').classList.add('open');
+}
+
+async function submitAddCompany() {
+  const err = document.getElementById('companyModalError');
+  err.style.display = 'none';
+  try {
+    await api('POST', '/api/companies', {
+      name: document.getElementById('cmName').value,
+      code: document.getElementById('cmCode').value
+    });
+    toast('会社を追加しました', 'ok');
+    closeModal('companyModal');
+    loadCompanies(); loadCompanyList();
+  } catch (e) { err.textContent = e.message; err.style.display = 'block'; }
+}
+
+// ── AUDIT LOG ─────────────────────────────────────────
+async function loadAuditLog() {
+  try {
+    const logs = await api('GET', '/api/audit-log');
+    const tbody = document.getElementById('auditTable');
+    if (!logs.length) { tbody.innerHTML = '<tr><td colspan="6" class="empty">ログがありません</td></tr>'; return; }
+    tbody.innerHTML = logs.map(l => `
+      <tr>
+        <td style="white-space:nowrap;font-size:12px">${l.timestamp}</td>
+        <td>${esc(l.user_name ?? '—')}</td>
+        <td><code style="font-size:12px">${l.action}</code></td>
+        <td>${l.document_id ? `<a href="#" onclick="viewDocument(${l.document_id})">#${l.document_id}</a>` : '—'}</td>
+        <td style="font-size:12px;max-width:200px;overflow:hidden;text-overflow:ellipsis">${l.details ? esc(l.details) : '—'}</td>
+        <td style="font-size:12px;color:var(--muted)">${l.ip_address ?? '—'}</td>
+      </tr>`).join('');
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+// ── CHANGE PASSWORD ───────────────────────────────────
+function showChangePw() {
+  document.getElementById('pwModalError').style.display = 'none';
+  ['pwCurrent','pwNew','pwConfirm'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('changePwModal').classList.add('open');
+}
+
+async function submitChangePw() {
+  const err = document.getElementById('pwModalError');
+  err.style.display = 'none';
+  const current = document.getElementById('pwCurrent').value;
+  const next    = document.getElementById('pwNew').value;
+  const confirm = document.getElementById('pwConfirm').value;
+  if (next !== confirm) { err.textContent = '新しいパスワードが一致しません'; err.style.display = 'block'; return; }
+  if (next.length < 6)  { err.textContent = 'パスワードは6文字以上で設定してください'; err.style.display = 'block'; return; }
+  try {
+    await api('POST', '/api/auth/change-password', { current, next });
+    toast('パスワードを変更しました', 'ok');
+    closeModal('changePwModal');
+  } catch (e) { err.textContent = e.message; err.style.display = 'block'; }
+}
+
+// ── UTILS ─────────────────────────────────────────────
+function closeModal(id) {
+  document.getElementById(id)?.classList.remove('open');
+  if (id === 'docModal') revokeBlobUrl();
+}
+
+function toast(msg, type = 'info') {
+  const el = document.createElement('div');
+  el.className = `toast-item ${type}`;
+  el.textContent = msg;
+  document.getElementById('toast').appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+
+function statusBadge(s) {
+  const m = { pending: ['承認待ち','badge-pending'], approved: ['承認済み','badge-approved'], rejected: ['却下','badge-rejected'] };
+  const [label, cls] = m[s] || [s, ''];
+  return `<span class="badge ${cls}">${label}</span>`;
+}
+
+function typeBadge(t) {
+  const m = { invoice: ['請求書','badge-invoice'], receipt: ['領収書','badge-receipt'], other: ['その他','badge-other'] };
+  const [label, cls] = m[t] || [t, ''];
+  return `<span class="badge ${cls}">${label}</span>`;
+}
+
+function roleLabel(r) {
+  return { admin: '管理者', approver: '承認者', uploader: '登録者' }[r] || r;
+}
+
+function actionLabel(a) {
+  return { submitted: '提出', approved: '承認', rejected: '却下', resubmitted: '再提出' }[a] || a;
+}
+
+function esc(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>
