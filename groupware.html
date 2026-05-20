@@ -1298,8 +1298,18 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
         <div>
           <label class="f-label">パスワード *</label>
           <div class="pass-wrap">
-            <input class="f-input" id="u-pass" type="text" placeholder="パスワード" style="padding-right:40px">
+            <input class="f-input" id="u-pass" type="text" placeholder="パスワード" style="padding-right:40px" oninput="updatePassStrength('u-pass','u-pass-note')">
             <button class="pass-eye" type="button" onclick="toggleEye('u-pass',this)" tabindex="-1">🙈</button>
+          </div>
+          <div style="display:flex;gap:6px;margin-top:6px">
+            <button type="button" onclick="applyGenPass('u-pass','u-pass-note')"
+              style="flex:1;background:linear-gradient(135deg,#1a3a6b,#1d4ed8);color:#fff;border:none;border-radius:6px;padding:7px 10px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px">
+              🎲 強力なPWを生成
+            </button>
+            <button type="button" onclick="copyPassField('u-pass')"
+              style="background:#f0f4fa;color:#1a3a6b;border:1px solid #c3d3e8;border-radius:6px;padding:7px 10px;font-size:12px;font-weight:600;cursor:pointer">
+              📋 コピー
+            </button>
           </div>
           <div class="pass-note" id="u-pass-note"></div>
         </div>
@@ -1335,9 +1345,20 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
       <div class="f-row">
         <label class="f-label">新しいパスワード <span style="color:#e53e3e">*</span></label>
         <div class="pass-wrap">
-          <input class="f-input" id="pw-new" type="password" placeholder="新しいパスワードを入力" style="padding-right:40px">
+          <input class="f-input" id="pw-new" type="password" placeholder="新しいパスワードを入力" style="padding-right:40px" oninput="updatePassStrength('pw-new','pw-new-note')">
           <button class="pass-eye" type="button" onclick="toggleEye('pw-new',this)" tabindex="-1">🐵</button>
         </div>
+        <div style="display:flex;gap:6px;margin-top:6px">
+          <button type="button" onclick="applyGenPass('pw-new','pw-new-note')"
+            style="flex:1;background:linear-gradient(135deg,#1a3a6b,#1d4ed8);color:#fff;border:none;border-radius:6px;padding:7px 10px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px">
+            🎲 強力なPWを生成
+          </button>
+          <button type="button" onclick="copyPassField('pw-new')"
+            style="background:#f0f4fa;color:#1a3a6b;border:1px solid #c3d3e8;border-radius:6px;padding:7px 10px;font-size:12px;font-weight:600;cursor:pointer">
+            📋 コピー
+          </button>
+        </div>
+        <div class="pass-note" id="pw-new-note"></div>
       </div>
     </div>
     <div class="modal-foot">
@@ -1841,6 +1862,83 @@ function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;')
 // パスワード：平文保存・平文比較（ローカル用途、最も確実）
 function chkPass(stored, input){ return stored === input; }
 
+// ===== 強力パスワード生成 =====
+function genStrongPassword(len){
+  len = len || 14;
+  const upper  = 'ABCDEFGHJKLMNPQRSTUVWXYZ';   // O除外（0と混同防止）
+  const lower  = 'abcdefghjkmnpqrstuvwxyz';    // i,l除外
+  const digits = '23456789';                    // 0,1除外
+  const syms   = '@#$%&*!?+-=';
+  const all    = upper + lower + digits + syms;
+  const arr    = new Uint32Array(len + 4);
+  crypto.getRandomValues(arr);
+  // 各カテゴリから最低1文字を保証
+  let pw = [
+    upper [arr[0] % upper.length],
+    lower [arr[1] % lower.length],
+    digits[arr[2] % digits.length],
+    syms  [arr[3] % syms.length]
+  ];
+  for(let i=4; i<len+4; i++) pw.push(all[arr[i] % all.length]);
+  // Fisher-Yates shuffle
+  const shuffleArr = new Uint32Array(pw.length);
+  crypto.getRandomValues(shuffleArr);
+  for(let i=pw.length-1; i>0; i--){
+    const j = shuffleArr[i] % (i+1);
+    [pw[i], pw[j]] = [pw[j], pw[i]];
+  }
+  return pw.join('');
+}
+
+// パスワード強度チェック（0〜4）
+function calcPassStrength(pw){
+  if(!pw) return 0;
+  let score = 0;
+  if(pw.length >= 8)  score++;
+  if(pw.length >= 12) score++;
+  if(/[A-Z]/.test(pw) && /[a-z]/.test(pw)) score++;
+  if(/[0-9]/.test(pw)) score++;
+  if(/[@#$%&*!?+\-=_^~]/.test(pw)) score++;
+  return Math.min(score, 4);
+}
+
+// パスワード強度UI更新
+function updatePassStrength(inputId, noteId){
+  const inp = document.getElementById(inputId);
+  const note = document.getElementById(noteId);
+  if(!inp || !note) return;
+  const pw = inp.value;
+  if(!pw){ note.innerHTML=''; return; }
+  const s = calcPassStrength(pw);
+  const labels = ['','⚠ 弱い','△ 普通','○ 強い','◎ とても強い'];
+  const colors = ['','#dc2626','#f59e0b','#16a34a','#0284c7'];
+  const bars = [1,2,3,4].map(n=>`<span style="display:inline-block;width:22px;height:5px;border-radius:3px;background:${n<=s?colors[s]:'#e5e7eb'};margin-right:2px"></span>`).join('');
+  note.innerHTML=`<span style="display:flex;align-items:center;gap:6px;margin-top:4px">${bars}<span style="color:${colors[s]};font-weight:700;font-size:11px">${labels[s]}</span></span>`;
+}
+
+// パスワード生成 → フィールドにセット
+function applyGenPass(inputId, noteId){
+  const inp = document.getElementById(inputId);
+  if(!inp) return;
+  const pw = genStrongPassword(14);
+  inp.value = pw;
+  inp.type = 'text';
+  // コピー
+  navigator.clipboard.writeText(pw).then(()=>{
+    showToast('パスワードをコピーしました 📋');
+  }).catch(()=>{});
+  if(noteId) updatePassStrength(inputId, noteId);
+}
+
+// コピーのみ
+function copyPassField(inputId){
+  const inp = document.getElementById(inputId);
+  if(!inp || !inp.value) return;
+  navigator.clipboard.writeText(inp.value).then(()=>{
+    showToast('パスワードをコピーしました 📋');
+  }).catch(()=>{});
+}
+
 // 目隠しトグル
 function toggleEye(inputId, btn){
   const inp = document.getElementById(inputId);
@@ -1861,6 +1959,27 @@ async function resetData(){
   }catch(e){ console.warn('Firestoreリセットエラー:', e); }
   Object.keys(_cache).forEach(k=>delete _cache[k]);
   location.reload();
+}
+
+// ===== トースト通知 =====
+let _toastTimer = null;
+function showToast(msg, duration){
+  duration = duration || 2200;
+  let el = document.getElementById('_gwToast');
+  if(!el){
+    el = document.createElement('div');
+    el.id = '_gwToast';
+    el.style.cssText='position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(20px);background:#1a3a6b;color:#fff;padding:10px 22px;border-radius:24px;font-size:14px;font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,.3);z-index:99999;opacity:0;transition:opacity .25s,transform .25s;pointer-events:none;white-space:nowrap';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.style.opacity = '1';
+  el.style.transform = 'translateX(-50%) translateY(0)';
+  if(_toastTimer) clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(()=>{
+    el.style.opacity='0';
+    el.style.transform='translateX(-50%) translateY(10px)';
+  }, duration);
 }
 
 // =========================================================
