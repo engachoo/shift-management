@@ -1930,6 +1930,21 @@ function applyGenPass(inputId, noteId){
   if(noteId) updatePassStrength(inputId, noteId);
 }
 
+// インライン行（既存ユーザーテーブル）用：生成→行をdirtyマーク
+function applyGenPassInline(uid){
+  const inp = document.getElementById('pw-'+uid);
+  if(!inp) return;
+  const pw = genStrongPassword(14);
+  inp.value = pw;
+  inp.type = 'text';
+  markRowDirty(uid);
+  navigator.clipboard.writeText(pw).then(()=>{
+    showToast('🎲 パスワードを生成・コピーしました 📋');
+  }).catch(()=>{
+    showToast('🎲 パスワードを生成しました（「更新」で保存）');
+  });
+}
+
 // コピーのみ
 function copyPassField(inputId){
   const inp = document.getElementById(inputId);
@@ -5619,6 +5634,7 @@ function renderUserTable(){
       <td><div class="inline-pw-wrap">
         <input class="inline-input" id="pw-${u.id}" type="text" value="${esc(u.password)}" oninput="markRowDirty('${u.id}')" style="min-width:90px">
         <button class="inline-eye" type="button" onclick="toggleInlinePw('${u.id}')" title="表示/非表示">🙈</button>
+        <button class="inline-eye" type="button" onclick="applyGenPassInline('${u.id}')" title="強力なパスワードを生成" style="font-size:13px;padding:2px 5px">🎲</button>
       </div></td>
       <td>${deptSel}</td>
       <td>${roleSel}</td>
