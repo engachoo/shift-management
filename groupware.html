@@ -448,54 +448,64 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
   .f-row-2{grid-template-columns:1fr}
 
   /* ===== 承認申請フォーム モバイル対応 ===== */
-  /* ciModal ヘッダー：モードボタンを3等分で並べる */
-  #ciModalHdr{flex-direction:column;gap:8px;padding:10px 12px}
-  #ciModalHdr h3{font-size:14px;margin:0}
-  #ciModalHdr>div:nth-child(2){display:grid!important;grid-template-columns:1fr 1fr 1fr;gap:5px;width:100%;margin-left:0!important}
-  #ciModalHdr>div:nth-child(2) button{padding:8px 4px!important;font-size:12px!important;border-radius:6px!important;text-align:center}
-  #ciModalHdr .modal-close{position:absolute;top:10px;right:10px;font-size:20px}
-  #ciModalHdr>div:nth-child(3){display:none}/* flex:1 spacer不要 */
 
-  /* ap-table: 縦積みレイアウト */
-  .ap-table tr{display:block;border:none}
-  .ap-table td{display:block;width:100%!important;box-sizing:border-box;border-left:none;border-right:none}
-  .ap-table td.ap-lbl{min-width:0;width:100%!important;border-bottom:0;padding:10px 12px 4px;font-size:13px;background:#eef2fa}
-  .ap-table td.ap-val{padding:8px 12px 10px;border-top:0}
-  .ap-val input[type=text],.ap-val input[type=date],.ap-val textarea,.ap-val select{font-size:14px;padding:8px 10px;border-radius:6px}
-  .ap-val textarea{min-height:120px}
+  /* ciModal：フルスクリーンに近づける */
+  #ciModal{padding:0!important}
+  #ciModal .modal{width:100vw!important;max-width:100vw!important;height:100dvh!important;max-height:100dvh!important;border-radius:0!important;display:flex!important;flex-direction:column!important;overflow:hidden!important}
+  #ciModal .modal-body{flex:1!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch;padding:0!important;min-height:0}
+  #ciModal .modal-foot{flex-shrink:0!important;gap:8px;padding:10px 12px!important;background:#f5f7fb;border-top:1px solid #dde3ec}
+  #ciModal .modal-foot button{flex:1;padding:12px;font-size:15px;font-weight:700}
 
-  /* 宛先セレクター：縦積み・候補を上段・選択済を下段 */
-  .ap-dual{flex-direction:column;gap:0}
-  .ap-dual>div:first-child{order:3;width:100%}   /* 選択済 → 下段 */
-  .ap-dual-center{order:2;flex-direction:row;justify-content:center;gap:12px;padding:6px 0;background:#f8fafc;border-top:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb}
-  .ap-dual>div:last-child{order:1;width:100%}    /* 候補リスト → 上段 */
-  .ap-dual-box select{min-height:100px!important;font-size:14px;padding:6px}
-  /* 選択済ボックスに「選択済」ラベル */
-  .ap-dual>div:first-child>.ap-dual-box::before{content:'▼ 選択済メンバー';display:block;font-size:11px;font-weight:700;color:#6b7280;padding:4px 8px;background:#f1f5f9;border-bottom:1px solid #e5e7eb}
-  /* 候補ボックスに「メンバーを選択」ラベル */
-  .ap-dual>div:last-child>.ap-dual-search::before{content:'👤 メンバーを選択してください';display:block;font-size:12px;font-weight:700;color:#1a3a6b;padding:2px 0 5px;width:100%}
-  .ap-dual-btn{padding:8px 24px;font-size:13px;border-radius:6px;font-weight:700}
-  .ap-dual-search{padding:6px 8px;flex-wrap:wrap;gap:5px}
-  .ap-dual-search input,.ap-dual-search select{font-size:13px;padding:6px 8px;flex:1;min-width:0}
-  /* 並び替えボタンは選択済下段に表示 */
-  .ap-order{justify-content:flex-start;gap:4px;margin-bottom:6px;padding:4px 6px;background:#f8fafc;border-bottom:1px solid #e5e7eb}
-  .ap-order button{padding:6px 12px;font-size:13px}
+  /* ヘッダー：タイトル非表示・3ボタングリッド */
+  #ciModalHdr{flex-wrap:nowrap!important;align-items:center;padding:10px 10px 10px 12px;gap:6px;position:relative;flex-shrink:0!important}
+  #ciModalTitle{display:none!important}
+  #ciModalHdr>div:first-of-type{display:grid!important;grid-template-columns:1fr 1fr 1fr;gap:4px;flex:1;margin-left:0!important}
+  #ciModalHdr>div:first-of-type button{padding:9px 4px!important;font-size:12px!important;border-radius:7px!important;text-align:center;white-space:nowrap}
+  #ciModalHdr>div:last-of-type{display:none!important}
 
+  /* ap-table → カード型レイアウト */
+  #ciModal .ap-table{display:block!important}
+  #ciModal .ap-table thead{display:none}
+  #ciModal .ap-table tbody,#ciModal .ap-table tr{display:block!important}
+  #ciModal .ap-table td{display:block!important;width:100%!important;min-width:0!important;box-sizing:border-box!important;border:none!important;border-bottom:1px solid #eef2f7!important}
+  #ciModal .ap-table td.ap-lbl{background:#eef2fa!important;padding:9px 14px 5px!important;font-size:12px!important;font-weight:700;color:#1a3a6b;border-bottom:none!important}
+  #ciModal .ap-table td.ap-val{padding:6px 12px 12px!important;border-bottom:2px solid #dde3ec!important}
+  #ciModal .ap-val input[type=text],#ciModal .ap-val input[type=date],#ciModal .ap-val textarea,#ciModal .ap-val select{font-size:15px!important;padding:10px 12px!important;border-radius:8px!important;width:100%!important;box-sizing:border-box!important}
+  #ciModal .ap-val textarea{min-height:110px!important}
+
+  /* 宛先デュアルリスト：候補を上・選択済を下 */
+  #ciModal .ap-dual{display:flex!important;flex-direction:column!important;gap:0!important;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden}
+  #ciModal .ap-dual>div:first-child{order:3!important;width:100%!important;flex:none!important}
+  #ciModal .ap-dual-center{order:2!important;display:flex!important;flex-direction:row!important;justify-content:center;gap:16px;padding:8px 0;background:#f1f5f9;border-top:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb;width:100%!important}
+  #ciModal .ap-dual>div:last-child{order:1!important;width:100%!important;flex:none!important}
+  #ciModal .ap-dual-box{width:100%!important}
+  #ciModal .ap-dual-box select{min-height:90px!important;font-size:14px!important;padding:8px;border:none;width:100%!important;box-sizing:border-box!important}
+  #ciModal .ap-dual-btn{padding:9px 28px;font-size:14px;font-weight:700;border-radius:7px}
+  #ciModal .ap-dual-search{padding:8px 10px!important;flex-wrap:wrap;gap:6px;background:#f9fafb;border-bottom:1px solid #e5e7eb;display:flex!important}
+  #ciModal .ap-dual-search input,#ciModal .ap-dual-search select{font-size:13px!important;padding:7px 10px!important;flex:1;min-width:100px;border-radius:6px!important;box-sizing:border-box}
+  /* 上段ラベル：候補リスト */
+  #ciModal .ap-dual>div:last-child::before{content:'👤 メンバーを選択';display:block;font-size:12px;font-weight:700;color:#1a3a6b;background:#eff6ff;padding:8px 12px;border-bottom:1px solid #bfdbfe}
+  /* 下段ラベル：選択済 */
+  #ciModal .ap-dual>div:first-child::before{content:'✅ 選択済メンバー';display:block;font-size:12px;font-weight:700;color:#065f46;background:#f0fdf4;padding:6px 12px;border-top:1px solid #e5e7eb}
   /* 並び替えボタン */
-  .ap-order{justify-content:flex-start;gap:4px;margin-bottom:6px}
-  .ap-order button{padding:5px 10px;font-size:12px}
+  #ciModal .ap-order{gap:4px;margin:4px 8px 2px;justify-content:flex-start}
+  #ciModal .ap-order button{padding:6px 12px;font-size:12px}
 
-  /* 返信ボタン プリセット */
-  #ci-preset-sel{font-size:14px;padding:8px 10px;width:100%}
-  .ap-custom-add{display:flex;gap:6px}
-  .ap-custom-add input{font-size:13px;padding:7px 10px}
+  /* 返信ボタン・プリセット */
+  #ciModal #ci-preset-sel{font-size:14px;padding:9px 10px;width:100%;border-radius:7px}
+  #ciModal .ap-custom-add{gap:8px}
+  #ciModal .ap-custom-add input{font-size:14px;padding:9px 12px;border-radius:7px}
+  #ciModal #ci-custom-tags{display:flex;flex-wrap:wrap;gap:6px}
 
-  /* モーダルフッター */
-  #ciModal .modal-foot{gap:8px;padding:12px}
-  #ciModal .modal-foot button{flex:1;padding:10px;font-size:14px;font-weight:700}
+  /* 優先度・公開：横並びのまま */
+  #ciModal .ap-val label{font-size:14px}
+  #ciModal .ap-val select#ci-priority{font-size:14px;padding:9px 10px}
 
-  /* 回答期日・ルート設定行は縦積み */
-  #ciModal .ap-table tr:has(#ci-deadline){display:block}
+  /* modal-hdr：flex配列でstickyではなくflex-shrink:0 */
+  #ciModal .modal-hdr{position:relative!important;flex-shrink:0!important;overflow:hidden}
+
+  /* 回答期日/ルート設定など2列セル → 縦積み */
+  #ciModal .ap-table td[colspan]{display:block!important;width:100%!important}
 }
 .top-card{background:#fff;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,.08);overflow:hidden}
 .top-card-hdr{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:2px solid #eef2f7;font-weight:700;font-size:13px;color:#1a2b4a}
