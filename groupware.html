@@ -3526,7 +3526,8 @@ function renderGW(){
       html+=`<tr class="dept-row"><td colspan="${days.length+1}" style="padding-left:${g.depth*12+8}px">📁 ${esc(g.name)}</td></tr>`;
     } else {
       const u=g.user;
-      html+=`<tr><td class="td-member"><div class="m-name">${esc(u.name)}${u.id===myId()?'<span style="font-size:10px;color:#1a56db;margin-left:4px">（自分）</span>':''}</div><div class="m-dept">${esc(getDept(u.deptId).name)}</div></td>`;
+      const isSelf=u.id===myId();
+      html+=`<tr><td class="td-member">${isSelf?'<div style="font-size:10px;color:#1a56db;font-weight:700;line-height:1.4">（自分）</div>':''}<div class="m-name">${esc(u.name)}</div><div class="m-dept">${esc(getDept(u.deptId).name)}</div></td>`;
       days.forEach(d=>{
         const ds=dateStr(d); const holi=HOLIDAYS[ds]; const isToday=ds===today; const isSun=d.getDay()===0;
         const offEv=events.find(e=>e.memberIds&&e.memberIds.includes(u.id)&&e.date===ds&&e.memo==='off');
