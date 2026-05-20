@@ -1885,6 +1885,7 @@ function stopActivityTimer(){
 }
 
 function doLogout(){
+  pcAutoSave(); // 出納帳に未保存データがあれば自動保存
   stopActivityTimer();
   clearS();
   document.getElementById('app').style.display='none';
@@ -2346,6 +2347,8 @@ function expandEvents(events, startDs, endDs){
 }
 
 function showMod(mod,sub,_fromPop){
+  // 出納帳が未保存のまま他画面へ切り替える場合は自動保存
+  if(mod!=='pettycash'&&mod!=='devapps') pcAutoSave();
   curMod=mod;
   // ブラウザ履歴に記録（popstate 経由の場合は記録しない）
   if(!_fromPop){
@@ -3251,6 +3254,14 @@ function pcSave(ev){
   if(badge) badge.style.display='none';
   const btn=ev?.target||event?.target;
   if(btn){ const orig=btn.textContent; btn.textContent='✓ 保存しました'; btn.style.background='linear-gradient(135deg,#16a34a,#166534)'; setTimeout(()=>{ btn.textContent=orig; btn.style.background='linear-gradient(135deg,#1a56db,#1e40af)'; },1800); }
+}
+// 自動保存（ページ離脱・ログアウト・画面切替時に呼ばれる。バリデーションなし）
+function pcAutoSave(){
+  if(!_pcData||!_pcDirty) return;
+  save(pcKey(),_pcData);
+  _pcDirty=false;
+  const badge=document.getElementById('pcDirtyBadge');
+  if(badge) badge.style.display='none';
 }
 function pcExportCSV(){
   if(!_pcData) return;
@@ -5677,6 +5688,9 @@ function startApp(){
   // 初期履歴エントリを差し替え（ブラウザ戻るでアプリ内に留まる）
   history.replaceState({mod:'top',sub:null},'','');
   // popstate：ブラウザの戻る/進むをアプリ内ナビに横取り
+  // ページ離脱（タブ閉じ・リロード・ブラウザ閉じ）時に出納帳を自動保存
+  window.addEventListener('pagehide', ()=>pcAutoSave());
+  window.addEventListener('beforeunload', ()=>pcAutoSave());
   window.addEventListener('popstate',function(e){
     if(!getS()) return; // 未ログインは無視
     const st=e.state;
