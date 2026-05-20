@@ -1885,7 +1885,7 @@ function stopActivityTimer(){
 }
 
 function doLogout(){
-  pcAutoSave(); // 出納帳に未保存データがあれば自動保存
+  autoSaveAll(); // 未保存データを全モジュール一括保存
   stopActivityTimer();
   clearS();
   document.getElementById('app').style.display='none';
@@ -2348,7 +2348,7 @@ function expandEvents(events, startDs, endDs){
 
 function showMod(mod,sub,_fromPop){
   // 出納帳が未保存のまま他画面へ切り替える場合は自動保存
-  if(mod!=='pettycash'&&mod!=='devapps') pcAutoSave();
+  if(mod!=='pettycash'&&mod!=='devapps') autoSaveAll();
   curMod=mod;
   // ブラウザ履歴に記録（popstate 経由の場合は記録しない）
   if(!_fromPop){
@@ -3262,6 +3262,14 @@ function pcAutoSave(){
   _pcDirty=false;
   const badge=document.getElementById('pcDirtyBadge');
   if(badge) badge.style.display='none';
+}
+// =========================================================
+// グループウェア全体の自動保存ハブ
+// 新しいモジュールで保存ペンディングが生じたらここに追加する
+// =========================================================
+function autoSaveAll(){
+  pcAutoSave(); // 現金出納帳
+  // 将来追加モジュールはここに続ける
 }
 function pcExportCSV(){
   if(!_pcData) return;
@@ -5689,8 +5697,8 @@ function startApp(){
   history.replaceState({mod:'top',sub:null},'','');
   // popstate：ブラウザの戻る/進むをアプリ内ナビに横取り
   // ページ離脱（タブ閉じ・リロード・ブラウザ閉じ）時に出納帳を自動保存
-  window.addEventListener('pagehide', ()=>pcAutoSave());
-  window.addEventListener('beforeunload', ()=>pcAutoSave());
+  window.addEventListener('pagehide', ()=>autoSaveAll());
+  window.addEventListener('beforeunload', ()=>autoSaveAll());
   window.addEventListener('popstate',function(e){
     if(!getS()) return; // 未ログインは無視
     const st=e.state;
