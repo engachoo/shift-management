@@ -5793,13 +5793,17 @@ function pcCompressImage(file){
   });
 }
 
-// --- 領収書アップロード ---
+// --- Cloudinary 設定 ---
+const _CLOUDINARY_CLOUD = 'dwuyaamu4';
+const _CLOUDINARY_PRESET = 'receipt_upload';
+
+// --- 領収書アップロード（Cloudinary）---
 async function pcUploadReceipt(i){
   if(!_pcData||!_pcData.entries[i]){ return; }
   const input=document.createElement('input');
   input.type='file';
   input.accept='image/*';
-  // モバイルの場合はカメラ優先
+  // モバイルはカメラ優先
   if(/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) input.capture='environment';
   input.onchange=async()=>{
     const file=input.files[0];
@@ -5808,39 +5812,36 @@ async function pcUploadReceipt(i){
     if(btn){ btn.textContent='⏳'; btn.disabled=true; }
     try{
       const blob=await pcCompressImage(file);
-      const key=_pcData.entries[i].receiptKey||('receipt_'+Date.now()+'_'+Math.random().toString(36).slice(2));
-      const path=`receipts/${pcKey()}/${key}.jpg`;
-      const ref=_storage.ref(path);
-      await ref.put(blob,{contentType:'image/jpeg'});
-      const url=await ref.getDownloadURL();
-      _pcData.entries[i].receiptUrl=url;
-      _pcData.entries[i].receiptKey=key;
+      const formData=new FormData();
+      formData.append('file', blob, 'receipt.jpg');
+      formData.append('upload_preset', _CLOUDINARY_PRESET);
+      formData.append('folder', 'receipts/'+pcKey());
+      const res=await fetch(`https://api.cloudinary.com/v1_1/${_CLOUDINARY_CLOUD}/image/upload`,{
+        method:'POST', body:formData
+      });
+      if(!res.ok) throw new Error('HTTP '+res.status);
+      const data=await res.json();
+      _pcData.entries[i].receiptUrl=data.secure_url;
+      _pcData.entries[i].receiptKey=data.public_id;
       _pcDirty=true;
       save(pcKey(),_pcData);
       _pcDirty=false;
       renderPettyCash();
     } catch(err){
       console.error('upload error',err);
-      alert('アップロードに失敗しました。Firebase StorageのCORSルール設定を確認してください。\n\n'+err.message);
+      alert('アップロードに失敗しました。\n\n'+err.message);
       if(btn){ btn.textContent='📷'; btn.disabled=false; }
     }
   };
   input.click();
 }
 
-// --- 領収書削除 ---
-async function pcDeleteReceipt(i){
+// --- 領収書削除（Cloudinaryからは削除せずURLのみ消去）---
+function pcDeleteReceipt(i){
   if(!_pcData||!_pcData.entries[i]) return;
-  if(!confirm('この領収書画像を削除しますか？')) return;
-  const entry=_pcData.entries[i];
-  if(entry.receiptKey){
-    try{
-      const path=`receipts/${pcKey()}/${entry.receiptKey}.jpg`;
-      await _storage.ref(path).delete();
-    } catch(e){ /* 既に削除済みでも続行 */ }
-  }
-  delete entry.receiptUrl;
-  delete entry.receiptKey;
+  if(!confirm('この行の領収書画像を削除しますか？\n（Cloudinary上の画像は残ります）')) return;
+  delete _pcData.entries[i].receiptUrl;
+  delete _pcData.entries[i].receiptKey;
   _pcDirty=true;
   save(pcKey(),_pcData);
   _pcDirty=false;
