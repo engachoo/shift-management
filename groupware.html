@@ -3229,22 +3229,32 @@ function pcRowHTML(e,i){
   const chkCell=ro
     ?`<span style="font-size:14px">${e.invoiceCheck?'☑':'□'}</span>`
     :`<input type="checkbox"${e.invoiceCheck?' checked':''} onchange="pcField(${i},'invoiceCheck',this.checked)" style="width:17px;height:17px;cursor:pointer">`;
-  // 領収書セル（カメラ大・淡色・見やすい文字）
-  const hasRcp=!!e.receiptUrl;
+  // 領収書セル（複数枚対応・カメラ大・淡色）
+  const rcpUrls=pcGetReceiptUrls(e);
+  const hasRcp=rcpUrls.length>0;
   const rcpCellBg=hasRcp?'#f0fdf4':'#fffbeb';
+  // サムネイル＋削除ボタン
+  const thumbs=rcpUrls.map((url,ui)=>{
+    const safeUrl=url.replace(/'/g,"\\'");
+    const lbl=esc((e.payee||'')+(e.date?' '+e.date:''));
+    return `<div style="position:relative;display:inline-block;margin:2px">
+      <img src="${safeUrl}" onclick="pcViewReceipt('${safeUrl}','${lbl}')"
+        style="width:44px;height:44px;object-fit:cover;border-radius:6px;cursor:pointer;border:2px solid #34d399;display:block">
+      ${ro?'':`<button onclick="pcDeleteReceiptOne(${i},${ui})"
+        style="position:absolute;top:-5px;right:-5px;background:#dc2626;color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:11px;cursor:pointer;line-height:18px;text-align:center;padding:0;font-weight:700">×</button>`}
+    </div>`;
+  }).join('');
   const rcpCell=hasRcp
-    ? `<div style="display:flex;flex-direction:column;gap:5px;align-items:center">
-        <button onclick="pcViewReceipt('${e.receiptUrl.replace(/'/g,"\\'")}','${esc((e.payee||'')+' '+(e.date||''))}')"
-          style="background:#fff;color:#065f46;border:3px solid #34d399;border-radius:10px;padding:8px 4px;cursor:pointer;width:82px;line-height:1.4;font-weight:700;box-shadow:0 1px 4px rgba(52,211,153,.2)">
-          <span style="font-size:36px;display:block;line-height:1">📎</span>
-          <span style="font-size:12px;font-weight:700">確認</span></button>
-        ${ro?'':`<button onclick="pcDeleteReceipt(${i})" style="background:#fff0f0;color:#dc2626;border:1.5px solid #fca5a5;border-radius:6px;padding:4px 4px;cursor:pointer;font-size:11px;width:82px;font-weight:600">🗑 削除</button>`}
-        <span style="font-size:10px;color:#047857;font-weight:700;background:#d1fae5;border-radius:4px;padding:2px 6px;letter-spacing:.3px">✅ 撮影済</span>
+    ? `<div style="display:flex;flex-direction:column;gap:4px;align-items:center">
+        <div style="display:flex;flex-wrap:wrap;justify-content:center;max-width:96px">${thumbs}</div>
+        <span style="font-size:10px;color:#047857;font-weight:700;background:#d1fae5;border-radius:4px;padding:2px 6px">✅ ${rcpUrls.length}枚保存済</span>
+        ${ro?'':`<button id="pcRcpBtn${i}" onclick="pcShowReceiptGuide(${i})"
+          style="background:#fff;color:#1d4ed8;border:2px solid #93c5fd;border-radius:8px;padding:4px 4px;cursor:pointer;width:82px;font-size:11px;font-weight:700">＋ 追加撮影</button>`}
        </div>`
     : ro
       ? `<div style="text-align:center;padding:4px 0"><span style="font-size:30px;display:block">📭</span><span style="font-size:10px;color:#9ca3af;font-weight:600">未撮影</span></div>`
       : `<div style="display:flex;flex-direction:column;gap:5px;align-items:center">
-          <button id="pcRcpBtn${i}" onclick="pcUploadReceipt(${i})"
+          <button id="pcRcpBtn${i}" onclick="pcShowReceiptGuide(${i})"
             style="background:#fff;color:#92400e;border:3px solid #fbbf24;border-radius:10px;padding:8px 4px;cursor:pointer;width:82px;line-height:1.4;font-weight:700;box-shadow:0 1px 4px rgba(251,191,36,.25)">
             <span style="font-size:36px;display:block;line-height:1">📷</span>
             <span style="font-size:12px;font-weight:700">撮影</span></button>
@@ -5861,18 +5871,41 @@ function pcCompressImage(file){
 const _CLOUDINARY_CLOUD = 'dwuyaamu4';
 const _CLOUDINARY_PRESET = 'receipt_upload';
 
-// --- 領収書アップロード（Cloudinary）---
+// --- 複数枚対応: URLsを取得（旧単枚データとの互換）---
+function pcGetReceiptUrls(e){
+  if(e.receiptUrls && e.receiptUrls.length) return e.receiptUrls;
+  if(e.receiptUrl) return [e.receiptUrl]; // 旧フォーマット互換
+  return [];
+}
+
+// --- 撮影ガイドポップアップ ---
+let _pcReceiptTargetIdx=-1;
+function pcShowReceiptGuide(i){
+  _pcReceiptTargetIdx=i;
+  const m=document.getElementById('pcReceiptGuideModal');
+  if(m) m.style.display='flex';
+}
+function pcCloseReceiptGuide(){
+  const m=document.getElementById('pcReceiptGuideModal');
+  if(m) m.style.display='none';
+}
+function pcStartCamera(){
+  pcCloseReceiptGuide();
+  pcUploadReceipt(_pcReceiptTargetIdx);
+}
+
+// --- 領収書アップロード（Cloudinary・複数枚対応）---
 async function pcUploadReceipt(i){
   if(!_pcData||!_pcData.entries[i]){ return; }
   const input=document.createElement('input');
   input.type='file';
   input.accept='image/*';
-  input.capture='environment'; // PC・モバイル共にカメラ優先起動
+  input.capture='environment';
   input.onchange=async()=>{
     const file=input.files[0];
     if(!file) return;
     const btn=document.getElementById('pcRcpBtn'+i);
-    if(btn){ btn.textContent='⏳'; btn.disabled=true; }
+    if(btn){ btn.innerHTML='<span style="font-size:18px">⏳</span><br><span style="font-size:11px">送信中</span>'; btn.disabled=true; }
     try{
       const blob=await pcCompressImage(file);
       const formData=new FormData();
@@ -5884,8 +5917,13 @@ async function pcUploadReceipt(i){
       });
       if(!res.ok) throw new Error('HTTP '+res.status);
       const data=await res.json();
-      _pcData.entries[i].receiptUrl=data.secure_url;
-      _pcData.entries[i].receiptKey=data.public_id;
+      // 複数枚配列に追加（旧データ互換: receiptUrl→receiptUrlsに移行）
+      if(!_pcData.entries[i].receiptUrls) {
+        _pcData.entries[i].receiptUrls = _pcData.entries[i].receiptUrl ? [_pcData.entries[i].receiptUrl] : [];
+        delete _pcData.entries[i].receiptUrl;
+        delete _pcData.entries[i].receiptKey;
+      }
+      _pcData.entries[i].receiptUrls.push(data.secure_url);
       _pcDirty=true;
       save(pcKey(),_pcData);
       _pcDirty=false;
@@ -5893,16 +5931,32 @@ async function pcUploadReceipt(i){
     } catch(err){
       console.error('upload error',err);
       alert('アップロードに失敗しました。\n\n'+err.message);
-      if(btn){ btn.textContent='📷'; btn.disabled=false; }
+      if(btn){ btn.innerHTML='<span style="font-size:36px;display:block;line-height:1">📷</span><span style="font-size:12px;font-weight:700">撮影</span>'; btn.disabled=false; }
     }
   };
   input.click();
 }
 
-// --- 領収書削除（Cloudinaryからは削除せずURLのみ消去）---
+// --- 領収書1枚削除 ---
+function pcDeleteReceiptOne(i, urlIdx){
+  if(!_pcData||!_pcData.entries[i]) return;
+  if(!confirm('この領収書画像を削除しますか？')) return;
+  const urls=pcGetReceiptUrls(_pcData.entries[i]);
+  urls.splice(urlIdx,1);
+  _pcData.entries[i].receiptUrls=urls;
+  delete _pcData.entries[i].receiptUrl;
+  delete _pcData.entries[i].receiptKey;
+  _pcDirty=true;
+  save(pcKey(),_pcData);
+  _pcDirty=false;
+  renderPettyCash();
+}
+
+// --- 旧互換: 全削除 ---
 function pcDeleteReceipt(i){
   if(!_pcData||!_pcData.entries[i]) return;
-  if(!confirm('この行の領収書画像を削除しますか？\n（Cloudinary上の画像は残ります）')) return;
+  if(!confirm('この行の領収書画像をすべて削除しますか？')) return;
+  _pcData.entries[i].receiptUrls=[];
   delete _pcData.entries[i].receiptUrl;
   delete _pcData.entries[i].receiptKey;
   _pcDirty=true;
@@ -5992,7 +6046,7 @@ async function pcDoSearch(){
       const exp=Number(r.expense)||0;
       if(q.amtMin&&exp<Number(q.amtMin)) return false;
       if(q.amtMax&&exp>Number(q.amtMax)) return false;
-      if(q.receiptOnly&&!r.receiptUrl) return false;
+      if(q.receiptOnly&&!r.receiptUrl&&(!r.receiptUrls||!r.receiptUrls.length)) return false;
       return true;
     });
 
@@ -6024,8 +6078,9 @@ async function pcDoSearch(){
           ${rows.map(r=>{
             const wrD=r.date?toWareki(r.date):'-';
             const dateLabel=r.date?`R${wrD.y}/${String(wrD.m).padStart(2,'0')}/${String(wrD.d).padStart(2,'0')}`:'-';
-            const rcpBtn=r.receiptUrl
-              ?`<button onclick="pcViewReceipt('${r.receiptUrl.replace(/'/g,"\\'")}','${esc(r.payee||'')} ${esc(r.date||'')}')" style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;border-radius:4px;padding:2px 8px;cursor:pointer;font-size:11px;font-weight:600">📎 表示</button>`
+            const _srUrls=(r.receiptUrls&&r.receiptUrls.length)?r.receiptUrls:(r.receiptUrl?[r.receiptUrl]:[]);
+            const rcpBtn=_srUrls.length>0
+              ?_srUrls.map((u,ui)=>`<button onclick="pcViewReceipt('${u.replace(/'/g,"\\'")}','${esc(r.payee||'')} ${esc(r.date||'')} (${ui+1}枚目)')" style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;border-radius:4px;padding:2px 6px;cursor:pointer;font-size:11px;font-weight:600">📎 ${ui+1}</button>`).join(' ')
               :'<span style="color:#d1d5db;font-size:11px">なし</span>';
             return `<tr style="background:#fff">
               <td style="${tdS};white-space:nowrap">${dateLabel}</td>
@@ -6045,6 +6100,31 @@ async function pcDoSearch(){
   }
 }
 </script>
+
+<!-- 領収書撮影ガイドモーダル -->
+<div id="pcReceiptGuideModal" style="display:none;position:fixed;inset:0;z-index:9100;background:rgba(0,0,0,.55);align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)pcCloseReceiptGuide()">
+  <div style="background:#fff;border-radius:18px;max-width:340px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,.35);overflow:hidden">
+    <!-- ヘッダー -->
+    <div style="background:linear-gradient(135deg,#1a3a6b,#1d4ed8);padding:18px 20px 14px;text-align:center">
+      <div style="font-size:40px;line-height:1;margin-bottom:6px">📷</div>
+      <div style="font-size:17px;font-weight:700;color:#fff">領収書を撮影します</div>
+    </div>
+    <!-- 案内 -->
+    <div style="padding:20px 20px 0">
+      <div style="background:#fffbeb;border:2px solid #fbbf24;border-radius:12px;padding:16px 18px">
+        <div style="font-size:14px;color:#92400e;line-height:2;font-weight:600">
+          <div>☆ 領収書は見やすく全体が<br>　 把握できるように撮影</div>
+          <div style="margin-top:4px">☆ 複数枚も保存できます</div>
+        </div>
+      </div>
+    </div>
+    <!-- ボタン -->
+    <div style="display:flex;gap:10px;padding:18px 20px">
+      <button onclick="pcCloseReceiptGuide()" style="flex:1;background:#f1f5f9;color:#475569;border:none;border-radius:10px;padding:12px;font-size:13px;font-weight:600;cursor:pointer">キャンセル</button>
+      <button onclick="pcStartCamera()" style="flex:2;background:linear-gradient(135deg,#1a56db,#1e40af);color:#fff;border:none;border-radius:10px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 3px 10px rgba(26,86,219,.35)">撮影に進む →</button>
+    </div>
+  </div>
+</div>
 
 <!-- 領収書プレビューモーダル -->
 <div id="pcReceiptModal" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.7);align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this)pcCloseReceiptModal()">
