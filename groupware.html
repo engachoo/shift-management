@@ -2991,10 +2991,14 @@ function confirmBl(blId){
 function updateBadges(){
   const cis=load('circulars',[]);
   // 未承認（pending）＋保留中（checking）の合計をバッジに表示
-  // 申請者は全員承認済になるまでカウント、受信者は自分の回答が未完の間カウント
+  // 申請者は自分以外の宛先全員が承認済になるまでカウント、受信者は自分の回答が未完の間カウント
+  // 取り下げ済みはカウントしない
   const pending=cis.filter(c=>{
+    if(c.withdrawn) return false; // 取り下げ済みは除外
     if(c.author===myId()){
-      return c.recipients&&!c.recipients.every(id=>c.responses[id]?.status==='confirmed');
+      // 自分以外の宛先が全員承認済みになるまでカウント
+      const others=(c.recipients||[]).filter(id=>id!==myId());
+      return others.length>0 && !others.every(id=>c.responses?.[id]?.status==='confirmed');
     }
     if(!c.recipients||!c.recipients.includes(myId()))return false;
     const r=c.responses[myId()];
@@ -3023,7 +3027,7 @@ function updateBadges(){
   // ホームバッジに予定通知を加算
   const topBadge=document.getElementById('badge-top');
   if(topBadge){
-    const cis=load('circulars',[]).filter(c=>{if(!c.recipients?.includes(me))return false;const r=c.responses[me];return !r||r.status==='pending'||r.status==='checking';}).length;
+    const cis=load('circulars',[]).filter(c=>{if(c.withdrawn)return false;if(!c.recipients?.includes(me))return false;const r=c.responses[me];return !r||r.status==='pending'||r.status==='checking';}).length;
     const bls2=load('bulletins',[]).filter(b=>blVisibleToMe(b)&&!(b.reactions&&b.reactions[me]?.confirmed)).length;
     const _todos2=load('todos',[]);
     const todos2=_todos2.filter(t=>!t.done&&(t.userId===me||t.assignedBy===me)&&t.due&&Math.ceil(((t.dueTime?new Date(t.due+'T'+t.dueTime+':00'):new Date(t.due+'T23:59:59'))-new Date())/(1000*60*60*24))<=3).length;
