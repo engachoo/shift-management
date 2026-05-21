@@ -5025,33 +5025,37 @@ function moveCiRecip(dir){
 // ----- 添付ファイル（Cloudinaryアップロード方式）-----
 let _ciFiles = [];
 
-// ファイルをCloudinaryにアップロードしてURLを返す
+// ファイルをアップロードしてURLを返す
+// 画像 → Cloudinary（圧縮あり）、PDF・その他 → Firebase Storage（401回避）
 async function uploadCiFileToCloud(file){
-  const formData = new FormData();
-  // 画像は圧縮してからアップロード
   if(file.type.startsWith('image/')){
+    // --- 画像：Cloudinaryへ圧縮アップロード ---
+    const formData = new FormData();
     try{
       const blob = await pcCompressImage(file);
       formData.append('file', blob, file.name);
     } catch(e){
       formData.append('file', file);
     }
+    formData.append('upload_preset', _CLOUDINARY_PRESET);
+    formData.append('folder', 'circulars');
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${_CLOUDINARY_CLOUD}/image/upload`, {
+      method:'POST', body:formData
+    });
+    if(!res.ok){
+      const errJson = await res.json().catch(()=>({}));
+      throw new Error(errJson.error?.message || 'HTTP '+res.status);
+    }
+    const data = await res.json();
+    return data.secure_url;
   } else {
-    formData.append('file', file);
+    // --- PDF・Excel等：Firebase Storageへアップロード ---
+    const fileId = Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+    const ref = _storage.ref(`circulars/${fileId}/${file.name}`);
+    const snapshot = await ref.put(file);
+    const url = await snapshot.ref.getDownloadURL();
+    return url;
   }
-  formData.append('upload_preset', _CLOUDINARY_PRESET);
-  formData.append('folder', 'circulars');
-  // 画像はimage、それ以外はrawエンドポイント
-  const rtype = file.type.startsWith('image/') ? 'image' : 'raw';
-  const res = await fetch(`https://api.cloudinary.com/v1_1/${_CLOUDINARY_CLOUD}/${rtype}/upload`, {
-    method:'POST', body:formData
-  });
-  if(!res.ok){
-    const errJson = await res.json().catch(()=>({}));
-    throw new Error(errJson.error?.message || 'HTTP '+res.status);
-  }
-  const data = await res.json();
-  return data.secure_url;
 }
 
 async function onCiFileChange(){
