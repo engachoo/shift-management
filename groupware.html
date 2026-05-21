@@ -5026,7 +5026,8 @@ function moveCiRecip(dir){
 let _ciFiles = [];
 
 // ファイルをアップロードしてURLを返す
-// 画像 → Cloudinary（圧縮あり）、PDF・その他 → Firebase Storage（401回避）
+// 画像 → Cloudinary（圧縮あり）
+// PDF・Excel等 → Firestoreの専用ドキュメントに分割保存（外部サービス不要・無料）
 async function uploadCiFileToCloud(file){
   if(file.type.startsWith('image/')){
     // --- 画像：Cloudinaryへ圧縮アップロード ---
@@ -5049,12 +5050,23 @@ async function uploadCiFileToCloud(file){
     const data = await res.json();
     return data.secure_url;
   } else {
-    // --- PDF・Excel等：Firebase Storageへアップロード ---
-    const fileId = Date.now().toString(36) + Math.random().toString(36).slice(2,6);
-    const ref = _storage.ref(`circulars/${fileId}/${file.name}`);
-    const snapshot = await ref.put(file);
-    const url = await snapshot.ref.getDownloadURL();
-    return url;
+    // --- PDF・Excel等：Firestoreの専用ドキュメントに保存 ---
+    // ファイルをbase64に変換
+    const base64 = await new Promise((resolve, reject)=>{
+      const reader = new FileReader();
+      reader.onload = e => resolve(e.target.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+    // サイズチェック（Firestoreは1ドキュメント最大1MB）
+    if(base64.length > 900_000){
+      throw new Error(`ファイルが大きすぎます（目安：650KB以下）。ファイルを圧縮してから添付してください。`);
+    }
+    // Firestoreの ci_files コレクションに保存
+    const fileId = uid();
+    await _db.collection('ci_files').doc(fileId).set({ name: file.name, type: file.type, size: file.size, data: base64 });
+    // fs:// プレフィックスで識別できるようにする
+    return 'fs://' + fileId;
   }
 }
 
@@ -5095,12 +5107,25 @@ function removeCiFile(idx){
   renderCiFileList();
 }
 
-function downloadCiFile(ciId,fileIdx){
+async function downloadCiFile(ciId,fileIdx){
   const c=load('circulars',[]).find(x=>x.id===ciId);
   if(!c||!c.files||!c.files[fileIdx])return;
   const f=c.files[fileIdx];
-  if(f.url){
-    // 新形式：CloudinaryのURL
+  if(f.url && f.url.startsWith('fs://')){
+    // Firestoreドキュメントから取得してダウンロード
+    const fileId = f.url.slice(5);
+    try{
+      showToast('📄 ファイルを取得中...',3000);
+      const doc = await _db.collection('ci_files').doc(fileId).get();
+      if(!doc.exists){ alert('ファイルが見つかりません'); return; }
+      const data = doc.data();
+      const a = document.createElement('a');
+      a.href = data.data; a.download = data.name; a.click();
+    } catch(e){
+      alert('ファイルの取得に失敗しました: '+e.message);
+    }
+  } else if(f.url){
+    // Cloudinary画像URL
     window.open(f.url,'_blank');
   } else if(f.data){
     // 旧形式（後方互換）：base64データURL
