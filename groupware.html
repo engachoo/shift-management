@@ -713,7 +713,10 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
       <div class="ci-list">
         <div class="ci-list-hdr">
           <h3>📝 承認申請</h3>
-          <button class="btn-new" onclick="openCiModal()">＋ 新規</button>
+          <div style="display:flex;gap:6px;align-items:center">
+            <button id="ciArchiveBtn" class="btn-new" onclick="ciArchiveOld()" title="古い承認済み申請をアーカイブしてデータ容量を削減" style="display:none;background:#fff7ed;color:#c2410c;border:1px solid #fed7aa;font-size:11px;padding:3px 8px">🗄 整理</button>
+            <button class="btn-new" onclick="openCiModal()">＋ 新規</button>
+          </div>
         </div>
         <div class="ci-filter">
           <button class="active" id="cf-pending" onclick="filterCi('pending')">未承認<span class="ci-filter-cnt" id="cnt-pending"></span></button>
@@ -1830,8 +1833,21 @@ function load(k, d=null){
 function save(k, v){
   _cache[k] = v;
   if(_fbReady){
-    _db.collection(_COL).doc(k).set({ v: JSON.stringify(v) })
-      .catch(e => console.warn('Firestore書き込みエラー:', k, e));
+    const json = JSON.stringify(v);
+    // Firestoreドキュメントは1MB上限。超過を事前検知（900KB超で警告）
+    if(json.length > 900_000){
+      console.warn(`[save] "${k}" のデータサイズが大きすぎます (${(json.length/1024).toFixed(0)}KB)。アーカイブを検討してください。`);
+      if(k==='circulars'){
+        showToast('⚠️ 申請データが肥大化しています。管理者にアーカイブを依頼してください。', 5000);
+      }
+    }
+    _db.collection(_COL).doc(k).set({ v: json })
+      .catch(e => {
+        console.error('Firestore書き込みエラー:', k, e);
+        if(k==='circulars'){
+          showToast('❌ 保存に失敗しました。管理者にお問い合わせください（データ容量超過の可能性）', 6000);
+        }
+      });
   }
 }
 async function loadAllFromFirestore(){
@@ -4586,6 +4602,24 @@ function filterCi(f){
 
 function renderCiList(){
   updateBadges();
+  // アーカイブボタン：システム/管理者のみ表示、データ肥大化時は警告色
+  const archBtn=document.getElementById('ciArchiveBtn');
+  if(archBtn){
+    const canArch=hasPerm('system_settings');
+    archBtn.style.display=canArch?'':'none';
+    if(canArch){
+      const sz=JSON.stringify(load('circulars',[])).length;
+      if(sz>700_000){
+        archBtn.style.background='#fef2f2'; archBtn.style.color='#dc2626'; archBtn.style.borderColor='#fca5a5';
+        archBtn.textContent='🗄 整理 ⚠️';
+        archBtn.title=`データサイズが${(sz/1024).toFixed(0)}KBに達しています。整理を推奨します`;
+      } else {
+        archBtn.style.background='#fff7ed'; archBtn.style.color='#c2410c'; archBtn.style.borderColor='#fed7aa';
+        archBtn.textContent='🗄 整理';
+        archBtn.title='古い承認済み申請をアーカイブしてデータ容量を削減';
+      }
+    }
+  }
   const cis=load('circulars',[]);
   const me=myId();
   const all=cis.filter(c=>(c.recipients&&c.recipients.includes(me))||(c.cc&&c.cc.includes(me))||c.author===me);
@@ -5160,6 +5194,44 @@ function saveCi(){
   closeModal('ciModal');
   renderCiList();
   alert('申請を登録しました');
+}
+
+// =========================================================
+// 承認申請アーカイブ（管理者用・データ容量圧縮）
+// =========================================================
+function ciArchiveOld(){
+  if(!hasPerm('system_settings')){ alert('管理者権限が必要です'); return; }
+  const cis=load('circulars',[]);
+  const cutoff=new Date();
+  cutoff.setMonth(cutoff.getMonth()-3); // 3ヶ月以上前
+  const cutoffStr=cutoff.toISOString().slice(0,10).replace(/-/g,'');
+
+  const toArchive=cis.filter(c=>{
+    // 取り下げ済み または 全員承認済み
+    const allConf=c.recipients&&c.recipients.every(id=>c.responses?.[id]?.status==='confirmed');
+    if(!c.withdrawn && !allConf) return false;
+    // 3ヶ月以上前に作成されたもの
+    const created=(c.createdAt||'').replace(/[^0-9]/g,'').slice(0,8);
+    return created && created<cutoffStr;
+  });
+
+  if(!toArchive.length){
+    alert('アーカイブ対象の申請はありません（3ヶ月以上前・承認済/取り下げ済のもの）');
+    return;
+  }
+
+  const sizeKB=(JSON.stringify(cis).length/1024).toFixed(0);
+  if(!confirm(`${toArchive.length}件の古い申請をアーカイブ（削除）します。\n現在のデータサイズ: 約${sizeKB}KB\n\n対象: 3ヶ月以上前に作成された承認済み・取り下げ済みの申請\n\nよろしいですか？`)) return;
+
+  const archiveKey='circulars_archive';
+  const existing=load(archiveKey,[]);
+  const ids=new Set(toArchive.map(c=>c.id));
+  save(archiveKey, [...existing, ...toArchive]);
+  const remaining=cis.filter(c=>!ids.has(c.id));
+  save('circulars', remaining);
+  const newKB=(JSON.stringify(remaining).length/1024).toFixed(0);
+  renderCiList();
+  alert(`✅ ${toArchive.length}件をアーカイブしました。\nデータサイズ: ${sizeKB}KB → ${newKB}KB`);
 }
 
 // =========================================================
