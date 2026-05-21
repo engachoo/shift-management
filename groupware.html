@@ -715,6 +715,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
           <h3>📝 承認申請</h3>
           <div style="display:flex;gap:6px;align-items:center">
             <button id="ciArchiveBtn" class="btn-new" onclick="ciArchiveOld()" title="古い承認済み申請をアーカイブしてデータ容量を削減" style="display:none;background:#fff7ed;color:#c2410c;border:1px solid #fed7aa;font-size:11px;padding:3px 8px">🗄 整理</button>
+            <button id="ciRestoreBtn" class="btn-new" onclick="ciRestoreFromArchive()" title="アーカイブから申請を復元" style="display:none;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;font-size:11px;padding:3px 8px">🔄 復元</button>
             <button class="btn-new" onclick="openCiModal()">＋ 新規</button>
           </div>
         </div>
@@ -4604,6 +4605,7 @@ function renderCiList(){
   updateBadges();
   // アーカイブボタン：システム/管理者のみ表示、データ肥大化時は警告色
   const archBtn=document.getElementById('ciArchiveBtn');
+  const restoreBtn=document.getElementById('ciRestoreBtn');
   if(archBtn){
     const canArch=hasPerm('system_settings');
     archBtn.style.display=canArch?'':'none';
@@ -4618,6 +4620,15 @@ function renderCiList(){
         archBtn.textContent='🗄 整理';
         archBtn.title='古い承認済み申請をアーカイブしてデータ容量を削減';
       }
+    }
+  }
+  // 復元ボタン：アーカイブにデータがある場合のみ管理者に表示
+  if(restoreBtn){
+    const canArch=hasPerm('system_settings');
+    const archCount=(load('circulars_archive',[])).length;
+    restoreBtn.style.display=(canArch && archCount>0)?'':'none';
+    if(canArch && archCount>0){
+      restoreBtn.textContent=`🔄 復元（${archCount}件）`;
     }
   }
   const cis=load('circulars',[]);
@@ -5239,6 +5250,33 @@ function ciArchiveOld(){
   const newKB=(JSON.stringify(remaining).length/1024).toFixed(0);
   renderCiList();
   alert(`✅ ${toArchive.length}件をアーカイブしました。\nデータサイズ: ${sizeKB}KB → ${newKB}KB`);
+}
+
+// アーカイブから承認申請を復元する
+function ciRestoreFromArchive(){
+  if(!hasPerm('system_settings')){ alert('管理者権限が必要です'); return; }
+  const archived=load('circulars_archive',[]);
+  if(!archived.length){ alert('アーカイブにデータはありません'); return; }
+
+  const currentCount=load('circulars',[]).length;
+  if(!confirm(`アーカイブに ${archived.length} 件の申請があります。\n現在の申請リスト（${currentCount}件）と合わせて復元します。\n\n重複するIDは現在のデータを優先します。\n\nよろしいですか？`)) return;
+
+  const current=load('circulars',[]);
+  const existingIds=new Set(current.map(c=>c.id));
+  // 現在に存在しないIDのみアーカイブから追加
+  const toRestore=archived.filter(c=>!existingIds.has(c.id));
+  if(!toRestore.length){
+    alert('すべてのアーカイブ済み申請は既に現在のリストに存在します（重複のためスキップ）');
+    return;
+  }
+  const merged=[...current, ...toRestore];
+  // 作成日順でソート
+  merged.sort((a,b)=>(a.createdAt||'').localeCompare(b.createdAt||''));
+  save('circulars', merged);
+  // アーカイブをクリア
+  save('circulars_archive', []);
+  renderCiList();
+  alert(`✅ ${toRestore.length} 件を復元しました。\nアーカイブはクリアされました。`);
 }
 
 // =========================================================
