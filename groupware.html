@@ -719,6 +719,12 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
             <button class="btn-new" onclick="openCiModal()">＋ 新規</button>
           </div>
         </div>
+        <!-- 定期アーカイブリマインダー（管理者のみ・3ヶ月ごと） -->
+        <div id="ciArchiveReminder" style="display:none;background:#fff7ed;border-bottom:1px solid #fed7aa;padding:8px 12px;display:none;align-items:center;gap:8px;flex-shrink:0">
+          <span style="font-size:13px;flex:1;color:#92400e">🗄 承認申請データの定期整理の時期です（3ヶ月ごと推奨）</span>
+          <button onclick="ciArchiveOld()" style="background:#ea580c;color:#fff;border:none;border-radius:6px;padding:4px 12px;font-size:12px;font-weight:700;cursor:pointer">今すぐ整理</button>
+          <button onclick="ciDismissReminder()" style="background:none;border:none;color:#92400e;font-size:16px;cursor:pointer;line-height:1;padding:0 2px">×</button>
+        </div>
         <div class="ci-filter">
           <button class="active" id="cf-pending" onclick="filterCi('pending')">未承認<span class="ci-filter-cnt" id="cnt-pending"></span></button>
           <button id="cf-checking" onclick="filterCi('checking')">保留中<span class="ci-filter-cnt" id="cnt-checking"></span></button>
@@ -4631,6 +4637,26 @@ function renderCiList(){
       restoreBtn.textContent=`🔄 復元（${archCount}件）`;
     }
   }
+  // 定期アーカイブリマインダー：管理者のみ・3ヶ月ごとに表示
+  const reminderEl=document.getElementById('ciArchiveReminder');
+  if(reminderEl){
+    const canArch=hasPerm('system_settings');
+    if(canArch){
+      const lastArch=load('ciLastArchivedAt','');
+      const lastDismiss=load('ciReminderDismissedAt','');
+      const nowDate=new Date().toISOString().slice(0,10);
+      const daysSinceLast=(d)=>{
+        if(!d) return 999;
+        return Math.floor((new Date(nowDate)-new Date(d))/(1000*60*60*24));
+      };
+      // 最後の整理 or 却下から90日以上経過していたら表示
+      const ref = lastArch > lastDismiss ? lastArch : lastDismiss;
+      const showReminder = daysSinceLast(ref) >= 90;
+      reminderEl.style.display = showReminder ? 'flex' : 'none';
+    } else {
+      reminderEl.style.display = 'none';
+    }
+  }
   const cis=load('circulars',[]);
   const me=myId();
   const all=cis.filter(c=>(c.recipients&&c.recipients.includes(me))||(c.cc&&c.cc.includes(me))||c.author===me);
@@ -5262,6 +5288,12 @@ function saveCi(){
 // =========================================================
 // 承認申請アーカイブ（管理者用・データ容量圧縮）
 // =========================================================
+// リマインダーを「今回は閉じる」
+function ciDismissReminder(){
+  save('ciReminderDismissedAt', new Date().toISOString().slice(0,10));
+  const el=document.getElementById('ciArchiveReminder');
+  if(el) el.style.display='none';
+}
 function ciArchiveOld(){
   if(!hasPerm('system_settings')){ alert('管理者権限が必要です'); return; }
   const cis=load('circulars',[]);
@@ -5292,6 +5324,8 @@ function ciArchiveOld(){
   save(archiveKey, [...existing, ...toArchive]);
   const remaining=cis.filter(c=>!ids.has(c.id));
   save('circulars', remaining);
+  // 実行日を記録（次回リマインダーの基準日）
+  save('ciLastArchivedAt', new Date().toISOString().slice(0,10));
   const newKB=(JSON.stringify(remaining).length/1024).toFixed(0);
   renderCiList();
   alert(`✅ ${toArchive.length}件をアーカイブしました。\nデータサイズ: ${sizeKB}KB → ${newKB}KB`);
