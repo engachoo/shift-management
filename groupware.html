@@ -5192,6 +5192,13 @@ function saveCi(){
     sendEvNotif(cc,'📝',`【Cc共有】「${title}」の申請が共有されました（閲覧のみ・回答不要）`);
   }
   closeModal('ciModal');
+  // 新規登録後は必ず「未承認」タブに切り替えて登録内容を確認できるようにする
+  ciFilter='pending';
+  ['pending','checking','done'].forEach(k=>{
+    const b=document.getElementById('cf-'+k); if(b) b.classList.toggle('active',k==='pending');
+  });
+  const wrap=document.getElementById('ci-author-filter-wrap');
+  if(wrap) wrap.style.display='none';
   renderCiList();
   alert('申請を登録しました');
 }
