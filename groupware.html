@@ -5082,9 +5082,9 @@ async function uploadCiFileToCloud(file){
     if(base64.length > 900_000){
       throw new Error(`ファイルが大きすぎます（目安：650KB以下）。ファイルを圧縮してから添付してください。`);
     }
-    // Firestoreの ci_files コレクションに保存
+    // gw2data コレクションに ci_file_ プレフィックスで保存（既存ルールで許可済み）
     const fileId = uid();
-    await _db.collection('ci_files').doc(fileId).set({ name: file.name, type: file.type, size: file.size, data: base64 });
+    await _db.collection(_COL).doc('ci_file_'+fileId).set({ v: JSON.stringify({ name: file.name, type: file.type, size: file.size, data: base64 }) });
     // fs:// プレフィックスで識別できるようにする
     return 'fs://' + fileId;
   }
@@ -5156,9 +5156,9 @@ async function downloadCiFile(ciId,fileIdx){
     const fileId=f.url.slice(5);
     try{
       showToast('📄 ファイルを取得中...',3000);
-      const doc=await _db.collection('ci_files').doc(fileId).get();
+      const doc=await _db.collection(_COL).doc('ci_file_'+fileId).get();
       if(!doc.exists){ alert('ファイルが見つかりません'); return; }
-      const data=doc.data();
+      const data=JSON.parse(doc.data().v);
       openOrDownload(data.data, data.name, data.type);
     } catch(e){
       alert('ファイルの取得に失敗しました: '+e.message);
