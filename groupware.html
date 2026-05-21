@@ -4663,8 +4663,13 @@ function renderCiList(){
 
   // Ccのみ（Toには含まれない）かどうか
   const isCcOnly=(c)=>!!(c.cc&&c.cc.includes(me)&&!(c.recipients&&c.recipients.includes(me))&&c.author!==me);
-  // 申請者（author）視点：全員承認済になるまで「未承認」タブに表示
-  const _allConf=(c)=>c.recipients.every(id=>c.responses[id]?.status==='confirmed');
+  // 申請者（author）視点：自分以外の宛先全員が承認済みになって初めて「承認済」
+  // ※申請者自身はrecipients追加時に自動確認済みになるため除外して判定する
+  const _allConf=(c)=>{
+    const others=(c.recipients||[]).filter(id=>id!==c.author);
+    if(!others.length) return false; // 自分以外の宛先がいない場合は完了とみなさない
+    return others.every(id=>c.responses?.[id]?.status==='confirmed');
+  };
   const ciPending=(c)=>{
     if(c.withdrawn||isCcOnly(c)) return false; // 取り下げ済・Cc専用は未承認に出さない
     return c.author===me ? !_allConf(c) : (!c.responses[me]||c.responses[me]?.status==='pending');
