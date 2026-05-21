@@ -4659,10 +4659,13 @@ function renderCiList(){
   }
   const cis=load('circulars',[]);
   const me=myId();
-  const all=cis.filter(c=>(c.recipients&&c.recipients.includes(me))||(c.cc&&c.cc.includes(me))||c.author===me);
+  // システムは全件閲覧可能・それ以外は自分が関係する申請のみ
+  const all=isSystem()
+    ? [...cis]
+    : cis.filter(c=>(c.recipients&&c.recipients.includes(me))||(c.cc&&c.cc.includes(me))||c.author===me);
 
-  // Ccのみ（Toには含まれない）かどうか
-  const isCcOnly=(c)=>!!(c.cc&&c.cc.includes(me)&&!(c.recipients&&c.recipients.includes(me))&&c.author!==me);
+  // Ccのみ（Toには含まれない）かどうか（システムは常にfalse＝フル操作可）
+  const isCcOnly=(c)=>isSystem()?false:!!(c.cc&&c.cc.includes(me)&&!(c.recipients&&c.recipients.includes(me))&&c.author!==me);
   // 申請者（author）視点：自分以外の宛先全員が承認済みになって初めて「承認済」
   // ※申請者自身はrecipients追加時に自動確認済みになるため除外して判定する
   const _allConf=(c)=>{
@@ -5116,26 +5119,44 @@ async function downloadCiFile(ciId,fileIdx){
   const c=load('circulars',[]).find(x=>x.id===ciId);
   if(!c||!c.files||!c.files[fileIdx])return;
   const f=c.files[fileIdx];
+
+  // base64データURLからBlobを生成してブラウザで開くか保存する
+  function openOrDownload(dataUrl, name, type){
+    // PDFは新しいタブで表示
+    if(type==='application/pdf'||name.toLowerCase().endsWith('.pdf')){
+      const byteStr=atob(dataUrl.split(',')[1]);
+      const ab=new ArrayBuffer(byteStr.length);
+      const ia=new Uint8Array(ab);
+      for(let i=0;i<byteStr.length;i++) ia[i]=byteStr.charCodeAt(i);
+      const blob=new Blob([ab],{type:'application/pdf'});
+      const url=URL.createObjectURL(blob);
+      window.open(url,'_blank');
+      setTimeout(()=>URL.revokeObjectURL(url),60000);
+    } else {
+      // Excel・Word・PPT等はダウンロード
+      const a=document.createElement('a');
+      a.href=dataUrl; a.download=name; a.click();
+    }
+  }
+
   if(f.url && f.url.startsWith('fs://')){
-    // Firestoreドキュメントから取得してダウンロード
-    const fileId = f.url.slice(5);
+    // Firestoreドキュメントから取得
+    const fileId=f.url.slice(5);
     try{
       showToast('📄 ファイルを取得中...',3000);
-      const doc = await _db.collection('ci_files').doc(fileId).get();
+      const doc=await _db.collection('ci_files').doc(fileId).get();
       if(!doc.exists){ alert('ファイルが見つかりません'); return; }
-      const data = doc.data();
-      const a = document.createElement('a');
-      a.href = data.data; a.download = data.name; a.click();
+      const data=doc.data();
+      openOrDownload(data.data, data.name, data.type);
     } catch(e){
       alert('ファイルの取得に失敗しました: '+e.message);
     }
   } else if(f.url){
-    // Cloudinary画像URL
+    // Cloudinary画像URL → 新しいタブで表示
     window.open(f.url,'_blank');
   } else if(f.data){
     // 旧形式（後方互換）：base64データURL
-    const a=document.createElement('a');
-    a.href=f.data; a.download=f.name; a.click();
+    openOrDownload(f.data, f.name, f.type);
   }
 }
 
