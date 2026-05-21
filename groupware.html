@@ -2716,6 +2716,7 @@ function renderTop(){
   // ---- 承認申請：自分宛で未対応 ----
   const cis = load('circulars',[]);
   const pendingCis = cis.filter(c=>{
+    if(c.withdrawn) return false; // 取り下げ済みは表示しない
     if(!c.recipients||!c.recipients.includes(myId())) return false;
     const r = c.responses[myId()];
     return !r || r.status==='pending';
