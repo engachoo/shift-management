@@ -4660,9 +4660,13 @@ function renderCiList(){
   const cis=load('circulars',[]);
   const me=myId();
   // システムは全件閲覧可能・それ以外は自分が関係する申請のみ
+  // 取り下げ済みは申請者本人とシステムのみ表示（宛先メンバーには非表示）
   const all=isSystem()
     ? [...cis]
-    : cis.filter(c=>(c.recipients&&c.recipients.includes(me))||(c.cc&&c.cc.includes(me))||c.author===me);
+    : cis.filter(c=>{
+        if(c.withdrawn && c.author!==me) return false; // 他人の取り下げ済みは非表示
+        return (c.recipients&&c.recipients.includes(me))||(c.cc&&c.cc.includes(me))||c.author===me;
+      });
 
   // Ccのみ（Toには含まれない）かどうか（システムは常にfalse＝フル操作可）
   const isCcOnly=(c)=>isSystem()?false:!!(c.cc&&c.cc.includes(me)&&!(c.recipients&&c.recipients.includes(me))&&c.author!==me);
@@ -4678,7 +4682,8 @@ function renderCiList(){
     return c.author===me ? !_allConf(c) : (!c.responses[me]||c.responses[me]?.status==='pending');
   };
   const ciChecking=(c)=>(!c.withdrawn&&!isCcOnly(c)&&c.author!==me&&c.responses[me]?.status==='checking');
-  const ciDone=(c)=>c.withdrawn||isCcOnly(c)||(c.author===me ? _allConf(c) : c.responses[me]?.status==='confirmed');
+  // 取り下げ済みは申請者本人の承認済タブにのみ表示（他メンバーには一切表示しない）
+  const ciDone=(c)=>(c.withdrawn&&c.author===me)||isCcOnly(c)||(c.author===me ? _allConf(c) : c.responses[me]?.status==='confirmed');
 
   const cntPend=all.filter(c=>ciPending(c)&&!ciChecking(c)).length;
   const cntCheck=all.filter(c=>ciChecking(c)).length;
