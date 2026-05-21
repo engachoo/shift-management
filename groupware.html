@@ -604,19 +604,21 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
       <div class="co-name">大日産業</div>
       <div class="sys-name">グループウェア</div>
     </div>
-    <div class="login-field">
-      <label>ログインID</label>
-      <input id="loginId" type="text" placeholder="ログインIDを入力" autocomplete="username" onkeydown="if(event.key==='Enter')doLogin()">
-    </div>
-    <div class="login-field">
-      <label>パスワード</label>
-      <div class="pass-wrap">
-        <input id="loginPass" type="password" placeholder="パスワードを入力" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
-        <button class="pass-eye" type="button" onclick="toggleEye('loginPass',this)" tabindex="-1">🐵</button>
+    <form onsubmit="doLogin();return false;" autocomplete="on">
+      <div class="login-field">
+        <label>ログインID</label>
+        <input id="loginId" type="text" name="username" placeholder="ログインIDを入力" autocomplete="username">
       </div>
-    </div>
-    <div class="login-error" id="loginError"></div>
-    <button class="login-btn" onclick="doLogin()">ログイン</button>
+      <div class="login-field">
+        <label>パスワード</label>
+        <div class="pass-wrap">
+          <input id="loginPass" type="password" name="password" placeholder="パスワードを入力" autocomplete="current-password">
+          <button class="pass-eye" type="button" onclick="toggleEye('loginPass',this)" tabindex="-1">🐵</button>
+        </div>
+      </div>
+      <div class="login-error" id="loginError"></div>
+      <button class="login-btn" type="submit">ログイン</button>
+    </form>
   </div>
 </div>
 
