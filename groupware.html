@@ -718,7 +718,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
           <div style="display:flex;gap:6px;align-items:center">
             <button id="ciArchiveBtn" class="btn-new" onclick="ciArchiveOld()" title="古い承認済み申請をアーカイブしてデータ容量を削減" style="display:none;background:#fff7ed;color:#c2410c;border:1px solid #fed7aa;font-size:11px;padding:3px 8px">🗄 整理</button>
             <button id="ciRestoreBtn" class="btn-new" onclick="ciRestoreFromArchive()" title="アーカイブから申請を復元" style="display:none;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;font-size:11px;padding:3px 8px">🔄 復元</button>
-            <button class="btn-new" onclick="openCiModal()">＋ 新規</button>
+            <button onclick="openCiModal()" style="background:#1a56db;color:#fff;border:none;border-radius:8px;padding:8px 20px;font-size:15px;font-weight:700;cursor:pointer;letter-spacing:.5px">＋ 新規申請</button>
           </div>
         </div>
         <!-- 定期アーカイブリマインダー（管理者のみ・3ヶ月ごと） -->
@@ -1196,7 +1196,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
     </div>
     <div class="modal-foot" style="background:#f5f7fb;border-top:1px solid #dde3ec">
       <button class="btn-secondary" onclick="closeModal('ciModal')">キャンセル</button>
-      <button class="btn-primary" onclick="saveCi()">登録する</button>
+      <button id="ciSaveBtn" class="btn-primary" onclick="saveCi()" style="background:#1a3a6b">登録する</button>
     </div>
   </div>
 </div>
@@ -4926,7 +4926,9 @@ function openCiEdit(id){
   const hdr=document.getElementById('ciModalHdr');
   const title=document.getElementById('ciModalTitle');
   if(hdr) hdr.style.background=hdrBg;
-  if(title) title.textContent=titleMap[mode]||'承認申請 - 編集';
+  if(title) title.textContent=titleMap[mode]||'稟議申請 - 編集';
+  const saveBtn2=document.getElementById('ciSaveBtn');
+  if(saveBtn2) saveBtn2.style.background=hdrBg;
   ['approval','petty','hr'].forEach(m=>{
     const btn=document.getElementById('ciModeBtn-'+m);
     if(!btn)return;
@@ -5214,7 +5216,10 @@ function switchCiMode(mode){
   const hdr=document.getElementById('ciModalHdr');
   const title=document.getElementById('ciModalTitle');
   if(hdr) hdr.style.background=hdrBg;
-  if(title) title.textContent=titleMap[mode]||'承認申請 - 作成';
+  if(title) title.textContent=titleMap[mode]||'稟議申請 - 作成';
+  // 登録ボタンをヘッダーと同系色に
+  const saveBtn=document.getElementById('ciSaveBtn');
+  if(saveBtn) saveBtn.style.background=hdrBg;
   // タブボタンのアクティブ表示
   const activeColor={approval:'#1a3a6b',petty:'#c2410c',hr:'#166534'};
   ['approval','petty','hr'].forEach(m=>{
