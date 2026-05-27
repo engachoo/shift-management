@@ -357,6 +357,28 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
 .user-tbl tbody tr:hover{background:#f9fdf7}
 .role-admin{background:#fef3c7;color:#92400e;border-radius:3px;padding:2px 7px;font-size:11px;font-weight:700}
 .role-user{background:var(--green-lt);color:var(--green-dk);border-radius:3px;padding:2px 7px;font-size:11px;font-weight:600}
+
+/* ===== 受給者証期限アラート ===== */
+.alr-wrap{padding:12px 20px 0}
+.alert-banner{border-radius:8px;padding:11px 14px;margin-bottom:8px;display:flex;align-items:flex-start;gap:10px;font-size:13px}
+.alert-banner.alr-red{background:#fef2f2;border:1px solid #fca5a5;color:#b91c1c}
+.alert-banner.alr-orange{background:#fff7ed;border:1px solid #fdba74;color:#c2410c}
+.alert-banner.alr-yellow{background:#fefce8;border:1px solid #fde68a;color:#92400e}
+.alr-ico{font-size:15px;flex-shrink:0;margin-top:1px}
+.alr-body{flex:1}
+.alr-title{font-weight:700;margin-bottom:3px}
+.alr-list{margin:0;padding-left:16px;line-height:1.9;font-size:12.5px}
+.alr-list .alr-upd{margin-left:6px;background:none;border:1px solid currentColor;border-radius:3px;padding:1px 7px;font-size:11px;cursor:pointer;font-family:inherit;opacity:.8}
+.alr-list .alr-upd:hover{opacity:1}
+.alr-close{background:none;border:none;cursor:pointer;color:inherit;opacity:.5;font-size:15px;padding:2px;flex-shrink:0;line-height:1}
+.alr-close:hover{opacity:.9}
+/* 期限バッジ（利用者一覧用）*/
+.badge-expiry-r{background:#fef2f2;color:#b91c1c;border:1px solid #fca5a5;border-radius:3px;padding:1px 6px;font-size:10px;font-weight:700;white-space:nowrap;display:inline-block;margin-top:2px}
+.badge-expiry-o{background:#fff7ed;color:#c2410c;border:1px solid #fdba74;border-radius:3px;padding:1px 6px;font-size:10px;font-weight:700;white-space:nowrap;display:inline-block;margin-top:2px}
+.badge-expiry-y{background:#fefce8;color:#92400e;border:1px solid #fde68a;border-radius:3px;padding:1px 6px;font-size:10px;font-weight:700;white-space:nowrap;display:inline-block;margin-top:2px}
+/* ===== 加算計算ボタン ===== */
+.btn-kazan{background:var(--navy);color:#fff;border:none;border-radius:5px;padding:7px 14px;cursor:pointer;font-size:13px;font-weight:600;transition:background .2s;font-family:inherit}
+.btn-kazan:hover{background:var(--navy-dk)}
 </style>
 </head>
 <body>
@@ -460,6 +482,9 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
   <!-- メインエリア -->
   <div id="mainArea">
 
+    <!-- ===== 受給者証期限アラートバナー ===== -->
+    <div id="alertBannerWrap" class="alr-wrap" style="display:none"></div>
+
     <!-- ===== 利用実績（日ごと） ===== -->
     <div id="view-daily" style="display:none">
       <div class="page-hdr">利用実績</div>
@@ -523,6 +548,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
           <div class="ms-chip"><div class="msc-label">訪問支援</div><div class="msc-val" id="ms-vis">0<span>/2日</span></div></div>
           <div class="ms-chip"><div class="msc-label">医療連携</div><div class="msc-val" id="ms-med">0<span>日</span></div></div>
           <button class="detail-btn" onclick="showMonthlyDetail()" style="margin-left:auto">利用状況の詳細</button>
+          <button class="btn-kazan" onclick="showAdditionModal()">📊 加算計算</button>
         </div>
         <div class="tbl-wrap">
           <table>
@@ -678,7 +704,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
           <table class="client-tbl">
             <thead><tr>
               <th>氏名</th><th>フリガナ</th><th>受給者証番号</th>
-              <th>種別</th><th>障害支援区分</th><th>負担上限</th><th>状態</th><th>操作</th>
+              <th>種別</th><th>障害支援区分</th><th>負担上限</th><th>状態</th><th>受給者証期限</th><th>操作</th>
             </tr></thead>
             <tbody id="clientTbody"></tbody>
           </table>
@@ -1225,6 +1251,7 @@ function startApp(){
   startRealtimeSync();
   showView('daily');
   initCrocoPanel();
+  renderAlertBanner();
 }
 
 // =========================================================
@@ -2488,10 +2515,11 @@ function renderClients(){
   const inactive=load('clients',[]).filter(c=>c.facilityId===fid&&c.active===false).length;
   if(!clients.length){
     const msg=_showInactive?'利用者が登録されていません':`利用中の利用者がいません（退所者${inactive}名は非表示）`;
-    tbody.innerHTML=`<tr><td colspan="8"><div class="empty-state">${msg}</div></td></tr>`;return;
+    tbody.innerHTML=`<tr><td colspan="9"><div class="empty-state">${msg}</div></td></tr>`;return;
   }
-  tbody.innerHTML=clients.map(c=>`
-    <tr>
+  tbody.innerHTML=clients.map(c=>{
+    const expBadge=_getExpiryBadge(c);
+    return `<tr>
       <td style="font-weight:600">${esc(c.name)}</td>
       <td>${esc(c.kana||'')}</td>
       <td style="font-family:monospace">${esc(c.receiptNo||'')}</td>
@@ -2499,11 +2527,13 @@ function renderClients(){
       <td>${c.disabilityClass?`区分${c.disabilityClass}`:'-'}</td>
       <td>${c.contractAmount?c.contractAmount.toLocaleString()+'円':'-'}</td>
       <td><span class="${c.active!==false?'badge-active':'badge-inactive'}">${c.active!==false?'利用中':'停止'}</span></td>
+      <td>${expBadge}</td>
       <td style="display:flex;gap:6px;flex-wrap:wrap">
         <button class="btn-edit2" onclick="openClientModal('${c.id}')">編集</button>
         <button class="btn-danger" onclick="deleteClient('${c.id}')">削除</button>
       </td>
-    </tr>`).join('');
+    </tr>`;
+  }).join('');
 }
 function openClientModal(id){
   const facs=load('facilities',[]);
@@ -3553,6 +3583,259 @@ function saveSysPerms(){
   });
   save('welbe_perms', perms);
   showToast('権限設定を保存しました');
+}
+
+// =========================================================
+// 受給者証期限アラート
+// =========================================================
+function _daysUntil(dateStr){
+  if(!dateStr) return null;
+  const t=new Date(dateStr+'T00:00:00');
+  const n=new Date(); n.setHours(0,0,0,0);
+  return Math.floor((t-n)/(1000*60*60*24));
+}
+
+// 利用者1件の期限バッジ（利用者一覧テーブル用）
+function _getExpiryBadge(c){
+  const checks=[
+    {label:'支給決定', date:c.grantEnd},
+    {label:'障害区分',  date:c.disabilityPeriod?.enabled?c.disabilityPeriod?.end:null},
+    {label:'負担上限',  date:c.limitPeriod?.enabled?c.limitPeriod?.end:null},
+  ];
+  let worst=null; // {days, label, date, cls}
+  checks.forEach(({label,date})=>{
+    if(!date) return;
+    const d=_daysUntil(date);
+    if(d===null) return;
+    const cls=d<0?'badge-expiry-r':d<=30?'badge-expiry-o':d<=60?'badge-expiry-y':null;
+    if(!cls) return;
+    if(!worst||d<worst.days) worst={days:d,label,date,cls};
+  });
+  if(!worst) return '<span style="color:#d1d5db;font-size:12px">—</span>';
+  const txt=worst.days<0?`期限切れ（${worst.label}）`
+            :worst.days===0?`今日が期限（${worst.label}）`
+            :`残${worst.days}日（${worst.label}）`;
+  return `<span class="${worst.cls}">${txt}</span><br><span style="font-size:10px;color:var(--text-lt)">${worst.date}</span>`;
+}
+
+// 全利用者の期限チェク → {expired:[], soon30:[], soon60:[]} を返す
+function getReceiptAlerts(){
+  const clients=load('clients',[]).filter(c=>c.active!==false);
+  const alerts={expired:[],soon30:[],soon60:[]};
+  clients.forEach(c=>{
+    const checks=[
+      {label:'支給決定終了日',    date:c.grantEnd},
+      {label:'障害支援区分有効期間', date:c.disabilityPeriod?.enabled?c.disabilityPeriod?.end:null},
+      {label:'負担上限月額期間',  date:c.limitPeriod?.enabled?c.limitPeriod?.end:null},
+    ];
+    checks.forEach(({label,date})=>{
+      if(!date) return;
+      const d=_daysUntil(date);
+      if(d===null) return;
+      const entry={name:c.name,label,date,days:d,clientId:c.id};
+      if(d<0)       alerts.expired.push(entry);
+      else if(d<=30) alerts.soon30.push(entry);
+      else if(d<=60) alerts.soon60.push(entry);
+    });
+  });
+  return alerts;
+}
+
+// バナーHTMLを生成してmainAreaの上部に表示
+function renderAlertBanner(){
+  const wrap=document.getElementById('alertBannerWrap');
+  if(!wrap) return;
+  const al=getReceiptAlerts();
+  const total=al.expired.length+al.soon30.length+al.soon60.length;
+  if(!total){wrap.style.display='none';wrap.innerHTML='';return;}
+
+  function makeList(arr){
+    return arr.map(a=>{
+      const dStr=a.days<0?`${Math.abs(a.days)}日超過`
+                :a.days===0?'今日が期限':`残り${a.days}日`;
+      return `<li><b>${esc(a.name)}</b>　${a.label}：${a.date}（${dStr}）`
+        +`<button class="alr-upd" onclick="openClientModal('${a.clientId}')" style="color:inherit;border-color:currentColor">更新</button></li>`;
+    }).join('');
+  }
+
+  let html='';
+  if(al.expired.length){
+    html+=`<div class="alert-banner alr-red">
+      <span class="alr-ico">🔴</span>
+      <div class="alr-body"><div class="alr-title">⚠️ 受給者証が期限切れです（${al.expired.length}件）</div>
+        <ul class="alr-list">${makeList(al.expired)}</ul></div>
+      <button class="alr-close" onclick="this.closest('.alert-banner').remove()">✕</button>
+    </div>`;
+  }
+  if(al.soon30.length){
+    html+=`<div class="alert-banner alr-orange">
+      <span class="alr-ico">🟠</span>
+      <div class="alr-body"><div class="alr-title">受給者証期限まで30日以内（${al.soon30.length}件）</div>
+        <ul class="alr-list">${makeList(al.soon30)}</ul></div>
+      <button class="alr-close" onclick="this.closest('.alert-banner').remove()">✕</button>
+    </div>`;
+  }
+  if(al.soon60.length){
+    html+=`<div class="alert-banner alr-yellow">
+      <span class="alr-ico">🟡</span>
+      <div class="alr-body"><div class="alr-title">受給者証期限まで60日以内（${al.soon60.length}件）</div>
+        <ul class="alr-list">${makeList(al.soon60)}</ul></div>
+      <button class="alr-close" onclick="this.closest('.alert-banner').remove()">✕</button>
+    </div>`;
+  }
+  wrap.innerHTML=html;
+  wrap.style.display='block';
+}
+
+// =========================================================
+// 加算の自動計算（月次出席ベース）
+// =========================================================
+
+// 就労継続支援B型 加算単位数マスタ（令和6年度）
+const KAZAN_DEFS = [
+  { key:'absence',    label:'欠席時対応加算',           unit:183,  maxPerMonth:4,  note:'月4日まで算定可' },
+  { key:'trans1',     label:'送迎加算（片道）',          unit: 37,  maxPerMonth:null, note:'送迎あり（片道）' },
+  { key:'trans2',     label:'送迎加算（往復）',          unit: 54,  maxPerMonth:null, note:'送迎あり（往復）' },
+  { key:'visit',      label:'訪問支援員特別加算（Ⅰ）',  unit:187,  maxPerMonth:2,  note:'月2日まで' },
+  { key:'medical',    label:'医療連携体制加算（Ⅰ）',    unit: 32,  maxPerMonth:null, note:'医療連携あり日' },
+];
+
+// 地域区分ごとの1単位単価
+const REGION_RATE={
+  '1k':11.40,'2k1':11.10,'2k2':10.90,'3k':10.70,
+  '4k':10.50,'5k':10.36,'6k':10.18,'other':10.00
+};
+
+function calcMonthlyAdditions(fid,cid,year,month){
+  const days=getDIM(year,month);
+  const recs=(load(getRecKey(fid,year,month),{})[cid])||{};
+  let att=0,out=0,absWD=0,t1=0,t2=0,vis=0,med=0;
+  for(let d=1;d<=days;d++){
+    const r=recs[d]; if(!r) continue;
+    const st=r.status||'', tr=r.transport||'';
+    if(st==='通所') att++;
+    else if(st==='施設外就労'||st==='施設外支援') out++;
+    else if(st==='欠席時対応') absWD++;
+    if(tr==='片道') t1++;
+    else if(tr==='往復') t2++;
+    if(r.visit) vis++;
+    if(r.medical) med++;
+  }
+  const results=KAZAN_DEFS.map(k=>{
+    let raw=0;
+    if(k.key==='absence') raw=absWD;
+    else if(k.key==='trans1') raw=t1;
+    else if(k.key==='trans2') raw=t2;
+    else if(k.key==='visit') raw=vis;
+    else if(k.key==='medical') raw=med;
+    const clamp=k.maxPerMonth!==null?Math.min(raw,k.maxPerMonth):raw;
+    return {...k, raw, days:clamp, units:k.unit*clamp};
+  });
+  return {attendance:att, outside:out, absWD, results};
+}
+
+function showAdditionModal(){
+  const cid=document.getElementById('monthlyClientSel').value;
+  const client=load('clients',[]).find(c=>c.id===cid);
+  if(!client){showToast('利用者を選択してください');return;}
+
+  const fac=curFac();
+  const rate=REGION_RATE[fac?.regionClass||'other']||10.00;
+  const calc=calcMonthlyAdditions(_curFacId,cid,_mYear,_mMonth);
+
+  let totalUnits=0, totalYen=0;
+  const rows=calc.results.map(k=>{
+    totalUnits+=k.units;
+    const yen=Math.round(k.units*rate);
+    totalYen+=yen;
+    const overNote=k.raw>k.days
+      ?`<span style="font-size:10px;color:#f56565;margin-left:4px">（実績${k.raw}日→上限${k.days}日）</span>`:
+      k.days===0?'<span style="color:#d1d5db">—</span>':'';
+    return `<tr style="border-bottom:1px solid #eef3ec">
+      <td style="padding:9px 12px;color:var(--navy);font-weight:500">${k.label}</td>
+      <td style="text-align:center;padding:9px 6px">${k.days>0||k.raw>0?k.days+'日':'<span style="color:#d1d5db">—</span>'}${overNote}</td>
+      <td style="text-align:center;padding:9px 6px;font-size:11px;color:var(--text-lt)">${k.unit}単位×${k.days}日</td>
+      <td style="text-align:right;padding:9px 12px;font-variant-numeric:tabular-nums;font-weight:${k.units>0?700:400};color:${k.units>0?'var(--navy)':'#ccc'}">${k.units>0?k.units.toLocaleString()+'単位':'—'}</td>
+      <td style="text-align:right;padding:9px 12px;font-variant-numeric:tabular-nums;font-weight:${yen>0?700:400};color:${yen>0?'var(--navy)':'#ccc'}">${yen>0?yen.toLocaleString()+'円':'—'}</td>
+    </tr>`;
+  }).join('');
+
+  // 全利用者集計ボタン
+  const fid=_curFacId;
+  const allClients=load('clients',[]).filter(c=>c.active!==false&&c.facilityId===fid);
+  let allTotal=0;
+  const allRows=allClients.map(cl=>{
+    const r=calcMonthlyAdditions(fid,cl.id,_mYear,_mMonth);
+    let sub=0;
+    r.results.forEach(k=>{ sub+=Math.round(k.units*rate); });
+    allTotal+=sub;
+    const att=r.attendance+r.outside;
+    return `<tr style="border-bottom:1px solid #eef3ec">
+      <td style="padding:7px 10px;font-weight:600;color:var(--navy)">${esc(cl.name)}</td>
+      <td style="padding:7px 10px;text-align:center">${att}日</td>
+      <td style="padding:7px 10px;text-align:center">${r.absWD}日</td>
+      <td style="padding:7px 10px;text-align:right;font-variant-numeric:tabular-nums;font-weight:600">${sub>0?sub.toLocaleString()+'円':'—'}</td>
+    </tr>`;
+  }).join('');
+
+  openInfoModal(
+    `📊 加算計算 — ${client.name}（${_mYear}年${_mMonth}月）`,
+    `<div>
+      <!-- 出席サマリー -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+        <div style="background:var(--green-lt);border-radius:6px;padding:8px 14px;text-align:center;min-width:80px">
+          <div style="font-size:10px;color:var(--text-lt)">通所日数</div>
+          <div style="font-size:20px;font-weight:700;color:var(--navy)">${calc.attendance}<span style="font-size:12px;color:var(--text-lt)">日</span></div>
+        </div>
+        <div style="background:var(--green-lt);border-radius:6px;padding:8px 14px;text-align:center;min-width:80px">
+          <div style="font-size:10px;color:var(--text-lt)">施設外</div>
+          <div style="font-size:20px;font-weight:700;color:var(--navy)">${calc.outside}<span style="font-size:12px;color:var(--text-lt)">日</span></div>
+        </div>
+        <div style="background:#fef3c7;border-radius:6px;padding:8px 14px;text-align:center;min-width:80px">
+          <div style="font-size:10px;color:#92400e">欠席時対応</div>
+          <div style="font-size:20px;font-weight:700;color:#92400e">${calc.absWD}<span style="font-size:12px">日</span></div>
+        </div>
+      </div>
+
+      <!-- 加算テーブル -->
+      <table style="width:100%;border-collapse:collapse">
+        <thead><tr style="background:var(--navy)">
+          <th style="padding:8px 12px;color:#fff;font-size:12px;text-align:left;font-weight:600">加算項目</th>
+          <th style="padding:8px 6px;color:#fff;font-size:12px;text-align:center;font-weight:600">日数</th>
+          <th style="padding:8px 6px;color:#fff;font-size:12px;text-align:center;font-weight:600">計算式</th>
+          <th style="padding:8px 12px;color:#fff;font-size:12px;text-align:right;font-weight:600">単位数</th>
+          <th style="padding:8px 12px;color:#fff;font-size:12px;text-align:right;font-weight:600">金額（目安）</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <div style="display:flex;justify-content:flex-end;gap:16px;margin-top:8px;padding:10px 12px;background:var(--green-lt);border-radius:6px">
+        <span style="font-size:13px;color:var(--text-lt)">合計</span>
+        <span style="font-size:14px;font-weight:700;color:var(--navy)">${totalUnits.toLocaleString()}単位　＝　${totalYen.toLocaleString()}円</span>
+      </div>
+      <div style="font-size:11px;color:var(--text-lt);margin-top:6px">
+        地域区分：${fac?.regionClass||'other'}（1単位＝${rate}円）／ 基本報酬・処遇改善加算等は含みません
+      </div>
+
+      <!-- 全利用者集計 -->
+      <details style="margin-top:16px">
+        <summary style="cursor:pointer;font-size:13px;font-weight:700;color:var(--navy);padding:8px 0;user-select:none">▶ 全利用者の加算合計を見る（${_mYear}年${_mMonth}月）</summary>
+        <table style="width:100%;border-collapse:collapse;margin-top:8px;font-size:12px">
+          <thead><tr style="background:var(--green-lt)">
+            <th style="padding:7px 10px;text-align:left;color:var(--navy);font-weight:700">利用者</th>
+            <th style="padding:7px 10px;text-align:center;color:var(--navy);font-weight:700">出席日数</th>
+            <th style="padding:7px 10px;text-align:center;color:var(--navy);font-weight:700">欠席時対応</th>
+            <th style="padding:7px 10px;text-align:right;color:var(--navy);font-weight:700">加算合計</th>
+          </tr></thead>
+          <tbody>${allRows}</tbody>
+          <tfoot><tr style="background:#f3f8f1">
+            <td colspan="3" style="padding:8px 10px;font-weight:700;color:var(--navy)">事業所合計</td>
+            <td style="padding:8px 10px;text-align:right;font-weight:700;color:var(--navy)">${allTotal.toLocaleString()}円</td>
+          </tr></tfoot>
+        </table>
+        <div style="font-size:11px;color:var(--text-lt);margin-top:4px">基本報酬・処遇改善加算等は含みません</div>
+      </details>
+    </div>`
+  );
 }
 </script>
 </body>
