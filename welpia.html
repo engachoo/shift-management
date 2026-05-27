@@ -117,6 +117,23 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
 /* ===== ページ共通 ===== */
 .page-hdr{background:#fff;border-bottom:2px solid var(--border);padding:14px 24px;font-size:18px;font-weight:700;color:var(--navy);display:flex;align-items:center;gap:10px}
 .page-hdr .ph-sub{font-size:13px;color:var(--text-lt);font-weight:400;margin-left:6px}
+/* ===== トップバー（ヘッダー右上のユーザー情報） ===== */
+#topbar{background:#fff;border-bottom:1px solid var(--border);padding:7px 22px;display:flex;align-items:center;justify-content:flex-end;gap:10px;position:sticky;top:0;z-index:200;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+#topbar-avatar{width:28px;height:28px;background:var(--green-dk);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0}
+#topbar-name{font-size:12px;font-weight:600;color:var(--navy)}
+#topbar-role{font-size:10px;color:var(--text-lt)}
+.topbar-logout{background:#f3f4f6;border:1px solid #e5e7eb;color:#374151;border-radius:5px;padding:4px 11px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;transition:background .15s}
+.topbar-logout:hover{background:#fee2e2;border-color:#fca5a5;color:#b91c1c}
+/* ===== クロコ ビュー ===== */
+.croco-view-card{background:#fff;border-radius:10px;border:1px solid var(--border);margin-bottom:10px;overflow:hidden;cursor:pointer;transition:box-shadow .15s}
+.croco-view-card:hover{box-shadow:0 2px 10px rgba(0,0,0,.08)}
+.croco-view-card.unread{border-left:4px solid var(--green)}
+.croco-view-body{padding:14px 18px;font-size:13px;color:var(--text);line-height:1.75;display:none}
+.croco-view-body.open{display:block}
+.croco-view-meta{display:flex;align-items:center;gap:10px;padding:13px 18px}
+.croco-view-title{font-size:13px;font-weight:600;color:var(--navy);flex:1}
+.croco-view-cat{font-size:11px;background:var(--green-lt);color:var(--green-dk);padding:2px 8px;border-radius:10px;font-weight:600}
+.croco-view-date{font-size:11px;color:var(--text-lt)}
 
 /* ===== タブ ===== */
 .tab-bar{display:flex;background:#fff;border-bottom:2px solid var(--border)}
@@ -471,40 +488,45 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
       <div class="sb-sub" id="sub-sysset" style="display:none">
         <div class="sb-sub-item" id="sm-sysusers" onclick="showView('sysusers')">👤 ユーザー設定</div>
         <div class="sb-sub-item" id="sm-sysperms" onclick="showView('sysperms')">🔐 権限設定</div>
-        <!-- クロコの提案（システム設定のサブ項目） -->
+        <!-- クロコの提案（メインエリアビューに遷移） -->
         <div id="croco-wrap" style="display:none;border-top:1px solid rgba(255,255,255,.1)">
-          <div class="sb-sub-item" onclick="toggleCrocoPanel()" style="gap:7px;padding-right:12px">
+          <div class="sb-sub-item" id="sm-croco" onclick="showView('croco')" style="gap:7px">
             <span>🤖</span>
             <span style="flex:1">クロコの提案</span>
             <span id="croco-badge" class="croco-badge" style="display:none;font-size:10px;padding:1px 5px">0</span>
             <span class="croco-live" style="font-size:9px">LIVE</span>
-            <span class="si-arrow" id="si-arrow-croco">▾</span>
-          </div>
-          <div id="croco-body" class="croco-body" style="display:none">
-            <div id="croco-list"></div>
           </div>
         </div>
       </div>
     </div><!-- /sb-menu -->
 
-    <!-- ===== ユーザー情報 & ログアウト ===== -->
-    <div id="sb-userbar" style="border-top:1px solid rgba(255,255,255,.12);padding:11px 14px;display:flex;align-items:center;gap:9px;flex-shrink:0">
-      <div id="sb-user-avatar" style="width:32px;height:32px;background:var(--green-dk);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px;font-weight:700;color:#fff;letter-spacing:.5px">?</div>
-      <div style="flex:1;min-width:0">
-        <div id="sb-user-name" style="font-size:12px;font-weight:600;color:rgba(255,255,255,.88);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">—</div>
-        <div id="sb-user-email" style="font-size:10px;color:rgba(200,225,215,.45);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">—</div>
-      </div>
-      <button onclick="doLogout()" style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);color:rgba(200,225,215,.75);border-radius:5px;padding:5px 10px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:inherit;transition:background .15s,color .15s;flex-shrink:0" onmouseover="this.style.background='rgba(255,255,255,.2)';this.style.color='#fff'" onmouseout="this.style.background='rgba(255,255,255,.1)';this.style.color='rgba(200,225,215,.75)'">
-        ログアウト
-      </button>
-    </div>
   </nav>
 
   <!-- メインエリア -->
   <div id="mainArea">
 
+    <!-- ===== トップバー（ユーザー情報・ログアウト） ===== -->
+    <div id="topbar">
+      <div id="topbar-avatar">?</div>
+      <div>
+        <div id="topbar-name">—</div>
+        <div id="topbar-role"></div>
+      </div>
+      <button class="topbar-logout" onclick="doLogout()">ログアウト</button>
+    </div>
+
     <!-- ===== 受給者証期限アラートバナー ===== -->
     <div id="alertBannerWrap" class="alr-wrap" style="display:none"></div>
+
+    <!-- ===== クロコの提案（メインビュー） ===== -->
+    <div id="view-croco" style="display:none">
+      <div class="page-hdr">🤖 クロコの提案 <span class="ph-sub">AI によるサポート提案</span></div>
+      <div class="content-area">
+        <div id="croco-view-list">
+          <div style="text-align:center;padding:40px;color:var(--text-lt);font-size:13px">読み込み中...</div>
+        </div>
+      </div>
+    </div>
 
     <!-- ===== 利用実績（日ごと） ===== -->
     <div id="view-daily" style="display:none">
@@ -849,7 +871,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
           <div style="font-size:13px;color:var(--text-lt)">welbeにアクセスできるユーザーと権限を管理します。</div>
           <div style="display:flex;gap:8px;align-items:center">
-            <button id="bulkUpdBtn" onclick="saveAllSysUsers()" style="display:none;font-weight:700;background:#fef9c3;border:1px solid #ca8a04;color:#78350f;padding:5px 14px;border-radius:5px;cursor:pointer;font-size:12px">⬆ 一括更新</button>
+            <button id="bulkUpdBtn" onclick="saveAllSysUsers()" style="font-weight:700;background:#fef9c3;border:1px solid #ca8a04;color:#78350f;padding:5px 14px;border-radius:5px;cursor:pointer;font-size:12px">⬆ 一括更新</button>
             <button class="btn-new" onclick="openAddSysUserModal()">＋ 新規ユーザー</button>
           </div>
         </div>
@@ -1158,12 +1180,26 @@ function initDefaultData(){
   if(!load('facilities')){
     if(!hasExistingData) save('facilities', DEFAULT_FACILITIES);
   }
-  if(!load('users')) save('users',[
-    {id:'kh_u1',name:'岩清水',loginId:'iwashimizu',password:'welpia1',role:'admin',active:true},
+  const DEFAULT_USERS=[
+    {id:'kh_u1',name:'岩清水',loginId:'iwashimizu',password:'welpia1',role:'admin',  active:true},
     {id:'kh_u2',name:'山下',  loginId:'yamashita', password:'welpia2',role:'manager',active:true},
-    {id:'kh_u3',name:'笹木原',loginId:'sasagihara',password:'welpia3',role:'user', active:true},
-    {id:'kh_u4',name:'三浦',  loginId:'miura',     password:'welpia4',role:'user', active:true}
-  ]);
+    {id:'kh_u3',name:'笹木原',loginId:'sasagihara',password:'welpia3',role:'staff',  active:true},
+    {id:'kh_u4',name:'三浦',  loginId:'miura',     password:'welpia4',role:'staff',  active:true}
+  ];
+  const existUsers=load('users',null);
+  // loginId がないユーザーのみのデータ（旧形式）またはデータなし → デフォルトを保存
+  if(!existUsers || !Array.isArray(existUsers) || !existUsers.some(u=>u.loginId)){
+    save('users', DEFAULT_USERS);
+  } else {
+    // 既存データに不足ユーザーをマージ（loginId で重複チェック）
+    let changed=false;
+    DEFAULT_USERS.forEach(du=>{
+      if(!existUsers.find(u=>u.loginId===du.loginId)){
+        existUsers.push(du); changed=true;
+      }
+    });
+    if(changed) save('users', existUsers);
+  }
   // clients：既存請求データがある場合は空配列で上書きしない
   if(!load('clients') && !hasExistingData) save('clients',[]);
   if(!load('claims'))  save('claims',[]);
@@ -1274,17 +1310,17 @@ async function boot(){
 function startApp(){
   document.getElementById('loginScreen').style.display='none';
   document.getElementById('app').style.display='block';
-  // サイドバーにユーザー情報を表示
+  // トップバーにユーザー情報を表示
   const s=getS();
   if(s){
     const displayName=s.name||s.loginId||'ユーザー';
     const roleLabel={admin:'管理者',manager:'責任者',staff:'スタッフ',user:'スタッフ'}[s.role]||'';
-    const el=document.getElementById('sb-user-name');
-    const el2=document.getElementById('sb-user-email');
-    const el3=document.getElementById('sb-user-avatar');
-    if(el) el.textContent=displayName+(roleLabel?`（${roleLabel}）`:'');
-    if(el2) el2.textContent=s.loginId||'';
-    if(el3) el3.textContent=(displayName[0]||'?').toUpperCase();
+    const elN=document.getElementById('topbar-name');
+    const elR=document.getElementById('topbar-role');
+    const elA=document.getElementById('topbar-avatar');
+    if(elN) elN.textContent=displayName;
+    if(elR) elR.textContent=roleLabel;
+    if(elA) elA.textContent=(displayName[0]||'?').toUpperCase();
   }
   const facs=load('facilities',[]);
   _curFacId = facs[0]?.id||'';
@@ -1298,7 +1334,7 @@ function startApp(){
 // ナビゲーション
 // =========================================================
 let curView='daily';
-const viewIds=['daily','monthly','timecard','claim','facility','clients','init','sysusers','sysperms'];
+const viewIds=['daily','monthly','timecard','claim','facility','clients','init','sysusers','sysperms','croco'];
 function showView(v){
   curView=v;
   viewIds.forEach(id=>document.getElementById('view-'+id).style.display='none');
@@ -1312,6 +1348,7 @@ function showView(v){
   else if(v==='init'){document.getElementById('sm-init').classList.add('active');openSettingSub();}
   else if(v==='sysusers'){document.getElementById('sm-sysusers').classList.add('active');openSysSetSub();}
   else if(v==='sysperms'){document.getElementById('sm-sysperms').classList.add('active');openSysSetSub();}
+  else if(v==='croco'){document.getElementById('sm-croco')?.classList.add('active');openSysSetSub();renderCrocoView();}
   // タイムカードを離れるときは時計タイマー停止
   if(v!=='timecard') _stopTcClock();
   if(v==='daily') renderDaily();
@@ -2853,11 +2890,13 @@ function _crocoMarkAllViewed(items){ const v=_crocoGetViewed(); items.forEach(i=
 function _crocoP(p){ return p==='high'?'🔴':p==='med'?'🟡':'🟢'; }
 
 // ─── 初期化 ─────────────────────────────────────────────
+function renderCrocoView(){
+  // クロコビューにカードを描画（メインエリア版）
+}
+
 function initCrocoPanel(){
   if(getS()?.role !== 'admin') return;
   document.getElementById('croco-wrap').style.display = 'block';
-  // システム設定サブメニューを自動展開（クロコが見えるように）
-  openSysSetSub();
   // シードデータ投入（初回のみ）
   _crocoSeedIfEmpty();
   // リアルタイムリスナー
@@ -2903,6 +2942,34 @@ function _crocoRender(items){
       badge.style.display='none';
     }
   }
+  // メインビューに描画
+  const viewList=document.getElementById('croco-view-list');
+  if(viewList){
+    if(!items.length){
+      viewList.innerHTML='<div style="text-align:center;padding:40px;color:var(--text-lt);font-size:13px">🤖 提案はありません<br>定期的に更新されます</div>';
+    } else {
+      viewList.innerHTML=items.map(item=>{
+        const isNew=!_crocoGetViewed().includes(item.id);
+        const isExp=_crocoExpanded===item.id;
+        const dateStr=item.createdAt?.toDate?item.createdAt.toDate().toLocaleDateString('ja-JP',{month:'short',day:'numeric'}):'';
+        return `<div class="croco-view-card${isNew?' unread':''}" onclick="toggleCrocoViewCard('${item.id}')">
+          <div class="croco-view-meta">
+            <span style="font-size:14px;flex-shrink:0">${_crocoP(item.priority)}</span>
+            <span class="croco-view-title">${esc(item.title)}</span>
+            ${item.category?`<span class="croco-view-cat">${esc(item.category)}</span>`:''}
+            <span class="croco-view-date">${dateStr}</span>
+          </div>
+          <div class="croco-view-body${isExp?' open':''}" id="croco-vd-${item.id}">
+            <div style="color:var(--text);line-height:1.8">${esc(item.body||'').replace(/\n/g,'<br>')}</div>
+            ${item.source?`<div style="margin-top:8px;font-size:11px;color:var(--text-lt)">📎 ${item.sourceUrl?`<a href="${item.sourceUrl}" target="_blank" style="color:var(--green-dk)">${esc(item.source)}</a>`:esc(item.source)}</div>`:''}
+            ${item.actionLabel?`<button class="btn-add" style="margin-top:12px;font-size:12px;padding:7px 16px" onclick="event.stopPropagation();crocoAction('${item.id}','${(item.actionView||'').replace(/'/g,"\\'")}')">▶ ${esc(item.actionLabel)}</button>`:''}
+            <button onclick="event.stopPropagation();crocoMarkRead('${item.id}')" style="background:none;border:none;color:var(--text-lt);font-size:11px;cursor:pointer;margin-top:8px;padding:0">✓ 既読にする</button>
+          </div>
+        </div>`;
+      }).join('');
+    }
+  }
+  // サイドバー内リスト（互換）
   const list = document.getElementById('croco-list');
   if(!list) return;
   if(!items.length){
@@ -2935,7 +3002,23 @@ function _crocoRender(items){
   }).join('');
 }
 
-// ─── カード展開 ─────────────────────────────────────────
+// ─── カード展開（メインビュー版） ────────────────────────
+function toggleCrocoViewCard(id){
+  _crocoMarkViewed(id);
+  const card=document.querySelector(`.croco-view-card[onclick*="${id}"]`);
+  if(card) card.classList.remove('unread');
+  const det=document.getElementById('croco-vd-'+id);
+  if(!det) return;
+  const isOpen=det.classList.contains('open');
+  document.querySelectorAll('.croco-view-body.open').forEach(el=>el.classList.remove('open'));
+  if(!isOpen) det.classList.add('open');
+  _crocoExpanded=isOpen?null:id;
+  const rem=document.querySelectorAll('.croco-view-card.unread').length;
+  const badge=document.getElementById('croco-badge');
+  if(badge){ badge.textContent=rem||0; if(rem===0) badge.style.display='none'; }
+}
+
+// ─── カード展開（サイドバー版） ─────────────────────────
 function toggleCrocoCard(id){
   _crocoMarkViewed(id);
   // バッジ再計算
@@ -3514,7 +3597,7 @@ function markSysUserDirty(uid){
 
 function renderSysUsers(){
   const btn=document.getElementById('bulkUpdBtn');
-  if(btn){ btn.style.display='none'; btn.style.boxShadow=''; btn.textContent='⬆ 一括更新'; btn.style.background='#fef9c3'; btn.style.color='#78350f'; btn.style.borderColor='#ca8a04'; }
+  if(btn){ btn.style.boxShadow=''; btn.textContent='⬆ 一括更新'; btn.style.background='#fef9c3'; btn.style.color='#78350f'; btn.style.borderColor='#ca8a04'; }
   const users=load('users',[]);
   const tbody=document.getElementById('sysUserTbody');
   if(!tbody) return;
