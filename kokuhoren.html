@@ -1,0 +1,3269 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Welbe — 国保連請求サポート</title>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<style>
+/* ===== ウェルピアカラー変数 ===== */
+:root{
+  --green:    #87c177;   /* メイングリーン */
+  --green-dk: #5a9e48;   /* 濃いグリーン */
+  --green-lt: #e8f5e2;   /* 薄いグリーン */
+  --navy:     #004063;   /* ダークネイビー */
+  --navy-dk:  #003050;   /* 濃いネイビー */
+  --text:     #333333;   /* テキスト */
+  --text-lt:  #666666;   /* サブテキスト */
+  --border:   #d8e8d4;   /* ボーダー */
+  --bg:       #f3f8f1;   /* ページ背景 */
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px}
+
+/* ===== ローディング ===== */
+#loadingScreen{display:flex;position:fixed;inset:0;z-index:99999;background:var(--navy);align-items:center;justify-content:center;flex-direction:column;gap:14px}
+.ld-spin{width:40px;height:40px;border:4px solid rgba(255,255,255,.2);border-top-color:var(--green);border-radius:50%;animation:spin .9s linear infinite}
+.ld-txt{color:rgba(255,255,255,.75);font-size:13px;letter-spacing:.05em}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ===== ログイン ===== */
+#loginScreen{display:none;position:fixed;inset:0;z-index:9999;background:var(--navy);align-items:center;justify-content:center}
+.lc-wrap{background:#fff;border-radius:12px;padding:44px 40px 36px;width:340px;box-shadow:0 24px 64px rgba(0,0,0,.35)}
+.lc-logo{text-align:center;margin-bottom:30px}
+.lc-logo .lc-icon{font-size:40px;display:block;margin-bottom:10px}
+.lc-logo .lc-title{font-size:22px;font-weight:900;color:var(--navy);letter-spacing:1px}
+.lc-logo .lc-title span{color:var(--green)}
+.lc-logo .lc-sub{font-size:12px;color:#718096;margin-top:4px}
+.lc-field{margin-bottom:14px}
+.lc-field label{display:block;font-size:12px;font-weight:600;color:#4a5568;margin-bottom:5px}
+.lc-field input{width:100%;border:1.5px solid #cbd5e0;border-radius:6px;padding:10px 12px;font-size:14px;font-family:inherit;transition:border-color .2s}
+.lc-field input:focus{outline:none;border-color:var(--green);box-shadow:0 0 0 3px rgba(135,193,119,.18)}
+.lc-err{color:#e53e3e;font-size:12px;min-height:16px;margin-bottom:10px;text-align:center}
+.lc-btn{width:100%;background:var(--navy);color:#fff;border:none;padding:12px;border-radius:6px;font-size:15px;font-weight:700;cursor:pointer;letter-spacing:1px;transition:background .2s}
+.lc-btn:hover{background:var(--navy-dk)}
+.lc-pass-wrap{position:relative;display:flex;align-items:center}
+.lc-pass-wrap input{padding-right:40px}
+.lc-eye{position:absolute;right:10px;background:none;border:none;cursor:pointer;font-size:18px;color:#9ca3af;line-height:1;padding:2px;user-select:none}
+.lc-eye:hover{color:#374151}
+
+/* ===== レイアウト ===== */
+#app{display:none}
+#sidebar{position:fixed;top:0;left:0;width:224px;bottom:0;background:var(--navy);z-index:500;overflow-y:auto;display:flex;flex-direction:column}
+#mainArea{margin-left:224px;min-height:100vh;background:var(--bg)}
+
+/* ===== サイドバー ===== */
+.sb-logo{padding:16px 16px 12px;border-bottom:1px solid rgba(255,255,255,.1)}
+.sb-logo .sb-brand{font-size:22px;font-weight:900;color:#fff;letter-spacing:.5px}
+.sb-logo .sb-brand span{color:var(--green)}
+.sb-corp{font-size:11px;color:rgba(200,225,215,.6);padding:10px 16px 4px;line-height:1.5}
+/* 事業所セレクタ */
+.sb-fac-wrap{padding:4px 12px 12px;border-bottom:1px solid rgba(255,255,255,.1);display:flex;align-items:center;gap:6px}
+.sb-fac-sel{flex:1;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;border-radius:5px;padding:6px 8px;font-size:13px;font-family:inherit;cursor:pointer;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7'%3E%3Cpath d='M0 0l5 7 5-7z' fill='%23fff'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;padding-right:24px}
+.sb-fac-sel:focus{outline:none}
+.sb-logout{background:none;border:none;color:rgba(200,225,215,.6);cursor:pointer;font-size:18px;padding:4px;transition:color .2s;flex-shrink:0}
+.sb-logout:hover{color:#fff}
+.sb-menu{padding:8px 0;flex:1}
+.sb-item{display:flex;align-items:center;gap:10px;padding:11px 18px;cursor:pointer;color:rgba(200,225,215,.75);transition:background .15s,color .15s;font-size:13.5px;font-weight:500;border-left:3px solid transparent}
+.sb-item:hover{background:rgba(255,255,255,.07);color:#fff}
+.sb-item.active{background:rgba(135,193,119,.18);color:#fff;border-left-color:var(--green)}
+.sb-item .si-ico{font-size:16px;width:20px;text-align:center}
+.sb-item .si-arrow{margin-left:auto;font-size:11px;transition:transform .2s}
+.sb-item .si-arrow.open{transform:rotate(180deg)}
+.sb-sub{padding:0 0 4px;background:rgba(0,0,0,.15)}
+.sb-sub-item{display:flex;align-items:center;gap:8px;padding:9px 18px 9px 48px;cursor:pointer;color:rgba(200,225,215,.65);font-size:13px;transition:background .15s,color .15s}
+.sb-sub-item:hover{background:rgba(255,255,255,.05);color:#fff}
+.sb-sub-item.active{color:var(--green);font-weight:600}
+
+/* ===== クロコパネル (admin専用) ===== */
+#croco-wrap{border-top:1px solid rgba(255,255,255,.12);flex-shrink:0}
+.croco-hdr{display:flex;align-items:center;gap:7px;padding:11px 16px;cursor:pointer;color:rgba(200,225,215,.8);font-size:13px;font-weight:600;transition:background .15s;user-select:none}
+.croco-hdr:hover{background:rgba(255,255,255,.06)}
+.croco-hdr-ico{font-size:15px;flex-shrink:0}
+.croco-hdr-txt{flex:1;letter-spacing:.2px}
+.croco-badge{background:var(--green);color:#fff;border-radius:10px;font-size:10px;font-weight:700;padding:1px 7px;min-width:18px;text-align:center;flex-shrink:0}
+.croco-live{display:flex;align-items:center;gap:3px;font-size:10px;color:var(--green);font-weight:700;letter-spacing:.5px;flex-shrink:0}
+.croco-live::before{content:'';width:6px;height:6px;background:var(--green);border-radius:50%;flex-shrink:0;animation:live-pulse 1.8s ease-in-out infinite}
+@keyframes live-pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(.7)}}
+.croco-body{background:rgba(0,0,0,.18);max-height:60vh;overflow-y:auto}
+.croco-card{border-bottom:1px solid rgba(255,255,255,.05);cursor:pointer;transition:background .12s;position:relative}
+.croco-card:hover{background:rgba(255,255,255,.05)}
+.croco-card.unread{border-left:3px solid var(--green)}
+.croco-card.unread .croco-card-inner{padding-left:9px}
+.croco-card-inner{padding:9px 14px}
+.croco-card-top{display:flex;align-items:flex-start;gap:5px}
+.croco-card-title{font-size:12px;font-weight:600;color:rgba(255,255,255,.9);line-height:1.45;flex:1}
+.croco-card-meta{display:flex;justify-content:space-between;align-items:center;margin-top:4px}
+.croco-card-cat{font-size:10px;color:rgba(135,193,119,.7);font-weight:600}
+.croco-card-date{font-size:10px;color:rgba(200,225,215,.35)}
+/* 詳細展開 */
+.croco-detail{background:rgba(0,0,0,.2);padding:10px 14px 12px;border-bottom:1px solid rgba(255,255,255,.06);display:none;animation:fadeIn .15s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+.croco-detail-body{font-size:11.5px;color:rgba(200,225,215,.75);line-height:1.7}
+.croco-detail-src{margin-top:7px;font-size:10px;color:rgba(135,193,119,.6)}
+.croco-detail-src a{color:rgba(135,193,119,.8);text-decoration:none}
+.croco-detail-src a:hover{color:var(--green)}
+.croco-detail-act{margin-top:9px;background:var(--green-dk);color:#fff;border:none;border-radius:6px;padding:7px 12px;font-size:11px;font-weight:700;cursor:pointer;width:100%;letter-spacing:.3px;transition:background .2s}
+.croco-detail-act:hover{background:var(--green)}
+.croco-read-btn{background:none;border:none;color:rgba(200,225,215,.35);font-size:10px;cursor:pointer;margin-top:6px;padding:0;transition:color .15s}
+.croco-read-btn:hover{color:rgba(200,225,215,.7)}
+.croco-empty{padding:18px 14px;font-size:12px;color:rgba(200,225,215,.35);text-align:center;line-height:1.7}
+/* 新規アイテム入場アニメ */
+@keyframes slideIn{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:translateX(0)}}
+.croco-card.new-item{animation:slideIn .3s ease}
+
+/* ===== ページ共通 ===== */
+.page-hdr{background:#fff;border-bottom:2px solid var(--border);padding:14px 24px;font-size:18px;font-weight:700;color:var(--navy);display:flex;align-items:center;gap:10px}
+.page-hdr .ph-sub{font-size:13px;color:var(--text-lt);font-weight:400;margin-left:6px}
+
+/* ===== タブ ===== */
+.tab-bar{display:flex;background:#fff;border-bottom:2px solid var(--border)}
+.tab-btn{flex:1;padding:13px 0;text-align:center;cursor:pointer;color:var(--text-lt);font-size:14px;font-weight:500;border-bottom:3px solid transparent;margin-bottom:-2px;transition:color .2s,border-color .2s}
+.tab-btn.active{color:var(--green-dk);border-bottom-color:var(--green);font-weight:700}
+.tab-btn:hover:not(.active){color:var(--text);background:#f9fdf6}
+
+/* ===== コンテンツ ===== */
+.content-area{padding:16px 20px}
+
+/* ===== 日付ナビ ===== */
+.date-nav{display:flex;align-items:center;gap:8px;margin-bottom:14px}
+.dn-arrow{background:#fff;border:1px solid var(--border);border-radius:4px;width:30px;height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text-lt);font-size:16px;transition:background .15s,border-color .15s}
+.dn-arrow:hover{background:var(--green-lt);border-color:var(--green)}
+.dn-label{font-size:16px;font-weight:700;color:var(--navy);min-width:160px}
+.dn-cal{background:none;border:none;cursor:pointer;font-size:18px;color:var(--text-lt);padding:2px}
+.dn-cal:hover{color:var(--green-dk)}
+
+/* ===== サマリーチップ ===== */
+.summary-row{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:center}
+.summary-chip{background:#fff;border:1px solid var(--border);border-radius:6px;padding:8px 14px;display:flex;flex-direction:column;gap:2px;min-width:110px}
+.summary-chip .sc-label{font-size:11px;color:var(--text-lt)}
+.summary-chip .sc-val{font-size:18px;font-weight:700;color:var(--navy)}
+.summary-chip .sc-unit{font-size:12px;color:var(--text-lt);margin-left:2px}
+.detail-btn{margin-left:auto;border:1px solid var(--green);background:#fff;color:var(--green-dk);border-radius:5px;padding:7px 14px;cursor:pointer;font-size:13px;font-weight:600;transition:background .2s,color .2s}
+.detail-btn:hover{background:var(--green);color:#fff}
+
+/* ===== テーブル ===== */
+.tbl-wrap{background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.tbl-wrap table{width:100%;border-collapse:collapse}
+.tbl-wrap thead th{background:var(--green);color:#fff;padding:10px 12px;text-align:left;font-size:13px;font-weight:600;white-space:nowrap}
+.tbl-wrap tbody tr{border-bottom:1px solid #eef3ec;transition:background .1s}
+.tbl-wrap tbody tr:last-child{border-bottom:none}
+.tbl-wrap tbody tr:hover{background:#f3fdf0}
+.tbl-wrap td{padding:10px 12px;font-size:13.5px;color:var(--text)}
+.tbl-wrap td.td-name{font-weight:600;color:var(--navy)}
+.tbl-wrap td.td-dash{color:#b0c4b0}
+.tbl-wrap td.td-time{font-variant-numeric:tabular-nums}
+.tbl-wrap td.td-edit{width:40px;text-align:center}
+.btn-edit{background:none;border:none;cursor:pointer;color:var(--green-dk);font-size:18px;padding:4px;transition:color .2s;line-height:1}
+.btn-edit:hover{color:var(--navy)}
+.td-sat{color:#1a7bbf}
+.td-sun{color:#e53e3e}
+.td-absence{color:#e53e3e}
+.td-outside{color:#7c3aed}
+.td-badge-transport{display:inline-block;background:#ddf0da;color:#2d6b2d;border-radius:3px;padding:1px 6px;font-size:11px;font-weight:600}
+.td-badge-visit{display:inline-block;background:#fef9c3;color:#854d0e;border-radius:3px;padding:1px 6px;font-size:11px;font-weight:600}
+.td-badge-medical{display:inline-block;background:#fee2e2;color:#9b1c1c;border-radius:3px;padding:1px 6px;font-size:11px;font-weight:600}
+
+/* ===== 利用者セレクタ ===== */
+.client-selector{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.cs-label{font-size:13px;color:#4a5568;white-space:nowrap;font-weight:500}
+.cs-select{border:1.5px solid var(--border);border-radius:6px;padding:7px 30px 7px 10px;font-size:14px;font-family:inherit;color:var(--text);background:#fff;cursor:pointer;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M0 0l6 8 6-8z' fill='%23666'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;min-width:180px}
+.cs-select:focus{outline:none;border-color:var(--green)}
+
+/* ===== 月ごとサマリー ===== */
+.month-summary-row{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+.ms-chip{background:#fff;border:1px solid var(--border);border-radius:6px;padding:8px 12px;text-align:center;min-width:100px}
+.ms-chip .msc-label{font-size:10px;color:var(--text-lt);white-space:nowrap}
+.ms-chip .msc-val{font-size:16px;font-weight:700;color:var(--navy)}
+.ms-chip .msc-val span{font-size:11px;color:var(--text-lt);font-weight:400}
+
+/* ===== 請求画面 ===== */
+/* ===== 請求 リデザイン ===== */
+.claim-panel{background:#fff;border-radius:8px;padding:20px 24px;box-shadow:0 1px 4px rgba(0,0,0,.06);margin-bottom:14px}
+.claim-panel-ttl{font-size:13px;font-weight:700;color:var(--navy);margin-bottom:14px;padding-bottom:9px;border-bottom:2px solid var(--green-lt);display:flex;align-items:center;gap:6px}
+.claim-mrow{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.claim-msel{border:1.5px solid var(--border);border-radius:6px;padding:8px 12px;font-size:14px;font-family:inherit;color:var(--text);background:#fff;cursor:pointer}
+.claim-ucnt{font-size:14px;color:var(--text-lt)}
+.claim-ucnt b{color:var(--navy);font-size:16px}
+.claim-dl-row{display:flex;gap:10px;flex-wrap:wrap}
+.btn-claim-dl{display:inline-flex;align-items:center;gap:6px;background:var(--navy);color:#fff;border:none;border-radius:6px;padding:10px 20px;font-size:13px;font-weight:600;cursor:pointer;transition:background .2s;font-family:inherit}
+.btn-claim-dl:hover{background:var(--navy-dk)}
+.btn-claim-prt{background:#fff;border:1.5px solid var(--green-dk);color:var(--green-dk)}
+.btn-claim-prt:hover{background:var(--green-lt)}
+.claim-hist-tbl{width:100%;border-collapse:collapse;font-size:13px}
+.claim-hist-tbl th{background:var(--navy);color:#fff;padding:9px 12px;text-align:left;font-size:12px;font-weight:600}
+.claim-hist-tbl td{padding:10px 12px;border-bottom:1px solid var(--green-lt);vertical-align:middle}
+.claim-hist-tbl tr:last-child td{border-bottom:none}
+.claim-hist-tbl tbody tr:hover td{background:#fafff8}
+.ftype-badge{display:inline-block;font-size:11px;padding:3px 9px;border-radius:4px;font-weight:600}
+.ftype-seikyu{background:#dbeafe;color:#1d4ed8}
+.ftype-jisseki{background:#dcfce7;color:#16a34a}
+.claim-doc-btns{display:flex;gap:5px;flex-wrap:wrap}
+.btn-doc{border:1.5px solid;border-radius:5px;padding:5px 11px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s;background:#fff}
+.btn-doc-inv{border-color:var(--navy);color:var(--navy)}
+.btn-doc-inv:hover{background:var(--navy);color:#fff}
+.btn-doc-rec{border-color:var(--green-dk);color:var(--green-dk)}
+.btn-doc-rec:hover{background:var(--green-dk);color:#fff}
+.btn-doc-prx{border-color:#7c3aed;color:#7c3aed}
+.btn-doc-prx:hover{background:#7c3aed;color:#fff}
+/* 後方互換 */
+.btn-claim-reset{background:#f3f4f6;color:#374151;border:none;border-radius:5px;padding:7px 14px;cursor:pointer;font-size:12px;font-weight:600;transition:background .2s}
+.btn-claim-reset:hover{background:#e2e8f0}
+
+/* ===== タイムカード ===== */
+.tc-clock-wrap{text-align:center;padding:18px 0 8px;user-select:none}
+.tc-clock{font-size:52px;font-weight:700;color:var(--navy);letter-spacing:3px;font-variant-numeric:tabular-nums;line-height:1}
+.tc-date-str{font-size:15px;color:var(--text-lt);margin-top:6px}
+.tc-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px}
+.tc-nav-day{display:flex;align-items:center;gap:8px}
+.btn-tc-nav{background:#fff;border:1.5px solid var(--border);border-radius:6px;padding:6px 12px;font-size:13px;cursor:pointer;font-family:inherit;transition:background .15s}
+.btn-tc-nav:hover{background:var(--green-lt)}
+.btn-tc-today{background:var(--navy);color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}
+.tc-day-label{font-size:15px;font-weight:700;color:var(--navy);min-width:120px;text-align:center}
+.tc-tabs{display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:18px}
+.tc-tab{padding:10px 20px;font-size:13px;font-weight:600;cursor:pointer;color:var(--text-lt);border-bottom:3px solid transparent;margin-bottom:-2px;transition:color .15s}
+.tc-tab.active{color:var(--green-dk);border-bottom-color:var(--green)}
+.tc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:12px}
+.tc-card{background:#fff;border-radius:12px;padding:16px 12px 14px;box-shadow:0 2px 6px rgba(0,0,0,.07);text-align:center;border:2px solid var(--border);transition:border-color .2s,box-shadow .2s}
+.tc-card.st-in{border-color:var(--green);box-shadow:0 2px 10px rgba(135,193,119,.25)}
+.tc-card.st-out{border-color:#9ca3af}
+.tc-name{font-size:14px;font-weight:700;color:var(--navy);margin-bottom:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tc-status-badge{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px;margin-bottom:8px}
+.tc-badge-none{background:#f3f4f6;color:#9ca3af}
+.tc-badge-in{background:var(--green-lt);color:var(--green-dk)}
+.tc-badge-out{background:#f3f4f6;color:#6b7280}
+.tc-times{font-size:12px;color:var(--text-lt);margin-bottom:10px;min-height:16px;line-height:1.5}
+.tc-times .t-in{color:var(--green-dk);font-weight:600}
+.tc-times .t-out{color:#6b7280}
+.tc-btn-row{display:flex;gap:5px;justify-content:center;flex-wrap:wrap}
+.btn-tc-in{background:var(--green);color:#fff;border:none;border-radius:7px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .15s;letter-spacing:.5px}
+.btn-tc-in:hover{background:var(--green-dk)}
+.btn-tc-out{background:var(--navy);color:#fff;border:none;border-radius:7px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .15s}
+.btn-tc-out:hover{background:var(--navy-dk)}
+.btn-tc-edit{background:#f3f4f6;color:#6b7280;border:none;border-radius:7px;padding:8px 10px;font-size:11px;cursor:pointer;font-family:inherit}
+.btn-tc-edit:hover{background:#e2e8f0;color:#374151}
+/* タイムカード月次ビュー */
+.tc-month-tbl{width:100%;border-collapse:collapse;font-size:12px}
+.tc-month-tbl th{background:var(--navy);color:#fff;padding:8px 6px;text-align:center;font-weight:600;position:sticky;top:0}
+.tc-month-tbl td{padding:6px 6px;border-bottom:1px solid var(--green-lt);text-align:center;vertical-align:middle}
+.tc-month-tbl tr:hover td{background:#fafff8}
+.tc-month-tbl td:first-child{text-align:left;font-weight:500;color:var(--navy);padding-left:10px}
+.tc-cell-in{color:var(--green-dk);font-weight:600}
+.tc-cell-out{color:#6b7280}
+.tc-cell-none{color:#d1d5db}
+/* ===== フォーム（設定） ===== */
+.form-section{background:#fff;border-radius:8px;padding:22px 24px;box-shadow:0 1px 4px rgba(0,0,0,.06);margin-bottom:16px}
+.form-section h3{font-size:15px;font-weight:700;color:var(--navy);margin-bottom:16px;padding-bottom:10px;border-bottom:2px solid var(--green-lt)}
+.form-row{display:flex;gap:16px;margin-bottom:14px;flex-wrap:wrap}
+.form-group{flex:1;min-width:180px}
+.form-group label{display:block;font-size:12px;font-weight:600;color:#4a5568;margin-bottom:5px}
+.form-group.full{flex:none;width:100%}
+.f-input{width:100%;border:1.5px solid #cbd5e0;border-radius:5px;padding:8px 10px;font-size:13px;font-family:inherit;transition:border-color .2s}
+.f-input:focus{outline:none;border-color:var(--green);box-shadow:0 0 0 3px rgba(135,193,119,.15)}
+.f-select{width:100%;border:1.5px solid #cbd5e0;border-radius:5px;padding:8px 10px;font-size:13px;font-family:inherit;background:#fff;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M0 0l6 8 6-8z' fill='%23666'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;cursor:pointer}
+.f-select:focus{outline:none;border-color:var(--green)}
+.btn-save{background:var(--navy);color:#fff;border:none;padding:10px 24px;border-radius:6px;cursor:pointer;font-size:14px;font-weight:700;transition:background .2s}
+.btn-save:hover{background:var(--navy-dk)}
+.btn-add{background:var(--green);color:#fff;border:none;padding:8px 16px;border-radius:5px;cursor:pointer;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:4px;transition:background .2s}
+.btn-add:hover{background:var(--green-dk)}
+.btn-danger{background:#fee2e2;color:#b91c1c;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:12px;font-weight:600}
+.btn-danger:hover{background:#fecaca}
+.btn-edit2{background:var(--green-lt);color:var(--green-dk);border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:12px;font-weight:600}
+.btn-edit2:hover{background:#cce8c4}
+
+/* ===== 利用者一覧テーブル ===== */
+.client-tbl{width:100%;border-collapse:collapse}
+.client-tbl thead th{background:#f3fdf0;border-bottom:2px solid var(--border);padding:10px 12px;text-align:left;font-size:12px;font-weight:700;color:var(--navy);white-space:nowrap}
+.client-tbl tbody td{padding:10px 12px;font-size:13px;border-bottom:1px solid #eef3ec;color:var(--text)}
+.client-tbl tbody tr:hover{background:#f9fdf7}
+.badge-a{background:#fef3c7;color:#92400e;border-radius:3px;padding:2px 7px;font-size:11px;font-weight:700}
+.badge-b{background:#ede9fe;color:#5b21b6;border-radius:3px;padding:2px 7px;font-size:11px;font-weight:700}
+.badge-active{background:var(--green-lt);color:var(--green-dk);border-radius:3px;padding:2px 7px;font-size:11px;font-weight:600}
+.badge-inactive{background:#f3f4f6;color:#6b7280;border-radius:3px;padding:2px 7px;font-size:11px;font-weight:600}
+
+/* ===== 事業所カード ===== */
+.fac-card{background:#fff;border-radius:8px;padding:20px 22px;box-shadow:0 1px 4px rgba(0,0,0,.06);margin-bottom:14px;border-left:4px solid var(--green)}
+.fac-card h4{font-size:15px;font-weight:700;color:var(--navy);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.fac-card .fc-type{font-size:11px;padding:2px 8px;border-radius:12px;font-weight:600}
+.fc-type-a{background:#fef3c7;color:#92400e}
+.fc-type-b{background:#ede9fe;color:#5b21b6}
+.fc-type-ab{background:var(--green-lt);color:var(--green-dk)}
+.fac-card .fc-info{display:grid;grid-template-columns:80px 1fr;gap:4px 12px;font-size:13px}
+.fac-card .fc-info dt{color:var(--text-lt);font-weight:500}
+.fac-card .fc-info dd{color:var(--text)}
+.fac-card-actions{display:flex;gap:8px;margin-top:12px}
+
+/* ===== モーダル ===== */
+#modalOverlay{display:none;position:fixed;inset:0;z-index:8000;background:rgba(0,48,80,.4);align-items:center;justify-content:center}
+#modalOverlay.show{display:flex}
+.modal-box{background:#fff;border-radius:10px;width:480px;max-width:96vw;max-height:90vh;overflow-y:auto;box-shadow:0 10px 40px rgba(0,48,80,.2)}
+.modal-hdr{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:2px solid var(--green-lt)}
+.modal-hdr h3{font-size:16px;font-weight:700;color:var(--navy)}
+.modal-close{background:none;border:none;font-size:22px;cursor:pointer;color:#718096;line-height:1;padding:2px}
+.modal-close:hover{color:var(--text)}
+.modal-body{padding:20px}
+.modal-footer{padding:14px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px}
+.btn-cancel{border:1.5px solid #cbd5e0;background:#fff;color:#4a5568;padding:9px 20px;border-radius:5px;cursor:pointer;font-size:13px;font-weight:600}
+.btn-cancel:hover{background:#f7fafc}
+.btn-primary{background:var(--green);color:#fff;border:none;padding:9px 20px;border-radius:5px;cursor:pointer;font-size:13px;font-weight:700}
+.btn-primary:hover{background:var(--green-dk)}
+.radio-group{display:flex;gap:10px;flex-wrap:wrap}
+.radio-btn{display:flex;align-items:center;gap:5px;cursor:pointer;font-size:13px;color:#4a5568}
+.radio-btn input{cursor:pointer;accent-color:var(--green)}
+/* ===== トグルスイッチ ===== */
+.tog-row{display:flex;align-items:center;gap:10px;cursor:pointer}
+.tog-switch{position:relative;display:inline-block;width:40px;height:22px;flex-shrink:0}
+.tog-switch input{opacity:0;width:0;height:0;position:absolute}
+.tog-slider{position:absolute;inset:0;background:#cbd5e0;border-radius:11px;cursor:pointer;transition:background .2s}
+.tog-slider::before{content:'';position:absolute;height:16px;width:16px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.tog-switch input:checked+.tog-slider{background:var(--green)}
+.tog-switch input:checked+.tog-slider::before{left:21px}
+/* ===== モーダル内セクション ===== */
+.msec-hdr{font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.6px;padding:10px 0 6px;margin-top:14px;border-bottom:1.5px solid var(--green-lt);margin-bottom:10px}
+.msec-hdr:first-child{margin-top:0;padding-top:0}
+.sched-table{width:100%;border-collapse:collapse;font-size:13px}
+.sched-table th{background:var(--green-lt);color:var(--navy);padding:6px 10px;text-align:left;font-weight:700;font-size:12px}
+.sched-table td{padding:5px 8px;border-bottom:1px solid #eef3ec;vertical-align:middle}
+.sched-table tr:last-child td{border-bottom:none}
+.chk-row{display:flex;align-items:center;gap:8px;font-size:13px;color:#4a5568;cursor:pointer}
+.chk-row input{cursor:pointer;accent-color:var(--green);width:16px;height:16px}
+
+/* ===== トースト ===== */
+#toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:10px 22px;border-radius:24px;font-size:13px;font-weight:600;z-index:99999;opacity:0;pointer-events:none;transition:opacity .3s;white-space:nowrap}
+#toast.show{opacity:1}
+
+/* ===== 空状態 ===== */
+.empty-state{text-align:center;padding:40px 20px;color:#a0b8a0;font-size:14px}
+
+/* ===== ユーザー管理 ===== */
+.user-tbl{width:100%;border-collapse:collapse}
+.user-tbl thead th{background:#f3fdf0;border-bottom:2px solid var(--border);padding:9px 12px;text-align:left;font-size:12px;font-weight:700;color:var(--navy)}
+.user-tbl tbody td{padding:9px 12px;font-size:13px;border-bottom:1px solid #eef3ec}
+.user-tbl tbody tr:hover{background:#f9fdf7}
+.role-admin{background:#fef3c7;color:#92400e;border-radius:3px;padding:2px 7px;font-size:11px;font-weight:700}
+.role-user{background:var(--green-lt);color:var(--green-dk);border-radius:3px;padding:2px 7px;font-size:11px;font-weight:600}
+</style>
+</head>
+<body>
+
+<!-- ===== ローディング ===== -->
+<div id="loadingScreen">
+  <div class="ld-spin"></div>
+  <div class="ld-txt">読み込み中…</div>
+</div>
+
+<!-- ===== ログイン ===== -->
+<div id="loginScreen">
+  <div class="lc-wrap">
+    <div class="lc-logo">
+      <span class="lc-icon">🌿</span>
+      <div class="lc-title">Wel<span>be</span></div>
+      <div class="lc-sub">国保連請求サポート — 福祉サービス事業所向け</div>
+    </div>
+    <form onsubmit="doLogin();return false;" autocomplete="on">
+    <div class="lc-field">
+      <label>ログインID</label>
+      <input id="loginId" type="text" name="username" placeholder="ログインIDを入力" autocomplete="username">
+    </div>
+    <div class="lc-field">
+      <label>パスワード</label>
+      <div class="lc-pass-wrap">
+        <input id="loginPass" type="password" name="password" placeholder="パスワードを入力" autocomplete="current-password" style="width:100%">
+        <button class="lc-eye" type="button" onclick="lcToggleEye()" tabindex="-1">🐵</button>
+      </div>
+    </div>
+    <div class="lc-err" id="loginErr"></div>
+    <button class="lc-btn" type="submit">ログイン</button>
+    </form>
+  </div>
+</div>
+
+<!-- ===== アプリ本体 ===== -->
+<div id="app">
+  <!-- サイドバー -->
+  <nav id="sidebar">
+    <div class="sb-logo">
+      <div class="sb-brand">Wel<span>be</span></div>
+    </div>
+    <div class="sb-corp" id="sbCorpName">株式会社ウェルピア羽島</div>
+    <div class="sb-fac-wrap">
+      <select class="sb-fac-sel" id="sbFacSel" onchange="onFacChange()"></select>
+      <button class="sb-logout" onclick="doLogout()" title="ログアウト">⏻</button>
+    </div>
+    <div class="sb-menu">
+      <div class="sb-item" id="sm-record" onclick="showView('daily')">
+        <span class="si-ico">📊</span>利用実績
+      </div>
+      <div class="sb-item" id="sm-timecard" onclick="showView('timecard')">
+        <span class="si-ico">🕐</span>タイムカード
+      </div>
+      <div class="sb-item" id="sm-claim" onclick="showView('claim')">
+        <span class="si-ico">📋</span>請求
+      </div>
+      <div class="sb-item" id="sm-setting" onclick="toggleSettingSub()">
+        <span class="si-ico">⚙️</span>設定
+        <span class="si-arrow" id="si-arrow-setting">▾</span>
+      </div>
+      <div class="sb-sub" id="sub-setting" style="display:none">
+        <div class="sb-sub-item" id="sm-facility" onclick="showView('facility')">事業所情報</div>
+        <div class="sb-sub-item" id="sm-clients" onclick="showView('clients')">利用者情報</div>
+        <div class="sb-sub-item" id="sm-init" onclick="showView('init')">初期設定情報</div>
+      </div>
+      <div class="sb-item" id="sm-help" onclick="toggleHelpSub()">
+        <span class="si-ico">❓</span>ヘルプ
+        <span class="si-arrow" id="si-arrow-help">▾</span>
+      </div>
+      <div class="sb-sub" id="sub-help" style="display:none">
+        <div class="sb-sub-item" onclick="alert('準備中です')">操作マニュアル ↗</div>
+        <div class="sb-sub-item" onclick="alert('準備中です')">お問い合わせ ↗</div>
+      </div>
+    </div>
+
+    <!-- ===== クロコパネル (admin専用) ===== -->
+    <div id="croco-wrap" style="display:none">
+      <div class="croco-hdr" onclick="toggleCrocoPanel()">
+        <span class="croco-hdr-ico">🤖</span>
+        <span class="croco-hdr-txt">クロコの提案</span>
+        <span id="croco-badge" class="croco-badge" style="display:none">0</span>
+        <span class="croco-live">LIVE</span>
+        <span class="si-arrow" id="si-arrow-croco" style="margin-left:2px">▾</span>
+      </div>
+      <div id="croco-body" class="croco-body" style="display:none">
+        <div id="croco-list"></div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- メインエリア -->
+  <div id="mainArea">
+
+    <!-- ===== 利用実績（日ごと） ===== -->
+    <div id="view-daily" style="display:none">
+      <div class="page-hdr">利用実績</div>
+      <div class="tab-bar">
+        <div class="tab-btn active" id="tab-daily" onclick="setTab('daily')">日ごと</div>
+        <div class="tab-btn" id="tab-monthly" onclick="setTab('monthly')">月ごと</div>
+      </div>
+      <div class="content-area">
+        <div class="date-nav">
+          <button class="dn-arrow" onclick="moveDailyDate(-1)">&#8249;</button>
+          <span class="dn-label" id="dailyDateLabel"></span>
+          <button class="dn-cal" onclick="pickDailyDate()" title="日付選択">📅</button>
+          <button class="dn-arrow" onclick="moveDailyDate(1)">&#8250;</button>
+        </div>
+        <div class="summary-row">
+          <div class="summary-chip"><div class="sc-label">送迎（片道）</div><div class="sc-val" id="ds-t1">0<span class="sc-unit">人</span></div></div>
+          <div class="summary-chip"><div class="sc-label">送迎（往復）</div><div class="sc-val" id="ds-t2">0<span class="sc-unit">人</span></div></div>
+          <div class="summary-chip"><div class="sc-label">医療連携</div><div class="sc-val" id="ds-med">0<span class="sc-unit">人</span></div></div>
+          <button class="detail-btn" onclick="showDailyDetail()">利用状況の詳細</button>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr>
+              <th style="min-width:110px">利用者</th>
+              <th>サービス提供の状況</th>
+              <th>開始時間</th><th>終了時間</th>
+              <th>送迎</th><th>訪問支援</th><th>医療連携体制</th>
+              <th></th>
+            </tr></thead>
+            <tbody id="dailyTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 利用実績（月ごと） ===== -->
+    <div id="view-monthly" style="display:none">
+      <div class="page-hdr">利用実績</div>
+      <div class="tab-bar">
+        <div class="tab-btn" id="tab2-daily" onclick="setTab('daily')">日ごと</div>
+        <div class="tab-btn active" id="tab2-monthly" onclick="setTab('monthly')">月ごと</div>
+      </div>
+      <div class="content-area">
+        <div style="display:flex;align-items:center;gap:16px;margin-bottom:14px;flex-wrap:wrap">
+          <div class="date-nav" style="margin-bottom:0">
+            <button class="dn-arrow" onclick="moveMonth(-1)">&#8249;</button>
+            <span class="dn-label" id="monthLabel"></span>
+            <button class="dn-cal" onclick="pickMonthDate()">📅</button>
+            <button class="dn-arrow" onclick="moveMonth(1)">&#8250;</button>
+          </div>
+          <div class="client-selector">
+            <span class="cs-label">利用者</span>
+            <select class="cs-select" id="monthlyClientSel" onchange="renderMonthly()"></select>
+          </div>
+        </div>
+        <div class="month-summary-row">
+          <div class="ms-chip"><div class="msc-label">欠席時対応</div><div class="msc-val" id="ms-abs">0<span>/4日</span></div></div>
+          <div class="ms-chip"><div class="msc-label">施設外支援/就労</div><div class="msc-val" id="ms-out">0<span>/180日</span></div></div>
+          <div class="ms-chip"><div class="msc-label">送迎（片道）</div><div class="msc-val" id="ms-t1">0<span>日</span></div></div>
+          <div class="ms-chip"><div class="msc-label">送迎（往復）</div><div class="msc-val" id="ms-t2">0<span>日</span></div></div>
+          <div class="ms-chip"><div class="msc-label">訪問支援</div><div class="msc-val" id="ms-vis">0<span>/2日</span></div></div>
+          <div class="ms-chip"><div class="msc-label">医療連携</div><div class="msc-val" id="ms-med">0<span>日</span></div></div>
+          <button class="detail-btn" onclick="showMonthlyDetail()" style="margin-left:auto">利用状況の詳細</button>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr>
+              <th style="min-width:110px">日付</th>
+              <th>サービス提供の状況</th>
+              <th>開始時間</th><th>終了時間</th>
+              <th>送迎</th><th>訪問支援</th><th>医療連携体制</th>
+              <th></th>
+            </tr></thead>
+            <tbody id="monthlyTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== タイムカード ===== -->
+    <div id="view-timecard" style="display:none">
+      <div class="page-hdr">タイムカード</div>
+      <div class="content-area">
+
+        <!-- デジタル時計 -->
+        <div class="tc-clock-wrap">
+          <div class="tc-clock" id="tcClock">--:--:--</div>
+          <div class="tc-date-str" id="tcDateStr">---</div>
+        </div>
+
+        <!-- ナビゲーション -->
+        <div class="tc-nav">
+          <div class="tc-nav-day">
+            <button class="btn-tc-nav" onclick="tcPrevDay()">‹ 前日</button>
+            <span class="tc-day-label" id="tcDayLabel">今日</span>
+            <button class="btn-tc-nav" onclick="tcNextDay()">翌日 ›</button>
+            <button class="btn-tc-today" onclick="tcGoToday()">今日</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <span class="cs-label">事業所</span>
+            <select class="cs-select" id="tcFacSel" onchange="renderTcGrid()"></select>
+          </div>
+        </div>
+
+        <!-- 日ごと / 月次タブ -->
+        <div class="tc-tabs">
+          <div class="tc-tab active" id="tc-tab-day" onclick="switchTcTab('day')">打刻（日ごと）</div>
+          <div class="tc-tab" id="tc-tab-month" onclick="switchTcTab('month')">月次一覧</div>
+        </div>
+
+        <!-- 打刻グリッド -->
+        <div id="tc-panel-day">
+          <div class="tc-grid" id="tcGrid"></div>
+        </div>
+
+        <!-- 月次テーブル -->
+        <div id="tc-panel-month" style="display:none">
+          <div style="overflow-x:auto">
+            <table class="tc-month-tbl">
+              <thead><tr id="tcMonthHead"></tr></thead>
+              <tbody id="tcMonthBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ===== 請求 ===== -->
+    <div id="view-claim" style="display:none">
+      <div class="page-hdr">請求</div>
+      <div class="content-area">
+
+        <!-- 対象請求月セレクター -->
+        <div class="claim-panel">
+          <div class="claim-panel-ttl">📅 対象請求月</div>
+          <div class="claim-mrow">
+            <select class="claim-msel" id="claimMonthSel" onchange="onClaimMonthChange()">
+              <option value="">— 請求月を選択 —</option>
+            </select>
+            <span class="claim-ucnt">対象利用者数：<b id="claimUserCount">0</b> 名</span>
+            <button class="btn-add" style="padding:8px 14px;font-size:12px;margin:0" onclick="openClaimUserSel()">利用者選択</button>
+            <button class="btn-add" onclick="addClaimMonth()" style="padding:8px 14px;font-size:12px;margin:0;background:var(--navy);border-color:var(--navy);margin-left:auto">＋ 月を追加</button>
+          </div>
+        </div>
+
+        <!-- 国保連への請求書類ダウンロード -->
+        <div class="claim-panel">
+          <div class="claim-panel-ttl">🏛 国保連への請求書類ダウンロード</div>
+          <div class="claim-dl-row">
+            <button class="btn-claim-dl" onclick="downloadClaimFile('seikyu')">⬇ 請求書・明細書</button>
+            <button class="btn-claim-dl" onclick="downloadClaimFile('jisseki')">⬇ サービス提供実績記録票</button>
+          </div>
+        </div>
+
+        <!-- 請求書類の印刷 -->
+        <div class="claim-panel">
+          <div class="claim-panel-ttl">🖨 請求書類の印刷</div>
+          <div class="claim-dl-row">
+            <button class="btn-claim-dl btn-claim-prt" onclick="printClaimFile('seikyu')">🖨 請求書・明細書</button>
+            <button class="btn-claim-dl btn-claim-prt" onclick="printClaimFile('jisseki')">🖨 サービス提供実績記録票</button>
+          </div>
+        </div>
+
+        <!-- ダウンロード履歴 -->
+        <div class="claim-panel">
+          <div class="claim-panel-ttl" style="justify-content:space-between">
+            <span>📋 請求書類CSVファイルのダウンロード履歴</span>
+            <button class="btn-add" style="padding:6px 13px;font-size:12px;margin:0;background:var(--navy);border-color:var(--navy)" onclick="openClaimHistImport()">📥 knowbeからインポート</button>
+          </div>
+          <table class="claim-hist-tbl">
+            <thead>
+              <tr>
+                <th style="width:120px">対象月</th>
+                <th>ファイル種別</th>
+                <th style="width:160px">ダウンロード日時</th>
+                <th style="width:240px">利用者帳票印刷</th>
+              </tr>
+            </thead>
+            <tbody id="claimHistoryBody">
+              <tr><td colspan="4" style="text-align:center;color:#a0b8a0;padding:20px">履歴がありません</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ===== 設定 > 事業所情報 ===== -->
+    <div id="view-facility" style="display:none">
+      <div class="page-hdr">設定 <span class="ph-sub">› 事業所情報</span></div>
+      <div class="content-area">
+        <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+          <button class="btn-add" onclick="openFacModal(null)">＋ 事業所を追加</button>
+        </div>
+        <div id="facilityList"></div>
+      </div>
+    </div>
+
+    <!-- ===== 設定 > 利用者情報 ===== -->
+    <div id="view-clients" style="display:none">
+      <div class="page-hdr">設定 <span class="ph-sub">› 利用者情報</span></div>
+      <div class="content-area">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div class="client-selector" style="margin-bottom:0">
+            <span class="cs-label">表示する事業所</span>
+            <select class="cs-select" id="clientsFacSel" onchange="renderClients()"></select>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="btn-add" onclick="openClientModal(null)">＋ 利用者を追加</button>
+            <button class="btn-add" onclick="openImportModal()" style="background:var(--navy);border-color:var(--navy)">📥 knowbeからインポート</button>
+          </div>
+        </div>
+        <div class="form-section" style="padding:0;overflow:hidden">
+          <table class="client-tbl">
+            <thead><tr>
+              <th>氏名</th><th>フリガナ</th><th>受給者証番号</th>
+              <th>種別</th><th>障害支援区分</th><th>負担上限</th><th>状態</th><th>操作</th>
+            </tr></thead>
+            <tbody id="clientTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 設定 > 初期設定情報 ===== -->
+    <div id="view-init" style="display:none">
+      <div class="page-hdr">設定 <span class="ph-sub">› 初期設定情報</span></div>
+      <div class="content-area">
+        <div class="form-section">
+          <h3>加算・上限設定（デフォルト値）</h3>
+          <div class="form-row">
+            <div class="form-group">
+              <label>欠席時対応 上限（日/月）</label>
+              <input class="f-input" id="cfg-abs" type="number" value="4" min="0" max="31">
+            </div>
+            <div class="form-group">
+              <label>施設外支援/就労 上限（日/年）</label>
+              <input class="f-input" id="cfg-out" type="number" value="180" min="0" max="365">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>訪問支援 上限（日/月）</label>
+              <input class="f-input" id="cfg-vis" type="number" value="2" min="0" max="31">
+            </div>
+            <div class="form-group">
+              <label>開所日数（週）</label>
+              <input class="f-input" id="cfg-wk" type="number" value="5" min="1" max="7">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>初回請求月 <span style="font-size:11px;color:var(--text-lt);font-weight:400">（請求履歴インポートの開始月として使用）</span></label>
+              <input class="f-input" id="cfg-firstMonth" type="month" value="2019-12" style="width:180px">
+            </div>
+          </div>
+        </div>
+        <div style="text-align:right;margin-bottom:20px">
+          <button class="btn-save" onclick="saveInitConfig()">保存する</button>
+        </div>
+
+        <!-- 過去3ヶ月の延べ利用者数 -->
+        <div class="form-section">
+          <h3>基本報酬計算用データ <span style="font-size:11px;font-weight:400;color:var(--text-lt)">（knowbe 初期設定情報より）</span></h3>
+          <div style="font-size:12px;color:var(--text-lt);margin-bottom:14px">過去3ヶ月の延べ利用者数（通所＋施設外支援の合計人数）</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>1ヶ月前 延べ利用者数</label>
+              <div style="display:flex;align-items:center;gap:6px">
+                <input class="f-input" id="cfg-u1" type="number" value="10" min="0" style="width:90px">
+                <span style="font-size:13px;color:var(--text-lt)">人</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>2ヶ月前 延べ利用者数</label>
+              <div style="display:flex;align-items:center;gap:6px">
+                <input class="f-input" id="cfg-u2" type="number" value="11" min="0" style="width:90px">
+                <span style="font-size:13px;color:var(--text-lt)">人</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>3ヶ月前 延べ利用者数</label>
+              <div style="display:flex;align-items:center;gap:6px">
+                <input class="f-input" id="cfg-u3" type="number" value="11" min="0" style="width:90px">
+                <span style="font-size:13px;color:var(--text-lt)">人</span>
+              </div>
+            </div>
+          </div>
+          <div style="margin-top:10px;padding:10px 14px;background:var(--green-lt);border-radius:7px;font-size:12px;color:var(--navy)">
+            月平均 <b id="cfg-avg-display">—</b> 人 &nbsp;（基本報酬の人員配置計算に使用）
+          </div>
+          <div style="text-align:right;margin-top:14px">
+            <button class="btn-save" onclick="saveInitConfig()">保存する</button>
+          </div>
+        </div>
+
+        <!-- 施設外支援 累計日数 -->
+        <div class="form-section">
+          <h3>施設外支援 累計日数（年度内） <span style="font-size:11px;font-weight:400;color:var(--text-lt)">上限180日</span></h3>
+          <div style="font-size:12px;color:var(--text-lt);margin-bottom:14px">利用者ごとの年度内累計日数を入力してください（前システムからの引継ぎ値）</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <select class="cs-select" id="initFacSel" onchange="renderOutsideDays()" style="font-size:13px"></select>
+            <button class="btn-save" onclick="saveOutsideDays()">保存する</button>
+          </div>
+          <table style="width:100%;border-collapse:collapse;font-size:13px">
+            <thead>
+              <tr style="background:var(--green-lt)">
+                <th style="padding:8px 12px;text-align:left;font-size:12px;color:var(--navy);border-bottom:2px solid var(--border)">氏名</th>
+                <th style="padding:8px 12px;text-align:left;font-size:12px;color:var(--navy);border-bottom:2px solid var(--border)">フリガナ</th>
+                <th style="padding:8px 12px;text-align:center;font-size:12px;color:var(--navy);border-bottom:2px solid var(--border)">施設外支援 累計日数</th>
+                <th style="padding:8px 12px;text-align:center;font-size:12px;color:var(--navy);border-bottom:2px solid var(--border)">残日数</th>
+              </tr>
+            </thead>
+            <tbody id="outsideDaysTbody"></tbody>
+          </table>
+        </div>
+
+        <div class="form-section">
+          <h3>ユーザー管理</h3>
+          <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+            <button class="btn-add" onclick="openUserModal(null)">＋ ユーザーを追加</button>
+          </div>
+          <table class="user-tbl">
+            <thead><tr><th>氏名</th><th>ログインID</th><th>権限</th><th>状態</th><th>操作</th></tr></thead>
+            <tbody id="userTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /mainArea -->
+</div><!-- /app -->
+
+<!-- ===== モーダル ===== -->
+<div id="modalOverlay">
+  <div class="modal-box">
+    <div class="modal-hdr">
+      <h3 id="modalTitle">編集</h3>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal()">キャンセル</button>
+      <button class="btn-primary" id="modalSaveBtn">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== knowbeインポートモーダル ===== -->
+<div id="importOverlay" style="display:none;position:fixed;inset:0;z-index:8000;background:rgba(0,0,0,.55);align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:14px;width:min(700px,96vw);max-height:90vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.35)">
+    <!-- ヘッダー -->
+    <div style="background:var(--navy);color:#fff;border-radius:14px 14px 0 0;padding:16px 22px;display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-size:16px;font-weight:700">📥 knowbe → welbe 利用者インポート</div>
+        <div style="font-size:12px;color:rgba(200,225,215,.7);margin-top:2px">knowbe_extractor.jsで取得したJSONを貼り付けてください</div>
+      </div>
+      <button onclick="closeImportModal()" style="background:none;border:none;color:rgba(255,255,255,.7);font-size:22px;cursor:pointer;padding:0 4px">✕</button>
+    </div>
+
+    <!-- ステップ表示 -->
+    <div id="imp-step-bar" style="display:flex;background:#f7fbf5;border-bottom:1px solid var(--border);padding:10px 22px;gap:16px;font-size:12px;font-weight:600;color:var(--text-lt)">
+      <span id="imp-s1" style="color:var(--navy)">① JSON貼り付け</span>
+      <span style="color:#ccc">›</span>
+      <span id="imp-s2">② 内容確認</span>
+      <span style="color:#ccc">›</span>
+      <span id="imp-s3">③ 完了</span>
+    </div>
+
+    <!-- ステップ1: JSON入力 -->
+    <div id="imp-step1" style="padding:20px 22px;flex:1;overflow:auto">
+      <div style="margin-bottom:10px;font-size:13px;font-weight:600;color:var(--navy)">
+        抽出スクリプトの使い方
+      </div>
+      <ol style="font-size:12px;line-height:2;color:var(--text-lt);padding-left:18px;margin-bottom:16px">
+        <li>Chromeでknowbeの<b style="color:var(--navy)">利用者情報一覧</b>を開く</li>
+        <li>F12（開発者ツール）→ <b style="color:var(--navy)">コンソール</b> タブをクリック</li>
+        <li><code style="background:#f3f8f1;padding:1px 5px;border-radius:3px">knowbe_extractor.js</code>の内容を全コピーして貼り付けEnter</li>
+        <li>右下パネルで「JSONをコピー」ボタンを押す</li>
+        <li>下のテキストエリアにペースト（Ctrl/Cmd+V）</li>
+      </ol>
+      <div style="margin-bottom:8px;font-size:13px;font-weight:600;color:var(--navy)">JSONを貼り付け</div>
+      <textarea id="imp-json" placeholder='{"welbe_import":true,"clients":[...]}' style="width:100%;height:180px;border:2px solid var(--border);border-radius:8px;padding:12px;font-family:monospace;font-size:12px;resize:vertical;color:var(--text)" oninput="impJsonChanged()"></textarea>
+      <div id="imp-parse-msg" style="font-size:12px;min-height:20px;margin-top:6px;color:var(--text-lt)"></div>
+
+      <!-- 事業所マッピング -->
+      <div style="margin-top:16px;padding:12px;background:var(--green-lt);border-radius:8px">
+        <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:8px">インポート先 事業所</div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <select id="imp-fac" style="border:1.5px solid var(--border);border-radius:6px;padding:8px 12px;font-size:13px;flex:1"></select>
+          <span style="font-size:12px;color:var(--text-lt)">にすべて登録</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ステップ2: プレビュー -->
+    <div id="imp-step2" style="display:none;padding:0 0 16px;flex:1;overflow:auto">
+      <div style="padding:14px 22px 10px;font-size:13px;font-weight:600;color:var(--navy)">
+        取込予定の利用者一覧 (<span id="imp-preview-count">0</span>名)
+        <span style="font-size:11px;font-weight:400;color:var(--text-lt);margin-left:8px">既存と重複するものはスキップされます</span>
+      </div>
+      <div style="padding:0 22px">
+        <table style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead>
+            <tr style="background:var(--green-lt)">
+              <th style="padding:7px 10px;text-align:left;color:var(--navy);font-size:11px;border-bottom:2px solid var(--border)">✓</th>
+              <th style="padding:7px 10px;text-align:left;color:var(--navy);font-size:11px;border-bottom:2px solid var(--border)">氏名</th>
+              <th style="padding:7px 10px;text-align:left;color:var(--navy);font-size:11px;border-bottom:2px solid var(--border)">生年月日</th>
+              <th style="padding:7px 10px;text-align:left;color:var(--navy);font-size:11px;border-bottom:2px solid var(--border)">障害種別</th>
+              <th style="padding:7px 10px;text-align:left;color:var(--navy);font-size:11px;border-bottom:2px solid var(--border)">負担上限</th>
+              <th style="padding:7px 10px;text-align:left;color:var(--navy);font-size:11px;border-bottom:2px solid var(--border)">状態</th>
+            </tr>
+          </thead>
+          <tbody id="imp-preview-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ステップ3: 完了 -->
+    <div id="imp-step3" style="display:none;padding:40px 22px;text-align:center">
+      <div style="font-size:48px;margin-bottom:12px">✅</div>
+      <div style="font-size:20px;font-weight:700;color:var(--navy);margin-bottom:8px" id="imp-done-msg">インポート完了</div>
+      <div id="imp-done-sub" style="font-size:13px;color:var(--text-lt)"></div>
+    </div>
+
+    <!-- フッター -->
+    <div style="border-top:1px solid var(--border);padding:14px 22px;display:flex;justify-content:flex-end;gap:10px">
+      <button onclick="closeImportModal()" style="background:#fff;border:1.5px solid var(--border);color:var(--text);border-radius:6px;padding:9px 20px;font-size:13px;cursor:pointer">閉じる</button>
+      <button id="imp-next-btn" onclick="impNext()" style="background:var(--navy);color:#fff;border:none;border-radius:6px;padding:9px 24px;font-size:13px;font-weight:700;cursor:pointer" disabled>次へ ›</button>
+      <button id="imp-exec-btn" onclick="impExecute()" style="display:none;background:var(--green-dk);color:#fff;border:none;border-radius:6px;padding:9px 24px;font-size:13px;font-weight:700;cursor:pointer">一括登録する</button>
+    </div>
+  </div>
+</div>
+
+<input type="date"  id="hiddenDatePicker"  style="position:absolute;opacity:0;pointer-events:none" onchange="onDatePicked()">
+<input type="month" id="hiddenMonthPicker" style="position:absolute;opacity:0;pointer-events:none" onchange="onMonthPicked()">
+
+<!-- ===== knowbe 請求履歴インポート ===== -->
+<div id="claimHistImportOverlay" style="display:none;position:fixed;inset:0;z-index:8500;background:rgba(0,0,0,.55);align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:14px;width:min(560px,96vw);box-shadow:0 20px 60px rgba(0,0,0,.35);overflow:hidden">
+    <!-- ヘッダー -->
+    <div style="background:var(--navy);color:#fff;padding:16px 22px;display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:20px">📥</span>
+        <div>
+          <div style="font-weight:700;font-size:15px">knowbeからダウンロード履歴をインポート</div>
+          <div style="font-size:11px;opacity:.75;margin-top:2px">knowbeのダウンロード履歴テーブルの期間を入力してください</div>
+        </div>
+      </div>
+      <button onclick="closeClaimHistImport()" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;line-height:1">×</button>
+    </div>
+    <!-- ボディ -->
+    <div style="padding:24px 26px">
+
+      <!-- 説明 -->
+      <div style="background:#f0f7ff;border:1px solid #bfdbfe;border-radius:8px;padding:13px 16px;margin-bottom:20px;font-size:13px;color:#1e3a5f;line-height:1.6">
+        <b>knowbeの請求画面</b>の「請求書類CSVファイルのダウンロード履歴」テーブルを確認し、<br>
+        一番古い月と一番新しい月を入力してください。その範囲を一括インポートします。<br>
+        <span style="color:#6b7280;font-size:12px">（すでにwelbeにある月はスキップされます）</span>
+      </div>
+
+      <!-- 期間入力 -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">
+        <div>
+          <label style="display:block;font-size:12px;font-weight:600;color:#4a5568;margin-bottom:5px">開始月（一番古い月）</label>
+          <input type="month" id="chimFrom" class="f-input" style="width:100%" value="2019-12" onchange="updateChimPreview()">
+        </div>
+        <div>
+          <label style="display:block;font-size:12px;font-weight:600;color:#4a5568;margin-bottom:5px">終了月（一番新しい月）</label>
+          <input type="month" id="chimTo" class="f-input" style="width:100%" value="2026-04" onchange="updateChimPreview()">
+        </div>
+      </div>
+
+      <!-- ダウンロード日時 -->
+      <div style="margin-bottom:20px">
+        <label style="display:block;font-size:12px;font-weight:600;color:#4a5568;margin-bottom:5px">ダウンロード日時の形式</label>
+        <div style="display:flex;gap:8px;align-items:center">
+          <select id="chimDlStyle" class="f-input" style="flex:1" onchange="updateChimPreview()">
+            <option value="auto">翌月5日 10:20（knowbeのデフォルト）</option>
+            <option value="custom">日付を直接指定する</option>
+          </select>
+        </div>
+        <div id="chimCustomDate" style="display:none;margin-top:8px">
+          <input type="text" id="chimCustomDt" class="f-input" style="width:100%" placeholder="例: 2026/01/05 10:20">
+        </div>
+      </div>
+
+      <!-- プレビュー -->
+      <div style="background:var(--green-lt);border-radius:8px;padding:12px 16px;margin-bottom:20px">
+        <div style="font-size:12px;font-weight:600;color:var(--navy);margin-bottom:8px">インポートプレビュー</div>
+        <div id="chimPreview" style="font-size:12px;color:var(--text-lt)">月を選択してください</div>
+      </div>
+
+      <!-- ボタン -->
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn-claim-reset" onclick="closeClaimHistImport()">キャンセル</button>
+        <button id="chimExecBtn" class="btn-claim-dl" onclick="execClaimHistImport()" style="min-width:130px">✅ インポート実行</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+'use strict';
+// =========================================================
+// Firebase
+// =========================================================
+const _fbConfig = {
+  apiKey: "AIzaSyBCnMxxITE3rqp2x9r3hJ6Av_H3AIsyMng",
+  authDomain: "dainichi-001.firebaseapp.com",
+  projectId: "dainichi-001",
+  storageBucket: "dainichi-001.firebasestorage.app",
+  messagingSenderId: "442645577881",
+  appId: "1:442645577881:web:d03af912e3aa1953c9b808"
+};
+firebase.initializeApp(_fbConfig);
+const _db = firebase.firestore();
+const _COL = 'kokuhoren_data';
+
+// =========================================================
+// データ層
+// =========================================================
+const _cache = {};
+let _fbReady = false;
+function load(k,d=null){ return _cache.hasOwnProperty(k)?_cache[k]:d; }
+function save(k,v){
+  _cache[k]=v;
+  if(!_fbReady) return;
+  _db.collection(_COL).doc(k).set({v:JSON.stringify(v)}).catch(e=>console.error('Firestore書き込みエラー:',k,e));
+}
+async function loadAllFromFirestore(){
+  try{
+    const snap=await _db.collection(_COL).get();
+    snap.forEach(doc=>{ try{_cache[doc.id]=JSON.parse(doc.data().v);}catch(e){} });
+    _fbReady=true; return true;
+  }catch(e){ console.warn('Firestore読み込みエラー:',e); return false; }
+}
+function startRealtimeSync(){
+  _db.collection(_COL).onSnapshot(snap=>{
+    snap.docChanges().forEach(ch=>{
+      if(ch.type==='modified'||ch.type==='added'){
+        try{_cache[ch.doc.id]=JSON.parse(ch.doc.data().v);}catch(e){}
+      }
+    });
+    if(curView==='daily') renderDaily();
+    else if(curView==='monthly') renderMonthly();
+  });
+}
+
+// =========================================================
+// デフォルトデータ（ウェルピア羽島 2事業所プリセット）
+// =========================================================
+const DEFAULT_FACILITIES = [
+  {
+    id:'fac_hashima',
+    corp:'株式会社ウェルピア羽島',
+    name:'ウェルピア羽島',
+    jigyoshoNo:'',
+    serviceType:'A',
+    zip:'501-6256',
+    pref:'岐阜県',
+    city:'羽島市',
+    addr:'福寿町千代田三丁目31',
+    tel:'058-201-7712',
+    fax:''
+  },
+  {
+    id:'fac_yamagata',
+    corp:'株式会社ウェルピア羽島',
+    name:'ウェルピア山県',
+    jigyoshoNo:'',
+    serviceType:'B',
+    zip:'501-2115',
+    pref:'岐阜県',
+    city:'山県市',
+    addr:'梅原2660-1',
+    tel:'0581-32-9199',
+    fax:'0581-32-9699'
+  }
+];
+
+function initDefaultData(){
+  if(!load('facilities')) save('facilities', DEFAULT_FACILITIES);
+  if(!load('users')) save('users',[
+    {id:'kh_u1',name:'岩清水',loginId:'iwashimizu',password:'welpia1',role:'admin',active:true},
+    {id:'kh_u2',name:'山下',  loginId:'yamashita', password:'welpia2',role:'admin',active:true},
+    {id:'kh_u3',name:'笹木原',loginId:'sasagihara',password:'welpia3',role:'user', active:true},
+    {id:'kh_u4',name:'三浦',  loginId:'miura',     password:'welpia4',role:'user', active:true}
+  ]);
+  if(!load('clients')) save('clients',[]);
+  if(!load('claims'))  save('claims',[]);
+  if(!load('config'))  save('config',{absenceMax:4,outsideMax:180,visitMax:2,weeksPerYear:5});
+}
+
+// =========================================================
+// 認証・セッション（グループウェア方式）
+// =========================================================
+const _SS_KEY = 'kokuho_s';
+let _sess = null;
+function getS(){ if(_sess) return _sess; try{const s=sessionStorage.getItem(_SS_KEY);if(s){_sess=JSON.parse(s);return _sess;}}catch(e){} return null; }
+function setS(s){ _sess=s; sessionStorage.setItem(_SS_KEY,JSON.stringify(s)); }
+function clearS(){ _sess=null; sessionStorage.removeItem(_SS_KEY); }
+
+function doLogin(){
+  const lid = document.getElementById('loginId').value.trim();
+  const lp  = document.getElementById('loginPass').value;
+  const err = document.getElementById('loginErr');
+  err.textContent='';
+  if(!lid||!lp){ err.textContent='IDとパスワードを入力してください'; return; }
+  const users = load('users',[]);
+  const u = users.find(x=>x.loginId===lid && x.active!==false);
+  if(!u || u.password !== lp){
+    err.textContent='IDまたはパスワードが正しくありません';
+    return;
+  }
+  setS({userId:u.id, name:u.name, role:u.role});
+  startApp();
+}
+
+function doLogout(){
+  if(!confirm('ログアウトしますか？'))return;
+  clearS();
+  document.getElementById('app').style.display='none';
+  document.getElementById('loginScreen').style.display='flex';
+  document.getElementById('loginId').value='';
+  document.getElementById('loginPass').value='';
+}
+
+function lcToggleEye(){
+  const inp = document.getElementById('loginPass');
+  const btn = inp.parentElement.querySelector('.lc-eye');
+  if(inp.type==='password'){ inp.type='text'; if(btn) btn.textContent='🙈'; }
+  else { inp.type='password'; if(btn) btn.textContent='🐵'; }
+}
+
+// =========================================================
+// 現在の事業所
+// =========================================================
+let _curFacId = '';
+function curFac(){ return load('facilities',[]).find(f=>f.id===_curFacId)||load('facilities',[])[0]||null; }
+
+function buildFacSelector(){
+  const facs = load('facilities',[]);
+  const sel = document.getElementById('sbFacSel');
+  sel.innerHTML = facs.map(f=>`<option value="${f.id}" ${f.id===_curFacId?'selected':''}>${esc(f.name)}</option>`).join('');
+  const corp = facs.find(f=>f.id===_curFacId)?.corp || facs[0]?.corp || '';
+  document.getElementById('sbCorpName').textContent = corp;
+}
+
+function onFacChange(){
+  _curFacId = document.getElementById('sbFacSel').value;
+  const f = curFac();
+  if(f) document.getElementById('sbCorpName').textContent = f.corp||'';
+  // 現在のビューを再描画
+  if(curView==='daily') renderDaily();
+  else if(curView==='monthly'){buildMonthlyClientSel();renderMonthly();}
+  else if(curView==='clients') renderClients();
+  else if(curView==='claim') renderClaim();
+}
+
+// =========================================================
+// 起動
+// =========================================================
+async function boot(){
+  document.getElementById('loadingScreen').style.display='flex';
+  document.getElementById('loginScreen').style.display='none';
+  document.getElementById('app').style.display='none';
+
+  const ok = await loadAllFromFirestore();
+  if(!ok){
+    document.getElementById('loadingScreen').innerHTML=
+      '<div style="color:#f87171;font-size:14px;text-align:center;padding:20px">⚠️ データベースへの接続に失敗しました。<br>ネットワーク接続を確認してください。</div>';
+    return;
+  }
+  initDefaultData();
+  document.getElementById('loadingScreen').style.display='none';
+
+  if(getS()){
+    startApp();
+  } else {
+    document.getElementById('loginScreen').style.display='flex';
+  }
+}
+function startApp(){
+  document.getElementById('loginScreen').style.display='none';
+  document.getElementById('app').style.display='block';
+  const facs=load('facilities',[]);
+  _curFacId = facs[0]?.id||'';
+  buildFacSelector();
+  startRealtimeSync();
+  showView('daily');
+  initCrocoPanel();
+}
+
+// =========================================================
+// ナビゲーション
+// =========================================================
+let curView='daily';
+const viewIds=['daily','monthly','timecard','claim','facility','clients','init'];
+function showView(v){
+  curView=v;
+  viewIds.forEach(id=>document.getElementById('view-'+id).style.display='none');
+  document.getElementById('view-'+v).style.display='block';
+  ['sm-record','sm-timecard','sm-claim','sm-facility','sm-clients','sm-init'].forEach(id=>document.getElementById(id).classList.remove('active'));
+  if(v==='daily'||v==='monthly') document.getElementById('sm-record').classList.add('active');
+  else if(v==='timecard') document.getElementById('sm-timecard').classList.add('active');
+  else if(v==='claim') document.getElementById('sm-claim').classList.add('active');
+  else if(v==='facility'){document.getElementById('sm-facility').classList.add('active');openSettingSub();}
+  else if(v==='clients'){document.getElementById('sm-clients').classList.add('active');openSettingSub();}
+  else if(v==='init'){document.getElementById('sm-init').classList.add('active');openSettingSub();}
+  // タイムカードを離れるときは時計タイマー停止
+  if(v!=='timecard') _stopTcClock();
+  if(v==='daily') renderDaily();
+  else if(v==='monthly'){buildMonthlyClientSel();renderMonthly();}
+  else if(v==='timecard') renderTimecard();
+  else if(v==='claim') renderClaim();
+  else if(v==='facility') renderFacilityList();
+  else if(v==='clients'){buildClientsFacSel();renderClients();}
+  else if(v==='init') renderInit();
+}
+function setTab(t){ showView(t==='daily'?'daily':'monthly'); }
+let _sSet=false,_sHelp=false;
+function toggleSettingSub(){_sSet=!_sSet;document.getElementById('sub-setting').style.display=_sSet?'block':'none';document.getElementById('si-arrow-setting').classList.toggle('open',_sSet);}
+function openSettingSub(){_sSet=true;document.getElementById('sub-setting').style.display='block';document.getElementById('si-arrow-setting').classList.add('open');}
+function toggleHelpSub(){_sHelp=!_sHelp;document.getElementById('sub-help').style.display=_sHelp?'block':'none';document.getElementById('si-arrow-help').classList.toggle('open',_sHelp);}
+
+// =========================================================
+// 日付ユーティリティ
+// =========================================================
+const WD=['日','月','火','水','木','金','土'];
+let _dailyDate=new Date();
+let _mYear=new Date().getFullYear(), _mMonth=new Date().getMonth()+1;
+function fmtDate(d){return `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日（${WD[d.getDay()]}）`;}
+function getDIM(y,m){return new Date(y,m,0).getDate();}
+function getDOW(y,m,d){return new Date(y,m-1,d).getDay();}
+function getRecKey(fid,y,m){return `rec_${fid}_${y}${String(m).padStart(2,'0')}`;}
+function getRecord(fid,cid,y,m,day){ const r=load(getRecKey(fid,y,m),{}); return (r[cid]||{})[day]||null; }
+function setRecord(fid,cid,y,m,day,data){ const k=getRecKey(fid,y,m); const r=load(k,{}); if(!r[cid])r[cid]={}; r[cid][day]=data; save(k,r); }
+
+// =========================================================
+// 利用実績 日ごと
+// =========================================================
+function moveDailyDate(d){_dailyDate=new Date(_dailyDate);_dailyDate.setDate(_dailyDate.getDate()+d);renderDaily();}
+function pickDailyDate(){const el=document.getElementById('hiddenDatePicker');el.value=_dailyDate.toISOString().slice(0,10);el.click();}
+function onDatePicked(){const v=document.getElementById('hiddenDatePicker').value;if(v){_dailyDate=new Date(v+'T00:00:00');renderDaily();}}
+
+function renderDaily(){
+  const d=_dailyDate;
+  document.getElementById('dailyDateLabel').textContent=fmtDate(d);
+  const y=d.getFullYear(),mo=d.getMonth()+1,day=d.getDate();
+  const fid=_curFacId;
+  const clients=load('clients',[]).filter(c=>c.active!==false&&c.facilityId===fid);
+  const tbody=document.getElementById('dailyTbody');
+  let t1=0,t2=0,med=0,html='';
+  if(!clients.length){
+    html=`<tr><td colspan="8"><div class="empty-state">この事業所の利用者が登録されていません</div></td></tr>`;
+  } else {
+    clients.forEach(c=>{
+      const rec=getRecord(fid,c.id,y,mo,day);
+      const st=rec?.status||'',start=rec?.start||'',end=rec?.end||'',tr=rec?.transport||'',vis=rec?.visit||false,me=rec?.medical||false;
+      if(tr==='片道')t1++; if(tr==='往復')t2++; if(me)med++;
+      const sc=stClass(st);
+      html+=`<tr>
+        <td class="td-name">${esc(c.name)}</td>
+        <td${sc?` class="${sc}"`:''}>${st||'<span class="td-dash">-</span>'}</td>
+        <td class="td-time">${start||'<span class="td-dash">-</span>'}</td>
+        <td class="td-time">${end||'<span class="td-dash">-</span>'}</td>
+        <td>${tr?`<span class="td-badge-transport">${esc(tr)}</span>`:'<span class="td-dash">-</span>'}</td>
+        <td>${vis?'<span class="td-badge-visit">あり</span>':'<span class="td-dash">-</span>'}</td>
+        <td>${me?'<span class="td-badge-medical">あり</span>':'<span class="td-dash">-</span>'}</td>
+        <td class="td-edit"><button class="btn-edit" onclick="openRecordModal('${c.id}',${y},${mo},${day})">✏</button></td>
+      </tr>`;
+    });
+  }
+  tbody.innerHTML=html;
+  document.getElementById('ds-t1').innerHTML=`${t1}<span class="sc-unit">人</span>`;
+  document.getElementById('ds-t2').innerHTML=`${t2}<span class="sc-unit">人</span>`;
+  document.getElementById('ds-med').innerHTML=`${med}<span class="sc-unit">人</span>`;
+}
+
+function stClass(s){
+  if(s==='欠席'||s==='欠席時対応') return 'td-absence';
+  if(s==='施設外就労'||s==='施設外支援') return 'td-outside';
+  return '';
+}
+
+function showDailyDetail(){
+  const d=_dailyDate,y=d.getFullYear(),mo=d.getMonth()+1,day=d.getDate();
+  const clients=load('clients',[]).filter(c=>c.active!==false&&c.facilityId===_curFacId);
+  let rows='',att=0,abs=0;
+  clients.forEach(c=>{
+    const rec=getRecord(_curFacId,c.id,y,mo,day);
+    const st=rec?.status||'';
+    if(st==='通所'||st==='施設外就労'||st==='施設外支援')att++;
+    if(st==='欠席'||st==='欠席時対応')abs++;
+    rows+=`<tr><td style="padding:7px 10px;border-bottom:1px solid #eef3ec;font-size:13px">${esc(c.name)}</td><td style="padding:7px 10px;border-bottom:1px solid #eef3ec;font-size:13px">${st||'-'}</td><td style="padding:7px 10px;border-bottom:1px solid #eef3ec;font-size:13px">${rec?.start||'-'}</td><td style="padding:7px 10px;border-bottom:1px solid #eef3ec;font-size:13px">${rec?.end||'-'}</td></tr>`;
+  });
+  openInfoModal(`利用状況の詳細 — ${fmtDate(d)}`,
+    `<div style="margin-bottom:10px;font-size:13px;color:#4a5568">通所: <strong>${att}人</strong>　欠席: <strong>${abs}人</strong></div>
+    <table style="width:100%;border-collapse:collapse"><thead><tr>
+      <th style="background:var(--green);color:#fff;padding:8px 10px;font-size:12px;text-align:left">氏名</th>
+      <th style="background:var(--green);color:#fff;padding:8px 10px;font-size:12px;text-align:left">状況</th>
+      <th style="background:var(--green);color:#fff;padding:8px 10px;font-size:12px;text-align:left">開始</th>
+      <th style="background:var(--green);color:#fff;padding:8px 10px;font-size:12px;text-align:left">終了</th>
+    </tr></thead><tbody>${rows||'<tr><td colspan="4" style="padding:12px;text-align:center;color:#a0b8a0">記録なし</td></tr>'}</tbody></table>`);
+}
+
+// =========================================================
+// 利用実績 月ごと
+// =========================================================
+function moveMonth(d){_mMonth+=d;if(_mMonth>12){_mMonth=1;_mYear++;}if(_mMonth<1){_mMonth=12;_mYear--;}buildMonthlyClientSel();renderMonthly();}
+function pickMonthDate(){const el=document.getElementById('hiddenMonthPicker');el.value=`${_mYear}-${String(_mMonth).padStart(2,'0')}`;el.click();}
+function onMonthPicked(){const v=document.getElementById('hiddenMonthPicker').value;if(v){const[y,m]=v.split('-');_mYear=+y;_mMonth=+m;buildMonthlyClientSel();renderMonthly();}}
+
+function buildMonthlyClientSel(){
+  const sel=document.getElementById('monthlyClientSel');
+  const prev=sel.value;
+  const clients=load('clients',[]).filter(c=>c.active!==false&&c.facilityId===_curFacId);
+  sel.innerHTML='';
+  if(!clients.length){sel.innerHTML='<option value="">（利用者なし）</option>';return;}
+  clients.forEach(c=>{const op=document.createElement('option');op.value=c.id;op.textContent=c.name;sel.appendChild(op);});
+  if(prev&&clients.find(c=>c.id===prev))sel.value=prev;
+}
+
+function renderMonthly(){
+  document.getElementById('monthLabel').textContent=`${_mYear}年${_mMonth}月`;
+  const cid=document.getElementById('monthlyClientSel').value;
+  const client=load('clients',[]).find(c=>c.id===cid);
+  const cfg=load('config',{absenceMax:4,outsideMax:180,visitMax:2});
+  const days=getDIM(_mYear,_mMonth);
+  const tbody=document.getElementById('monthlyTbody');
+  if(!client){tbody.innerHTML=`<tr><td colspan="8"><div class="empty-state">利用者を選択してください</div></td></tr>`;return;}
+  let absCnt=0,outCnt=0,t1=0,t2=0,visCnt=0,medCnt=0,html='';
+  for(let day=1;day<=days;day++){
+    const dw=getDOW(_mYear,_mMonth,day);
+    const rec=getRecord(_curFacId,cid,_mYear,_mMonth,day);
+    const st=rec?.status||'',start=rec?.start||'',end=rec?.end||'',tr=rec?.transport||'',vis=rec?.visit||false,me=rec?.medical||false;
+    if(st==='欠席時対応')absCnt++;
+    if(st==='施設外就労'||st==='施設外支援')outCnt++;
+    if(tr==='片道')t1++; if(tr==='往復')t2++;
+    if(vis)visCnt++; if(me)medCnt++;
+    const dlabel=`${day}日（${WD[dw]}）`;
+    const dc=dw===0?'td-sun':dw===6?'td-sat':'';
+    const sc=stClass(st);
+    html+=`<tr>
+      <td class="${dc}" style="font-weight:500">${dlabel}</td>
+      <td${sc?` class="${sc}"`:''}>${st||'<span class="td-dash">-</span>'}</td>
+      <td class="td-time">${start||'<span class="td-dash">-</span>'}</td>
+      <td class="td-time">${end||'<span class="td-dash">-</span>'}</td>
+      <td>${tr?`<span class="td-badge-transport">${esc(tr)}</span>`:'<span class="td-dash">-</span>'}</td>
+      <td>${vis?'<span class="td-badge-visit">あり</span>':'<span class="td-dash">-</span>'}</td>
+      <td>${me?'<span class="td-badge-medical">あり</span>':'<span class="td-dash">-</span>'}</td>
+      <td class="td-edit"><button class="btn-edit" onclick="openRecordModal('${cid}',${_mYear},${_mMonth},${day})">✏</button></td>
+    </tr>`;
+  }
+  tbody.innerHTML=html;
+  document.getElementById('ms-abs').innerHTML=`${absCnt}<span>/${cfg.absenceMax}日</span>`;
+  document.getElementById('ms-out').innerHTML=`${outCnt}<span>/${cfg.outsideMax}日</span>`;
+  document.getElementById('ms-t1').innerHTML=`${t1}<span>日</span>`;
+  document.getElementById('ms-t2').innerHTML=`${t2}<span>日</span>`;
+  document.getElementById('ms-vis').innerHTML=`${visCnt}<span>/${cfg.visitMax}日</span>`;
+  document.getElementById('ms-med').innerHTML=`${medCnt}<span>日</span>`;
+}
+
+function showMonthlyDetail(){
+  const cid=document.getElementById('monthlyClientSel').value;
+  const client=load('clients',[]).find(c=>c.id===cid);
+  if(!client){alert('利用者を選択してください');return;}
+  const days=getDIM(_mYear,_mMonth);
+  let rows='',att=0,abs=0;
+  for(let d=1;d<=days;d++){
+    const rec=getRecord(_curFacId,cid,_mYear,_mMonth,d);
+    const st=rec?.status||'';
+    const dw=getDOW(_mYear,_mMonth,d);
+    if(st==='通所'||st==='施設外就労'||st==='施設外支援')att++;
+    if(st==='欠席'||st==='欠席時対応')abs++;
+    if(!st)continue;
+    const dc=dw===0?'color:#e53e3e':dw===6?'color:#1a7bbf':'';
+    rows+=`<tr><td style="padding:7px 10px;border-bottom:1px solid #eef3ec;font-size:13px;${dc}">${d}日（${WD[dw]}）</td><td style="padding:7px 10px;border-bottom:1px solid #eef3ec;font-size:13px">${st}</td><td style="padding:7px 10px;border-bottom:1px solid #eef3ec;font-size:13px">${rec?.start||'-'}</td><td style="padding:7px 10px;border-bottom:1px solid #eef3ec;font-size:13px">${rec?.end||'-'}</td></tr>`;
+  }
+  openInfoModal(`利用状況の詳細 — ${client.name} ${_mYear}年${_mMonth}月`,
+    `<div style="margin-bottom:10px;font-size:13px;color:#4a5568">通所: <strong>${att}日</strong>　欠席: <strong>${abs}日</strong></div>
+    <table style="width:100%;border-collapse:collapse"><thead><tr>
+      <th style="background:var(--green);color:#fff;padding:8px 10px;font-size:12px;text-align:left">日付</th>
+      <th style="background:var(--green);color:#fff;padding:8px 10px;font-size:12px;text-align:left">状況</th>
+      <th style="background:var(--green);color:#fff;padding:8px 10px;font-size:12px;text-align:left">開始</th>
+      <th style="background:var(--green);color:#fff;padding:8px 10px;font-size:12px;text-align:left">終了</th>
+    </tr></thead><tbody>${rows||'<tr><td colspan="4" style="padding:12px;text-align:center;color:#a0b8a0">記録なし</td></tr>'}</tbody></table>`);
+}
+
+// =========================================================
+// 実績編集モーダル
+// =========================================================
+let _mCtx=null;
+function openRecordModal(cid,y,mo,day){
+  const client=load('clients',[]).find(c=>c.id===cid);
+  if(!client)return;
+  const rec=getRecord(_curFacId,cid,y,mo,day)||{};
+  const dw=getDOW(y,mo,day);
+  _mCtx={type:'record',cid,y,mo,day};
+  document.getElementById('modalTitle').textContent=`実績を編集 — ${client.name} ${mo}/${day}（${WD[dw]}）`;
+  const opts=(client.serviceType==='A'?['','通所','施設外就労','欠席','欠席時対応']:['','通所','施設外支援','欠席','欠席時対応'])
+    .map(s=>`<option value="${s}" ${rec.status===s?'selected':''}>${s||'（未入力）'}</option>`).join('');
+  document.getElementById('modalBody').innerHTML=`
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div><label style="display:block;font-size:12px;font-weight:600;color:#4a5568;margin-bottom:6px">サービス提供の状況</label>
+        <select class="f-select" id="me-st">${opts}</select></div>
+      <div style="display:flex;gap:16px">
+        <div style="flex:1"><label style="display:block;font-size:12px;font-weight:600;color:#4a5568;margin-bottom:6px">開始時間</label>
+          <input class="f-input" id="me-s" type="time" value="${rec.start||''}"></div>
+        <div style="flex:1"><label style="display:block;font-size:12px;font-weight:600;color:#4a5568;margin-bottom:6px">終了時間</label>
+          <input class="f-input" id="me-e" type="time" value="${rec.end||''}"></div>
+      </div>
+      <div><label style="display:block;font-size:12px;font-weight:600;color:#4a5568;margin-bottom:8px">送迎</label>
+        <div class="radio-group">
+          ${['','片道','往復'].map(t=>`<label class="radio-btn"><input type="radio" name="me-tr" value="${t}" ${(rec.transport||'')===t?'checked':''}>${t||'なし'}</label>`).join('')}
+        </div>
+      </div>
+      <div style="display:flex;gap:20px">
+        <label class="chk-row"><input type="checkbox" id="me-vis" ${rec.visit?'checked':''}>訪問支援</label>
+        <label class="chk-row"><input type="checkbox" id="me-med" ${rec.medical?'checked':''}>医療連携体制</label>
+      </div>
+      <div style="border-top:1px solid var(--border);padding-top:12px">
+        <button onclick="clearRecord()" style="border:none;background:none;color:#e53e3e;font-size:12px;cursor:pointer;font-weight:600;padding:0">🗑 この日の記録を削除</button>
+      </div>
+    </div>`;
+  document.getElementById('modalSaveBtn').onclick=saveRecordModal;
+  document.getElementById('modalOverlay').classList.add('show');
+}
+function clearRecord(){
+  if(!confirm('この日の記録を削除しますか？'))return;
+  const {cid,y,mo,day}=_mCtx;
+  const k=getRecKey(_curFacId,y,mo);
+  const r=load(k,{});
+  if(r[cid])delete r[cid][day];
+  save(k,r); closeModal();
+  if(curView==='daily')renderDaily(); else renderMonthly();
+  showToast('削除しました');
+}
+function saveRecordModal(){
+  const {cid,y,mo,day}=_mCtx;
+  setRecord(_curFacId,cid,y,mo,day,{
+    status:document.getElementById('me-st').value,
+    start:document.getElementById('me-s').value,
+    end:document.getElementById('me-e').value,
+    transport:document.querySelector('input[name="me-tr"]:checked')?.value||'',
+    visit:document.getElementById('me-vis').checked,
+    medical:document.getElementById('me-med').checked
+  });
+  closeModal();
+  if(curView==='daily')renderDaily(); else renderMonthly();
+  showToast('保存しました ✓');
+}
+
+// =========================================================
+// タイムカード
+// =========================================================
+let _tcDate = new Date();      // 現在表示中の日付
+let _tcTab  = 'day';           // 'day' | 'month'
+let _tcClockTimer = null;
+
+function _tcFid(){ return document.getElementById('tcFacSel')?.value||_curFacId; }
+function _tcKey(fid,y,m){ return `tc_${fid}_${y}${String(m).padStart(2,'0')}`; }
+function _isToday(d){ const n=new Date(); return d.getFullYear()===n.getFullYear()&&d.getMonth()===n.getMonth()&&d.getDate()===n.getDate(); }
+function _fmtTime(h,min){ return `${String(h).padStart(2,'0')}:${String(min).padStart(2,'0')}`; }
+
+function renderTimecard(){
+  // 事業所セレクタ
+  const facSel=document.getElementById('tcFacSel');
+  facSel.innerHTML=load('facilities',[]).map(f=>`<option value="${f.id}" ${f.id===_curFacId?'selected':''}>${esc(f.name)}</option>`).join('');
+  if(!facSel.value) facSel.value=_curFacId;
+  _startTcClock();
+  _updateTcDayLabel();
+  switchTcTab(_tcTab);
+}
+
+function _startTcClock(){
+  if(_tcClockTimer) return;
+  const tick=()=>{
+    const n=new Date();
+    const el=document.getElementById('tcClock');
+    if(el) el.textContent=`${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}:${String(n.getSeconds()).padStart(2,'0')}`;
+    if(_isToday(_tcDate)){
+      const ds=document.getElementById('tcDateStr');
+      if(ds) ds.textContent=`${n.getFullYear()}年${n.getMonth()+1}月${n.getDate()}日（${WD[n.getDay()]}）`;
+    }
+  };
+  tick();
+  _tcClockTimer=setInterval(tick,1000);
+}
+function _stopTcClock(){ if(_tcClockTimer){clearInterval(_tcClockTimer);_tcClockTimer=null;} }
+
+function _updateTcDayLabel(){
+  const y=_tcDate.getFullYear(),m=_tcDate.getMonth()+1,d=_tcDate.getDate();
+  const lbl=_isToday(_tcDate)?`今日（${y}/${m}/${d}）`:`${y}年${m}月${d}日（${WD[_tcDate.getDay()]}）`;
+  document.getElementById('tcDayLabel').textContent=lbl;
+  if(!_isToday(_tcDate)){
+    const ds=document.getElementById('tcDateStr');
+    if(ds) ds.textContent=`${y}年${m}月${d}日`;
+  }
+}
+
+function switchTcTab(tab){
+  _tcTab=tab;
+  document.getElementById('tc-tab-day').classList.toggle('active',tab==='day');
+  document.getElementById('tc-tab-month').classList.toggle('active',tab==='month');
+  document.getElementById('tc-panel-day').style.display=tab==='day'?'block':'none';
+  document.getElementById('tc-panel-month').style.display=tab==='month'?'block':'none';
+  if(tab==='day') renderTcGrid();
+  else renderTcMonth();
+}
+
+function renderTcGrid(){
+  const fid=_tcFid();
+  const y=_tcDate.getFullYear(),m=_tcDate.getMonth()+1,d=_tcDate.getDate();
+  const clients=load('clients',[]).filter(c=>c.active!==false&&c.facilityId===fid)
+    .sort((a,b)=>(a.kana||a.name).localeCompare(b.kana||b.name));
+  const tc=load(_tcKey(fid,y,m),{});
+  const grid=document.getElementById('tcGrid');
+  if(!clients.length){grid.innerHTML='<div class="empty-state">この事業所の利用者が登録されていません</div>';return;}
+  grid.innerHTML=clients.map(cl=>{
+    const day=tc[cl.id]?.[d]||{};
+    const hasIn=!!day.in, hasOut=!!day.out;
+    const cardCls=hasOut?'st-out':hasIn?'st-in':'';
+    const badge=hasOut?'<span class="tc-status-badge tc-badge-out">退勤済</span>'
+      :hasIn?'<span class="tc-status-badge tc-badge-in">通所中</span>'
+      :'<span class="tc-status-badge tc-badge-none">未打刻</span>';
+    const timeHtml=hasIn
+      ?`<div class="tc-times"><span class="t-in">出 ${day.in}</span>${hasOut?`　<span class="t-out">退 ${day.out}</span>`:''}</div>`
+      :'<div class="tc-times" style="color:#e2e8f0">—</div>';
+    const btns=!hasIn
+      ?`<button class="btn-tc-in" onclick="tcPunch('${cl.id}','in')">出勤</button>`
+      :!hasOut
+      ?`<button class="btn-tc-out" onclick="tcPunch('${cl.id}','out')">退勤</button>
+        <button class="btn-tc-edit" onclick="tcEdit('${cl.id}')">修正</button>`
+      :`<button class="btn-tc-edit" onclick="tcEdit('${cl.id}')">修正</button>`;
+    return `<div class="tc-card ${cardCls}" id="tc-card-${cl.id}">
+      <div class="tc-name">${esc(cl.name)}</div>
+      ${badge}${timeHtml}
+      <div class="tc-btn-row">${btns}</div>
+    </div>`;
+  }).join('');
+}
+
+function tcPunch(clientId, type){
+  const fid=_tcFid();
+  const y=_tcDate.getFullYear(),m=_tcDate.getMonth()+1,d=_tcDate.getDate();
+  const tcKey=_tcKey(fid,y,m);
+  const tc=load(tcKey,{});
+  if(!tc[clientId]) tc[clientId]={};
+  if(!tc[clientId][d]) tc[clientId][d]={};
+  const now=new Date();
+  const t=_fmtTime(now.getHours(),now.getMinutes());
+  tc[clientId][d][type]=t;
+  tc[clientId][d].punchedBy=getS()?.userId||'';
+  save(tcKey,tc);
+  // ━━ 実績への連動 ━━
+  if(type==='in'){
+    const recKey=getRecKey(fid,y,m);
+    const rec=load(recKey,{});
+    if(!rec[clientId]) rec[clientId]={};
+    if(!rec[clientId][d]) rec[clientId][d]={};
+    // 実績が未設定のときだけ「通所」を自動セット（手動変更を保護）
+    if(!rec[clientId][d].status){
+      rec[clientId][d].status='通所';
+      rec[clientId][d].startTime=t;
+      save(recKey,rec);
+    }
+  }
+  if(type==='out'){
+    const recKey=getRecKey(fid,y,m);
+    const rec=load(recKey,{});
+    if(rec[clientId]?.[d]?.status==='通所'){
+      rec[clientId][d].endTime=t;
+      save(recKey,rec);
+    }
+  }
+  renderTcGrid();
+  const cl=load('clients',[]).find(c=>c.id===clientId);
+  showToast(`${esc(cl?.name||'')} ${type==='in'?'出勤':'退勤'} ${t} ✓`);
+}
+
+function tcEdit(clientId){
+  if(getS()?.role!=='admin'){showToast('修正は管理者のみ可能です');return;}
+  const fid=_tcFid();
+  const y=_tcDate.getFullYear(),m=_tcDate.getMonth()+1,d=_tcDate.getDate();
+  const tcKey=_tcKey(fid,y,m);
+  const tc=load(tcKey,{});
+  const day=tc[clientId]?.[d]||{};
+  const cl=load('clients',[]).find(c=>c.id===clientId);
+  const newIn=prompt(`${cl?.name} — 出勤時刻（HH:MM）を入力\n空欄でクリア`,day.in||'');
+  if(newIn===null) return;
+  const newOut=prompt(`退勤時刻（HH:MM）を入力\n空欄でクリア`,day.out||'');
+  if(newOut===null) return;
+  if(!tc[clientId]) tc[clientId]={};
+  if(!tc[clientId][d]) tc[clientId][d]={};
+  if(newIn.trim()) tc[clientId][d].in=newIn.trim(); else delete tc[clientId][d].in;
+  if(newOut.trim()) tc[clientId][d].out=newOut.trim(); else delete tc[clientId][d].out;
+  tc[clientId][d].editedBy=getS()?.userId||'';
+  save(tcKey,tc);
+  // 実績も反映
+  const recKey=getRecKey(fid,y,m);
+  const rec=load(recKey,{});
+  if(!rec[clientId]) rec[clientId]={};
+  if(!rec[clientId][d]) rec[clientId][d]={};
+  if(newIn.trim()){
+    if(!rec[clientId][d].status) rec[clientId][d].status='通所';
+    rec[clientId][d].startTime=newIn.trim();
+  }
+  if(newOut.trim()) rec[clientId][d].endTime=newOut.trim();
+  save(recKey,rec);
+  renderTcGrid();
+  showToast('打刻を修正しました ✓');
+}
+
+function tcPrevDay(){
+  _tcDate=new Date(_tcDate.getFullYear(),_tcDate.getMonth(),_tcDate.getDate()-1);
+  _updateTcDayLabel();
+  if(_tcTab==='day') renderTcGrid(); else renderTcMonth();
+}
+function tcNextDay(){
+  const next=new Date(_tcDate.getFullYear(),_tcDate.getMonth(),_tcDate.getDate()+1);
+  if(next>new Date()){showToast('未来の日付には移動できません');return;}
+  _tcDate=next;
+  _updateTcDayLabel();
+  if(_tcTab==='day') renderTcGrid(); else renderTcMonth();
+}
+function tcGoToday(){
+  _tcDate=new Date();
+  _updateTcDayLabel();
+  if(_tcTab==='day') renderTcGrid(); else renderTcMonth();
+}
+
+function renderTcMonth(){
+  const fid=_tcFid();
+  const y=_tcDate.getFullYear(),m=_tcDate.getMonth()+1;
+  const days=getDIM(y,m);
+  const clients=load('clients',[]).filter(c=>c.active!==false&&c.facilityId===fid)
+    .sort((a,b)=>(a.kana||a.name).localeCompare(b.kana||b.name));
+  const tc=load(_tcKey(fid,y,m),{});
+  // ヘッダー（日付）
+  const head=document.getElementById('tcMonthHead');
+  head.innerHTML='<th style="min-width:90px;text-align:left;padding-left:10px">利用者</th>'
+    +Array.from({length:days},(_,i)=>{
+      const d=i+1;
+      const wd=new Date(y,m-1,d).getDay();
+      const col=wd===0?'color:#e53e3e':wd===6?'color:#3b82f6':'';
+      return `<th style="${col};min-width:38px">${d}<br><span style="font-size:10px;font-weight:400">${WD[wd]}</span></th>`;
+    }).join('');
+  // 行（利用者）
+  const tbody=document.getElementById('tcMonthBody');
+  if(!clients.length){tbody.innerHTML='<tr><td colspan="32" class="empty-state">利用者なし</td></tr>';return;}
+  tbody.innerHTML=clients.map(cl=>{
+    const cells=Array.from({length:days},(_,i)=>{
+      const d=i+1;
+      const day=tc[cl.id]?.[d]||{};
+      const inT=day.in||'', outT=day.out||'';
+      if(!inT&&!outT) return `<td><span class="tc-cell-none">—</span></td>`;
+      return `<td><span class="tc-cell-in">${inT}</span>${outT?`<br><span class="tc-cell-out">${outT}</span>`:''}</td>`;
+    }).join('');
+    return `<tr><td>${esc(cl.name)}</td>${cells}</tr>`;
+  }).join('');
+}
+
+// =========================================================
+// 請求
+// =========================================================
+function _seedClaimsIfEmpty(){
+  const fid=_curFacId;
+  if(!fid) return;
+  const existing=load('claims',[]).filter(c=>c.facilityId===fid);
+  if(existing.length) return;
+  // 直近4か月を自動シード（knowbe に合わせ）
+  const now=new Date();
+  const claims=load('claims',[]);
+  for(let i=3;i>=0;i--){
+    const d=new Date(now.getFullYear(),now.getMonth()-i,1);
+    const y=d.getFullYear(), m=d.getMonth()+1;
+    const ym=`${y}${String(m).padStart(2,'0')}`;
+    const id=`${fid}_${ym}`;
+    if(!claims.find(c=>c.id===id)){
+      claims.push({id,facilityId:fid,year:y,month:m,status:i===0?'ready':'submitted',memo:''});
+    }
+  }
+  save('claims',claims);
+  // ダウンロード履歴もシード（submitted な月はダウンロード済扱い）
+  const hist=load('claim_history',[]);
+  claims.filter(c=>c.facilityId===fid&&c.status==='submitted').forEach(c=>{
+    const dlDate=new Date(c.year,c.month,5); // 翌月5日
+    const dlAt=`${dlDate.getFullYear()}/${String(dlDate.getMonth()+1).padStart(2,'0')}/${String(dlDate.getDate()).padStart(2,'0')} 10:20`;
+    ['jisseki','seikyu'].forEach(ft=>{
+      if(!hist.find(h=>h.claimId===c.id&&h.fileType===ft)){
+        hist.push({claimId:c.id,facilityId:fid,fileType:ft,dlAt});
+      }
+    });
+  });
+  save('claim_history',hist);
+}
+
+function renderClaim(){
+  const fid=_curFacId;
+  _seedClaimsIfEmpty();
+  const claims=load('claims',[]).filter(c=>c.facilityId===fid).sort((a,b)=>b.id.localeCompare(a.id));
+  // ---- 月セレクタ更新 ----
+  const sel=document.getElementById('claimMonthSel');
+  const prevVal=sel.value;
+  sel.innerHTML='<option value="">— 請求月を選択 —</option>'+
+    claims.map(c=>`<option value="${c.id}">${c.year}年${c.month}月分</option>`).join('');
+  if(prevVal&&claims.find(c=>c.id===prevVal)) sel.value=prevVal;
+  else if(claims.length) sel.value=claims[0].id; // 最新月をデフォルト選択
+  _updateClaimUserCount();
+  renderClaimHistory(fid,claims);
+}
+
+function _updateClaimUserCount(){
+  const sel=document.getElementById('claimMonthSel');
+  const id=sel.value;
+  const claim=load('claims',[]).find(c=>c.id===id);
+  const allClients=load('clients',[]).filter(cl=>cl.active!==false&&cl.facilityId===_curFacId);
+  const cnt=claim?.users?.length??allClients.length;
+  document.getElementById('claimUserCount').textContent=cnt;
+}
+
+function onClaimMonthChange(){ _updateClaimUserCount(); }
+
+function renderClaimHistory(fid, claims){
+  const tbody=document.getElementById('claimHistoryBody');
+  const hist=load('claim_history',[]).filter(h=>h.facilityId===fid);
+  // submitted/paid の月 ＋ 履歴にある月を表示
+  const monthSet=new Set();
+  claims.filter(c=>c.status==='submitted'||c.status==='paid').forEach(c=>monthSet.add(c.id));
+  hist.forEach(h=>monthSet.add(h.claimId));
+  if(!monthSet.size){
+    tbody.innerHTML='<tr><td colspan="4" style="text-align:center;color:#a0b8a0;padding:20px">履歴がありません</td></tr>';
+    return;
+  }
+  const sorted=[...monthSet].sort((a,b)=>b.localeCompare(a));
+  let html='';
+  for(const cid of sorted){
+    const claim=claims.find(c=>c.id===cid);
+    // claimId フォーマット: {facId}_{yyyyMM}
+    const ymPart=cid.slice(cid.lastIndexOf('_')+1);
+    const yr=+ymPart.slice(0,4), mo=+ymPart.slice(4);
+    const label=`${yr}年${mo}月分`;
+    const jH=hist.find(h=>h.claimId===cid&&h.fileType==='jisseki');
+    const sH=hist.find(h=>h.claimId===cid&&h.fileType==='seikyu');
+    // 行1: サービス提供実績記録票
+    html+=`<tr>
+      <td style="font-weight:600;color:var(--navy)">${label}</td>
+      <td><span class="ftype-badge ftype-jisseki">サービス提供実績記録票</span></td>
+      <td style="color:var(--text-lt);font-size:12px">${jH?jH.dlAt:'—'}</td>
+      <td style="color:#ccc;font-size:12px">—</td>
+    </tr>`;
+    // 行2: 請求書・明細書（帳票印刷ボタン付き）
+    html+=`<tr>
+      <td style="font-weight:600;color:var(--navy)">${label}</td>
+      <td><span class="ftype-badge ftype-seikyu">請求書・明細書</span></td>
+      <td style="color:var(--text-lt);font-size:12px">${sH?sH.dlAt:'—'}</td>
+      <td>
+        <div class="claim-doc-btns">
+          <button class="btn-doc btn-doc-inv" onclick="printDoc('${cid}','invoice')">請求書</button>
+          <button class="btn-doc btn-doc-rec" onclick="printDoc('${cid}','receipt')">領収書</button>
+          <button class="btn-doc btn-doc-prx" onclick="printDoc('${cid}','proxy')">代理受領書</button>
+        </div>
+      </td>
+    </tr>`;
+  }
+  tbody.innerHTML=html;
+}
+
+function addClaimMonth(){
+  const ym=prompt('対象月を入力（例：202605）');
+  if(!ym||!/^\d{6}$/.test(ym)){if(ym!==null)alert('6桁の数字で入力してください');return;}
+  const y=+ym.slice(0,4),m=+ym.slice(4);
+  if(m<1||m>12){alert('月は01〜12で入力してください');return;}
+  const claims=load('claims',[]);
+  const id=`${_curFacId}_${ym}`;
+  if(claims.find(c=>c.id===id)){alert('その月は既に登録されています');return;}
+  claims.push({id,facilityId:_curFacId,year:y,month:m,status:'draft',memo:''});
+  save('claims',claims); renderClaim(); showToast(`${y}年${m}月を追加しました`);
+}
+
+function setClaimStatus(id,status){
+  const claims=load('claims',[]);
+  const c=claims.find(x=>x.id===id);
+  if(c){c.status=status;save('claims',claims);renderClaim();showToast('更新しました ✓');}
+}
+
+function deleteClaim(id){
+  if(!confirm('この請求月を削除しますか？'))return;
+  save('claims',load('claims',[]).filter(c=>c.id!==id));
+  save('claim_history',load('claim_history',[]).filter(h=>h.claimId!==id));
+  renderClaim(); showToast('削除しました');
+}
+
+function downloadClaimFile(type){
+  const sel=document.getElementById('claimMonthSel');
+  const id=sel.value;
+  if(!id){showToast('請求月を選択してください');return;}
+  const claims=load('claims',[]);
+  const claim=claims.find(c=>c.id===id);
+  if(!claim){return;}
+  // ダウンロード日時を記録
+  const hist=load('claim_history',[]);
+  const now=new Date();
+  const dlAt=`${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  const ex=hist.find(h=>h.claimId===id&&h.fileType===type);
+  if(ex) ex.dlAt=dlAt;
+  else hist.push({claimId:id,facilityId:_curFacId,fileType:type,dlAt});
+  save('claim_history',hist);
+  // CSV生成
+  const clients=load('clients',[]).filter(cl=>cl.active!==false&&cl.facilityId===_curFacId);
+  const days=getDIM(claim.year,claim.month);
+  const facName=(load('facilities',[]).find(f=>f.id===_curFacId)?.name)||'事業所';
+  const mo2=String(claim.month).padStart(2,'0');
+  if(type==='seikyu'){
+    let csv='利用者番号,氏名,受給者証番号,通所日数,施設外支援日数,欠席日数\n';
+    clients.forEach(cl=>{
+      const recs=(load(getRecKey(_curFacId,claim.year,claim.month),{})[cl.id])||{};
+      let att=0,abs=0,out=0;
+      for(let d=1;d<=days;d++){
+        const st=recs[d]?.status||'';
+        if(st==='通所')att++;
+        else if(st==='欠席'||st==='欠席時対応')abs++;
+        else if(st==='施設外就労'||st==='施設外支援')out++;
+      }
+      csv+=`${cl.receiptNo||''},${cl.name},${cl.receiptNo||''},${att},${out},${abs}\n`;
+    });
+    _dlCsv(csv,`請求書明細_${facName}_${claim.year}${mo2}.csv`);
+  } else {
+    let csv='利用者番号,氏名,受給者証番号';
+    for(let d=1;d<=days;d++) csv+=`,${d}日`;
+    csv+='\n';
+    clients.forEach(cl=>{
+      const recs=(load(getRecKey(_curFacId,claim.year,claim.month),{})[cl.id])||{};
+      let row=`${cl.receiptNo||''},${cl.name},${cl.receiptNo||''}`;
+      for(let d=1;d<=days;d++) row+=`,${recs[d]?.status||''}`;
+      csv+=row+'\n';
+    });
+    _dlCsv(csv,`実績記録票_${facName}_${claim.year}${mo2}.csv`);
+  }
+  // draft/ready → submitted に昇格
+  if(claim.status==='draft'||claim.status==='ready'){
+    claim.status='submitted';
+    save('claims',claims);
+  }
+  renderClaim();
+  showToast(`${claim.year}年${claim.month}月のCSVをダウンロードしました ✓`);
+}
+
+function _dlCsv(csv,filename){
+  const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download=filename; document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+}
+
+function printClaimFile(type){
+  const sel=document.getElementById('claimMonthSel');
+  const id=sel.value;
+  if(!id){showToast('請求月を選択してください');return;}
+  const claim=load('claims',[]).find(c=>c.id===id);
+  if(!claim){return;}
+  const label=type==='seikyu'?'請求書・明細書':'サービス提供実績記録票';
+  showToast(`${claim.year}年${claim.month}月 ${label}を印刷プレビューします`);
+  setTimeout(()=>window.print(),400);
+}
+
+function printDoc(claimId,docType){
+  const ymPart=claimId.slice(claimId.lastIndexOf('_')+1);
+  const yr=+ymPart.slice(0,4), mo=+ymPart.slice(4);
+  const labels={invoice:'請求書',receipt:'領収書',proxy:'代理受領書'};
+  showToast(`${yr}年${mo}月 ${labels[docType]||docType}を印刷プレビューします`);
+  setTimeout(()=>window.print(),400);
+}
+
+function openClaimUserSel(){
+  showToast('利用者選択は準備中です（次バージョンで対応）');
+}
+
+// =========================================================
+// knowbe 請求履歴インポート
+// =========================================================
+function openClaimHistImport(){
+  // 開始月：初期設定の firstMonth があれば使用、なければ 2019-12（ウェルピア羽島の初回請求月）
+  const cfg=load('config',{});
+  const fromVal=cfg.firstMonth||'2019-12';
+  // 終了月：前月
+  const now=new Date();
+  const prevMo=new Date(now.getFullYear(),now.getMonth()-1,1);
+  const toVal=`${prevMo.getFullYear()}-${String(prevMo.getMonth()+1).padStart(2,'0')}`;
+  document.getElementById('chimFrom').value=fromVal;
+  document.getElementById('chimTo').value=toVal;
+  document.getElementById('chimDlStyle').value='auto';
+  document.getElementById('chimCustomDate').style.display='none';
+  updateChimPreview();
+  document.getElementById('claimHistImportOverlay').style.display='flex';
+}
+function closeClaimHistImport(){
+  document.getElementById('claimHistImportOverlay').style.display='none';
+}
+function updateChimPreview(){
+  const style=document.getElementById('chimDlStyle').value;
+  document.getElementById('chimCustomDate').style.display=style==='custom'?'block':'none';
+  const from=document.getElementById('chimFrom').value;
+  const to=document.getElementById('chimTo').value;
+  const prev=document.getElementById('chimPreview');
+  if(!from||!to){prev.innerHTML='期間を選択してください';return;}
+  const [fy,fm]=from.split('-').map(Number);
+  const [ty,tm]=to.split('-').map(Number);
+  if(fy*100+fm>ty*100+tm){prev.innerHTML='<span style="color:#e53e3e">⚠ 終了月が開始月より前です</span>';return;}
+  // 月リストを生成
+  const months=[];
+  let y=fy,m=fm;
+  while(y*100+m<=ty*100+tm){
+    months.push({y,m});
+    m++; if(m>12){m=1;y++;}
+    if(months.length>200) break; // 安全制限（約16年分）
+  }
+  const existing=new Set(load('claims',[]).filter(c=>c.facilityId===_curFacId).map(c=>c.id));
+  const toAdd=months.filter(({y,m})=>!existing.has(`${_curFacId}_${y}${String(m).padStart(2,'0')}`));
+  const skip=months.length-toAdd.length;
+  const firstM=months[0], lastM=months[months.length-1];
+  let html=`<b style="color:var(--navy)">${months.length}ヶ月分</b>`
+    +`（${firstM.y}年${firstM.m}月 〜 ${lastM.y}年${lastM.m}月）をインポート対象として確認`;
+  if(toAdd.length>0){
+    html+=`<br><span style="color:var(--green-dk)">✅ 新規追加 ${toAdd.length}ヶ月</span>`;
+    // 件数が多い場合は先頭3件＋末尾1件
+    if(toAdd.length<=6){
+      html+='<br><span style="font-size:11px;color:#6b7280">追加予定：'+toAdd.map(({y,m})=>`${y}年${m}月`).join('・')+'</span>';
+    } else {
+      const head=toAdd.slice(0,3).map(({y,m})=>`${y}年${m}月`).join('・');
+      const tail=toAdd[toAdd.length-1];
+      html+=`<br><span style="font-size:11px;color:#6b7280">追加予定：${head} … ${tail.y}年${tail.m}月</span>`;
+    }
+  }
+  if(skip>0) html+=`　<span style="color:#6b7280;font-size:12px">（スキップ ${skip}ヶ月 ― 既存）</span>`;
+  if(toAdd.length===0) html='<span style="color:#6b7280">すべての月は既にwelbeに存在します。追加分はありません。</span>';
+  prev.innerHTML=html;
+}
+function execClaimHistImport(){
+  const from=document.getElementById('chimFrom').value;
+  const to=document.getElementById('chimTo').value;
+  if(!from||!to){showToast('期間を入力してください');return;}
+  const [fy,fm]=from.split('-').map(Number);
+  const [ty,tm]=to.split('-').map(Number);
+  if(fy*100+fm>ty*100+tm){showToast('終了月が開始月より前です');return;}
+  const style=document.getElementById('chimDlStyle').value;
+  const customDt=document.getElementById('chimCustomDt').value.trim();
+  if(style==='custom'&&!customDt){showToast('日付を入力してください');return;}
+  const fid=_curFacId;
+  const claims=load('claims',[]);
+  const hist=load('claim_history',[]);
+  let addedClaims=0, addedHist=0;
+  let y=fy,m=fm;
+  let count=0;
+  while(y*100+m<=ty*100+tm){
+    const ym=`${y}${String(m).padStart(2,'0')}`;
+    const id=`${fid}_${ym}`;
+    // claim追加（なければ）
+    if(!claims.find(c=>c.id===id)){
+      claims.push({id,facilityId:fid,year:y,month:m,status:'submitted',memo:''});
+      addedClaims++;
+    }
+    // ダウンロード日時を決定
+    let dlAt;
+    if(style==='custom'){
+      dlAt=customDt;
+    } else {
+      // 翌月5日 10:20
+      const dlDate=new Date(y,m,5);
+      dlAt=`${dlDate.getFullYear()}/${String(dlDate.getMonth()+1).padStart(2,'0')}/${String(dlDate.getDate()).padStart(2,'0')} 10:20`;
+    }
+    // 履歴追加
+    ['jisseki','seikyu'].forEach(ft=>{
+      if(!hist.find(h=>h.claimId===id&&h.fileType===ft)){
+        hist.push({claimId:id,facilityId:fid,fileType:ft,dlAt});
+        addedHist++;
+      }
+    });
+    m++; if(m>12){m=1;y++;}
+    if(++count>200) break;
+  }
+  save('claims',claims);
+  save('claim_history',hist);
+  closeClaimHistImport();
+  renderClaim();
+  showToast(`${addedClaims}ヶ月の請求データと${addedHist}件の履歴をインポートしました ✓`);
+}
+
+function viewClaimDetail(id){
+  const c=load('claims',[]).find(x=>x.id===id);
+  if(!c)return;
+  const clients=load('clients',[]).filter(cl=>cl.active!==false&&cl.facilityId===_curFacId);
+  const days=getDIM(c.year,c.month);
+  let rows='';
+  clients.forEach(cl=>{
+    const recs=(load(getRecKey(_curFacId,c.year,c.month),{})[cl.id])||{};
+    let att=0,abs=0,out=0;
+    for(let d=1;d<=days;d++){
+      const st=recs[d]?.status||'';
+      if(st==='通所')att++;
+      else if(st==='欠席'||st==='欠席時対応')abs++;
+      else if(st==='施設外就労'||st==='施設外支援')out++;
+    }
+    rows+=`<tr><td style="padding:7px 10px;border-bottom:1px solid #eef3ec;font-size:13px">${esc(cl.name)}</td><td style="padding:7px 10px;border-bottom:1px solid #eef3ec;font-size:13px;text-align:center">${att}</td><td style="padding:7px 10px;border-bottom:1px solid #eef3ec;font-size:13px;text-align:center">${out}</td><td style="padding:7px 10px;border-bottom:1px solid #eef3ec;font-size:13px;text-align:center">${abs}</td></tr>`;
+  });
+  openInfoModal(`請求詳細 — ${c.year}年${c.month}月`,
+    `<table style="width:100%;border-collapse:collapse"><thead><tr>
+      <th style="background:var(--green);color:#fff;padding:8px 10px;font-size:12px;text-align:left">利用者</th>
+      <th style="background:var(--green);color:#fff;padding:8px 10px;font-size:12px;text-align:center">通所</th>
+      <th style="background:var(--green);color:#fff;padding:8px 10px;font-size:12px;text-align:center">施設外</th>
+      <th style="background:var(--green);color:#fff;padding:8px 10px;font-size:12px;text-align:center">欠席</th>
+    </tr></thead><tbody>${rows||'<tr><td colspan="4" style="padding:12px;text-align:center;color:#a0b8a0">データなし</td></tr>'}</tbody></table>`);
+}
+
+// =========================================================
+// 設定 > 事業所情報（複数事業所対応）
+// =========================================================
+function renderFacilityList(){
+  const facs=load('facilities',[]);
+  const el=document.getElementById('facilityList');
+  if(!facs.length){el.innerHTML='<div class="empty-state">事業所が登録されていません</div>';return;}
+  const typeLabel={A:'就労継続支援A型',B:'就労継続支援B型',AB:'A型・B型両方'};
+  const typeCls={A:'fc-type-a',B:'fc-type-b',AB:'fc-type-ab'};
+  el.innerHTML=facs.map(f=>`
+    <div class="fac-card">
+      <h4>${esc(f.name)} <span class="fc-type ${typeCls[f.serviceType]||'fc-type-b'}">${typeLabel[f.serviceType]||f.serviceType}</span></h4>
+      <dl class="fc-info">
+        <dt>法人名</dt><dd>${esc(f.corp||'-')}</dd>
+        <dt>事業所番号</dt><dd>${esc(f.jigyoshoNo||'（未設定）')}</dd>
+        <dt>住所</dt><dd>〒${esc(f.zip||'')} ${esc(f.pref||'')}${esc(f.city||'')}${esc(f.addr||'')}</dd>
+        <dt>電話</dt><dd>${esc(f.tel||'-')}</dd>
+        ${f.fax?`<dt>FAX</dt><dd>${esc(f.fax)}</dd>`:''}
+      </dl>
+      <div class="fac-card-actions">
+        <button class="btn-edit2" onclick="openFacModal('${f.id}')">編集</button>
+        <button class="btn-danger" onclick="deleteFac('${f.id}')">削除</button>
+      </div>
+    </div>`).join('');
+}
+
+function openFacModal(id){
+  const facs=load('facilities',[]);
+  const f=id?facs.find(x=>x.id===id):null;
+  _mCtx={type:'fac',id};
+  document.getElementById('modalTitle').textContent=id?'事業所を編集':'事業所を追加';
+  document.querySelector('.modal-box').style.width='720px';
+
+  const sched=f?.schedule||{};
+  const days=['月','火','水','木','金','土','日'];
+  const dkeys=['mon','tue','wed','thu','fri','sat','sun'];
+  function sel(v,cur){return v===cur?'selected':'';}
+  function tog(v){return v?'checked':'';}
+  function lbl(t){return `<label style="font-size:11px;font-weight:600;color:#4a5568;display:block;margin-bottom:3px">${t}</label>`;}
+  function rOpt(nm,val,txt,cur){
+    return `<label style="display:flex;align-items:flex-start;gap:6px;font-size:12.5px;color:#4a5568;cursor:pointer;line-height:1.5;padding:2px 0">
+      <input type="radio" name="${nm}" value="${val}" ${val===cur?'checked':''} style="margin-top:3px;flex-shrink:0;accent-color:var(--green)">
+      <span>${txt}</span></label>`;
+  }
+  const schedRows=dkeys.map((dk,i)=>{
+    const d=sched[dk]||{};
+    return `<tr>
+      <td><label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+        <input type="checkbox" id="ff-sched-${dk}" ${tog(d.open)} style="accent-color:var(--green);width:15px;height:15px">
+        <span style="font-size:13px">${days[i]}</span></label></td>
+      <td><input class="f-input" id="ff-ss-${dk}" type="time" value="${d.start||''}" style="padding:5px 8px" ${d.open?'':'disabled'}></td>
+      <td><input class="f-input" id="ff-se-${dk}" type="time" value="${d.end||''}" style="padding:5px 8px" ${d.open?'':'disabled'}></td>
+    </tr>`;
+  }).join('');
+  const wh=f?.workHourScore||'40';
+  const prod=f?.productionScore||'60';
+  const div2=f?.diverseWorkScore||'15';
+  const sup=f?.supportScore||'15';
+
+  document.getElementById('modalBody').innerHTML=`
+    <div style="display:flex;flex-direction:column">
+      <div class="msec-hdr">基本情報</div>
+      <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:14px">
+        <div style="display:flex;gap:12px">
+          <div style="flex:1">${lbl('法人名')}<input class="f-input" id="ff-corp" value="${esc(f?.corp||'株式会社ウェルピア羽島')}"></div>
+          <div style="flex:1">${lbl('事業所名 *')}<input class="f-input" id="ff-name" value="${esc(f?.name||'')}"></div>
+        </div>
+        <div style="display:flex;gap:12px">
+          <div style="flex:1">${lbl('事業所番号')}<input class="f-input" id="ff-no" value="${esc(f?.jigyoshoNo||'')}" maxlength="10" placeholder="10桁"></div>
+          <div style="flex:1">${lbl('サービス種別 *')}<select class="f-select" id="ff-type">
+            <option value="B" ${sel('B',f?.serviceType||'B')}>就労継続支援B型</option>
+            <option value="A" ${sel('A',f?.serviceType)}>就労継続支援A型</option>
+            <option value="AB" ${sel('AB',f?.serviceType)}>A型・B型両方</option>
+          </select></div>
+        </div>
+        <div style="display:flex;gap:12px">
+          <div style="flex:1">${lbl('代表職員氏名')}<input class="f-input" id="ff-rep" value="${esc(f?.representative||'')}"></div>
+          <div style="flex:1">${lbl('利用定員数')}<div style="display:flex;align-items:center;gap:6px"><input class="f-input" id="ff-cap" type="number" value="${f?.capacity||''}" min="1" max="999" style="flex:1"><span style="font-size:13px;color:#666;white-space:nowrap">名</span></div></div>
+        </div>
+        <div style="display:flex;gap:24px;padding:4px 0">
+          <label class="tog-row"><span class="tog-switch"><input type="checkbox" id="ff-main" ${tog(f?.isMain)}><span class="tog-slider"></span></span><span style="font-size:13px;color:#4a5568">主従たる事業所</span></label>
+          <label class="tog-row"><span class="tog-switch"><input type="checkbox" id="ff-multi" ${tog(f?.isMulti)}><span class="tog-slider"></span></span><span style="font-size:13px;color:#4a5568">多機能型事業所</span></label>
+        </div>
+      </div>
+
+      <div class="msec-hdr">住所情報</div>
+      <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:14px">
+        <div style="display:flex;gap:12px">
+          <div style="flex:1">${lbl('郵便番号')}<input class="f-input" id="ff-zip" value="${esc(f?.zip||'')}" placeholder="000-0000"></div>
+          <div style="flex:1">${lbl('都道府県')}<input class="f-input" id="ff-pref" value="${esc(f?.pref||'')}"></div>
+          <div style="flex:1">${lbl('市区町村')}<input class="f-input" id="ff-city" value="${esc(f?.city||'')}"></div>
+        </div>
+        <div style="display:flex;gap:12px">
+          <div style="flex:1">${lbl('地域区分')}<select class="f-select" id="ff-region">
+            <option value="other" ${sel('other',f?.regionClass||'other')}>その他（7級地以下）</option>
+            <option value="6k" ${sel('6k',f?.regionClass)}>6級地</option>
+            <option value="5k" ${sel('5k',f?.regionClass)}>5級地</option>
+            <option value="4k" ${sel('4k',f?.regionClass)}>4級地（丙地）</option>
+            <option value="3k" ${sel('3k',f?.regionClass)}>3級地（乙地）</option>
+            <option value="2k2" ${sel('2k2',f?.regionClass)}>2級地の2（甲地）</option>
+            <option value="2k1" ${sel('2k1',f?.regionClass)}>2級地の1（特甲地）</option>
+            <option value="1k" ${sel('1k',f?.regionClass)}>1級地（特別区）</option>
+          </select></div>
+          <div style="flex:1">${lbl('市区町村番号')}<input class="f-input" id="ff-cityno" value="${esc(f?.cityNo||'')}" placeholder="6桁" maxlength="6"></div>
+        </div>
+        <div>${lbl('市区町村以降の住所')}<input class="f-input" id="ff-addr" value="${esc(f?.addr||'')}"></div>
+        <div style="display:flex;gap:12px">
+          <div style="flex:1">${lbl('電話番号')}<input class="f-input" id="ff-tel" value="${esc(f?.tel||'')}" placeholder="ハイフンなしで入力"></div>
+          <div style="flex:1">${lbl('FAX番号')}<input class="f-input" id="ff-fax" value="${esc(f?.fax||'')}"></div>
+        </div>
+      </div>
+
+      <div class="msec-hdr">実施オプションサービス</div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px">
+        <div>
+          <label class="tog-row"><span class="tog-switch"><input type="checkbox" id="ff-adisc" ${tog(f?.aTypeDiscount)}><span class="tog-slider"></span></span><span style="font-size:13px;font-weight:600;color:#4a5568">A型事業者負担減免措置実施</span></label>
+          <div id="ff-adisc-detail" style="display:${f?.aTypeDiscount?'flex':'none'};gap:12px;margin-top:8px;padding-left:50px">
+            <div style="flex:1">${lbl('負担')}<input class="f-input" id="ff-adisc-rate" type="number" value="${f?.aTypeDiscountRate??100}" min="0" max="100"></div>
+            <div style="flex:1">${lbl('単位')}<select class="f-select" id="ff-adisc-unit">
+              <option value="percent" ${sel('percent',f?.aTypeDiscountUnit||'percent')}>%</option>
+              <option value="yen" ${sel('yen',f?.aTypeDiscountUnit)}>円</option>
+            </select></div>
+          </div>
+        </div>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:#4a5568"><input type="checkbox" id="ff-disability" ${tog(f?.disabilityFacility)} style="accent-color:var(--green);width:15px;height:15px">障害者支援施設</label>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:#4a5568"><input type="checkbox" id="ff-meal" ${tog(f?.mealService)} style="accent-color:var(--green);width:15px;height:15px">食事提供サービス</label>
+        <div>
+          <label class="tog-row"><span class="tog-switch"><input type="checkbox" id="ff-transport" ${tog(f?.transportService)}><span class="tog-slider"></span></span><span style="font-size:13px;font-weight:600;color:#4a5568">送迎サービス</span></label>
+          <div id="ff-transport-detail" style="display:${f?.transportService?'flex':'none'};gap:12px;margin-top:8px;padding-left:50px">
+            <div style="flex:1">${lbl('種類')}<select class="f-select" id="ff-transport-type">
+              <option value="I" ${sel('I',f?.transportServiceType||'I')}>送迎サービス（Ⅰ）</option>
+              <option value="II" ${sel('II',f?.transportServiceType)}>送迎サービス（Ⅱ）</option>
+            </select></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="msec-hdr">営業スケジュール</div>
+      <div style="margin-bottom:14px">
+        <p style="font-size:12px;color:#666;margin-bottom:8px">設定した営業時間を基準に、利用者の通所/退所時間が実績記録票に反映されます。</p>
+        <table class="sched-table"><thead><tr><th>曜日</th><th>始業時間</th><th>終業時間</th></tr></thead><tbody>${schedRows}</tbody></table>
+      </div>
+
+      <div class="msec-hdr" id="ff-reward-hdr">基本報酬</div>
+      <div id="ff-reward-sec" style="display:flex;flex-direction:column;gap:14px;margin-bottom:6px">
+        <div>
+          <div style="font-size:12px;font-weight:700;color:#4a5568;margin-bottom:6px">利用者の1日平均労働時間</div>
+          ${rOpt('wh','90','90点：7時間以上',wh)}
+          ${rOpt('wh','80','80点：6時間以上7時間未満',wh)}
+          ${rOpt('wh','65','65点：5時間以上6時間未満',wh)}
+          ${rOpt('wh','55','55点：4時間30分以上5時間未満',wh)}
+          ${rOpt('wh','40','40点：4時間以上4時間30分未満',wh)}
+          ${rOpt('wh','30','30点：3時間以上4時間未満',wh)}
+          ${rOpt('wh','20','20点：2時間以上3時間未満',wh)}
+          ${rOpt('wh','5','5点：2時間未満',wh)}
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:700;color:#4a5568;margin-bottom:6px">生産活動</div>
+          ${rOpt('prod','60','60点：前年度・前々年度・前々々年度の生産活動収支が賃金総額以上',prod)}
+          ${rOpt('prod','50','50点：前年度及び前々年度の生産活動収支が賃金総額以上',prod)}
+          ${rOpt('prod','40','40点：前年度の生産活動収支が賃金総額以上',prod)}
+          ${rOpt('prod','20','20点：前年度の生産活動収支が賃金総額未満',prod)}
+          ${rOpt('prod','-10','-10点：前年度及び前々年度の生産活動収支が賃金総額未満',prod)}
+          ${rOpt('prod','-20','-20点：前年度・前々年度・前々々年度の生産活動収支が賃金総額未満',prod)}
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:700;color:#4a5568;margin-bottom:6px">多様な働き方</div>
+          ${rOpt('div2','15','15点：5点以上',div2)}
+          ${rOpt('div2','5','5点：3点又は4点',div2)}
+          ${rOpt('div2','0','0点：2点以下',div2)}
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:700;color:#4a5568;margin-bottom:6px">支援力向上</div>
+          ${rOpt('sup','15','15点：5点以上',sup)}
+          ${rOpt('sup','5','5点：3点又は4点',sup)}
+          ${rOpt('sup','0','0点：2点以下',sup)}
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:700;color:#4a5568;margin-bottom:6px">地域連携活動</div>
+          ${rOpt('reg_act','10','10点：1事例以上あり',f?.regionActivityScore||'10')}
+          ${rOpt('reg_act','0','0点：事例なし',f?.regionActivityScore)}
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:700;color:#4a5568;margin-bottom:6px">経営改善計画</div>
+          ${rOpt('mgmt_plan','0','0点：経営改善計画を提出期限までに提出',f?.mgmtPlanScore||'0')}
+          ${rOpt('mgmt_plan','-50','-50点：経営改善計画を提出期限までに未提出',f?.mgmtPlanScore)}
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:700;color:#4a5568;margin-bottom:6px">利用者の知識・能力の向上</div>
+          ${rOpt('usr_know','10','10点：取組が1以上',f?.userKnowledgeScore||'10')}
+          ${rOpt('usr_know','0','0点：取組なし',f?.userKnowledgeScore)}
+        </div>
+        <div style="background:var(--green-lt);border-radius:6px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;margin-top:4px">
+          <span style="font-size:13px;font-weight:700;color:var(--navy)">基本報酬 スコア合計点</span>
+          <span><span id="ff-score-total" style="font-size:18px;font-weight:900;color:var(--navy)">-</span><span style="font-size:12px;color:#666"> 点/200点</span></span>
+        </div>
+      </div>
+
+      <div class="msec-hdr">減算対象項目</div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:#4a5568"><input type="checkbox" id="ff-deduct-gov" ${tog(f?.deductGov)} style="accent-color:var(--green);width:15px;height:15px">地方公共団体が設置</label>
+        <label class="tog-row"><span class="tog-switch"><input type="checkbox" id="ff-deduct-staff" ${tog(f?.deductStaff)}><span class="tog-slider"></span></span><span style="font-size:13px;color:#4a5568">人員の欠員</span></label>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:#4a5568"><input type="checkbox" id="ff-deduct-eval" ${tog(f?.deductEval)} style="accent-color:var(--green);width:15px;height:15px">自己評価未公表</label>
+        <label class="tog-row"><span class="tog-switch"><input type="checkbox" id="ff-deduct-restrain" ${tog(f?.deductRestrain)}><span class="tog-slider"></span></span><span style="font-size:13px;color:#4a5568">身体拘束廃止未実施減算</span></label>
+        <label class="tog-row"><span class="tog-switch"><input type="checkbox" id="ff-deduct-abuse" ${tog(f?.deductAbuse)}><span class="tog-slider"></span></span><span style="font-size:13px;color:#4a5568">虐待防止措置未実施減算</span></label>
+        <label class="tog-row"><span class="tog-switch"><input type="checkbox" id="ff-deduct-bcp" ${tog(f?.deductBcp)}><span class="tog-slider"></span></span><span style="font-size:13px;color:#4a5568">業務継続計画未策定減算</span></label>
+        <label class="tog-row"><span class="tog-switch"><input type="checkbox" id="ff-deduct-info" ${tog(f?.deductInfo)}><span class="tog-slider"></span></span><span style="font-size:13px;color:#4a5568">情報公表未報告減算</span></label>
+      </div>
+
+      <div class="msec-hdr">加算対象項目</div>
+      <div style="display:flex;flex-direction:column;gap:14px;margin-bottom:6px">
+        <div>
+          <div style="font-size:12px;font-weight:700;color:#4a5568;margin-bottom:6px">職員配置</div>
+          <div style="display:flex;gap:20px">
+            ${rOpt('staff_ratio','7.5','7.5：1',f?.staffRatio||'7.5')}
+            ${rOpt('staff_ratio','10','10：1',f?.staffRatio)}
+          </div>
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:700;color:#4a5568;margin-bottom:6px">福祉専門職員配置等加算</div>
+          ${rOpt('welfare_staff','none','なし',f?.welfareStaffAddition||'none')}
+          ${rOpt('welfare_staff','I','福祉専門職員配置等加算（Ⅰ）',f?.welfareStaffAddition)}
+          ${rOpt('welfare_staff','II','福祉専門職員配置等加算（Ⅱ）',f?.welfareStaffAddition)}
+          ${rOpt('welfare_staff','III','福祉専門職員配置等加算（Ⅲ）',f?.welfareStaffAddition)}
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:700;color:#4a5568;margin-bottom:6px">視覚・聴覚言語障害者支援体制加算</div>
+          ${rOpt('visual_hear','none','なし',f?.visualHearingAddition||'none')}
+          ${rOpt('visual_hear','I','視覚・聴覚言語障害者支援体制加算（Ⅰ）',f?.visualHearingAddition)}
+          ${rOpt('visual_hear','II','視覚・聴覚言語障害者支援体制加算（Ⅱ）',f?.visualHearingAddition)}
+        </div>
+        <label class="tog-row"><span class="tog-switch"><input type="checkbox" id="ff-add-brain" ${tog(f?.highBrainAddition)}><span class="tog-slider"></span></span><span style="font-size:13px;font-weight:600;color:#4a5568">高次脳機能障害者支援体制加算</span></label>
+        <div>
+          <label class="tog-row"><span class="tog-switch"><input type="checkbox" id="ff-add-employ" ${tog(f?.employmentTransferAddition)}><span class="tog-slider"></span></span><span style="font-size:13px;font-weight:600;color:#4a5568">就労移行支援体制加算</span></label>
+          <div id="ff-add-employ-detail" style="display:${f?.employmentTransferAddition?'flex':'none'};gap:12px;margin-top:8px;padding-left:50px">
+            <div style="flex:1">${lbl('前年度実績の6ヶ月以上就労継続者数')}<div style="display:flex;align-items:center;gap:6px"><input class="f-input" id="ff-employ-count" type="number" value="${f?.employmentTransferCount||''}" min="0" style="flex:1"><span style="font-size:13px;color:#666">名</span></div></div>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:700;color:#4a5568;margin-bottom:6px">重度者支援体制加算</div>
+          ${rOpt('severe_add','none','なし',f?.severeDisabilityAddition||'none')}
+          ${rOpt('severe_add','I','重度者支援体制加算（Ⅰ）',f?.severeDisabilityAddition)}
+          ${rOpt('severe_add','II','重度者支援体制加算（Ⅱ）',f?.severeDisabilityAddition)}
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:700;color:#4a5568;margin-bottom:6px">賃金向上達成指導員配置加算</div>
+          <div style="display:flex;gap:12px">
+            <div style="flex:1">${lbl('開始年月日')}<input class="f-input" id="ff-wage-start" type="date" value="${f?.wageImprovementStart||''}"></div>
+            <div style="flex:1">${lbl('終了年月日')}<input class="f-input" id="ff-wage-end" type="date" value="${f?.wageImprovementEnd||''}"></div>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:700;color:#4a5568;margin-bottom:6px">福祉・介護職員等処遇改善加算（令和6年6月1日から）</div>
+          ${rOpt('treat_new','none','なし',f?.treatmentNew||'none')}
+          ${['I','II','III','IV','V'].map(r=>rOpt('treat_new',r,`福祉・介護職員等処遇改善（${r}）`,f?.treatmentNew)).join('')}
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:700;color:#4a5568;margin-bottom:6px">福祉・介護職員処遇改善加算（令和6年5月31日まで）</div>
+          ${rOpt('treat_old','none','なし',f?.treatmentOld||'none')}
+          ${['I','II','III','IV','V'].map(r=>rOpt('treat_old',r,`処遇改善加算（${r}）`,f?.treatmentOld)).join('')}
+          ${rOpt('treat_old','special','特別加算',f?.treatmentOld)}
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:700;color:#4a5568;margin-bottom:6px">福祉・介護職員等特定処遇改善加算（令和6年5月31日まで）</div>
+          ${rOpt('specific_treat','none','なし',f?.specificTreatment||'none')}
+          ${rOpt('specific_treat','I','特定処遇改善加算（Ⅰ）',f?.specificTreatment)}
+          ${rOpt('specific_treat','II','特定処遇改善加算（Ⅱ）',f?.specificTreatment)}
+        </div>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:#4a5568"><input type="checkbox" id="ff-add-baseup" ${tog(f?.baseupSupport)} style="accent-color:var(--green);width:15px;height:15px">福祉・介護職員等ベースアップ等支援加算（令和6年5月31日まで）</label>
+      </div>
+    </div>`;
+
+  // 基本報酬 表示制御（A型のみ）
+  const ffType=document.getElementById('ff-type');
+  function updateReward(){
+    const t=ffType.value, show=t==='A'||t==='AB';
+    document.getElementById('ff-reward-hdr').style.display=show?'':'none';
+    document.getElementById('ff-reward-sec').style.display=show?'':'none';
+  }
+  ffType.addEventListener('change',updateReward); updateReward();
+  // スコア合計リアルタイム計算
+  function calcScore(){
+    const nms=['wh','prod','div2','sup','reg_act','mgmt_plan','usr_know'];
+    let total=0,valid=true;
+    nms.forEach(nm=>{const el=document.querySelector(`input[name="${nm}"]:checked`);if(el)total+=parseInt(el.value)||0;else valid=false;});
+    const el=document.getElementById('ff-score-total');
+    if(el)el.textContent=valid?total:'-';
+  }
+  document.querySelectorAll('#ff-reward-sec input[type=radio]').forEach(r=>r.addEventListener('change',calcScore));
+  calcScore();
+  // スケジュール 有効/無効
+  dkeys.forEach(dk=>{
+    document.getElementById(`ff-sched-${dk}`).addEventListener('change',function(){
+      document.getElementById(`ff-ss-${dk}`).disabled=!this.checked;
+      document.getElementById(`ff-se-${dk}`).disabled=!this.checked;
+    });
+  });
+  // A型負担減免トグル
+  document.getElementById('ff-adisc').addEventListener('change',function(){
+    document.getElementById('ff-adisc-detail').style.display=this.checked?'flex':'none';
+  });
+  // 送迎サービストグル
+  document.getElementById('ff-transport').addEventListener('change',function(){
+    document.getElementById('ff-transport-detail').style.display=this.checked?'flex':'none';
+  });
+  // 就労移行支援体制加算トグル
+  document.getElementById('ff-add-employ').addEventListener('change',function(){
+    document.getElementById('ff-add-employ-detail').style.display=this.checked?'flex':'none';
+  });
+  document.getElementById('modalSaveBtn').onclick=saveFacModal;
+  document.getElementById('modalOverlay').classList.add('show');
+}
+function saveFacModal(){
+  const name=document.getElementById('ff-name').value.trim();
+  if(!name){alert('事業所名は必須です');return;}
+  const facs=load('facilities',[]);
+  const {id}=_mCtx;
+  const dkeys=['mon','tue','wed','thu','fri','sat','sun'];
+  const schedule={};
+  dkeys.forEach(dk=>{
+    const open=document.getElementById(`ff-sched-${dk}`).checked;
+    schedule[dk]={open,start:document.getElementById(`ff-ss-${dk}`).value||'',end:document.getElementById(`ff-se-${dk}`).value||''};
+  });
+  function radVal(nm){const el=document.querySelector(`input[name="${nm}"]:checked`);return el?el.value:null;}
+  const data={
+    id:id||`fac_${Date.now()}`,
+    corp:document.getElementById('ff-corp').value.trim(),
+    name,
+    jigyoshoNo:document.getElementById('ff-no').value.trim(),
+    serviceType:document.getElementById('ff-type').value,
+    representative:document.getElementById('ff-rep').value.trim(),
+    capacity:parseInt(document.getElementById('ff-cap').value)||null,
+    isMain:document.getElementById('ff-main').checked,
+    isMulti:document.getElementById('ff-multi').checked,
+    zip:document.getElementById('ff-zip').value.trim(),
+    pref:document.getElementById('ff-pref').value.trim(),
+    city:document.getElementById('ff-city').value.trim(),
+    regionClass:document.getElementById('ff-region').value,
+    cityNo:document.getElementById('ff-cityno').value.trim(),
+    addr:document.getElementById('ff-addr').value.trim(),
+    tel:document.getElementById('ff-tel').value.trim(),
+    fax:document.getElementById('ff-fax').value.trim(),
+    aTypeDiscount:document.getElementById('ff-adisc').checked,
+    aTypeDiscountRate:parseFloat(document.getElementById('ff-adisc-rate').value)||100,
+    aTypeDiscountUnit:document.getElementById('ff-adisc-unit').value,
+    disabilityFacility:document.getElementById('ff-disability').checked,
+    mealService:document.getElementById('ff-meal').checked,
+    transportService:document.getElementById('ff-transport').checked,
+    transportServiceType:document.getElementById('ff-transport-type').value,
+    schedule,
+    workHourScore:radVal('wh'),
+    productionScore:radVal('prod'),
+    diverseWorkScore:radVal('div2'),
+    supportScore:radVal('sup'),
+    regionActivityScore:radVal('reg_act'),
+    mgmtPlanScore:radVal('mgmt_plan'),
+    userKnowledgeScore:radVal('usr_know'),
+    // 減算
+    deductGov:document.getElementById('ff-deduct-gov').checked,
+    deductStaff:document.getElementById('ff-deduct-staff').checked,
+    deductEval:document.getElementById('ff-deduct-eval').checked,
+    deductRestrain:document.getElementById('ff-deduct-restrain').checked,
+    deductAbuse:document.getElementById('ff-deduct-abuse').checked,
+    deductBcp:document.getElementById('ff-deduct-bcp').checked,
+    deductInfo:document.getElementById('ff-deduct-info').checked,
+    // 加算
+    staffRatio:radVal('staff_ratio'),
+    welfareStaffAddition:radVal('welfare_staff'),
+    visualHearingAddition:radVal('visual_hear'),
+    highBrainAddition:document.getElementById('ff-add-brain').checked,
+    employmentTransferAddition:document.getElementById('ff-add-employ').checked,
+    employmentTransferCount:parseInt(document.getElementById('ff-employ-count').value)||null,
+    severeDisabilityAddition:radVal('severe_add'),
+    wageImprovementStart:document.getElementById('ff-wage-start').value,
+    wageImprovementEnd:document.getElementById('ff-wage-end').value,
+    treatmentNew:radVal('treat_new'),
+    treatmentOld:radVal('treat_old'),
+    specificTreatment:radVal('specific_treat'),
+    baseupSupport:document.getElementById('ff-add-baseup').checked
+  };
+  if(id){const i=facs.findIndex(f=>f.id===id);if(i>=0)facs[i]=data;}
+  else facs.push(data);
+  save('facilities',facs);
+  buildFacSelector();
+  document.querySelector('.modal-box').style.width='';
+  closeModal(); renderFacilityList();
+  showToast(id?'事業所情報を更新しました ✓':'事業所を追加しました ✓');
+}
+function deleteFac(id){
+  const f=load('facilities',[]).find(x=>x.id===id);
+  if(!confirm(`「${f?.name}」を削除しますか？`))return;
+  save('facilities',load('facilities',[]).filter(x=>x.id!==id));
+  if(_curFacId===id){_curFacId=load('facilities',[])[0]?.id||'';}
+  buildFacSelector(); renderFacilityList();
+  showToast('削除しました');
+}
+
+// =========================================================
+// 設定 > 利用者情報
+// =========================================================
+function buildClientsFacSel(){
+  const sel=document.getElementById('clientsFacSel');
+  const facs=load('facilities',[]);
+  sel.innerHTML=facs.map(f=>`<option value="${f.id}" ${f.id===_curFacId?'selected':''}>${esc(f.name)}</option>`).join('');
+}
+function renderClients(){
+  const fid=document.getElementById('clientsFacSel')?.value||_curFacId;
+  const clients=load('clients',[]).filter(c=>c.facilityId===fid);
+  const tbody=document.getElementById('clientTbody');
+  if(!clients.length){tbody.innerHTML=`<tr><td colspan="8"><div class="empty-state">利用者が登録されていません</div></td></tr>`;return;}
+  tbody.innerHTML=clients.map(c=>`
+    <tr>
+      <td style="font-weight:600">${esc(c.name)}</td>
+      <td>${esc(c.kana||'')}</td>
+      <td style="font-family:monospace">${esc(c.receiptNo||'')}</td>
+      <td><span class="${c.serviceType==='A'?'badge-a':'badge-b'}">${c.serviceType||'B'}型</span></td>
+      <td>${c.disabilityClass?`区分${c.disabilityClass}`:'-'}</td>
+      <td>${c.contractAmount?c.contractAmount.toLocaleString()+'円':'-'}</td>
+      <td><span class="${c.active!==false?'badge-active':'badge-inactive'}">${c.active!==false?'利用中':'停止'}</span></td>
+      <td style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn-edit2" onclick="openClientModal('${c.id}')">編集</button>
+        <button class="btn-danger" onclick="deleteClient('${c.id}')">削除</button>
+      </td>
+    </tr>`).join('');
+}
+function openClientModal(id){
+  const facs=load('facilities',[]);
+  const clients=load('clients',[]);
+  const c=id?clients.find(x=>x.id===id):null;
+  _mCtx={type:'client',id};
+  document.getElementById('modalTitle').textContent=id?'利用者を編集':'利用者を追加';
+  document.querySelector('.modal-box').style.width='720px';
+  const facOpts=facs.map(f=>`<option value="${f.id}" ${(c?.facilityId||_curFacId)===f.id?'selected':''}>${esc(f.name)}</option>`).join('');
+  function lbl(t){return `<label style="font-size:11px;font-weight:600;color:#4a5568;display:block;margin-bottom:3px">${t}</label>`;}
+  function tog(v){return v?'checked':'';}
+  function rOpt(nm,val,txt,cur){return `<label style="display:flex;align-items:flex-start;gap:6px;font-size:12.5px;color:#4a5568;cursor:pointer;line-height:1.5;padding:2px 0"><input type="radio" name="${nm}" value="${val}" ${val===cur?'checked':''} style="margin-top:3px;flex-shrink:0;accent-color:var(--green)"><span>${txt}</span></label>`;}
+  const disTypes=['身体障害','知的障害','精神障害','発達障害','高次脳機能障害','障害児','難病等対象者'];
+  const curDisTypes=c?.disabilityTypes||[];
+  document.getElementById('modalBody').innerHTML=`
+    <div style="display:flex;flex-direction:column">
+      <div class="msec-hdr">基本情報</div>
+      <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:14px">
+        <div>${lbl('事業所 *')}<select class="f-select" id="cl-fac">${facOpts}</select></div>
+        <div style="display:flex;gap:12px">
+          <div style="flex:1">${lbl('姓 *')}<input class="f-input" id="cl-sei" value="${esc(c?.sei||c?.name?.split(' ')[0]||'')}" placeholder="山田"></div>
+          <div style="flex:1">${lbl('名 *')}<input class="f-input" id="cl-mei" value="${esc(c?.mei||c?.name?.split(' ')[1]||'')}" placeholder="太郎"></div>
+        </div>
+        <div style="display:flex;gap:12px">
+          <div style="flex:1">${lbl('フリガナ（姓）')}<input class="f-input" id="cl-kana-sei" value="${esc(c?.kanaSei||c?.kana?.split(' ')[0]||'')}" placeholder="ヤマダ"></div>
+          <div style="flex:1">${lbl('フリガナ（名）')}<input class="f-input" id="cl-kana-mei" value="${esc(c?.kanaMei||c?.kana?.split(' ')[1]||'')}" placeholder="タロウ"></div>
+        </div>
+        <div style="display:flex;gap:12px">
+          <div style="flex:2">${lbl('受給者証番号')}<input class="f-input" id="cl-receipt" value="${esc(c?.receiptNo||'')}" placeholder="0000000000" maxlength="10"></div>
+          <div style="flex:1">${lbl('サービス種別 *')}<select class="f-select" id="cl-type"><option value="B" ${(c?.serviceType||'B')==='B'?'selected':''}>B型</option><option value="A" ${c?.serviceType==='A'?'selected':''}>A型</option></select></div>
+        </div>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:#4a5568"><input type="checkbox" id="cl-no-receipt" ${tog(c?.noReceipt)} style="accent-color:var(--green);width:15px;height:15px">受給者証未発行もしくは見学中の利用者（請求対象外）</label>
+        <div>
+          ${lbl('障害種別（複数選択可）')}
+          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px">
+            ${disTypes.map(dt=>`<label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12.5px;color:#4a5568"><input type="checkbox" name="cl-dis" value="${dt}" ${curDisTypes.includes(dt)?'checked':''} style="accent-color:var(--green);width:14px;height:14px">${dt}</label>`).join('')}
+          </div>
+        </div>
+        <div style="display:flex;gap:12px">
+          <div style="flex:1">${lbl('性別')}<div style="display:flex;gap:16px;padding-top:6px">
+            ${rOpt('cl-gender','male','男性',c?.gender||'male')}
+            ${rOpt('cl-gender','female','女性',c?.gender)}
+          </div></div>
+          <div style="flex:1">${lbl('生年月日')}<input class="f-input" id="cl-birth" type="date" value="${c?.birthDate||''}"></div>
+        </div>
+      </div>
+
+      <div class="msec-hdr">連絡先情報（受給者証に記載の住所）</div>
+      <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:14px">
+        <div style="display:flex;gap:12px">
+          <div style="flex:1">${lbl('郵便番号')}<input class="f-input" id="cl-zip" value="${esc(c?.zip||'')}" placeholder="000-0000"></div>
+          <div style="flex:1">${lbl('都道府県')}<input class="f-input" id="cl-pref" value="${esc(c?.pref||'')}"></div>
+          <div style="flex:1">${lbl('市区町村')}<input class="f-input" id="cl-city" value="${esc(c?.city||'')}"></div>
+        </div>
+        <div style="display:flex;gap:12px">
+          <div style="flex:1">${lbl('市区町村番号')}<input class="f-input" id="cl-cityno" value="${esc(c?.cityNo||'')}" placeholder="6桁" maxlength="6"></div>
+          <div style="flex:2">${lbl('市区町村以降の住所')}<input class="f-input" id="cl-addr" value="${esc(c?.addr||'')}"></div>
+        </div>
+        <div style="display:flex;gap:12px">
+          <div style="flex:1">${lbl('電話番号（任意）')}<input class="f-input" id="cl-tel" value="${esc(c?.tel||'')}" placeholder="ハイフンなしで入力"></div>
+          <div style="flex:1">${lbl('メールアドレス（任意）')}<input class="f-input" id="cl-email" type="email" value="${esc(c?.email||'')}" placeholder="tarou@example.com"></div>
+        </div>
+        <div style="display:flex;gap:12px">
+          <div style="flex:1">${lbl('保護者氏名（任意）')}<input class="f-input" id="cl-guardian" value="${esc(c?.guardian||'')}"></div>
+          <div style="flex:1">${lbl('続柄（任意）')}<input class="f-input" id="cl-relation" value="${esc(c?.relation||'')}" placeholder="父・母 等"></div>
+        </div>
+        <div style="display:flex;gap:12px">
+          <div style="flex:1">${lbl('緊急連絡先（任意）')}<input class="f-input" id="cl-emtel" value="${esc(c?.emergencyTel||'')}" placeholder="ハイフンなしで入力"></div>
+          <div style="flex:1">${lbl('備考（任意）')}<input class="f-input" id="cl-note" value="${esc(c?.note||'')}"></div>
+        </div>
+      </div>
+
+      <div class="msec-hdr">サービス利用詳細</div>
+      <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:14px">
+        <div style="display:flex;gap:12px">
+          <div style="flex:1">${lbl('サービス提供開始日')}<input class="f-input" id="cl-start" type="date" value="${c?.startDate||''}"></div>
+          <div style="flex:1">${lbl('サービス提供終了日（任意）')}<input class="f-input" id="cl-end" type="date" value="${c?.endDate||''}"></div>
+        </div>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:#4a5568"><input type="checkbox" id="cl-same-corp" ${tog(c?.sameCorp)} style="accent-color:var(--green);width:15px;height:15px">同一法人の事業所からの受け入れ利用者（初期加算対象外）</label>
+        <div style="display:flex;gap:12px">
+          <div style="flex:1">${lbl('支給決定開始日')}<input class="f-input" id="cl-grant-start" type="date" value="${c?.grantStart||''}"></div>
+          <div style="flex:1">${lbl('支給決定終了日')}<input class="f-input" id="cl-grant-end" type="date" value="${c?.grantEnd||''}"></div>
+        </div>
+        <div>
+          ${lbl('障害区分')}
+          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px">
+            ${rOpt('cl-class','','なし',c?.disabilityClass||'')}
+            ${[1,2,3,4,5,6].map(n=>rOpt('cl-class',String(n),`区分${n}`,String(c?.disabilityClass||''))).join('')}
+          </div>
+        </div>
+        <div>
+          ${lbl('契約支給量')}
+          <div style="display:flex;flex-direction:column;gap:4px;margin-top:4px">
+            ${rOpt('cl-quota','default','原則日数（該当月の日数から8日を控除した日数）',c?.quotaType||'default')}
+            ${rOpt('cl-quota','custom','契約支給量',c?.quotaType)}
+          </div>
+          <div id="cl-quota-detail" style="display:${c?.quotaType==='custom'?'flex':'none'};gap:12px;margin-top:8px;padding-left:20px">
+            <div style="flex:1">${lbl('支給量（日数）')}<input class="f-input" id="cl-quota-days" type="number" value="${c?.quotaDays||''}" min="1" max="31"></div>
+          </div>
+          <div style="margin-top:8px"><label class="tog-row"><span class="tog-switch"><input type="checkbox" id="cl-quota-special" ${tog(c?.quotaSpecial)}><span class="tog-slider"></span></span><span style="font-size:13px;color:#4a5568">利用日数に関わる特例あり</span></label></div>
+        </div>
+        <div>
+          ${lbl('負担上限額')}
+          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px">
+            ${['0','4600','9300','18600','37200'].map(v=>rOpt('cl-limit',v,v==='0'?'0円':parseInt(v).toLocaleString()+'円',String(c?.limitAmount||'9300'))).join('')}
+            ${rOpt('cl-limit','other','その他',String(c?.limitAmount||''))}
+          </div>
+        </div>
+        <label class="tog-row"><span class="tog-switch"><input type="checkbox" id="cl-local-limit" ${tog(c?.localLimit)}><span class="tog-slider"></span></span><span style="font-size:13px;color:#4a5568">利用者負担額②における市町村が定める額</span></label>
+        <label class="tog-row"><span class="tog-switch"><input type="checkbox" id="cl-subsidy" ${tog(c?.subsidyTarget)}><span class="tog-slider"></span></span><span style="font-size:13px;color:#4a5568">自治体助成金対象</span></label>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:#4a5568"><input type="checkbox" id="cl-a-exempt" ${tog(c?.aTypeExempt)} style="accent-color:var(--green);width:15px;height:15px">A型減免対象</label>
+        <label class="tog-row"><span class="tog-switch"><input type="checkbox" id="cl-upper-mgmt" ${tog(c?.upperManagement)}><span class="tog-slider"></span></span><span style="font-size:13px;color:#4a5568">上限管理事業所あり</span></label>
+        <label class="tog-row"><span class="tog-switch"><input type="checkbox" id="cl-no-plan" ${tog(c?.noPlan)}><span class="tog-slider"></span></span><span style="font-size:13px;color:#4a5568">個別支援計画未作成</span></label>
+        <label class="tog-row"><span class="tog-switch"><input type="checkbox" id="cl-employ-link" ${tog(c?.employLink)}><span class="tog-slider"></span></span><span style="font-size:13px;color:#4a5568">就労移行連携加算</span></label>
+        <label class="tog-row"><span class="tog-switch"><input type="checkbox" id="cl-intensive" ${tog(c?.intensiveSupport)}><span class="tog-slider"></span></span><span style="font-size:13px;color:#4a5568">集中的支援加算</span></label>
+        <div style="display:flex;gap:12px">
+          <div style="flex:1">${lbl('状態')}<select class="f-select" id="cl-active"><option value="1" ${c?.active!==false?'selected':''}>利用中</option><option value="0" ${c?.active===false?'selected':''}>停止</option></select></div>
+        </div>
+      </div>
+
+      <div class="msec-hdr">デフォルト設定</div>
+      <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:14px">
+        <div>
+          ${lbl('通所予定日')}
+          <div style="display:flex;gap:10px;margin-top:6px;flex-wrap:wrap">
+            ${['月','火','水','木','金','土','日'].map((d,i)=>{
+              const dk=['mon','tue','wed','thu','fri','sat','sun'][i];
+              const defDays=c?.defaultDays||{mon:true,tue:true,wed:true,thu:true,fri:true,sat:true};
+              return `<label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:13px;color:#4a5568"><input type="checkbox" id="cl-dd-${dk}" ${defDays[dk]?'checked':''} style="accent-color:var(--green);width:15px;height:15px">${d}</label>`;
+            }).join('')}
+          </div>
+        </div>
+        <div>
+          ${lbl('サービス提供状況の自動入力')}
+          <table class="sched-table" style="margin-top:6px">
+            <thead><tr><th>サービス状況</th><th>開始時間</th><th>終了時間</th><th>送迎</th><th>タイムカード表示</th></tr></thead>
+            <tbody>
+              ${[['通所','tsusho'],['施設外就労','outside_work'],['施設外支援','outside_sup']].map(([lbl2,k])=>{
+                const d=c?.serviceDefaults?.[k]||{};
+                const pickupOpts=['-','なし','送迎あり（往復）','送迎あり（片道往）','送迎あり（片道復）'].map(o=>`<option ${(d.pickup||'-')===o?'selected':''}>${o}</option>`).join('');
+                return `<tr>
+                  <td style="font-weight:600;font-size:12.5px">${lbl2}</td>
+                  <td><input class="f-input" id="cl-sd-${k}-s" type="time" value="${d.start||''}" style="padding:4px 6px"></td>
+                  <td><input class="f-input" id="cl-sd-${k}-e" type="time" value="${d.end||''}" style="padding:4px 6px"></td>
+                  <td><select class="f-select" id="cl-sd-${k}-p" style="padding:4px 6px;font-size:12px">${pickupOpts}</select></td>
+                  <td style="text-align:center"><input type="checkbox" id="cl-sd-${k}-tc" ${d.timeCard?'checked':''} style="accent-color:var(--green);width:15px;height:15px"></td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="msec-hdr">電子サイン設定</div>
+      <div style="margin-bottom:14px">
+        <label class="tog-row"><span class="tog-switch"><input type="checkbox" id="cl-esign" ${tog(c?.eSignRecord)}><span class="tog-slider"></span></span><span style="font-size:13px;color:#4a5568">実績記録票</span></label>
+      </div>
+
+      <div class="msec-hdr">受給者証の詳細</div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:6px">
+        ${[
+          ['cl-lp','負担上限月額の適用期間',c?.limitPeriod],
+          ['cl-mp','食事提供体制加算の適用期間',c?.mealPeriod],
+          ['cl-dp','障害支援区分の認定有効期間',c?.disabilityPeriod],
+          ['cl-np','介護給付費の支給決定期間',c?.nursingPeriod],
+          ['cl-pp','計画相談支援給付費の支給期間',c?.planPeriod],
+          ['cl-pm','計画相談支援給付費のモニタリング期間',c?.planMonitor]
+        ].map(([pid,ptxt,pval])=>`
+          <div>
+            <label class="tog-row"><span class="tog-switch"><input type="checkbox" id="${pid}" ${tog(pval?.enabled)}><span class="tog-slider"></span></span><span style="font-size:13px;color:#4a5568">${ptxt}</span></label>
+            <div id="${pid}-detail" style="display:${pval?.enabled?'flex':'none'};gap:12px;margin-top:8px;padding-left:50px">
+              <div style="flex:1">${lbl('適用開始日')}<input class="f-input" id="${pid}-start" type="date" value="${pval?.start||''}"></div>
+              <div style="flex:1">${lbl('適用終了日')}<input class="f-input" id="${pid}-end" type="date" value="${pval?.end||''}"></div>
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>`;
+  // 契約支給量 カスタム表示制御
+  document.querySelectorAll('input[name="cl-quota"]').forEach(r=>r.addEventListener('change',function(){
+    document.getElementById('cl-quota-detail').style.display=this.value==='custom'?'flex':'none';
+  }));
+  // 受給者証の詳細 トグル
+  ['cl-lp','cl-mp','cl-dp','cl-np','cl-pp','cl-pm'].forEach(pid=>{
+    document.getElementById(pid).addEventListener('change',function(){
+      document.getElementById(pid+'-detail').style.display=this.checked?'flex':'none';
+    });
+  });
+  document.getElementById('modalSaveBtn').onclick=saveClientModal;
+  document.getElementById('modalOverlay').classList.add('show');
+}
+function saveClientModal(){
+  const sei=document.getElementById('cl-sei').value.trim();
+  const mei=document.getElementById('cl-mei').value.trim();
+  if(!sei){alert('姓は必須です');return;}
+  const clients=load('clients',[]);
+  const {id}=_mCtx;
+  function radVal(nm){const el=document.querySelector(`input[name="${nm}"]:checked`);return el?el.value:null;}
+  const disTypes=Array.from(document.querySelectorAll('input[name="cl-dis"]:checked')).map(x=>x.value);
+  const data={
+    id:id||`c${Date.now()}`,
+    facilityId:document.getElementById('cl-fac').value,
+    sei, mei, name:(sei+(mei?' '+mei:'')),
+    kanaSei:document.getElementById('cl-kana-sei').value.trim(),
+    kanaMei:document.getElementById('cl-kana-mei').value.trim(),
+    kana:(document.getElementById('cl-kana-sei').value.trim()+' '+document.getElementById('cl-kana-mei').value.trim()).trim(),
+    receiptNo:document.getElementById('cl-receipt').value.trim(),
+    noReceipt:document.getElementById('cl-no-receipt').checked,
+    serviceType:document.getElementById('cl-type').value,
+    disabilityTypes:disTypes,
+    gender:radVal('cl-gender'),
+    birthDate:document.getElementById('cl-birth').value,
+    zip:document.getElementById('cl-zip').value.trim(),
+    pref:document.getElementById('cl-pref').value.trim(),
+    city:document.getElementById('cl-city').value.trim(),
+    cityNo:document.getElementById('cl-cityno').value.trim(),
+    addr:document.getElementById('cl-addr').value.trim(),
+    tel:document.getElementById('cl-tel').value.trim(),
+    email:document.getElementById('cl-email').value.trim(),
+    guardian:document.getElementById('cl-guardian').value.trim(),
+    relation:document.getElementById('cl-relation').value.trim(),
+    emergencyTel:document.getElementById('cl-emtel').value.trim(),
+    note:document.getElementById('cl-note').value.trim(),
+    startDate:document.getElementById('cl-start').value,
+    endDate:document.getElementById('cl-end').value,
+    sameCorp:document.getElementById('cl-same-corp').checked,
+    grantStart:document.getElementById('cl-grant-start').value,
+    grantEnd:document.getElementById('cl-grant-end').value,
+    disabilityClass:radVal('cl-class')||'',
+    quotaType:radVal('cl-quota')||'default',
+    quotaDays:parseInt(document.getElementById('cl-quota-days').value)||null,
+    quotaSpecial:document.getElementById('cl-quota-special').checked,
+    limitAmount:radVal('cl-limit')||'9300',
+    contractAmount:parseInt(radVal('cl-limit'))||0,
+    localLimit:document.getElementById('cl-local-limit').checked,
+    subsidyTarget:document.getElementById('cl-subsidy').checked,
+    aTypeExempt:document.getElementById('cl-a-exempt').checked,
+    upperManagement:document.getElementById('cl-upper-mgmt').checked,
+    noPlan:document.getElementById('cl-no-plan').checked,
+    employLink:document.getElementById('cl-employ-link').checked,
+    intensiveSupport:document.getElementById('cl-intensive').checked,
+    active:document.getElementById('cl-active').value==='1',
+    // デフォルト設定
+    defaultDays:Object.fromEntries(['mon','tue','wed','thu','fri','sat','sun'].map(dk=>[dk,document.getElementById(`cl-dd-${dk}`).checked])),
+    serviceDefaults:Object.fromEntries([['tsusho','通所'],['outside_work','施設外就労'],['outside_sup','施設外支援']].map(([k])=>[k,{
+      start:document.getElementById(`cl-sd-${k}-s`).value,
+      end:document.getElementById(`cl-sd-${k}-e`).value,
+      pickup:document.getElementById(`cl-sd-${k}-p`).value,
+      timeCard:document.getElementById(`cl-sd-${k}-tc`).checked
+    }])),
+    eSignRecord:document.getElementById('cl-esign').checked,
+    // 受給者証の詳細
+    limitPeriod:{enabled:document.getElementById('cl-lp').checked,start:document.getElementById('cl-lp-start').value,end:document.getElementById('cl-lp-end').value},
+    mealPeriod:{enabled:document.getElementById('cl-mp').checked,start:document.getElementById('cl-mp-start').value,end:document.getElementById('cl-mp-end').value},
+    disabilityPeriod:{enabled:document.getElementById('cl-dp').checked,start:document.getElementById('cl-dp-start').value,end:document.getElementById('cl-dp-end').value},
+    nursingPeriod:{enabled:document.getElementById('cl-np').checked,start:document.getElementById('cl-np-start').value,end:document.getElementById('cl-np-end').value},
+    planPeriod:{enabled:document.getElementById('cl-pp').checked,start:document.getElementById('cl-pp-start').value,end:document.getElementById('cl-pp-end').value},
+    planMonitor:{enabled:document.getElementById('cl-pm').checked,start:document.getElementById('cl-pm-start').value,end:document.getElementById('cl-pm-end').value}
+  };
+  if(id){const i=clients.findIndex(c=>c.id===id);if(i>=0)clients[i]=data;}
+  else clients.push(data);
+  save('clients',clients);
+  document.querySelector('.modal-box').style.width='';
+  closeModal(); renderClients();
+  showToast(id?'利用者情報を更新しました ✓':'利用者を追加しました ✓');
+}
+function deleteClient(id){
+  const c=load('clients',[]).find(x=>x.id===id);
+  if(!confirm(`「${c?.name}」を削除しますか？`))return;
+  save('clients',load('clients',[]).filter(x=>x.id!==id));
+  renderClients(); showToast('削除しました');
+}
+
+// =========================================================
+// 🤖 クロコパネル — 管理者専用リアルタイム改善提案
+// =========================================================
+const CROCO_COL = 'croco_suggestions';
+let _crocoUnsub = null;   // Firestoreリスナー解除用
+let _crocoOpen  = false;  // パネル開閉状態
+let _crocoExpanded = null; // 展開中のカードID
+
+// 未読IDをlocalStorageで管理
+function _crocoGetViewed(){ try{return JSON.parse(localStorage.getItem('croco_viewed')||'[]');}catch(e){return[];} }
+function _crocoMarkViewed(id){ const v=_crocoGetViewed(); if(!v.includes(id)){v.push(id);localStorage.setItem('croco_viewed',JSON.stringify(v));} }
+function _crocoMarkAllViewed(items){ const v=_crocoGetViewed(); items.forEach(i=>{if(!v.includes(i.id))v.push(i.id);}); localStorage.setItem('croco_viewed',JSON.stringify(v)); }
+
+// 優先度 → アイコン変換
+function _crocoP(p){ return p==='high'?'🔴':p==='med'?'🟡':'🟢'; }
+
+// ─── 初期化 ─────────────────────────────────────────────
+function initCrocoPanel(){
+  if(getS()?.role !== 'admin') return;
+  document.getElementById('croco-wrap').style.display = 'block';
+  // シードデータ投入（初回のみ）
+  _crocoSeedIfEmpty();
+  // リアルタイムリスナー
+  if(_crocoUnsub) _crocoUnsub();
+  _crocoUnsub = _db.collection(CROCO_COL)
+    .orderBy('createdAt','desc')
+    .limit(30)
+    .onSnapshot(snap=>{
+      const items=[];
+      snap.forEach(doc=>items.push({id:doc.id,...doc.data()}));
+      _crocoRender(items);
+    }, err=>console.warn('クロコリスナーエラー:',err));
+}
+
+// ─── パネル開閉 ─────────────────────────────────────────
+function toggleCrocoPanel(){
+  _crocoOpen = !_crocoOpen;
+  const body  = document.getElementById('croco-body');
+  const arrow = document.getElementById('si-arrow-croco');
+  body.style.display  = _crocoOpen ? 'block' : 'none';
+  arrow.classList.toggle('open', _crocoOpen);
+  // パネルを開いたら全件既読
+  if(_crocoOpen){
+    const items = Array.from(document.querySelectorAll('.croco-card')).map(el=>el.dataset.id).filter(Boolean);
+    const viewed = _crocoGetViewed();
+    items.forEach(id=>{ if(!viewed.includes(id))viewed.push(id); });
+    localStorage.setItem('croco_viewed', JSON.stringify(viewed));
+    document.getElementById('croco-badge').style.display='none';
+    document.querySelectorAll('.croco-card.unread').forEach(el=>el.classList.remove('unread'));
+  }
+}
+
+// ─── 描画 ─────────────────────────────────────────────
+function _crocoRender(items){
+  const viewed = _crocoGetViewed();
+  const unread = items.filter(i=>!viewed.includes(i.id));
+  // バッジ更新
+  const badge = document.getElementById('croco-badge');
+  if(badge){
+    if(unread.length>0&&!_crocoOpen){
+      badge.textContent=unread.length; badge.style.display='inline-block';
+    } else {
+      badge.style.display='none';
+    }
+  }
+  const list = document.getElementById('croco-list');
+  if(!list) return;
+  if(!items.length){
+    list.innerHTML='<div class="croco-empty">🤖 提案はありません<br><span style="font-size:10px">定期的に更新されます</span></div>';
+    return;
+  }
+  list.innerHTML = items.map(item=>{
+    const isNew   = !viewed.includes(item.id);
+    const isExp   = _crocoExpanded===item.id;
+    const dateStr = item.createdAt?.toDate ? item.createdAt.toDate().toLocaleDateString('ja-JP',{month:'short',day:'numeric'}) :
+                    (item.createdAt instanceof Date ? item.createdAt.toLocaleDateString('ja-JP',{month:'short',day:'numeric'}) : '');
+    return `<div class="croco-card${isNew?' unread':''}${isNew?' new-item':''}" data-id="${item.id}" onclick="toggleCrocoCard('${item.id}')">
+      <div class="croco-card-inner">
+        <div class="croco-card-top">
+          <span style="font-size:11px;flex-shrink:0;margin-top:1px">${_crocoP(item.priority)}</span>
+          <span class="croco-card-title">${esc(item.title)}</span>
+        </div>
+        <div class="croco-card-meta">
+          <span class="croco-card-cat">${esc(item.category||'')}</span>
+          <span class="croco-card-date">${dateStr}</span>
+        </div>
+      </div>
+      <div class="croco-detail" id="croco-d-${item.id}" style="display:${isExp?'block':'none'}">
+        <div class="croco-detail-body">${esc(item.body||'').replace(/\n/g,'<br>')}</div>
+        ${item.source?`<div class="croco-detail-src">📎 出典: ${item.sourceUrl?`<a href="${item.sourceUrl}" target="_blank">${esc(item.source)}</a>`:esc(item.source)}</div>`:''}
+        ${item.actionLabel?`<button class="croco-detail-act" onclick="event.stopPropagation();crocoAction('${item.id}','${(item.actionView||'').replace(/'/g,"\\'")}')">▶ ${esc(item.actionLabel)}</button>`:''}
+        <button class="croco-read-btn" onclick="event.stopPropagation();crocoMarkRead('${item.id}')">✓ 既読にする</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ─── カード展開 ─────────────────────────────────────────
+function toggleCrocoCard(id){
+  _crocoMarkViewed(id);
+  // バッジ再計算
+  const card = document.querySelector(`.croco-card[data-id="${id}"]`);
+  if(card) card.classList.remove('unread');
+  const remaining = document.querySelectorAll('.croco-card.unread').length;
+  const badge=document.getElementById('croco-badge');
+  if(badge) badge.textContent=remaining||0;
+  // 展開/折畳み
+  if(_crocoExpanded===id){
+    const det=document.getElementById(`croco-d-${id}`);
+    if(det) det.style.display='none';
+    _crocoExpanded=null;
+  } else {
+    if(_crocoExpanded){
+      const prev=document.getElementById(`croco-d-${_crocoExpanded}`);
+      if(prev) prev.style.display='none';
+    }
+    const det=document.getElementById(`croco-d-${id}`);
+    if(det) det.style.display='block';
+    _crocoExpanded=id;
+  }
+}
+
+// ─── 既読 ───────────────────────────────────────────────
+function crocoMarkRead(id){
+  _crocoMarkViewed(id);
+  const card=document.querySelector(`.croco-card[data-id="${id}"]`);
+  if(card) card.classList.remove('unread');
+  const rem=document.querySelectorAll('.croco-card.unread').length;
+  const badge=document.getElementById('croco-badge');
+  if(badge){ if(rem>0){badge.textContent=rem;}else{badge.style.display='none';} }
+}
+
+// ─── アクションボタン ────────────────────────────────────
+function crocoAction(id, view){
+  crocoMarkRead(id);
+  if(view) showView(view);
+}
+
+// ─── 初期シード (コレクションが空の場合のみ投入) ──────────
+async function _crocoSeedIfEmpty(){
+  try{
+    const snap = await _db.collection(CROCO_COL).limit(1).get();
+    if(!snap.empty) return; // すでにデータあり
+    const batch = _db.batch();
+    const now = new Date('2026-05-26');
+    const seeds = [
+      {
+        id:'sug_r6_01',
+        title:'処遇改善加算を新区分（Ⅰ〜Ⅳ）に更新',
+        body:'令和6年4月より、旧3種（処遇改善加算・特定処遇改善加算・ベースアップ等支援加算）が新「福祉・介護職員等処遇改善加算」Ⅰ〜Ⅳの4段階に一本化されました。現在のwelbeには旧3種のトグルがありますが、新区分での入力に対応させる必要があります。',
+        category:'加算設定',priority:'high',
+        source:'厚労省 令和6年度障害福祉サービス等報酬改定',
+        sourceUrl:'https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/0000202214_00009.html',
+        actionLabel:'事業所情報の加算設定を確認する',actionView:'facility',
+        createdAt:firebase.firestore.Timestamp.fromDate(new Date('2026-05-26'))
+      },
+      {
+        id:'sug_r6_02',
+        title:'A型スコアに2項目を追加（利用者知識・経営改善計画）',
+        body:'R6改定でA型の基本報酬スコア方式に「利用者の知識及び能力向上（0〜10点）」と「経営改善計画未提出（0/−40点）」が新設されました。現在のwelbeには7項目のスコアがありますが、これら2項目が含まれていません。スコア計算の精度向上のために追加が必要です。',
+        category:'基本報酬スコア',priority:'high',
+        source:'knowbe.jp 令和6年度A型報酬改定解説',
+        sourceUrl:'https://knowbe.jp/media/x298tmzxd3ik-agata-score-2024',
+        actionLabel:'事業所情報のスコア設定を確認する',actionView:'facility',
+        createdAt:firebase.firestore.Timestamp.fromDate(new Date('2026-05-26'))
+      },
+      {
+        id:'sug_r6_03',
+        title:'B型に職員配置6:1区分が新設（R6改定）',
+        body:'令和6年度改定でB型事業所に「職員配置6:1」の新報酬区分が新設されました。現在のwelbeはA型のみ職員配置を設定できます。B型の事業所情報に6:1配置の選択肢を追加することで請求精度が上がります。',
+        category:'事業所設定',priority:'med',
+        source:'厚労省 令和6年度報酬改定（就労継続支援B型）',
+        sourceUrl:'https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/0000202214_00009.html',
+        actionLabel:'事業所情報を確認する',actionView:'facility',
+        createdAt:firebase.firestore.Timestamp.fromDate(new Date('2026-05-25'))
+      },
+      {
+        id:'sug_r6_04',
+        title:'施設外就労の実績報告書提出義務が廃止',
+        body:'R6改定より施設外就労加算の実績報告書提出義務が廃止されました。記録・請求フローを簡略化できる可能性があります。また施設外支援の個別支援計画の見直し時期も変更されています。',
+        category:'記録・実績',priority:'low',
+        source:'障がい者としごとマガジン 令和6年度報酬改定概要',
+        sourceUrl:'https://shigoto4you.com/remuneration-revision_r6_3/',
+        actionLabel:'利用実績の記録画面を確認する',actionView:'daily',
+        createdAt:firebase.firestore.Timestamp.fromDate(new Date('2026-05-24'))
+      },
+      {
+        id:'sug_sys_01',
+        title:'knowbeからの利用者データ移行ツール完成',
+        body:'knowbe_extractor.jsを使ってknowbeの利用者情報をwelbeに一括インポートできます。knowbeの利用者一覧ページでF12→コンソールにスクリプトを貼り付けると全利用者データを取得できます。その後welbeの「📥 knowbeからインポート」ボタンから登録可能です。',
+        category:'システム改善',priority:'low',
+        source:'welbe開発チーム',sourceUrl:'',
+        actionLabel:'利用者情報のインポートを開始する',actionView:'clients',
+        createdAt:firebase.firestore.Timestamp.fromDate(new Date('2026-05-26'))
+      }
+    ];
+    seeds.forEach(s=>{ const ref=_db.collection(CROCO_COL).doc(s.id); batch.set(ref,s); });
+    await batch.commit();
+    console.log('[クロコ] 初期提案データを投入しました');
+  }catch(e){ console.warn('[クロコ] シードエラー:',e); }
+}
+
+// ─── 外部からの提案追加API (将来の拡張用) ────────────────
+// 使い方: addCrocoSuggestion({title,body,category,priority,source,sourceUrl,actionLabel,actionView})
+async function addCrocoSuggestion(data){
+  if(getS()?.role!=='admin'){console.warn('権限がありません');return;}
+  await _db.collection(CROCO_COL).add({
+    ...data,
+    createdAt: firebase.firestore.Timestamp.now()
+  });
+  showToast('クロコの提案を追加しました ✓');
+}
+
+// =========================================================
+// knowbe インポート機能
+// =========================================================
+let _impParsed = [];   // パース済みクライアント配列
+let _impStep   = 1;
+
+function openImportModal(){
+  _impParsed = [];
+  _impStep   = 1;
+  document.getElementById('imp-json').value = '';
+  document.getElementById('imp-parse-msg').textContent = '';
+  document.getElementById('imp-next-btn').disabled = true;
+  document.getElementById('imp-next-btn').style.display = 'inline-block';
+  document.getElementById('imp-exec-btn').style.display = 'none';
+  // 事業所セレクタ構築
+  const facSel = document.getElementById('imp-fac');
+  facSel.innerHTML = load('facilities',[]).map(f=>`<option value="${f.id}">${esc(f.name)}</option>`).join('');
+  // ステップ表示
+  _impSetStep(1);
+  document.getElementById('importOverlay').style.display='flex';
+}
+function closeImportModal(){
+  document.getElementById('importOverlay').style.display='none';
+}
+function _impSetStep(n){
+  _impStep=n;
+  [1,2,3].forEach(i=>{
+    const el=document.getElementById(`imp-step${i}`);
+    if(el) el.style.display=(i===n)?'block':'none';
+  });
+  [1,2,3].forEach(i=>{
+    const el=document.getElementById(`imp-s${i}`);
+    if(el) el.style.color = i===n ? 'var(--navy)' : (i<n ? 'var(--green-dk)' : 'var(--text-lt)');
+  });
+}
+
+function impJsonChanged(){
+  const raw = document.getElementById('imp-json').value.trim();
+  const msg = document.getElementById('imp-parse-msg');
+  const btn = document.getElementById('imp-next-btn');
+  if(!raw){ msg.textContent=''; btn.disabled=true; return; }
+  try{
+    const obj = JSON.parse(raw);
+    // welbe_import形式
+    let arr = null;
+    if(obj && obj.welbe_import && Array.isArray(obj.clients)) arr = obj.clients;
+    else if(Array.isArray(obj)) arr = obj;
+    else if(obj && typeof obj==='object'){
+      const keys=['clients','members','users','data','items','results','list'];
+      for(const k of keys){ if(Array.isArray(obj[k])){ arr=obj[k]; break; } }
+      if(!arr){ const fa=Object.values(obj).find(v=>Array.isArray(v)&&v.length>0); if(fa) arr=fa; }
+    }
+    if(!arr||arr.length===0){
+      msg.style.color='#e53e3e'; msg.textContent='⚠️ 利用者データの配列が見つかりません'; btn.disabled=true; return;
+    }
+    _impParsed = arr;
+    msg.style.color='var(--green-dk)';
+    msg.textContent=`✅ ${arr.length}名のデータを検出しました`;
+    btn.disabled=false;
+  }catch(e){
+    msg.style.color='#e53e3e'; msg.textContent='⚠️ JSON形式が正しくありません: '+e.message; btn.disabled=true;
+  }
+}
+
+function impNext(){
+  if(_impStep===1){
+    if(!_impParsed.length){ showToast('JSONを貼り付けてください'); return; }
+    // プレビューテーブル構築
+    const facId = document.getElementById('imp-fac').value;
+    const existing = load('clients',[]);
+    const tbody = document.getElementById('imp-preview-tbody');
+    let rows='', count=0;
+    _impParsed.forEach((c,idx)=>{
+      const name = c.name || c._sourceName || ((c.sei||'')+(c.mei?' '+c.mei:''));
+      const birth = c.birthDate || c.birth_date || '';
+      const dtypes = Array.isArray(c.disabilityTypes)?c.disabilityTypes.join('・'):(c.disabilityTypes||'');
+      const limit  = c.limitAmount || c.limit_amount || '';
+      // 重複チェック（氏名 + 生年月日）
+      const dup = existing.find(e=>e.name===name && e.birthDate===birth);
+      const dupMark = dup ? '<span style="color:#f56565;font-size:10px">重複</span>' : '<span style="color:var(--green-dk);font-size:10px">新規</span>';
+      rows += `<tr style="border-bottom:1px solid #eef3ec${dup?';opacity:.45':''}">
+        <td style="padding:7px 10px"><input type="checkbox" data-idx="${idx}" class="imp-chk" ${dup?'':'checked'} ${dup?'disabled':''}></td>
+        <td style="padding:7px 10px;font-weight:600">${esc(name)}</td>
+        <td style="padding:7px 10px;color:var(--text-lt)">${birth}</td>
+        <td style="padding:7px 10px;color:var(--text-lt)">${esc(dtypes)}</td>
+        <td style="padding:7px 10px;color:var(--text-lt)">${limit?limit+'円':''}</td>
+        <td style="padding:7px 10px">${dupMark}</td>
+      </tr>`;
+      if(!dup) count++;
+    });
+    tbody.innerHTML=rows;
+    document.getElementById('imp-preview-count').textContent=count;
+    _impSetStep(2);
+    document.getElementById('imp-next-btn').style.display='none';
+    document.getElementById('imp-exec-btn').style.display='inline-block';
+  }
+}
+
+function impExecute(){
+  const facId = document.getElementById('imp-fac').value;
+  const checked = Array.from(document.querySelectorAll('.imp-chk:checked')).map(el=>parseInt(el.dataset.idx));
+  if(!checked.length){ showToast('チェックされた利用者がいません'); return; }
+
+  const clients = load('clients',[]);
+  let added=0;
+  checked.forEach(idx=>{
+    const src = _impParsed[idx];
+    if(!src) return;
+    const sei = src.sei || src.last_name || (src.name||'').split(/\s|　/)[0]||'';
+    const mei = src.mei || src.first_name || (src.name||'').split(/\s|　/).slice(1).join('')||'';
+    const name= src.name || src._sourceName || (sei+(mei?' '+mei:''));
+
+    // フィールド安全取得ヘルパー
+    function g(a){return src[a]!==undefined&&src[a]!==null?src[a]:undefined;}
+    function gs(...ks){for(const k of ks){if(src[k]!==undefined&&src[k]!==null)return src[k];}return '';}
+    function gb(...ks){for(const k of ks){if(src[k]!==undefined)return !!src[k];}return false;}
+
+    const data = {
+      id: 'c'+Date.now()+'_'+idx,
+      facilityId: facId,
+      sei, mei, name,
+      kanaSei:  gs('kanaSei','kana_sei','ruby_last',''),
+      kanaMei:  gs('kanaMei','kana_mei','ruby_first',''),
+      kana:     gs('kana',''),
+      receiptNo:gs('receiptNo','receipt_no',''),
+      noReceipt:gb('noReceipt','no_receipt'),
+      serviceType: gs('serviceType','service_type','A'),
+      disabilityTypes: Array.isArray(g('disabilityTypes'))?g('disabilityTypes'):
+                       (Array.isArray(g('disability_types'))?g('disability_types'):[]),
+      gender:   gs('gender',''),
+      birthDate:gs('birthDate','birth_date','birthday',''),
+      zip:  gs('zip','postal_code',''),
+      pref: gs('pref','prefecture',''),
+      city: gs('city',''),
+      cityNo: gs('cityNo','city_no',''),
+      addr: gs('addr','address',''),
+      tel:  gs('tel','phone',''),
+      email:gs('email','mail',''),
+      guardian:  gs('guardian',''),
+      relation:  gs('relation',''),
+      emergencyTel: gs('emergencyTel','emergency_tel',''),
+      note: gs('note','memo',''),
+      startDate: gs('startDate','start_date',''),
+      endDate:   gs('endDate','end_date',''),
+      sameCorp:  gb('sameCorp','same_corp'),
+      grantStart:gs('grantStart','grant_start',''),
+      grantEnd:  gs('grantEnd','grant_end',''),
+      disabilityClass: gs('disabilityClass','disability_class',''),
+      quotaType: gs('quotaType','quota_type','default'),
+      quotaDays: g('quotaDays')??g('quota_days')??null,
+      quotaSpecial: gb('quotaSpecial','quota_special'),
+      limitAmount: gs('limitAmount','limit_amount','9300'),
+      contractAmount: parseInt(gs('limitAmount','limit_amount','9300'))||0,
+      localLimit:      gb('localLimit','local_limit'),
+      subsidyTarget:   gb('subsidyTarget','subsidy_target'),
+      aTypeExempt:     gb('aTypeExempt','a_type_exempt'),
+      upperManagement: gb('upperManagement','upper_management'),
+      noPlan:          gb('noPlan','no_plan'),
+      employLink:      gb('employLink','employ_link'),
+      intensiveSupport:gb('intensiveSupport','intensive_support'),
+      active: g('active')!==false,
+      defaultDays: g('defaultDays')||g('default_days')||
+        {mon:true,tue:true,wed:true,thu:true,fri:true,sat:true,sun:false},
+      serviceDefaults: g('serviceDefaults')||g('service_defaults')||{
+        tsusho:       {start:'09:00',end:'16:00',pickup:'なし',timeCard:false},
+        outside_work: {start:'09:00',end:'16:00',pickup:'なし',timeCard:false},
+        outside_sup:  {start:'09:00',end:'16:00',pickup:'なし',timeCard:false}
+      },
+      eSignRecord: gb('eSignRecord','e_sign_record'),
+      limitPeriod:      g('limitPeriod')      ||{enabled:false,start:'',end:''},
+      mealPeriod:       g('mealPeriod')       ||{enabled:false,start:'',end:''},
+      disabilityPeriod: g('disabilityPeriod') ||{enabled:false,start:'',end:''},
+      nursingPeriod:    g('nursingPeriod')    ||{enabled:false,start:'',end:''},
+      planPeriod:       g('planPeriod')       ||{enabled:false,start:'',end:''},
+      planMonitor:      g('planMonitor')      ||{enabled:false,start:'',end:''}
+    };
+    clients.push(data);
+    added++;
+  });
+  save('clients', clients);
+  // 完了画面
+  document.getElementById('imp-done-msg').textContent = `${added}名をインポートしました ✓`;
+  document.getElementById('imp-done-sub').textContent = `利用者情報一覧に追加されました`;
+  _impSetStep(3);
+  document.getElementById('imp-exec-btn').style.display='none';
+  renderClients();
+  showToast(`${added}名の利用者をインポートしました ✓`);
+}
+
+// =========================================================
+// 設定 > 初期設定情報
+// =========================================================
+function renderInit(){
+  const cfg=load('config',{absenceMax:4,outsideMax:180,visitMax:2,weeksPerYear:5,users1mo:10,users2mo:11,users3mo:11,firstMonth:'2019-12'});
+  document.getElementById('cfg-abs').value=cfg.absenceMax??4;
+  document.getElementById('cfg-out').value=cfg.outsideMax??180;
+  document.getElementById('cfg-vis').value=cfg.visitMax??2;
+  document.getElementById('cfg-wk').value=cfg.weeksPerYear??5;
+  document.getElementById('cfg-u1').value=cfg.users1mo??10;
+  document.getElementById('cfg-u2').value=cfg.users2mo??11;
+  document.getElementById('cfg-u3').value=cfg.users3mo??11;
+  document.getElementById('cfg-firstMonth').value=cfg.firstMonth??'2019-12';
+  _updateAvg();
+  // 施設外支援 事業所セレクタ
+  const facSel=document.getElementById('initFacSel');
+  facSel.innerHTML=load('facilities',[]).map(f=>`<option value="${f.id}">${esc(f.name)}</option>`).join('');
+  renderOutsideDays();
+  renderUsers();
+}
+function _updateAvg(){
+  const u1=+document.getElementById('cfg-u1').value||0;
+  const u2=+document.getElementById('cfg-u2').value||0;
+  const u3=+document.getElementById('cfg-u3').value||0;
+  const avg=Math.round((u1+u2+u3)/3*10)/10;
+  const el=document.getElementById('cfg-avg-display');
+  if(el) el.textContent=avg||'—';
+}
+['cfg-u1','cfg-u2','cfg-u3'].forEach(id=>{
+  document.addEventListener('DOMContentLoaded',()=>{
+    const el=document.getElementById(id);
+    if(el) el.addEventListener('input',_updateAvg);
+  });
+});
+function saveInitConfig(){
+  save('config',{
+    absenceMax:+document.getElementById('cfg-abs').value,
+    outsideMax:+document.getElementById('cfg-out').value,
+    visitMax:+document.getElementById('cfg-vis').value,
+    weeksPerYear:+document.getElementById('cfg-wk').value,
+    users1mo:+document.getElementById('cfg-u1').value,
+    users2mo:+document.getElementById('cfg-u2').value,
+    users3mo:+document.getElementById('cfg-u3').value,
+    firstMonth:document.getElementById('cfg-firstMonth').value||'2019-12'
+  });
+  showToast('設定を保存しました ✓');
+}
+
+// 施設外支援 累計日数テーブル
+function renderOutsideDays(){
+  const facId=document.getElementById('initFacSel')?.value||'';
+  const clients=load('clients',[]).filter(c=>c.active!==false&&c.facilityId===facId);
+  const outsideDays=load('outside_days',{});
+  const tbody=document.getElementById('outsideDaysTbody');
+  if(!tbody) return;
+  if(!clients.length){
+    tbody.innerHTML='<tr><td colspan="4" style="padding:16px;text-align:center;color:var(--text-lt)">利用者が登録されていません</td></tr>';
+    return;
+  }
+  const limit=load('config',{outsideMax:180}).outsideMax||180;
+  tbody.innerHTML=clients.map(c=>{
+    const used=outsideDays[c.id]||0;
+    const remain=Math.max(0,limit-used);
+    const pct=Math.min(100,Math.round(used/limit*100));
+    const barColor=pct>=90?'#e53e3e':pct>=70?'#ed8936':'var(--green)';
+    return `<tr style="border-bottom:1px solid #eef3ec">
+      <td style="padding:8px 12px;font-weight:600">${esc(c.name)}</td>
+      <td style="padding:8px 12px;color:var(--text-lt);font-size:12px">${esc(c.kana||'')}</td>
+      <td style="padding:8px 12px;text-align:center">
+        <div style="display:flex;align-items:center;gap:8px;justify-content:center">
+          <input type="number" min="0" max="${limit}" value="${used}"
+            data-client="${c.id}"
+            style="width:70px;border:1.5px solid var(--border);border-radius:5px;padding:4px 8px;font-size:13px;text-align:center"
+            oninput="previewRemain('${c.id}',this.value,${limit})">
+          <span style="font-size:12px;color:var(--text-lt)">/ ${limit}日</span>
+        </div>
+        <div style="margin-top:4px;height:4px;background:#e2e8f0;border-radius:2px;overflow:hidden;width:100px;margin:4px auto 0">
+          <div style="height:100%;width:${pct}%;background:${barColor};border-radius:2px"></div>
+        </div>
+      </td>
+      <td style="padding:8px 12px;text-align:center;font-size:13px" id="remain-${c.id}">
+        <span style="color:${remain<=30?'#e53e3e':remain<=60?'#ed8936':'var(--green-dk)'};font-weight:600">${remain}日</span>
+      </td>
+    </tr>`;
+  }).join('');
+}
+function previewRemain(clientId, val, limit){
+  const remain=Math.max(0,limit-(parseInt(val)||0));
+  const el=document.getElementById(`remain-${clientId}`);
+  if(el) el.innerHTML=`<span style="color:${remain<=30?'#e53e3e':remain<=60?'#ed8936':'var(--green-dk)'};font-weight:600">${remain}日</span>`;
+}
+function saveOutsideDays(){
+  const outsideDays=load('outside_days',{});
+  document.querySelectorAll('[data-client]').forEach(inp=>{
+    const cid=inp.dataset.client;
+    outsideDays[cid]=parseInt(inp.value)||0;
+  });
+  save('outside_days',outsideDays);
+  showToast('施設外支援 累計日数を保存しました ✓');
+}
+
+// =========================================================
+// ユーザー管理
+// =========================================================
+function renderUsers(){
+  const users=load('users',[]);
+  document.getElementById('userTbody').innerHTML=users.map(u=>`
+    <tr>
+      <td>${esc(u.name)}</td>
+      <td style="font-family:monospace">${esc(u.loginId)}</td>
+      <td><span class="${u.role==='admin'?'role-admin':'role-user'}">${u.role==='admin'?'管理者':'一般'}</span></td>
+      <td><span class="${u.active!==false?'badge-active':'badge-inactive'}">${u.active!==false?'有効':'無効'}</span></td>
+      <td style="display:flex;gap:6px">
+        <button class="btn-edit2" onclick="openUserModal('${u.id}')">編集</button>
+        ${u.loginId!=='admin'?`<button class="btn-danger" onclick="deleteUser('${u.id}')">削除</button>`:''}
+      </td>
+    </tr>`).join('');
+}
+function openUserModal(id){
+  const u=id?load('users',[]).find(x=>x.id===id):null;
+  _mCtx={type:'user',id};
+  document.getElementById('modalTitle').textContent=id?'ユーザーを編集':'ユーザーを追加';
+  document.getElementById('modalBody').innerHTML=`
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div><label style="font-size:12px;font-weight:600;color:#4a5568;display:block;margin-bottom:4px">氏名 *</label>
+        <input class="f-input" id="u-name" value="${esc(u?.name||'')}"></div>
+      <div><label style="font-size:12px;font-weight:600;color:#4a5568;display:block;margin-bottom:4px">ログインID *</label>
+        <input class="f-input" id="u-lid" value="${esc(u?.loginId||'')}" ${u?.loginId==='admin'?'readonly':''}></div>
+      <div><label style="font-size:12px;font-weight:600;color:#4a5568;display:block;margin-bottom:4px">パスワード${id?' （変更する場合のみ）':' *'}</label>
+        <input class="f-input" id="u-pass" type="password" placeholder="${id?'変更しない場合は空白':'パスワードを入力'}"></div>
+      <div style="display:flex;gap:12px">
+        <div style="flex:1"><label style="font-size:12px;font-weight:600;color:#4a5568;display:block;margin-bottom:4px">権限</label>
+          <select class="f-select" id="u-role" ${u?.loginId==='admin'?'disabled':''}>
+            <option value="admin" ${u?.role==='admin'?'selected':''}>管理者</option>
+            <option value="user" ${u?.role!=='admin'?'selected':''}>一般</option>
+          </select></div>
+        <div style="flex:1"><label style="font-size:12px;font-weight:600;color:#4a5568;display:block;margin-bottom:4px">状態</label>
+          <select class="f-select" id="u-active" ${u?.loginId==='admin'?'disabled':''}>
+            <option value="1" ${u?.active!==false?'selected':''}>有効</option>
+            <option value="0" ${u?.active===false?'selected':''}>無効</option>
+          </select></div>
+      </div>
+    </div>`;
+  document.getElementById('modalSaveBtn').onclick=saveUserModal;
+  document.getElementById('modalOverlay').classList.add('show');
+}
+function saveUserModal(){
+  const name=document.getElementById('u-name').value.trim();
+  const lid=document.getElementById('u-lid').value.trim();
+  const pass=document.getElementById('u-pass').value;
+  if(!name||!lid){alert('氏名とログインIDは必須です');return;}
+  const users=load('users',[]);
+  const {id}=_mCtx;
+  if(!id&&!pass){alert('新規ユーザーにはパスワードが必要です');return;}
+  if(users.find(u=>u.loginId===lid&&u.id!==id)){alert('そのログインIDは既に使用されています');return;}
+  if(id){
+    const i=users.findIndex(u=>u.id===id);
+    if(i>=0){
+      users[i].name=name;
+      if(!document.getElementById('u-lid').readOnly)users[i].loginId=lid;
+      if(pass)users[i].password=pass;
+      if(!document.getElementById('u-role').disabled)users[i].role=document.getElementById('u-role').value;
+      if(!document.getElementById('u-active').disabled)users[i].active=document.getElementById('u-active').value==='1';
+    }
+  }else{
+    users.push({id:`u${Date.now()}`,name,loginId:lid,password:pass,role:document.getElementById('u-role').value,active:document.getElementById('u-active').value==='1'});
+  }
+  save('users',users); closeModal(); renderUsers();
+  showToast(id?'ユーザーを更新しました ✓':'ユーザーを追加しました ✓');
+}
+function deleteUser(id){
+  const u=load('users',[]).find(x=>x.id===id);
+  if(!confirm(`「${u?.name}」を削除しますか？`))return;
+  save('users',load('users',[]).filter(x=>x.id!==id));
+  renderUsers(); showToast('削除しました');
+}
+
+// =========================================================
+// 情報モーダル（読み取り専用）
+// =========================================================
+function openInfoModal(title,bodyHtml){
+  _mCtx={type:'info'};
+  document.getElementById('modalTitle').textContent=title;
+  document.getElementById('modalBody').innerHTML=bodyHtml;
+  document.getElementById('modalSaveBtn').style.display='none';
+  document.getElementById('modalOverlay').classList.add('show');
+}
+function closeModal(){
+  document.getElementById('modalOverlay').classList.remove('show');
+  document.getElementById('modalSaveBtn').style.display='';
+  document.querySelector('.modal-box').style.width='';
+  _mCtx=null;
+}
+
+// =========================================================
+// ユーティリティ
+// =========================================================
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+let _toastTimer=null;
+function showToast(msg,ms=2200){
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.classList.add('show');
+  if(_toastTimer)clearTimeout(_toastTimer);
+  _toastTimer=setTimeout(()=>el.classList.remove('show'),ms);
+}
+
+window.addEventListener('DOMContentLoaded',boot);
+</script>
+</body>
+</html>
