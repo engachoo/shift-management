@@ -627,9 +627,10 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
             <button class="btn-tc-nav" onclick="tcNextDay()">翌日 ›</button>
             <button class="btn-tc-today" onclick="tcGoToday()">今日</button>
           </div>
-          <div style="display:flex;align-items:center;gap:10px">
-            <span class="cs-label">事業所</span>
-            <select class="cs-select" id="tcFacSel" onchange="renderTcGrid()"></select>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="cs-label" style="color:var(--text-lt)">事業所</span>
+            <span id="tcFacName" style="font-weight:600;font-size:13px;color:var(--navy)"></span>
+            <span id="tcFacBadge" style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:12px"></span>
           </div>
         </div>
 
@@ -661,10 +662,10 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
     <div id="view-claim" style="display:none">
       <div class="page-hdr">
         <span>請求</span>
-        <div style="margin-left:auto;display:flex;align-items:center;gap:10px">
+        <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
           <span style="font-size:12px;font-weight:400;color:var(--text-lt)">事業所</span>
-          <select class="cs-select" id="claimFacSel" onchange="onClaimFacChange()" style="font-size:13px;min-width:160px;padding:6px 28px 6px 10px"></select>
-          <span id="claimFacTypeBadge" style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:12px;background:#fef3c7;color:#92400e"></span>
+          <span id="claimFacName" style="font-weight:600;font-size:13px;color:var(--navy)"></span>
+          <span id="claimFacTypeBadge" style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:12px"></span>
         </div>
       </div>
       <div class="content-area">
@@ -741,9 +742,9 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
       <div class="content-area">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
           <div class="client-selector" style="margin-bottom:0;display:flex;align-items:center;gap:10px">
-            <span class="cs-label">事業所</span>
-            <select class="cs-select" id="clientsFacSel" onchange="onClientsFacChange()"></select>
-            <span id="clientsFacBadge" style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:12px;background:#fef3c7;color:#92400e"></span>
+            <span class="cs-label" style="color:var(--text-lt)">事業所</span>
+            <span id="clientsFacName" style="font-weight:600;font-size:13px;color:var(--navy)"></span>
+            <span id="clientsFacBadge" style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:12px"></span>
             <button id="btnBulkFixType" onclick="bulkFixServiceType()" style="display:none;background:#fef9c3;border:1px solid #ca8a04;color:#78350f;border-radius:5px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer">⚠ 種別を一括修正</button>
           </div>
           <div style="display:flex;gap:8px;align-items:center">
@@ -1295,15 +1296,40 @@ function buildFacSelector(){
   document.getElementById('sbCorpName').textContent = corp;
 }
 
+// 全ビューの事業所表示を _curFacId に同期する（静的ラベル）
+function _syncFacDisplays(){
+  const f = curFac();
+  if(!f) return;
+  const map={A:'就労継続A型',B:'就労継続B型',AB:'A型・B型'};
+  const bg={A:'#fef3c7',B:'#ede9fe',AB:'#e8f5e2'};
+  const col={A:'#92400e',B:'#5b21b6',AB:'#166534'};
+  const badgeText=map[f.serviceType]||f.serviceType||'';
+  const badgeStyle=`font-size:11px;font-weight:700;padding:3px 10px;border-radius:12px;background:${bg[f.serviceType]||'#f3f4f6'};color:${col[f.serviceType]||'#374151'}`;
+  // 施設名テキスト
+  ['claimFacName','clientsFacName','tcFacName'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.textContent=f.name;
+  });
+  // 種別バッジ
+  ['claimFacTypeBadge','clientsFacBadge','tcFacBadge'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el) return;
+    el.textContent=badgeText;
+    el.style.cssText=badgeText ? badgeStyle : 'display:none';
+  });
+}
+
 function onFacChange(){
   _curFacId = document.getElementById('sbFacSel').value;
   const f = curFac();
   if(f) document.getElementById('sbCorpName').textContent = f.corp||'';
+  _syncFacDisplays();
   // 現在のビューを再描画
   if(curView==='daily') renderDaily();
   else if(curView==='monthly'){buildMonthlyClientSel();renderMonthly();}
   else if(curView==='clients') renderClients();
   else if(curView==='claim') renderClaim();
+  else if(curView==='timecard') renderTcGrid();
+  else if(curView==='facility') renderFacilityList();
 }
 
 // =========================================================
@@ -1347,6 +1373,7 @@ function startApp(){
   const facs=load('facilities',[]);
   _curFacId = facs[0]?.id||'';
   buildFacSelector();
+  _syncFacDisplays();
   showView('daily');
   initCrocoPanel();
   renderAlertBanner();
@@ -1626,16 +1653,13 @@ let _tcDate = new Date();      // 現在表示中の日付
 let _tcTab  = 'day';           // 'day' | 'month'
 let _tcClockTimer = null;
 
-function _tcFid(){ return document.getElementById('tcFacSel')?.value||_curFacId; }
+function _tcFid(){ return _curFacId; }
 function _tcKey(fid,y,m){ return `tc_${fid}_${y}${String(m).padStart(2,'0')}`; }
 function _isToday(d){ const n=new Date(); return d.getFullYear()===n.getFullYear()&&d.getMonth()===n.getMonth()&&d.getDate()===n.getDate(); }
 function _fmtTime(h,min){ return `${String(h).padStart(2,'0')}:${String(min).padStart(2,'0')}`; }
 
 function renderTimecard(){
-  // 事業所セレクタ
-  const facSel=document.getElementById('tcFacSel');
-  facSel.innerHTML=load('facilities',[]).map(f=>`<option value="${f.id}" ${f.id===_curFacId?'selected':''}>${esc(f.name)}</option>`).join('');
-  if(!facSel.value) facSel.value=_curFacId;
+  _syncFacDisplays();
   _startTcClock();
   _updateTcDayLabel();
   switchTcTab(_tcTab);
@@ -2603,27 +2627,14 @@ function onClFacChange(){
   else if(f.serviceType==='B') typeEl.value='B';
 }
 
-function buildClientsFacSel(){
-  const sel=document.getElementById('clientsFacSel');
-  const facs=load('facilities',[]);
-  sel.innerHTML=facs.map(f=>`<option value="${f.id}" ${f.id===_curFacId?'selected':''}>${esc(f.name)}</option>`).join('');
-  _updateClientsFacBadge();
-}
-function _updateClientsFacBadge(){
-  const fid=document.getElementById('clientsFacSel')?.value||_curFacId;
-  const f=load('facilities',[]).find(x=>x.id===fid);
-  const badge=document.getElementById('clientsFacBadge');
-  if(badge) badge.outerHTML=_facTypeBadge(f)||'<span id="clientsFacBadge"></span>';
-}
-function onClientsFacChange(){
-  _curFacId=document.getElementById('clientsFacSel').value;
-  _updateClientsFacBadge();
-  renderClients();
-}
+// サイドバー統合後は _syncFacDisplays() が担当
+function buildClientsFacSel(){ _syncFacDisplays(); }
+function _updateClientsFacBadge(){ _syncFacDisplays(); }
+function onClientsFacChange(){} // 廃止（サイドバーセレクター統合）
 
 // 事業所のserviceTypeと不一致の利用者を一括修正
 function _checkServiceTypeMismatch(){
-  const fid=document.getElementById('clientsFacSel')?.value||_curFacId;
+  const fid=_curFacId;
   const f=load('facilities',[]).find(x=>x.id===fid);
   if(!f||f.serviceType==='AB') { document.getElementById('btnBulkFixType').style.display='none'; return; }
   const clients=load('clients',[]).filter(c=>c.facilityId===fid&&c.active!==false);
@@ -2640,7 +2651,7 @@ function _checkServiceTypeMismatch(){
 }
 
 function bulkFixServiceType(){
-  const fid=document.getElementById('clientsFacSel')?.value||_curFacId;
+  const fid=_curFacId;
   const f=load('facilities',[]).find(x=>x.id===fid);
   if(!f||f.serviceType==='AB') return;
   if(!confirm(`「${f.name}」の全利用者のサービス種別を「${f.serviceType}型」に一括修正しますか？`)) return;
@@ -2656,30 +2667,10 @@ function bulkFixServiceType(){
   renderClients();
 }
 
-function buildClaimFacSel(){
-  const sel=document.getElementById('claimFacSel');
-  if(!sel) return;
-  const facs=load('facilities',[]);
-  sel.innerHTML=facs.map(f=>`<option value="${f.id}" ${f.id===_curFacId?'selected':''}>${esc(f.name)}</option>`).join('');
-  _updateClaimFacBadge();
-}
-function _updateClaimFacBadge(){
-  const fid=document.getElementById('claimFacSel')?.value||_curFacId;
-  const f=load('facilities',[]).find(x=>x.id===fid);
-  const badge=document.getElementById('claimFacTypeBadge');
-  if(!badge) return;
-  const map={A:'就労継続A型',B:'就労継続B型',AB:'A型・B型'};
-  const bg={A:'#fef3c7',B:'#ede9fe',AB:'#e8f5e2'};
-  const col={A:'#92400e',B:'#5b21b6',AB:'#166534'};
-  badge.textContent=map[f?.serviceType]||f?.serviceType||'';
-  badge.style.background=bg[f?.serviceType]||'#f3f4f6';
-  badge.style.color=col[f?.serviceType]||'#374151';
-}
-function onClaimFacChange(){
-  _curFacId=document.getElementById('claimFacSel').value;
-  _updateClaimFacBadge();
-  renderClaim();
-}
+// サイドバー統合後は _syncFacDisplays() が担当
+function buildClaimFacSel(){ _syncFacDisplays(); }
+function _updateClaimFacBadge(){ _syncFacDisplays(); }
+function onClaimFacChange(){} // 廃止（サイドバーセレクター統合）
 let _showInactive = false;
 function toggleShowInactive(){
   const chk = document.getElementById('btnToggleInactive');
@@ -2689,7 +2680,7 @@ function toggleShowInactive(){
 }
 
 function renderClients(){
-  const fid=document.getElementById('clientsFacSel')?.value||_curFacId;
+  const fid=_curFacId;
   let clients=load('clients',[]).filter(c=>c.facilityId===fid);
   if(!_showInactive) clients=clients.filter(c=>c.active!==false);
   const tbody=document.getElementById('clientTbody');
@@ -2726,7 +2717,7 @@ function openClientModal(id){
   document.getElementById('modalTitle').textContent=id?'利用者を編集':'利用者を追加';
   document.querySelector('.modal-box').style.width='720px';
   // デフォルト事業所 = 現在選択中事業所（利用者一覧のセレクタ優先）
-  const defaultFacId=document.getElementById('clientsFacSel')?.value||c?.facilityId||_curFacId;
+  const defaultFacId=c?.facilityId||_curFacId;
   const defaultFac=facs.find(f=>f.id===defaultFacId);
   // 新規追加時: 事業所の serviceType をデフォルトに
   const defaultType=c?.serviceType||(defaultFac?.serviceType==='AB'?'B':defaultFac?.serviceType)||'B';
