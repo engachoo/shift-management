@@ -747,11 +747,11 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
 
     <!-- ===== 設定 > 事業所情報 ===== -->
     <div id="view-facility" style="display:none">
-      <div class="page-hdr">設定 <span class="ph-sub">› 事業所情報</span></div>
+      <div class="page-hdr">設定 <span class="ph-sub">› 事業所情報</span>
+        <span id="facilityFacName" style="margin-left:auto;font-weight:600;font-size:13px;color:var(--navy)"></span>
+        <span id="facilityFacBadge" style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:12px"></span>
+      </div>
       <div class="content-area">
-        <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
-          <button class="btn-add" onclick="openFacModal(null)">＋ 事業所を追加</button>
-        </div>
         <div id="facilityList"></div>
       </div>
     </div>
@@ -790,7 +790,10 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
 
     <!-- ===== 設定 > 初期設定情報 ===== -->
     <div id="view-init" style="display:none">
-      <div class="page-hdr">設定 <span class="ph-sub">› 初期設定情報</span></div>
+      <div class="page-hdr">設定 <span class="ph-sub">› 初期設定情報</span>
+        <span id="initFacName" style="margin-left:auto;font-weight:600;font-size:13px;color:var(--navy)"></span>
+        <span id="initFacBadge" style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:12px"></span>
+      </div>
       <div class="content-area">
         <div class="form-section">
           <h3>加算・上限設定（デフォルト値）</h3>
@@ -865,7 +868,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
           <h3>施設外支援 累計日数（年度内） <span style="font-size:11px;font-weight:400;color:var(--text-lt)">上限180日</span></h3>
           <div style="font-size:12px;color:var(--text-lt);margin-bottom:14px">利用者ごとの年度内累計日数を入力してください（前システムからの引継ぎ値）</div>
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-            <select class="cs-select" id="initFacSel" onchange="renderOutsideDays()" style="font-size:13px"></select>
+            <span id="initFacNameLabel" style="font-weight:600;font-size:13px;color:var(--navy)"></span>
             <button class="btn-save" onclick="saveOutsideDays()">保存する</button>
           </div>
           <table style="width:100%;border-collapse:collapse;font-size:13px">
@@ -1307,6 +1310,13 @@ function lcToggleEye(){
 // =========================================================
 let _curFacId = '';
 function curFac(){ return load('facilities',[]).find(f=>f.id===_curFacId)||load('facilities',[])[0]||null; }
+// 事業所別設定キー（例: config_fac_hashima）
+function _cfgKey(){ return 'config_'+(_curFacId||'default'); }
+// 設定読み込み（施設別 → 共通 config の順でフォールバック）
+function loadCfg(def={}){
+  const defConfig={absenceMax:4,outsideMax:180,visitMax:2,weeksPerYear:5,users1mo:10,users2mo:11,users3mo:11,firstMonth:'2019-12',...def};
+  return load(_cfgKey(), load('config', defConfig));
+}
 
 function buildFacSelector(){
   const facs = load('facilities',[]);
@@ -1325,12 +1335,12 @@ function _syncFacDisplays(){
   const col={A:'#92400e',B:'#5b21b6',AB:'#166534'};
   const badgeText=map[f.serviceType]||f.serviceType||'';
   const badgeStyle=`font-size:11px;font-weight:700;padding:3px 10px;border-radius:12px;background:${bg[f.serviceType]||'#f3f4f6'};color:${col[f.serviceType]||'#374151'}`;
-  // 施設名テキスト
-  ['claimFacName','clientsFacName','tcFacName'].forEach(id=>{
+  // 施設名テキスト（全ビュー共通）
+  ['claimFacName','clientsFacName','tcFacName','facilityFacName','initFacName','initFacNameLabel'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.textContent=f.name;
   });
-  // 種別バッジ
-  ['claimFacTypeBadge','clientsFacBadge','tcFacBadge'].forEach(id=>{
+  // 種別バッジ（全ビュー共通）
+  ['claimFacTypeBadge','clientsFacBadge','tcFacBadge','facilityFacBadge','initFacBadge'].forEach(id=>{
     const el=document.getElementById(id);
     if(!el) return;
     el.textContent=badgeText;
@@ -1547,7 +1557,7 @@ function renderMonthly(){
   document.getElementById('monthLabel').textContent=`${_mYear}年${_mMonth}月`;
   const cid=document.getElementById('monthlyClientSel').value;
   const client=load('clients',[]).find(c=>c.id===cid);
-  const cfg=load('config',{absenceMax:4,outsideMax:180,visitMax:2});
+  const cfg=loadCfg();
   const days=getDIM(_mYear,_mMonth);
   const tbody=document.getElementById('monthlyTbody');
   if(!client){tbody.innerHTML=`<tr><td colspan="8"><div class="empty-state">利用者を選択してください</div></td></tr>`;return;}
@@ -2102,7 +2112,7 @@ function openClaimUserSel(){
 // =========================================================
 function openClaimHistImport(){
   // 開始月：初期設定の firstMonth があれば使用、なければ 2019-12（ウェルピア羽島の初回請求月）
-  const cfg=load('config',{});
+  const cfg=loadCfg();
   const fromVal=cfg.firstMonth||'2019-12';
   // 終了月：前月
   const now=new Date();
@@ -2237,12 +2247,17 @@ function viewClaimDetail(id){
 // 設定 > 事業所情報（複数事業所対応）
 // =========================================================
 function renderFacilityList(){
-  const facs=load('facilities',[]);
+  const allFacs=load('facilities',[]);
   const el=document.getElementById('facilityList');
-  if(!facs.length){el.innerHTML='<div class="empty-state">事業所が登録されていません</div>';return;}
+  // 現在選択中の事業所のみ表示
+  const f=allFacs.find(x=>x.id===_curFacId)||allFacs[0]||null;
+  if(!f){
+    el.innerHTML='<div class="empty-state">事業所が登録されていません</div>';
+    return;
+  }
   const typeLabel={A:'就労継続支援A型',B:'就労継続支援B型',AB:'A型・B型両方'};
   const typeCls={A:'fc-type-a',B:'fc-type-b',AB:'fc-type-ab'};
-  el.innerHTML=facs.map(f=>`
+  el.innerHTML=`
     <div class="fac-card">
       <h4>${esc(f.name)} <span class="fc-type ${typeCls[f.serviceType]||'fc-type-b'}">${typeLabel[f.serviceType]||f.serviceType}</span></h4>
       <dl class="fc-info">
@@ -2254,9 +2269,8 @@ function renderFacilityList(){
       </dl>
       <div class="fac-card-actions">
         <button class="btn-edit2" onclick="openFacModal('${f.id}')">編集</button>
-        <button class="btn-danger" onclick="deleteFac('${f.id}')">削除</button>
       </div>
-    </div>`).join('');
+    </div>`;
 }
 
 function openFacModal(id){
@@ -3532,7 +3546,8 @@ function impExecute(){
 // 設定 > 初期設定情報
 // =========================================================
 function renderInit(){
-  const cfg=load('config',{absenceMax:4,outsideMax:180,visitMax:2,weeksPerYear:5,users1mo:10,users2mo:11,users3mo:11,firstMonth:'2019-12'});
+  // 事業所別設定を読み込み（共通 config にフォールバック）
+  const cfg=loadCfg();
   document.getElementById('cfg-abs').value=cfg.absenceMax??4;
   document.getElementById('cfg-out').value=cfg.outsideMax??180;
   document.getElementById('cfg-vis').value=cfg.visitMax??2;
@@ -3542,9 +3557,9 @@ function renderInit(){
   document.getElementById('cfg-u3').value=cfg.users3mo??11;
   document.getElementById('cfg-firstMonth').value=cfg.firstMonth??'2019-12';
   _updateAvg();
-  // 施設外支援 事業所セレクタ
-  const facSel=document.getElementById('initFacSel');
-  facSel.innerHTML=load('facilities',[]).map(f=>`<option value="${f.id}">${esc(f.name)}</option>`).join('');
+  // 施設名ラベルを現在の事業所に同期
+  const facNameEl=document.getElementById('initFacNameLabel');
+  if(facNameEl) facNameEl.textContent=curFac()?.name||'';
   renderOutsideDays();
   renderUsers();
 }
@@ -3563,7 +3578,8 @@ function _updateAvg(){
   });
 });
 function saveInitConfig(){
-  save('config',{
+  // 事業所別キーに保存
+  save(_cfgKey(),{
     absenceMax:+document.getElementById('cfg-abs').value,
     outsideMax:+document.getElementById('cfg-out').value,
     visitMax:+document.getElementById('cfg-vis').value,
@@ -3573,12 +3589,13 @@ function saveInitConfig(){
     users3mo:+document.getElementById('cfg-u3').value,
     firstMonth:document.getElementById('cfg-firstMonth').value||'2019-12'
   });
-  showToast('設定を保存しました ✓');
+  showToast(`${curFac()?.name||'設定'}を保存しました ✓`);
 }
 
 // 施設外支援 累計日数テーブル
 function renderOutsideDays(){
-  const facId=document.getElementById('initFacSel')?.value||'';
+  // 施設外支援は現在選択中の事業所の利用者のみ表示
+  const facId=_curFacId;
   const clients=load('clients',[]).filter(c=>c.active!==false&&c.facilityId===facId);
   const outsideDays=load('outside_days',{});
   const tbody=document.getElementById('outsideDaysTbody');
@@ -3587,7 +3604,7 @@ function renderOutsideDays(){
     tbody.innerHTML='<tr><td colspan="4" style="padding:16px;text-align:center;color:var(--text-lt)">利用者が登録されていません</td></tr>';
     return;
   }
-  const limit=load('config',{outsideMax:180}).outsideMax||180;
+  const limit=loadCfg().outsideMax||180;
   tbody.innerHTML=clients.map(c=>{
     const used=outsideDays[c.id]||0;
     const remain=Math.max(0,limit-used);
