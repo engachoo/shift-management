@@ -295,6 +295,16 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
 .update-btn{background:var(--green);color:#fff}
 .update-btn:hover{background:var(--green-dk)}
 .sys-warn{margin-top:14px;padding:12px 16px;background:#fef3c7;border-radius:8px;font-size:12px;color:#92400e;line-height:1.7}
+.inline-pw-wrap{display:flex;align-items:center;gap:3px;flex-wrap:nowrap}
+.inline-pw-wrap .inline-input{min-width:70px;flex:1}
+.inline-eye{background:none;border:none;cursor:pointer;font-size:15px;color:#9ca3af;padding:0 2px;line-height:1;flex-shrink:0}
+.inline-eye:hover{color:#374151}
+.inline-lock{background:none;border:1px solid #e5e7eb;border-radius:4px;cursor:pointer;font-size:13px;padding:2px 4px;line-height:1;flex-shrink:0;transition:background .15s}
+.inline-lock:hover{background:#fef3c7}
+.inline-copy{background:none;border:1px solid #e5e7eb;border-radius:4px;cursor:pointer;font-size:12px;padding:2px 5px;line-height:1;flex-shrink:0;color:#6b7280;transition:background .15s}
+.inline-copy:hover{background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe}
+.btn-new{background:#1a56db;color:#fff;border:none;padding:6px 14px;border-radius:4px;cursor:pointer;font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:4px}
+.btn-new:hover{background:#1339a8}
 
 /* ===== 事業所カード ===== */
 .fac-card{background:#fff;border-radius:8px;padding:20px 22px;box-shadow:0 1px 4px rgba(0,0,0,.06);margin-bottom:14px;border-left:4px solid var(--green)}
@@ -838,20 +848,28 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
       <div class="content-area">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
           <div style="font-size:13px;color:var(--text-lt)">welbeにアクセスできるユーザーと権限を管理します。</div>
-          <button class="btn-add" onclick="openAddSysUser()">＋ ユーザーを追加</button>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button id="bulkUpdBtn" onclick="saveAllSysUsers()" style="display:none;font-weight:700;background:#fef9c3;border:1px solid #ca8a04;color:#78350f;padding:5px 14px;border-radius:5px;cursor:pointer;font-size:12px">⬆ 一括更新</button>
+            <button class="btn-new" onclick="openAddSysUserModal()">＋ 新規ユーザー</button>
+          </div>
         </div>
         <div class="form-section" style="padding:0;overflow:hidden">
           <table class="sys-tbl">
             <thead><tr>
-              <th>メールアドレス</th><th>表示名</th><th>権限</th><th>状態</th><th>操作</th>
+              <th style="min-width:180px">メールアドレス</th>
+              <th style="min-width:120px">表示名</th>
+              <th style="min-width:95px">パスワード</th>
+              <th style="min-width:100px">権限</th>
+              <th style="min-width:80px">状態</th>
+              <th style="min-width:100px">操作</th>
             </tr></thead>
             <tbody id="sysUserTbody"></tbody>
           </table>
         </div>
         <div class="sys-warn">
-          ⚠️ ログイン認証は Firebase Authentication で管理されています。パスワード変更・アカウント削除は
+          ⚠️ アカウントの新規作成・削除は
           <a href="https://console.firebase.google.com/project/dainichi-001/authentication/users" target="_blank" style="color:#1d4ed8;font-weight:600">Firebase Console → Authentication ↗</a>
-          から行ってください。
+          で行ってください。🔑 ボタンでパスワードリセットメールを送信できます。
         </div>
       </div>
     </div>
@@ -3491,67 +3509,156 @@ function getWelbePerms(){
 }
 
 // ---- ユーザー設定 ----
-function renderSysUsers(){
-  const users = load('welbe_users',[]);
-  const tbody = document.getElementById('sysUserTbody');
-  if(!users.length){
-    tbody.innerHTML=`<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text-lt)">ユーザーが登録されていません</td></tr>`;
-    return;
-  }
-  tbody.innerHTML = users.map((u,i)=>`
-    <tr id="sysurow-${i}">
-      <td style="font-family:monospace;font-size:12px">${esc(u.email)}</td>
-      <td><input class="inline-input" id="sysu-name-${i}" value="${esc(u.name||'')}" style="width:110px" oninput="markSysUserDirty(${i})"></td>
-      <td><select class="inline-input" id="sysu-role-${i}" oninput="markSysUserDirty(${i})">
-        <option value="admin"   ${u.role==='admin'  ?'selected':''}>管理者</option>
-        <option value="manager" ${u.role==='manager'?'selected':''}>責任者</option>
-        <option value="staff"   ${u.role==='staff'||(!u.role||u.role==='user')?'selected':''}>スタッフ</option>
-      </select></td>
-      <td><select class="inline-input" id="sysu-act-${i}" oninput="markSysUserDirty(${i})">
-        <option value="1" ${u.active!==false?'selected':''}>有効</option>
-        <option value="0" ${u.active===false?'selected':''}>無効</option>
-      </select></td>
-      <td style="display:flex;gap:6px">
-        <button class="act-btn update-btn" onclick="saveSysUser(${i})">更新</button>
-        <button class="btn-danger" onclick="deleteSysUser(${i})">削除</button>
-      </td>
-    </tr>`).join('');
-}
-
 function markSysUserDirty(i){
   const row=document.getElementById('sysurow-'+i);
   if(row) row.style.background='#fefce8';
+  const btn=document.getElementById('bulkUpdBtn');
+  if(btn){ btn.style.display='inline-block'; btn.style.boxShadow='0 0 0 2px #f59e0b'; }
+}
+
+function renderSysUsers(){
+  const btn=document.getElementById('bulkUpdBtn');
+  if(btn){ btn.style.display='none'; btn.style.boxShadow=''; }
+  const users=load('welbe_users',[]);
+  const tbody=document.getElementById('sysUserTbody');
+  if(!tbody) return;
+  if(!users.length){
+    tbody.innerHTML=`<tr><td colspan="6" style="text-align:center;padding:28px;color:var(--text-lt)">ユーザーが登録されていません。「＋ 新規ユーザー」から追加してください。</td></tr>`;
+    return;
+  }
+  tbody.innerHTML=users.map((u,i)=>{
+    const roleSel=`<select class="inline-input" id="sysu-role-${i}" oninput="markSysUserDirty(${i})">
+      <option value="admin"   ${u.role==='admin'  ?'selected':''}>管理者</option>
+      <option value="manager" ${u.role==='manager'?'selected':''}>責任者</option>
+      <option value="staff"   ${(u.role==='staff'||!u.role||u.role==='user')?'selected':''}>スタッフ</option>
+    </select>`;
+    const activeSel=`<select class="inline-input" id="sysu-act-${i}" oninput="markSysUserDirty(${i})">
+      <option value="1" ${u.active!==false?'selected':''}>有効</option>
+      <option value="0" ${u.active===false?'selected':''}>無効</option>
+    </select>`;
+    return `<tr id="sysurow-${i}">
+      <td style="font-family:monospace;font-size:12px;color:var(--navy);word-break:break-all">${esc(u.email)}</td>
+      <td><input class="inline-input" id="sysu-name-${i}" value="${esc(u.name||'')}" placeholder="表示名" style="min-width:100px" oninput="markSysUserDirty(${i})"></td>
+      <td><div class="inline-pw-wrap">
+        <span style="letter-spacing:2px;color:#9ca3af;font-size:14px;flex:1">••••••</span>
+        <button class="inline-copy" title="パスワードリセットメールを送信" onclick="sendPwReset(${i})">🔑</button>
+      </div></td>
+      <td>${roleSel}</td>
+      <td>${activeSel}</td>
+      <td style="white-space:nowrap">
+        <button class="act-btn update-btn" id="sysu-upd-${i}" onclick="saveSysUser(${i})">更新</button>
+        <button class="btn-danger" onclick="deleteSysUser(${i})" style="margin-left:5px">削除</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function saveAllSysUsers(){
+  const users=load('welbe_users',[]);
+  let errors=[],changed=0;
+  users.forEach((u,i)=>{
+    const nameEl=document.getElementById(`sysu-name-${i}`);
+    const roleEl=document.getElementById(`sysu-role-${i}`);
+    const actEl =document.getElementById(`sysu-act-${i}`);
+    if(!nameEl) return;
+    u.name  =nameEl.value.trim();
+    u.role  =roleEl?.value||'staff';
+    u.active=actEl?.value!=='0';
+    changed++;
+  });
+  if(errors.length){alert('エラー：\n'+errors.join('\n'));return;}
+  save('welbe_users',users);
+  const btn=document.getElementById('bulkUpdBtn');
+  if(btn){
+    btn.textContent='✅ '+changed+'件 更新完了';
+    btn.style.background='#d1fae5';btn.style.color='#065f46';btn.style.borderColor='#6ee7b7';btn.style.boxShadow='';
+    setTimeout(()=>{
+      btn.textContent='⬆ 一括更新';
+      btn.style.background='#fef9c3';btn.style.color='#78350f';btn.style.borderColor='#ca8a04';
+    },2000);
+  }
+  renderSysUsers();
 }
 
 function saveSysUser(i){
   const users=load('welbe_users',[]);
   if(!users[i]) return;
-  users[i].name   = document.getElementById(`sysu-name-${i}`)?.value.trim()||'';
-  users[i].role   = document.getElementById(`sysu-role-${i}`)?.value||'staff';
-  users[i].active = document.getElementById(`sysu-act-${i}`)?.value !== '0';
-  save('welbe_users', users);
-  showToast('保存しました');
-  renderSysUsers();
+  users[i].name  =document.getElementById(`sysu-name-${i}`)?.value.trim()||'';
+  users[i].role  =document.getElementById(`sysu-role-${i}`)?.value||'staff';
+  users[i].active=document.getElementById(`sysu-act-${i}`)?.value!=='0';
+  save('welbe_users',users);
+  const updBtn=document.getElementById(`sysu-upd-${i}`);
+  if(updBtn){
+    updBtn.textContent='✅ 保存済';
+    updBtn.style.background='#d1fae5';updBtn.style.color='#065f46';
+    setTimeout(()=>{updBtn.textContent='更新';updBtn.style.background='';updBtn.style.color='';},1800);
+  }
+  const row=document.getElementById('sysurow-'+i);
+  if(row) row.style.background='';
 }
 
 function deleteSysUser(i){
   const users=load('welbe_users',[]);
-  if(!confirm(`「${users[i]?.email}」を削除しますか？`)) return;
+  if(!confirm(`「${users[i]?.email}」をユーザーリストから削除しますか？`)) return;
   users.splice(i,1);
-  save('welbe_users', users);
+  save('welbe_users',users);
   showToast('削除しました');
   renderSysUsers();
 }
 
-function openAddSysUser(){
-  const email=(prompt('追加するメールアドレス')||'').trim();
-  if(!email||!email.includes('@')){ if(email) showToast('正しいメールアドレスを入力してください'); return; }
+function sendPwReset(i){
+  const users=load('welbe_users',[]);
+  const email=users[i]?.email;
+  if(!email) return;
+  if(!confirm(`「${email}」にパスワードリセットメールを送信しますか？`)) return;
+  firebase.auth().sendPasswordResetEmail(email)
+    .then(()=>showToast('パスワードリセットメールを送信しました'))
+    .catch(e=>showToast('送信エラー: '+e.message));
+}
+
+function openAddSysUserModal(){
+  document.getElementById('modalTitle').textContent='新規ユーザーを追加';
+  document.getElementById('modalBody').innerHTML=`
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div>
+        <label style="font-size:12px;font-weight:600;color:var(--navy);display:block;margin-bottom:5px">メールアドレス <span style="color:#ef4444">*</span></label>
+        <input type="email" id="adduser-email" class="f-input" placeholder="example@email.com" style="width:100%">
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:600;color:var(--navy);display:block;margin-bottom:5px">表示名</label>
+        <input type="text" id="adduser-name" class="f-input" placeholder="山田 太郎（省略可）" style="width:100%">
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:600;color:var(--navy);display:block;margin-bottom:5px">権限</label>
+        <select id="adduser-role" class="f-input" style="width:100%;padding:8px 10px;cursor:pointer;border:1.5px solid #cbd5e0;border-radius:5px;font-size:13px">
+          <option value="staff">スタッフ</option>
+          <option value="manager">責任者</option>
+          <option value="admin">管理者</option>
+        </select>
+      </div>
+      <div style="font-size:12px;color:#92400e;background:#fef3c7;border:1px solid #fde68a;border-radius:6px;padding:10px;line-height:1.7">
+        ⚠️ Firebase Authentication でアカウントを事前に作成した後、このフォームでユーザー情報を登録してください。<br>
+        <a href="https://console.firebase.google.com/project/dainichi-001/authentication/users" target="_blank" style="color:#1d4ed8;font-weight:600">Firebase Console → Authentication ↗</a>
+      </div>
+    </div>`;
+  const saveBtn=document.getElementById('modalSaveBtn');
+  saveBtn.textContent='追加';
+  saveBtn.onclick=_doAddSysUser;
+  document.getElementById('modalOverlay').style.display='flex';
+  setTimeout(()=>document.getElementById('adduser-email')?.focus(),50);
+}
+
+function _doAddSysUser(){
+  const email=(document.getElementById('adduser-email')?.value||'').trim().toLowerCase();
+  const name=(document.getElementById('adduser-name')?.value||'').trim();
+  const role=document.getElementById('adduser-role')?.value||'staff';
+  if(!email||!email.includes('@')){ showToast('正しいメールアドレスを入力してください'); return; }
   const users=load('welbe_users',[]);
   if(users.find(u=>u.email===email)){ showToast('このメールアドレスはすでに登録されています'); return; }
-  const name=(prompt('表示名（省略可）')||'').trim();
-  users.push({email, name, role:'staff', active:true});
-  save('welbe_users', users);
+  users.push({email,name,role,active:true});
+  save('welbe_users',users);
   showToast(`${email} を追加しました`);
+  closeModal();
   renderSysUsers();
 }
 
