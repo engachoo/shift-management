@@ -659,7 +659,14 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
 
     <!-- ===== 請求 ===== -->
     <div id="view-claim" style="display:none">
-      <div class="page-hdr">請求</div>
+      <div class="page-hdr">
+        <span>請求</span>
+        <div style="margin-left:auto;display:flex;align-items:center;gap:10px">
+          <span style="font-size:12px;font-weight:400;color:var(--text-lt)">事業所</span>
+          <select class="cs-select" id="claimFacSel" onchange="onClaimFacChange()" style="font-size:13px;min-width:160px;padding:6px 28px 6px 10px"></select>
+          <span id="claimFacTypeBadge" style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:12px;background:#fef3c7;color:#92400e"></span>
+        </div>
+      </div>
       <div class="content-area">
 
         <!-- 対象請求月セレクター -->
@@ -733,9 +740,10 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
       <div class="page-hdr">設定 <span class="ph-sub">› 利用者情報</span></div>
       <div class="content-area">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-          <div class="client-selector" style="margin-bottom:0">
-            <span class="cs-label">表示する事業所</span>
-            <select class="cs-select" id="clientsFacSel" onchange="renderClients()"></select>
+          <div class="client-selector" style="margin-bottom:0;display:flex;align-items:center;gap:10px">
+            <span class="cs-label">事業所</span>
+            <select class="cs-select" id="clientsFacSel" onchange="onClientsFacChange()"></select>
+            <span id="clientsFacBadge" style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:12px;background:#fef3c7;color:#92400e"></span>
           </div>
           <div style="display:flex;gap:8px;align-items:center">
             <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:13px;color:#374151;user-select:none">
@@ -1354,7 +1362,7 @@ function showView(v){
   if(v==='daily') renderDaily();
   else if(v==='monthly'){buildMonthlyClientSel();renderMonthly();}
   else if(v==='timecard') renderTimecard();
-  else if(v==='claim') renderClaim();
+  else if(v==='claim'){buildClaimFacSel();renderClaim();}
   else if(v==='facility') renderFacilityList();
   else if(v==='clients'){buildClientsFacSel();renderClients();}
   else if(v==='init') renderInit();
@@ -2560,10 +2568,68 @@ function deleteFac(id){
 // =========================================================
 // 設定 > 利用者情報
 // =========================================================
+// 事業所種別バッジ文字列
+function _facTypeBadge(f){
+  if(!f) return '';
+  const map={A:'就労継続A型',B:'就労継続B型',AB:'A型・B型'};
+  const bg={A:'#fef3c7',B:'#ede9fe',AB:'#e8f5e2'};
+  const col={A:'#92400e',B:'#5b21b6',AB:'#166534'};
+  const t=map[f.serviceType]||f.serviceType||'';
+  return t?`<span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:12px;background:${bg[f.serviceType]||'#f3f4f6'};color:${col[f.serviceType]||'#374151'}">${t}</span>`:'';
+}
+
+// 利用者モーダル: 事業所変更 → サービス種別を自動設定
+function onClFacChange(){
+  const fid=document.getElementById('cl-fac')?.value;
+  const f=load('facilities',[]).find(x=>x.id===fid);
+  const typeEl=document.getElementById('cl-type');
+  if(!typeEl||!f) return;
+  // AB型事業所の場合はユーザーが選ぶ
+  if(f.serviceType==='A') typeEl.value='A';
+  else if(f.serviceType==='B') typeEl.value='B';
+}
+
 function buildClientsFacSel(){
   const sel=document.getElementById('clientsFacSel');
   const facs=load('facilities',[]);
   sel.innerHTML=facs.map(f=>`<option value="${f.id}" ${f.id===_curFacId?'selected':''}>${esc(f.name)}</option>`).join('');
+  _updateClientsFacBadge();
+}
+function _updateClientsFacBadge(){
+  const fid=document.getElementById('clientsFacSel')?.value||_curFacId;
+  const f=load('facilities',[]).find(x=>x.id===fid);
+  const badge=document.getElementById('clientsFacBadge');
+  if(badge) badge.outerHTML=_facTypeBadge(f)||'<span id="clientsFacBadge"></span>';
+}
+function onClientsFacChange(){
+  _curFacId=document.getElementById('clientsFacSel').value;
+  _updateClientsFacBadge();
+  renderClients();
+}
+
+function buildClaimFacSel(){
+  const sel=document.getElementById('claimFacSel');
+  if(!sel) return;
+  const facs=load('facilities',[]);
+  sel.innerHTML=facs.map(f=>`<option value="${f.id}" ${f.id===_curFacId?'selected':''}>${esc(f.name)}</option>`).join('');
+  _updateClaimFacBadge();
+}
+function _updateClaimFacBadge(){
+  const fid=document.getElementById('claimFacSel')?.value||_curFacId;
+  const f=load('facilities',[]).find(x=>x.id===fid);
+  const badge=document.getElementById('claimFacTypeBadge');
+  if(!badge) return;
+  const map={A:'就労継続A型',B:'就労継続B型',AB:'A型・B型'};
+  const bg={A:'#fef3c7',B:'#ede9fe',AB:'#e8f5e2'};
+  const col={A:'#92400e',B:'#5b21b6',AB:'#166534'};
+  badge.textContent=map[f?.serviceType]||f?.serviceType||'';
+  badge.style.background=bg[f?.serviceType]||'#f3f4f6';
+  badge.style.color=col[f?.serviceType]||'#374151';
+}
+function onClaimFacChange(){
+  _curFacId=document.getElementById('claimFacSel').value;
+  _updateClaimFacBadge();
+  renderClaim();
 }
 let _showInactive = false;
 function toggleShowInactive(){
@@ -2590,7 +2656,7 @@ function renderClients(){
       <td style="font-weight:600">${esc(c.name)}</td>
       <td>${esc(c.kana||'')}</td>
       <td style="font-family:monospace">${esc(c.receiptNo||'')}</td>
-      <td><span class="${c.serviceType==='A'?'badge-a':'badge-b'}">${c.serviceType||'B'}型</span></td>
+      <td><span class="${c.serviceType==='A'?'badge-a':'badge-b'}">${c.serviceType==='A'?'A型':'B型'}</span></td>
       <td>${c.disabilityClass?`区分${c.disabilityClass}`:'-'}</td>
       <td>${_limitAmtHtml(c)}</td>
       <td><span class="${c.active!==false?'badge-active':'badge-inactive'}">${c.active!==false?'利用中':'停止'}</span></td>
@@ -2609,7 +2675,12 @@ function openClientModal(id){
   _mCtx={type:'client',id};
   document.getElementById('modalTitle').textContent=id?'利用者を編集':'利用者を追加';
   document.querySelector('.modal-box').style.width='720px';
-  const facOpts=facs.map(f=>`<option value="${f.id}" ${(c?.facilityId||_curFacId)===f.id?'selected':''}>${esc(f.name)}</option>`).join('');
+  // デフォルト事業所 = 現在選択中事業所（利用者一覧のセレクタ優先）
+  const defaultFacId=document.getElementById('clientsFacSel')?.value||c?.facilityId||_curFacId;
+  const defaultFac=facs.find(f=>f.id===defaultFacId);
+  // 新規追加時: 事業所の serviceType をデフォルトに
+  const defaultType=c?.serviceType||(defaultFac?.serviceType==='AB'?'B':defaultFac?.serviceType)||'B';
+  const facOpts=facs.map(f=>`<option value="${f.id}" ${(c?.facilityId||defaultFacId)===f.id?'selected':''}>${esc(f.name)}</option>`).join('');
   function lbl(t){return `<label style="font-size:11px;font-weight:600;color:#4a5568;display:block;margin-bottom:3px">${t}</label>`;}
   function tog(v){return v?'checked':'';}
   function rOpt(nm,val,txt,cur){return `<label style="display:flex;align-items:flex-start;gap:6px;font-size:12.5px;color:#4a5568;cursor:pointer;line-height:1.5;padding:2px 0"><input type="radio" name="${nm}" value="${val}" ${val===cur?'checked':''} style="margin-top:3px;flex-shrink:0;accent-color:var(--green)"><span>${txt}</span></label>`;}
@@ -2619,7 +2690,7 @@ function openClientModal(id){
     <div style="display:flex;flex-direction:column">
       <div class="msec-hdr">基本情報</div>
       <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:14px">
-        <div>${lbl('事業所 *')}<select class="f-select" id="cl-fac">${facOpts}</select></div>
+        <div>${lbl('事業所 *')}<select class="f-select" id="cl-fac" onchange="onClFacChange()">${facOpts}</select></div>
         <div style="display:flex;gap:12px">
           <div style="flex:1">${lbl('姓 *')}<input class="f-input" id="cl-sei" value="${esc(c?.sei||c?.name?.split(' ')[0]||'')}" placeholder="山田"></div>
           <div style="flex:1">${lbl('名 *')}<input class="f-input" id="cl-mei" value="${esc(c?.mei||c?.name?.split(' ')[1]||'')}" placeholder="太郎"></div>
@@ -2630,7 +2701,7 @@ function openClientModal(id){
         </div>
         <div style="display:flex;gap:12px">
           <div style="flex:2">${lbl('受給者証番号')}<input class="f-input" id="cl-receipt" value="${esc(c?.receiptNo||'')}" placeholder="0000000000" maxlength="10"></div>
-          <div style="flex:1">${lbl('サービス種別 *')}<select class="f-select" id="cl-type"><option value="B" ${(c?.serviceType||'B')==='B'?'selected':''}>B型</option><option value="A" ${c?.serviceType==='A'?'selected':''}>A型</option></select></div>
+          <div style="flex:1">${lbl('サービス種別 *')}<select class="f-select" id="cl-type"><option value="B" ${defaultType==='B'?'selected':''}>就労継続B型</option><option value="A" ${defaultType==='A'?'selected':''}>就労継続A型</option></select></div>
         </div>
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:#4a5568"><input type="checkbox" id="cl-no-receipt" ${tog(c?.noReceipt)} style="accent-color:var(--green);width:15px;height:15px">受給者証未発行もしくは見学中の利用者（請求対象外）</label>
         <div>
