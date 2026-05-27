@@ -695,7 +695,10 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
             <select class="cs-select" id="clientsFacSel" onchange="renderClients()"></select>
           </div>
           <div style="display:flex;gap:8px;align-items:center">
-            <button id="btnToggleInactive" class="btn-add" onclick="toggleShowInactive()" style="background:#f3f4f6;color:#374151;border-color:#d1d5db">👁 退所者を表示</button>
+            <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:13px;color:#374151;user-select:none">
+              <input type="checkbox" id="btnToggleInactive" checked onchange="toggleShowInactive()" style="width:15px;height:15px;cursor:pointer;accent-color:var(--green)">
+              退所者を非表示にする
+            </label>
             <button class="btn-add" onclick="openClientModal(null)">＋ 利用者を追加</button>
             <button class="btn-add" onclick="openImportModal()" style="background:var(--navy);border-color:var(--navy)">📥 knowbeからインポート</button>
           </div>
@@ -2490,19 +2493,9 @@ function buildClientsFacSel(){
 }
 let _showInactive = false;
 function toggleShowInactive(){
-  _showInactive = !_showInactive;
-  const btn = document.getElementById('btnToggleInactive');
-  if(_showInactive){
-    btn.textContent='👁 退所者を非表示';
-    btn.style.background='var(--green-lt)';
-    btn.style.color='var(--green-dk)';
-    btn.style.borderColor='var(--green)';
-  } else {
-    btn.textContent='👁 退所者を表示';
-    btn.style.background='#f3f4f6';
-    btn.style.color='#374151';
-    btn.style.borderColor='#d1d5db';
-  }
+  const chk = document.getElementById('btnToggleInactive');
+  // チェックあり → 退所者を非表示（_showInactive=false）
+  _showInactive = !chk.checked;
   renderClients();
 }
 
