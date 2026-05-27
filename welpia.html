@@ -283,6 +283,19 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
 .badge-active{background:var(--green-lt);color:var(--green-dk);border-radius:3px;padding:2px 7px;font-size:11px;font-weight:600}
 .badge-inactive{background:#f3f4f6;color:#6b7280;border-radius:3px;padding:2px 7px;font-size:11px;font-weight:600}
 
+/* ===== システム設定テーブル ===== */
+.sys-tbl{width:100%;border-collapse:collapse;font-size:13px}
+.sys-tbl th{background:#f3f8f1;color:var(--navy);font-weight:700;padding:10px 12px;border:1px solid var(--border);text-align:left;white-space:nowrap}
+.sys-tbl td{padding:9px 12px;border:1px solid var(--border);vertical-align:middle}
+.sys-tbl tbody tr:hover td{background:#f9fdf6}
+.perm-th-center{text-align:center!important}
+.inline-input{border:1px solid var(--border);border-radius:5px;padding:5px 8px;font-size:12px;font-family:inherit;background:#fff;color:var(--text)}
+.inline-input:focus{outline:none;border-color:var(--green)}
+.act-btn{border:none;border-radius:5px;padding:5px 12px;font-size:11px;font-weight:600;cursor:pointer}
+.update-btn{background:var(--green);color:#fff}
+.update-btn:hover{background:var(--green-dk)}
+.sys-warn{margin-top:14px;padding:12px 16px;background:#fef3c7;border-radius:8px;font-size:12px;color:#92400e;line-height:1.7}
+
 /* ===== 事業所カード ===== */
 .fac-card{background:#fff;border-radius:8px;padding:20px 22px;box-shadow:0 1px 4px rgba(0,0,0,.06);margin-bottom:14px;border-left:4px solid var(--green)}
 .fac-card h4{font-size:15px;font-weight:700;color:var(--navy);margin-bottom:10px;display:flex;align-items:center;gap:8px}
@@ -410,6 +423,14 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
         <div class="sb-sub-item" id="sm-facility" onclick="showView('facility')">事業所情報</div>
         <div class="sb-sub-item" id="sm-clients" onclick="showView('clients')">利用者情報</div>
         <div class="sb-sub-item" id="sm-init" onclick="showView('init')">初期設定情報</div>
+      </div>
+      <div class="sb-item" id="sm-sysset" onclick="toggleSysSetSub()">
+        <span class="si-ico">🔧</span>システム設定
+        <span class="si-arrow" id="si-arrow-sysset">▾</span>
+      </div>
+      <div class="sb-sub" id="sub-sysset" style="display:none">
+        <div class="sb-sub-item" id="sm-sysusers" onclick="showView('sysusers')">👤 ユーザー設定</div>
+        <div class="sb-sub-item" id="sm-sysperms" onclick="showView('sysperms')">🔐 権限設定</div>
       </div>
       <div class="sb-item" id="sm-help" onclick="toggleHelpSub()">
         <span class="si-ico">❓</span>ヘルプ
@@ -943,6 +964,52 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
   </div>
 </div>
 
+<!-- ===== システム設定 > ユーザー設定 ===== -->
+<div id="view-sysusers" style="display:none">
+  <div class="page-hdr">システム設定 <span class="ph-sub">› ユーザー設定</span></div>
+  <div class="content-area">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div style="font-size:13px;color:var(--text-lt)">welbeにアクセスできるユーザーと権限を管理します。</div>
+      <button class="btn-add" onclick="openAddSysUser()">＋ ユーザーを追加</button>
+    </div>
+    <div class="form-section" style="padding:0;overflow:hidden">
+      <table class="sys-tbl">
+        <thead><tr>
+          <th>メールアドレス</th><th>表示名</th><th>権限</th><th>状態</th><th>操作</th>
+        </tr></thead>
+        <tbody id="sysUserTbody"></tbody>
+      </table>
+    </div>
+    <div class="sys-warn">
+      ⚠️ ログイン認証は Firebase Authentication で管理されています。パスワード変更・アカウント削除は
+      <a href="https://console.firebase.google.com/project/dainichi-001/authentication/users" target="_blank" style="color:#1d4ed8;font-weight:600">Firebase Console → Authentication ↗</a>
+      から行ってください。
+    </div>
+  </div>
+</div>
+
+<!-- ===== システム設定 > 権限設定 ===== -->
+<div id="view-sysperms" style="display:none">
+  <div class="page-hdr">システム設定 <span class="ph-sub">› 権限設定</span></div>
+  <div class="content-area">
+    <div style="font-size:13px;color:var(--text-lt);margin-bottom:14px">各権限ロールがアクセスできる機能を設定します。管理者のシステム設定は変更できません。</div>
+    <div class="form-section" style="padding:0;overflow:hidden">
+      <table class="sys-tbl">
+        <thead><tr>
+          <th style="width:55%">機能</th>
+          <th class="perm-th-center">管理者</th>
+          <th class="perm-th-center">スタッフ</th>
+        </tr></thead>
+        <tbody id="sysPermTbody"></tbody>
+      </table>
+    </div>
+    <div style="margin-top:14px;display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn-cancel" onclick="renderSysPerms()">リセット</button>
+      <button class="btn-save" onclick="saveSysPerms()">💾 保存</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script>
@@ -1143,6 +1210,14 @@ async function boot(){
 function startApp(){
   document.getElementById('loginScreen').style.display='none';
   document.getElementById('app').style.display='block';
+  // ログインユーザーを welbe_users に自動登録（初回のみ）
+  if(_currentUser?.email){
+    const wUsers=load('welbe_users',[]);
+    if(!wUsers.find(u=>u.email===_currentUser.email)){
+      wUsers.push({email:_currentUser.email, name:_currentUser.name||'', role:_currentUser.role||'staff', active:true});
+      save('welbe_users', wUsers);
+    }
+  }
   const facs=load('facilities',[]);
   _curFacId = facs[0]?.id||'';
   buildFacSelector();
@@ -1155,7 +1230,7 @@ function startApp(){
 // ナビゲーション
 // =========================================================
 let curView='daily';
-const viewIds=['daily','monthly','timecard','claim','facility','clients','init'];
+const viewIds=['daily','monthly','timecard','claim','facility','clients','init','sysusers','sysperms'];
 function showView(v){
   curView=v;
   viewIds.forEach(id=>document.getElementById('view-'+id).style.display='none');
@@ -1167,6 +1242,8 @@ function showView(v){
   else if(v==='facility'){document.getElementById('sm-facility').classList.add('active');openSettingSub();}
   else if(v==='clients'){document.getElementById('sm-clients').classList.add('active');openSettingSub();}
   else if(v==='init'){document.getElementById('sm-init').classList.add('active');openSettingSub();}
+  else if(v==='sysusers'){document.getElementById('sm-sysusers').classList.add('active');openSysSetSub();}
+  else if(v==='sysperms'){document.getElementById('sm-sysperms').classList.add('active');openSysSetSub();}
   // タイムカードを離れるときは時計タイマー停止
   if(v!=='timecard') _stopTcClock();
   if(v==='daily') renderDaily();
@@ -1176,12 +1253,16 @@ function showView(v){
   else if(v==='facility') renderFacilityList();
   else if(v==='clients'){buildClientsFacSel();renderClients();}
   else if(v==='init') renderInit();
+  else if(v==='sysusers') renderSysUsers();
+  else if(v==='sysperms') renderSysPerms();
 }
 function setTab(t){ showView(t==='daily'?'daily':'monthly'); }
-let _sSet=false,_sHelp=false;
+let _sSet=false,_sHelp=false,_sSys=false;
 function toggleSettingSub(){_sSet=!_sSet;document.getElementById('sub-setting').style.display=_sSet?'block':'none';document.getElementById('si-arrow-setting').classList.toggle('open',_sSet);}
 function openSettingSub(){_sSet=true;document.getElementById('sub-setting').style.display='block';document.getElementById('si-arrow-setting').classList.add('open');}
 function toggleHelpSub(){_sHelp=!_sHelp;document.getElementById('sub-help').style.display=_sHelp?'block':'none';document.getElementById('si-arrow-help').classList.toggle('open',_sHelp);}
+function toggleSysSetSub(){_sSys=!_sSys;document.getElementById('sub-sysset').style.display=_sSys?'block':'none';document.getElementById('si-arrow-sysset').classList.toggle('open',_sSys);}
+function openSysSetSub(){_sSys=true;document.getElementById('sub-sysset').style.display='block';document.getElementById('si-arrow-sysset').classList.add('open');}
 
 // =========================================================
 // 日付ユーティリティ
@@ -3331,6 +3412,135 @@ function showToast(msg,ms=2200){
 }
 
 window.addEventListener('DOMContentLoaded',boot);
+
+// =========================================================
+// システム設定 — ユーザー設定 & 権限設定
+// =========================================================
+const WELBE_PERM_DEFS = [
+  { key:'timecard_punch',  label:'タイムカード打刻',   desc:'出退勤の打刻',                 group:'タイムカード', adm:true,  stf:true  },
+  { key:'timecard_edit',   label:'タイムカード修正',   desc:'過去の打刻を修正・削除',       group:'タイムカード', adm:true,  stf:false },
+  { key:'record_edit',     label:'利用実績編集',       desc:'実績の登録・変更',             group:'利用実績',     adm:true,  stf:true  },
+  { key:'claim_access',    label:'請求アクセス',       desc:'請求書類の作成・ダウンロード', group:'請求',         adm:true,  stf:false },
+  { key:'client_view',     label:'利用者情報閲覧',     desc:'利用者一覧の表示',             group:'利用者',       adm:true,  stf:true  },
+  { key:'client_edit',     label:'利用者情報編集',     desc:'利用者の追加・変更・削除',     group:'利用者',       adm:true,  stf:false },
+  { key:'system_settings', label:'システム設定',       desc:'ユーザー管理・権限設定',       group:'システム',     adm:true,  stf:false },
+];
+const WELBE_ROLE_LABELS = { admin:'管理者', staff:'スタッフ' };
+
+function getWelbePerms(){
+  const stored = load('welbe_perms',{});
+  const r={};
+  WELBE_PERM_DEFS.forEach(d=>{
+    r[d.key]={ admin: stored[d.key]?.admin??d.adm, staff: stored[d.key]?.staff??d.stf };
+  });
+  return r;
+}
+
+// ---- ユーザー設定 ----
+function renderSysUsers(){
+  const users = load('welbe_users',[]);
+  const tbody = document.getElementById('sysUserTbody');
+  if(!users.length){
+    tbody.innerHTML=`<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text-lt)">ユーザーが登録されていません</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = users.map((u,i)=>`
+    <tr id="sysurow-${i}">
+      <td style="font-family:monospace;font-size:12px">${esc(u.email)}</td>
+      <td><input class="inline-input" id="sysu-name-${i}" value="${esc(u.name||'')}" style="width:110px" oninput="markSysUserDirty(${i})"></td>
+      <td><select class="inline-input" id="sysu-role-${i}" oninput="markSysUserDirty(${i})">
+        <option value="admin" ${u.role==='admin'?'selected':''}>管理者</option>
+        <option value="staff" ${u.role!=='admin'?'selected':''}>スタッフ</option>
+      </select></td>
+      <td><select class="inline-input" id="sysu-act-${i}" oninput="markSysUserDirty(${i})">
+        <option value="1" ${u.active!==false?'selected':''}>有効</option>
+        <option value="0" ${u.active===false?'selected':''}>無効</option>
+      </select></td>
+      <td style="display:flex;gap:6px">
+        <button class="act-btn update-btn" onclick="saveSysUser(${i})">更新</button>
+        <button class="btn-danger" onclick="deleteSysUser(${i})">削除</button>
+      </td>
+    </tr>`).join('');
+}
+
+function markSysUserDirty(i){
+  const row=document.getElementById('sysurow-'+i);
+  if(row) row.style.background='#fefce8';
+}
+
+function saveSysUser(i){
+  const users=load('welbe_users',[]);
+  if(!users[i]) return;
+  users[i].name   = document.getElementById(`sysu-name-${i}`)?.value.trim()||'';
+  users[i].role   = document.getElementById(`sysu-role-${i}`)?.value||'staff';
+  users[i].active = document.getElementById(`sysu-act-${i}`)?.value !== '0';
+  save('welbe_users', users);
+  showToast('保存しました');
+  renderSysUsers();
+}
+
+function deleteSysUser(i){
+  const users=load('welbe_users',[]);
+  if(!confirm(`「${users[i]?.email}」を削除しますか？`)) return;
+  users.splice(i,1);
+  save('welbe_users', users);
+  showToast('削除しました');
+  renderSysUsers();
+}
+
+function openAddSysUser(){
+  const email=(prompt('追加するメールアドレス')||'').trim();
+  if(!email||!email.includes('@')){ if(email) showToast('正しいメールアドレスを入力してください'); return; }
+  const users=load('welbe_users',[]);
+  if(users.find(u=>u.email===email)){ showToast('このメールアドレスはすでに登録されています'); return; }
+  const name=(prompt('表示名（省略可）')||'').trim();
+  users.push({email, name, role:'staff', active:true});
+  save('welbe_users', users);
+  showToast(`${email} を追加しました`);
+  renderSysUsers();
+}
+
+// ---- 権限設定 ----
+function renderSysPerms(){
+  const perms=getWelbePerms();
+  let curGrp='', html='';
+  WELBE_PERM_DEFS.forEach(d=>{
+    if(d.group!==curGrp){
+      curGrp=d.group;
+      html+=`<tr><td colspan="3" style="background:#e8f5e2;color:var(--navy);font-weight:700;padding:7px 12px;border:1px solid var(--border);font-size:12px">${curGrp}</td></tr>`;
+    }
+    const chkAdm=perms[d.key]?.admin??d.adm;
+    const chkStf=perms[d.key]?.staff??d.stf;
+    const locked=d.key==='system_settings';
+    html+=`<tr>
+      <td style="padding:10px 12px;border:1px solid var(--border)">
+        <div style="font-weight:600;color:var(--navy)">${d.label}</div>
+        <div style="font-size:11px;color:var(--text-lt);margin-top:2px">${d.desc}</div>
+      </td>
+      <td style="text-align:center;border:1px solid var(--border);padding:10px">
+        <input type="checkbox" id="wp-${d.key}-admin" ${chkAdm?'checked':''} ${locked?'disabled':''}
+          style="width:18px;height:18px;cursor:${locked?'not-allowed':'pointer'}">
+      </td>
+      <td style="text-align:center;border:1px solid var(--border);padding:10px">
+        <input type="checkbox" id="wp-${d.key}-staff" ${chkStf?'checked':''}
+          style="width:18px;height:18px;cursor:pointer">
+      </td>
+    </tr>`;
+  });
+  document.getElementById('sysPermTbody').innerHTML=html;
+}
+
+function saveSysPerms(){
+  const perms={};
+  WELBE_PERM_DEFS.forEach(d=>{
+    const adm=document.getElementById(`wp-${d.key}-admin`);
+    const stf=document.getElementById(`wp-${d.key}-staff`);
+    perms[d.key]={ admin: adm?adm.checked:d.adm, staff: stf?stf.checked:d.stf };
+    if(d.key==='system_settings') perms[d.key].admin=true;
+  });
+  save('welbe_perms', perms);
+  showToast('権限設定を保存しました');
+}
 </script>
 </body>
 </html>
