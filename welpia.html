@@ -78,7 +78,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
 .sb-sub-item.active{color:var(--green);font-weight:600}
 
 /* ===== クロコパネル (admin専用) ===== */
-#croco-wrap{border-top:1px solid rgba(255,255,255,.12);flex-shrink:0}
+#croco-wrap{flex-shrink:0}
 .croco-hdr{display:flex;align-items:center;gap:7px;padding:11px 16px;cursor:pointer;color:rgba(200,225,215,.8);font-size:13px;font-weight:600;transition:background .15s;user-select:none}
 .croco-hdr:hover{background:rgba(255,255,255,.06)}
 .croco-hdr-ico{font-size:15px;flex-shrink:0}
@@ -446,14 +446,6 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
         <div class="sb-sub-item" id="sm-clients" onclick="showView('clients')">利用者情報</div>
         <div class="sb-sub-item" id="sm-init" onclick="showView('init')">初期設定情報</div>
       </div>
-      <div class="sb-item" id="sm-sysset" onclick="toggleSysSetSub()">
-        <span class="si-ico">🔧</span>システム設定
-        <span class="si-arrow" id="si-arrow-sysset">▾</span>
-      </div>
-      <div class="sb-sub" id="sub-sysset" style="display:none">
-        <div class="sb-sub-item" id="sm-sysusers" onclick="showView('sysusers')">👤 ユーザー設定</div>
-        <div class="sb-sub-item" id="sm-sysperms" onclick="showView('sysperms')">🔐 権限設定</div>
-      </div>
       <div class="sb-item" id="sm-help" onclick="toggleHelpSub()">
         <span class="si-ico">❓</span>ヘルプ
         <span class="si-arrow" id="si-arrow-help">▾</span>
@@ -462,19 +454,27 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
         <div class="sb-sub-item" onclick="alert('準備中です')">操作マニュアル ↗</div>
         <div class="sb-sub-item" onclick="alert('準備中です')">お問い合わせ ↗</div>
       </div>
-    </div>
-
-    <!-- ===== クロコパネル (admin専用) ===== -->
-    <div id="croco-wrap" style="display:none">
-      <div class="croco-hdr" onclick="toggleCrocoPanel()">
-        <span class="croco-hdr-ico">🤖</span>
-        <span class="croco-hdr-txt">クロコの提案</span>
-        <span id="croco-badge" class="croco-badge" style="display:none">0</span>
-        <span class="croco-live">LIVE</span>
-        <span class="si-arrow" id="si-arrow-croco" style="margin-left:2px">▾</span>
+      <!-- システム設定（最下段） -->
+      <div class="sb-item" id="sm-sysset" onclick="toggleSysSetSub()">
+        <span class="si-ico">🔧</span>システム設定
+        <span class="si-arrow" id="si-arrow-sysset">▾</span>
       </div>
-      <div id="croco-body" class="croco-body" style="display:none">
-        <div id="croco-list"></div>
+      <div class="sb-sub" id="sub-sysset" style="display:none">
+        <div class="sb-sub-item" id="sm-sysusers" onclick="showView('sysusers')">👤 ユーザー設定</div>
+        <div class="sb-sub-item" id="sm-sysperms" onclick="showView('sysperms')">🔐 権限設定</div>
+        <!-- クロコの提案（システム設定のサブ項目） -->
+        <div id="croco-wrap" style="display:none;border-top:1px solid rgba(255,255,255,.1)">
+          <div class="sb-sub-item" onclick="toggleCrocoPanel()" style="gap:7px;padding-right:12px">
+            <span>🤖</span>
+            <span style="flex:1">クロコの提案</span>
+            <span id="croco-badge" class="croco-badge" style="display:none;font-size:10px;padding:1px 5px">0</span>
+            <span class="croco-live" style="font-size:9px">LIVE</span>
+            <span class="si-arrow" id="si-arrow-croco">▾</span>
+          </div>
+          <div id="croco-body" class="croco-body" style="display:none">
+            <div id="croco-list"></div>
+          </div>
+        </div>
       </div>
     </div>
   </nav>
@@ -2819,6 +2819,8 @@ function _crocoP(p){ return p==='high'?'🔴':p==='med'?'🟡':'🟢'; }
 function initCrocoPanel(){
   if(getS()?.role !== 'admin') return;
   document.getElementById('croco-wrap').style.display = 'block';
+  // システム設定サブメニューを自動展開（クロコが見えるように）
+  openSysSetSub();
   // シードデータ投入（初回のみ）
   _crocoSeedIfEmpty();
   // リアルタイムリスナー
