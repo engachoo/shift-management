@@ -647,7 +647,8 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
             <span class="cs-label">表示する事業所</span>
             <select class="cs-select" id="clientsFacSel" onchange="renderClients()"></select>
           </div>
-          <div style="display:flex;gap:8px">
+          <div style="display:flex;gap:8px;align-items:center">
+            <button id="btnToggleInactive" class="btn-add" onclick="toggleShowInactive()" style="background:#f3f4f6;color:#374151;border-color:#d1d5db">👁 退所者を表示</button>
             <button class="btn-add" onclick="openClientModal(null)">＋ 利用者を追加</button>
             <button class="btn-add" onclick="openImportModal()" style="background:var(--navy);border-color:var(--navy)">📥 knowbeからインポート</button>
           </div>
@@ -2378,11 +2379,35 @@ function buildClientsFacSel(){
   const facs=load('facilities',[]);
   sel.innerHTML=facs.map(f=>`<option value="${f.id}" ${f.id===_curFacId?'selected':''}>${esc(f.name)}</option>`).join('');
 }
+let _showInactive = false;
+function toggleShowInactive(){
+  _showInactive = !_showInactive;
+  const btn = document.getElementById('btnToggleInactive');
+  if(_showInactive){
+    btn.textContent='👁 退所者を非表示';
+    btn.style.background='var(--green-lt)';
+    btn.style.color='var(--green-dk)';
+    btn.style.borderColor='var(--green)';
+  } else {
+    btn.textContent='👁 退所者を表示';
+    btn.style.background='#f3f4f6';
+    btn.style.color='#374151';
+    btn.style.borderColor='#d1d5db';
+  }
+  renderClients();
+}
+
 function renderClients(){
   const fid=document.getElementById('clientsFacSel')?.value||_curFacId;
-  const clients=load('clients',[]).filter(c=>c.facilityId===fid);
+  let clients=load('clients',[]).filter(c=>c.facilityId===fid);
+  if(!_showInactive) clients=clients.filter(c=>c.active!==false);
   const tbody=document.getElementById('clientTbody');
-  if(!clients.length){tbody.innerHTML=`<tr><td colspan="8"><div class="empty-state">利用者が登録されていません</div></td></tr>`;return;}
+  const total=load('clients',[]).filter(c=>c.facilityId===fid).length;
+  const inactive=load('clients',[]).filter(c=>c.facilityId===fid&&c.active===false).length;
+  if(!clients.length){
+    const msg=_showInactive?'利用者が登録されていません':`利用中の利用者がいません（退所者${inactive}名は非表示）`;
+    tbody.innerHTML=`<tr><td colspan="8"><div class="empty-state">${msg}</div></td></tr>`;return;
+  }
   tbody.innerHTML=clients.map(c=>`
     <tr>
       <td style="font-weight:600">${esc(c.name)}</td>
