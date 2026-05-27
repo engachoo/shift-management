@@ -364,8 +364,8 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
     </div>
     <form onsubmit="doLogin();return false;" autocomplete="on">
     <div class="lc-field">
-      <label>ログインID</label>
-      <input id="loginId" type="text" name="username" placeholder="ログインIDを入力" autocomplete="username">
+      <label>メールアドレス</label>
+      <input id="loginId" type="email" name="email" placeholder="メールアドレスを入力" autocomplete="email">
     </div>
     <div class="lc-field">
       <label>パスワード</label>
@@ -959,6 +959,7 @@ const _fbConfig = {
 };
 firebase.initializeApp(_fbConfig);
 const _db = firebase.firestore();
+const _auth = firebase.auth();
 const _COL = 'kokuhoren_data';
 
 // =========================================================
@@ -1044,37 +1045,39 @@ function initDefaultData(){
 }
 
 // =========================================================
-// 認証・セッション（グループウェア方式）
+// 認証（Firebase Auth）
 // =========================================================
-const _SS_KEY = 'kokuho_s';
-let _sess = null;
-function getS(){ if(_sess) return _sess; try{const s=sessionStorage.getItem(_SS_KEY);if(s){_sess=JSON.parse(s);return _sess;}}catch(e){} return null; }
-function setS(s){ _sess=s; sessionStorage.setItem(_SS_KEY,JSON.stringify(s)); }
-function clearS(){ _sess=null; sessionStorage.removeItem(_SS_KEY); }
+const _ADMIN_EMAILS = ['iwashimizu.k@gmail.com'];
+let _currentUser = null;
+// 後方互換：既存コードの getS() 呼び出しをそのまま使用可能に
+function getS(){ return _currentUser; }
 
-function doLogin(){
-  const lid = document.getElementById('loginId').value.trim();
-  const lp  = document.getElementById('loginPass').value;
-  const err = document.getElementById('loginErr');
+async function doLogin(){
+  const email = document.getElementById('loginId').value.trim();
+  const pass  = document.getElementById('loginPass').value;
+  const err   = document.getElementById('loginErr');
+  const btn   = document.querySelector('.lc-btn');
   err.textContent='';
-  if(!lid||!lp){ err.textContent='IDとパスワードを入力してください'; return; }
-  const users = load('users',[]);
-  const u = users.find(x=>x.loginId===lid && x.active!==false);
-  if(!u || u.password !== lp){
-    err.textContent='IDまたはパスワードが正しくありません';
-    return;
+  if(!email||!pass){ err.textContent='メールアドレスとパスワードを入力してください'; return; }
+  if(btn){ btn.textContent='ログイン中...'; btn.disabled=true; }
+  try{
+    await _auth.signInWithEmailAndPassword(email, pass);
+    // 成功後は onAuthStateChanged が startApp() を呼ぶ
+  }catch(e){
+    err.textContent='メールアドレスまたはパスワードが正しくありません';
+    if(btn){ btn.textContent='ログイン'; btn.disabled=false; }
   }
-  setS({userId:u.id, name:u.name, role:u.role});
-  startApp();
 }
 
 function doLogout(){
   if(!confirm('ログアウトしますか？'))return;
-  clearS();
-  document.getElementById('app').style.display='none';
-  document.getElementById('loginScreen').style.display='flex';
-  document.getElementById('loginId').value='';
-  document.getElementById('loginPass').value='';
+  _auth.signOut().then(()=>{
+    _currentUser=null;
+    document.getElementById('app').style.display='none';
+    document.getElementById('loginScreen').style.display='flex';
+    document.getElementById('loginId').value='';
+    document.getElementById('loginPass').value='';
+  });
 }
 
 function lcToggleEye(){
@@ -1117,20 +1120,24 @@ async function boot(){
   document.getElementById('loginScreen').style.display='none';
   document.getElementById('app').style.display='none';
 
-  const ok = await loadAllFromFirestore();
-  if(!ok){
-    document.getElementById('loadingScreen').innerHTML=
-      '<div style="color:#f87171;font-size:14px;text-align:center;padding:20px">⚠️ データベースへの接続に失敗しました。<br>ネットワーク接続を確認してください。</div>';
-    return;
-  }
-  initDefaultData();
-  document.getElementById('loadingScreen').style.display='none';
-
-  if(getS()){
-    startApp();
-  } else {
-    document.getElementById('loginScreen').style.display='flex';
-  }
+  _auth.onAuthStateChanged(async user=>{
+    if(user){
+      const role = _ADMIN_EMAILS.includes(user.email) ? 'admin' : 'staff';
+      _currentUser = { userId: user.uid, name: user.email.split('@')[0], email: user.email, role };
+      const ok = await loadAllFromFirestore();
+      if(!ok){
+        document.getElementById('loadingScreen').innerHTML=
+          '<div style="color:#f87171;font-size:14px;text-align:center;padding:20px">⚠️ データベースへの接続に失敗しました。<br>ネットワーク接続を確認してください。</div>';
+        return;
+      }
+      initDefaultData();
+      document.getElementById('loadingScreen').style.display='none';
+      startApp();
+    }else{
+      document.getElementById('loadingScreen').style.display='none';
+      document.getElementById('loginScreen').style.display='flex';
+    }
+  });
 }
 function startApp(){
   document.getElementById('loginScreen').style.display='none';
@@ -2930,9 +2937,27 @@ function impJsonChanged(){
     if(!arr||arr.length===0){
       msg.style.color='#e53e3e'; msg.textContent='⚠️ 利用者データの配列が見つかりません'; btn.disabled=true; return;
     }
-    _impParsed = arr;
+    // knowbe生データ（displayName形式）を welbe形式に正規化
+    _impParsed = arr.map(c=>{
+      if(c.displayName && !c.name){
+        const parts = (c.displayName||'').split(/\s|　/);
+        const kanaParts = (c.kanaName||'').split(/\s|　/);
+        return Object.assign({}, c, {
+          name:     c.displayName,
+          sei:      parts[0]||'',
+          mei:      parts.slice(1).join('')||'',
+          kana:     c.kanaName||'',
+          kanaSei:  kanaParts[0]||'',
+          kanaMei:  kanaParts.slice(1).join('')||'',
+          receiptNo: c.recipient_number||c.receiptNo||'',
+          active:   c.date_end_in_service===null||c.date_end_in_service===undefined,
+          knowbeId: c.uif_id
+        });
+      }
+      return c;
+    });
     msg.style.color='var(--green-dk)';
-    msg.textContent=`✅ ${arr.length}名のデータを検出しました`;
+    msg.textContent=`✅ ${_impParsed.length}名のデータを検出しました`;
     btn.disabled=false;
   }catch(e){
     msg.style.color='#e53e3e'; msg.textContent='⚠️ JSON形式が正しくありません: '+e.message; btn.disabled=true;
@@ -2948,7 +2973,7 @@ function impNext(){
     const tbody = document.getElementById('imp-preview-tbody');
     let rows='', count=0;
     _impParsed.forEach((c,idx)=>{
-      const name = c.name || c._sourceName || ((c.sei||'')+(c.mei?' '+c.mei:''));
+      const name = c.name || c._sourceName || c.displayName || ((c.sei||'')+(c.mei?' '+c.mei:''));
       const birth = c.birthDate || c.birth_date || '';
       const dtypes = Array.isArray(c.disabilityTypes)?c.disabilityTypes.join('・'):(c.disabilityTypes||'');
       const limit  = c.limitAmount || c.limit_amount || '';
@@ -2983,9 +3008,18 @@ function impExecute(){
   checked.forEach(idx=>{
     const src = _impParsed[idx];
     if(!src) return;
-    const sei = src.sei || src.last_name || (src.name||'').split(/\s|　/)[0]||'';
-    const mei = src.mei || src.first_name || (src.name||'').split(/\s|　/).slice(1).join('')||'';
-    const name= src.name || src._sourceName || (sei+(mei?' '+mei:''));
+    // knowbe生データ（displayName形式）にも対応
+    const _rawName = src.displayName || src.name || src._sourceName || '';
+    const sei = src.sei || src.last_name || _rawName.split(/\s|　/)[0]||'';
+    const mei = src.mei || src.first_name || _rawName.split(/\s|　/).slice(1).join('')||'';
+    const name= _rawName || (sei+(mei?' '+mei:''));
+    // kana（knowbe: kanaName, welbe_extractor: kanaSei/kanaMei）
+    const _rawKana = src.kanaName || src.kana || '';
+    const _kanaSei = src.kanaSei || src.kana_sei || _rawKana.split(/\s|　/)[0]||'';
+    const _kanaMei = src.kanaMei || src.kana_mei || _rawKana.split(/\s|　/).slice(1).join('')||'';
+    // active判定（date_end_in_serviceがnullなら在籍中）
+    const _active = src.active!==undefined ? src.active :
+                    (src.date_end_in_service===null || src.date_end_in_service===undefined);
 
     // フィールド安全取得ヘルパー
     function g(a){return src[a]!==undefined&&src[a]!==null?src[a]:undefined;}
@@ -2996,10 +3030,10 @@ function impExecute(){
       id: 'c'+Date.now()+'_'+idx,
       facilityId: facId,
       sei, mei, name,
-      kanaSei:  gs('kanaSei','kana_sei','ruby_last',''),
-      kanaMei:  gs('kanaMei','kana_mei','ruby_first',''),
-      kana:     gs('kana',''),
-      receiptNo:gs('receiptNo','receipt_no',''),
+      kanaSei:  _kanaSei,
+      kanaMei:  _kanaMei,
+      kana:     _rawKana || (_kanaSei+(_kanaMei?' '+_kanaMei:'')).trim(),
+      receiptNo:gs('receiptNo','receipt_no','recipient_number',''),
       noReceipt:gb('noReceipt','no_receipt'),
       serviceType: gs('serviceType','service_type','A'),
       disabilityTypes: Array.isArray(g('disabilityTypes'))?g('disabilityTypes'):
@@ -3035,7 +3069,8 @@ function impExecute(){
       noPlan:          gb('noPlan','no_plan'),
       employLink:      gb('employLink','employ_link'),
       intensiveSupport:gb('intensiveSupport','intensive_support'),
-      active: g('active')!==false,
+      active: _active,
+      knowbeId: src.uif_id || src._sourceId || undefined,
       defaultDays: g('defaultDays')||g('default_days')||
         {mon:true,tue:true,wed:true,thu:true,fri:true,sat:true,sun:false},
       serviceDefaults: g('serviceDefaults')||g('service_defaults')||{
