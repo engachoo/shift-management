@@ -744,6 +744,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
             <span class="cs-label">事業所</span>
             <select class="cs-select" id="clientsFacSel" onchange="onClientsFacChange()"></select>
             <span id="clientsFacBadge" style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:12px;background:#fef3c7;color:#92400e"></span>
+            <button id="btnBulkFixType" onclick="bulkFixServiceType()" style="display:none;background:#fef9c3;border:1px solid #ca8a04;color:#78350f;border-radius:5px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer">⚠ 種別を一括修正</button>
           </div>
           <div style="display:flex;gap:8px;align-items:center">
             <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:13px;color:#374151;user-select:none">
@@ -2607,6 +2608,41 @@ function onClientsFacChange(){
   renderClients();
 }
 
+// 事業所のserviceTypeと不一致の利用者を一括修正
+function _checkServiceTypeMismatch(){
+  const fid=document.getElementById('clientsFacSel')?.value||_curFacId;
+  const f=load('facilities',[]).find(x=>x.id===fid);
+  if(!f||f.serviceType==='AB') { document.getElementById('btnBulkFixType').style.display='none'; return; }
+  const clients=load('clients',[]).filter(c=>c.facilityId===fid&&c.active!==false);
+  const mismatch=clients.filter(c=>c.serviceType!==f.serviceType);
+  const btn=document.getElementById('btnBulkFixType');
+  if(btn){
+    if(mismatch.length>0){
+      btn.style.display='inline-block';
+      btn.textContent=`⚠ ${mismatch.length}名の種別を${f.serviceType}型に一括修正`;
+    } else {
+      btn.style.display='none';
+    }
+  }
+}
+
+function bulkFixServiceType(){
+  const fid=document.getElementById('clientsFacSel')?.value||_curFacId;
+  const f=load('facilities',[]).find(x=>x.id===fid);
+  if(!f||f.serviceType==='AB') return;
+  if(!confirm(`「${f.name}」の全利用者のサービス種別を「${f.serviceType}型」に一括修正しますか？`)) return;
+  const clients=load('clients',[]);
+  let count=0;
+  clients.forEach(c=>{
+    if(c.facilityId===fid && c.serviceType!==f.serviceType){
+      c.serviceType=f.serviceType; count++;
+    }
+  });
+  save('clients',clients);
+  showToast(`${count}名のサービス種別を${f.serviceType}型に修正しました`);
+  renderClients();
+}
+
 function buildClaimFacSel(){
   const sel=document.getElementById('claimFacSel');
   if(!sel) return;
@@ -2667,6 +2703,7 @@ function renderClients(){
       </td>
     </tr>`;
   }).join('');
+  _checkServiceTypeMismatch();
 }
 function openClientModal(id){
   const facs=load('facilities',[]);
