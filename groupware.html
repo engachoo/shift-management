@@ -664,7 +664,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
     <div class="side-item" id="m-ci" onclick="showMod('circular')"><span class="si-icon">📝</span>承認申請<span class="side-badge" id="badge-ci">0</span></div>
     <div class="side-item" id="m-bl" onclick="showMod('bulletin')"><span class="si-icon">📌</span>連絡事項<span class="side-badge" id="badge-bl" style="display:none"></span></div>
     <div class="side-item" id="m-en" onclick="showMod('evnotif')"><span class="si-icon">🔔</span>更新・変更の通知<span class="side-badge" id="badge-en" style="display:none"></span></div>
-    <div class="side-item" id="m-td" onclick="showMod('todo')"><span class="si-icon">✅</span>ToDo<span class="side-badge gray" id="badge-td">0</span></div>
+    <div class="side-item" id="m-td" onclick="showMod('todo')"><span class="si-icon">✅</span>ToDo<span class="side-badge gray" id="badge-td" style="display:none"></span><span class="side-badge" id="badge-td-urgent" style="display:none;margin-left:3px"></span></div>
     <div id="acctMenu" style="display:none">
       <div class="side-group">経理・事務</div>
       <div class="side-item" id="m-pc" onclick="showMod('pettycash')"><span class="si-icon">💰</span>現金出納簿</div>
@@ -3014,7 +3014,20 @@ function updateBadges(){
   const tdRequested=_todos.filter(t=>!t.done&&t.userId===me&&t.assignedBy&&t.assignedBy!==me).length;
   const tdDelegated=_todos.filter(t=>!t.done&&t.assignedBy===me&&t.userId!==me).length;
   const tds=tdMine+tdRequested+tdDelegated;
-  document.getElementById('badge-td').textContent=tds||'';
+  const tdBadge=document.getElementById('badge-td');
+  tdBadge.textContent=tds||''; tdBadge.style.display=tds?'':'none';
+  // 緊急バッジ：期日超過 + 3日以内
+  const now=new Date(); now.setHours(0,0,0,0);
+  const day3=new Date(now); day3.setDate(day3.getDate()+3);
+  const tdUrgent=_todos.filter(t=>{
+    if(t.done) return false;
+    if(!(t.userId===me||(t.assignedBy===me&&t.userId!==me))) return false;
+    if(!t.due) return false;
+    const d=new Date(t.due+'T00:00:00');
+    return d<=day3; // 期日超過（d<now）も含む
+  }).length;
+  const urgBadge=document.getElementById('badge-td-urgent');
+  if(urgBadge){ urgBadge.textContent=tdUrgent||''; urgBadge.style.display=tdUrgent?'':'none'; }
   // 連絡事項：未確認（reactionsで未確認＋自分宛て）
   const blBadge=document.getElementById('badge-bl');
   if(blBadge){
