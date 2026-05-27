@@ -51,8 +51,28 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
 
 /* ===== レイアウト ===== */
 #app{display:none}
-#sidebar{position:fixed;top:0;left:0;width:224px;bottom:0;background:var(--navy);z-index:500;overflow-y:auto;display:flex;flex-direction:column}
+#sidebar{position:fixed;top:0;left:0;width:224px;bottom:0;background:var(--navy);z-index:500;overflow-y:auto;display:flex;flex-direction:column;transition:background .3s}
 #mainArea{margin-left:224px;min-height:100vh;background:var(--bg)}
+
+/* ===== サイドバー事業所カラーテーマ ===== */
+/* A型（デフォルト）: ネイビー #004063 */
+/* B型（山県）: ダークパープル */
+#sidebar[data-fac-type="B"]{background:#1e1535}
+#sidebar[data-fac-type="B"] .sb-item.active{background:rgba(139,92,246,.18);border-left-color:#a78bfa}
+#sidebar[data-fac-type="B"] .sb-item:hover{background:rgba(255,255,255,.06)}
+#sidebar[data-fac-type="B"] .sb-sub-item.active{color:#a78bfa}
+#sidebar[data-fac-type="B"] .sb-logo .sb-brand span{color:#a78bfa}
+#sidebar[data-fac-type="B"] .croco-badge{background:#7c3aed}
+#sidebar[data-fac-type="B"] .croco-live{color:#a78bfa}
+#sidebar[data-fac-type="B"] .croco-live::before{background:#a78bfa}
+#sidebar[data-fac-type="B"] .sb-fac-wrap{border-bottom-color:rgba(167,139,250,.25)}
+#sidebar[data-fac-type="B"] .sb-fac-sel{border-color:rgba(167,139,250,.4)}
+/* 事業所識別ストライプ */
+#sidebar::before{content:'';display:block;height:4px;background:#5a9e48;transition:background .3s;flex-shrink:0}
+#sidebar[data-fac-type="B"]::before{background:#7c3aed}
+/* AB型 */
+#sidebar[data-fac-type="AB"]{background:#0d3340}
+#sidebar[data-fac-type="AB"]::before{background:#0891b2}
 
 /* ===== サイドバー ===== */
 .sb-logo{padding:16px 16px 12px;border-bottom:1px solid rgba(255,255,255,.1)}
@@ -1296,7 +1316,7 @@ function buildFacSelector(){
   document.getElementById('sbCorpName').textContent = corp;
 }
 
-// 全ビューの事業所表示を _curFacId に同期する（静的ラベル）
+// 全ビューの事業所表示を _curFacId に同期する（静的ラベル + サイドバーカラーテーマ）
 function _syncFacDisplays(){
   const f = curFac();
   if(!f) return;
@@ -1316,6 +1336,13 @@ function _syncFacDisplays(){
     el.textContent=badgeText;
     el.style.cssText=badgeText ? badgeStyle : 'display:none';
   });
+  // ── サイドバーカラーテーマ（事業所別識別色）
+  const sb=document.getElementById('sidebar');
+  if(sb) sb.dataset.facType = f.serviceType||'A';
+  // topbar アバター色
+  const avatarColors={A:'#5a9e48',B:'#7c3aed',AB:'#0891b2'};
+  const av=document.getElementById('topbar-avatar');
+  if(av) av.style.background = avatarColors[f.serviceType]||avatarColors.A;
 }
 
 function onFacChange(){
