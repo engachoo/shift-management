@@ -1024,14 +1024,21 @@ const DEFAULT_FACILITIES = [
 ];
 
 function initDefaultData(){
-  if(!load('facilities')) save('facilities', DEFAULT_FACILITIES);
+  // 既存データ保護：claimsにデータがある場合はclients/facilitiesを絶対に上書きしない
+  const existingClaims = load('claims', null);
+  const hasExistingData = existingClaims && Array.isArray(existingClaims) && existingClaims.length > 0;
+
+  if(!load('facilities')){
+    if(!hasExistingData) save('facilities', DEFAULT_FACILITIES);
+  }
   if(!load('users')) save('users',[
     {id:'kh_u1',name:'岩清水',loginId:'iwashimizu',password:'welpia1',role:'admin',active:true},
     {id:'kh_u2',name:'山下',  loginId:'yamashita', password:'welpia2',role:'admin',active:true},
     {id:'kh_u3',name:'笹木原',loginId:'sasagihara',password:'welpia3',role:'user', active:true},
     {id:'kh_u4',name:'三浦',  loginId:'miura',     password:'welpia4',role:'user', active:true}
   ]);
-  if(!load('clients')) save('clients',[]);
+  // clients：既存請求データがある場合は空配列で上書きしない
+  if(!load('clients') && !hasExistingData) save('clients',[]);
   if(!load('claims'))  save('claims',[]);
   if(!load('config'))  save('config',{absenceMax:4,outsideMax:180,visitMax:2,weeksPerYear:5});
 }
