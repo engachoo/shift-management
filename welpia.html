@@ -1188,6 +1188,19 @@ function initDefaultData(){
 
   if(!load('facilities')){
     if(!hasExistingData) save('facilities', DEFAULT_FACILITIES);
+  } else {
+    // 既存施設データの serviceType を正しい値に修正（fac_yamagata は必ずB型）
+    const facs = load('facilities', []);
+    let facChanged = false;
+    facs.forEach(f => {
+      if(f.id === 'fac_yamagata' && f.serviceType !== 'B'){
+        f.serviceType = 'B'; facChanged = true;
+      }
+      if(f.id === 'fac_hashima' && f.serviceType !== 'A'){
+        f.serviceType = 'A'; facChanged = true;
+      }
+    });
+    if(facChanged) save('facilities', facs);
   }
   const DEFAULT_USERS=[
     {id:'kh_u1',name:'岩清水',loginId:'iwashimizu',password:'welpia1',role:'admin',  active:true},
@@ -2999,19 +3012,32 @@ function _crocoMarkAllViewed(items){ const v=_crocoGetViewed(); items.forEach(i=
 function _crocoP(p){ return p==='high'?'🔴':p==='med'?'🟡':'🟢'; }
 
 // ─── 初期化 ─────────────────────────────────────────────
+// Firestoreスナップをアイテム配列に変換（createdAtで降順ソート）
+function _snapToItems(snap){
+  const items=[];
+  snap.forEach(doc=>items.push({id:doc.id,...doc.data()}));
+  items.sort((a,b)=>{
+    const ta=a.createdAt?.toDate?a.createdAt.toDate().getTime():(a.createdAt instanceof Date?a.createdAt.getTime():0);
+    const tb=b.createdAt?.toDate?b.createdAt.toDate().getTime():(b.createdAt instanceof Date?b.createdAt.getTime():0);
+    return tb-ta;
+  });
+  return items;
+}
+
 function renderCrocoView(){
   if(_crocoItems.length>0){
     _crocoRender(_crocoItems);
   } else {
-    // まだFirestoreから届いていない場合は再取得
-    _db.collection(CROCO_COL).orderBy('createdAt','desc').limit(30).get()
+    // まだFirestoreから届いていない場合は再取得（orderBy不使用でインデックスエラー回避）
+    const el=document.getElementById('croco-view-list');
+    if(el) el.innerHTML='<div style="text-align:center;padding:40px;color:var(--text-lt);font-size:13px">読み込み中...</div>';
+    _db.collection(CROCO_COL).limit(30).get()
       .then(snap=>{
-        const items=[];
-        snap.forEach(doc=>items.push({id:doc.id,...doc.data()}));
+        const items=_snapToItems(snap);
         _crocoItems=items;
         _crocoRender(items);
-      }).catch(()=>{
-        const el=document.getElementById('croco-view-list');
+      }).catch(e=>{
+        console.warn('[Welbe提案] 取得エラー:',e);
         if(el) el.innerHTML='<div style="text-align:center;padding:40px;color:var(--text-lt)">提案データの取得に失敗しました。</div>';
       });
   }
@@ -3022,14 +3048,12 @@ function initCrocoPanel(){
   document.getElementById('croco-wrap').style.display = 'block';
   // シードデータ投入（初回のみ）
   _crocoSeedIfEmpty();
-  // リアルタイムリスナー
+  // リアルタイムリスナー（orderBy不使用でインデックスエラー回避、JS側でソート）
   if(_crocoUnsub) _crocoUnsub();
   _crocoUnsub = _db.collection(CROCO_COL)
-    .orderBy('createdAt','desc')
     .limit(30)
     .onSnapshot(snap=>{
-      const items=[];
-      snap.forEach(doc=>items.push({id:doc.id,...doc.data()}));
+      const items=_snapToItems(snap);
       _crocoItems=items;
       _crocoRender(items);
     }, err=>console.warn('[Welbe提案] リスナーエラー:',err));
