@@ -6,7 +6,7 @@
 <title>Welbe — 国保連請求サポート</title>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<!-- firebase-auth は不使用（ID/PASS方式に変更） -->
 <style>
 /* ===== ウェルピアカラー変数 ===== */
 :root{
@@ -409,8 +409,8 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
     </div>
     <form onsubmit="doLogin();return false;" autocomplete="on">
     <div class="lc-field">
-      <label>メールアドレス</label>
-      <input id="loginId" type="email" name="email" placeholder="メールアドレスを入力" autocomplete="email">
+      <label>ログインID</label>
+      <input id="loginId" type="text" name="username" placeholder="ログインIDを入力" autocomplete="username">
     </div>
     <div class="lc-field">
       <label>パスワード</label>
@@ -856,12 +856,12 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
         <div class="form-section" style="padding:0;overflow:hidden">
           <table class="sys-tbl">
             <thead><tr>
-              <th style="min-width:180px">メールアドレス</th>
-              <th style="min-width:120px">表示名</th>
-              <th style="min-width:95px">パスワード</th>
+              <th style="min-width:110px">名前</th>
+              <th style="min-width:120px">ログインID</th>
+              <th style="min-width:160px">パスワード</th>
               <th style="min-width:100px">権限</th>
               <th style="min-width:80px">状態</th>
-              <th style="min-width:100px">操作</th>
+              <th style="min-width:80px">操作</th>
             </tr></thead>
             <tbody id="sysUserTbody"></tbody>
           </table>
@@ -1086,7 +1086,6 @@ const _fbConfig = {
 };
 firebase.initializeApp(_fbConfig);
 const _db = firebase.firestore();
-const _auth = firebase.auth();
 const _COL = 'kokuhoren_data';
 
 // =========================================================
@@ -1172,39 +1171,49 @@ function initDefaultData(){
 }
 
 // =========================================================
-// 認証（Firebase Auth）
+// 認証・セッション（グループウェアと同方式・ID/PASS）
 // =========================================================
-const _ADMIN_EMAILS = ['iwashimizu.k@gmail.com'];
-let _currentUser = null;
-// 後方互換：既存コードの getS() 呼び出しをそのまま使用可能に
-function getS(){ return _currentUser; }
+let _sess = null;
+function getS(){ if(_sess) return _sess; try{const s=sessionStorage.getItem('welbe_s');if(s){_sess=JSON.parse(s);return _sess;}}catch(e){} return null; }
+function setS(s){ _sess=s; sessionStorage.setItem('welbe_s',JSON.stringify(s)); }
+function clearS(){ _sess=null; sessionStorage.removeItem('welbe_s'); }
+function chkPass(stored, input){ return stored===input; }
+function genStrongPassword(len){
+  len=len||14;
+  const upper='ABCDEFGHJKLMNPQRSTUVWXYZ', lower='abcdefghjkmnpqrstuvwxyz';
+  const digits='23456789', syms='@#$%&*!?+-=';
+  const all=upper+lower+digits+syms;
+  const arr=new Uint32Array(len+4); crypto.getRandomValues(arr);
+  let pw=[upper[arr[0]%upper.length],lower[arr[1]%lower.length],digits[arr[2]%digits.length],syms[arr[3]%syms.length]];
+  for(let i=4;i<len+4;i++) pw.push(all[arr[i]%all.length]);
+  for(let i=pw.length-1;i>0;i--){const j=arr[i]%(i+1);[pw[i],pw[j]]=[pw[j],pw[i]];}
+  return pw.slice(0,len).join('');
+}
 
-async function doLogin(){
-  const email = document.getElementById('loginId').value.trim();
-  const pass  = document.getElementById('loginPass').value;
-  const err   = document.getElementById('loginErr');
-  const btn   = document.querySelector('.lc-btn');
+function doLogin(){
+  const lid = document.getElementById('loginId').value.trim();
+  const pass = document.getElementById('loginPass').value;
+  const err  = document.getElementById('loginErr');
   err.textContent='';
-  if(!email||!pass){ err.textContent='メールアドレスとパスワードを入力してください'; return; }
-  if(btn){ btn.textContent='ログイン中...'; btn.disabled=true; }
-  try{
-    await _auth.signInWithEmailAndPassword(email, pass);
-    // 成功後は onAuthStateChanged が startApp() を呼ぶ
-  }catch(e){
-    err.textContent='メールアドレスまたはパスワードが正しくありません';
-    if(btn){ btn.textContent='ログイン'; btn.disabled=false; }
+  if(!lid||!pass){ err.textContent='IDとパスワードを入力してください'; return; }
+  const users=load('users',[]);
+  const u=users.find(x=>x.loginId===lid && x.active!==false);
+  if(!u||!chkPass(u.password,pass)){
+    err.textContent='IDまたはパスワードが正しくありません';
+    return;
   }
+  setS({userId:u.id, name:u.name, loginId:u.loginId, role:u.role});
+  startApp();
 }
 
 function doLogout(){
   if(!confirm('ログアウトしますか？'))return;
-  _auth.signOut().then(()=>{
-    _currentUser=null;
-    document.getElementById('app').style.display='none';
-    document.getElementById('loginScreen').style.display='flex';
-    document.getElementById('loginId').value='';
-    document.getElementById('loginPass').value='';
-  });
+  clearS();
+  document.getElementById('app').style.display='none';
+  document.getElementById('loginScreen').style.display='flex';
+  document.getElementById('loginId').value='';
+  document.getElementById('loginPass').value='';
+  document.getElementById('loginErr').textContent='';
 }
 
 function lcToggleEye(){
@@ -1247,53 +1256,39 @@ async function boot(){
   document.getElementById('loginScreen').style.display='none';
   document.getElementById('app').style.display='none';
 
-  _auth.onAuthStateChanged(async user=>{
-    if(user){
-      const role = _ADMIN_EMAILS.includes(user.email) ? 'admin' : 'staff';
-      _currentUser = { userId: user.uid, name: user.email.split('@')[0], email: user.email, role };
-      const ok = await loadAllFromFirestore();
-      if(!ok){
-        document.getElementById('loadingScreen').innerHTML=
-          '<div style="color:#f87171;font-size:14px;text-align:center;padding:20px">⚠️ データベースへの接続に失敗しました。<br>ネットワーク接続を確認してください。</div>';
-        return;
-      }
-      initDefaultData();
-      document.getElementById('loadingScreen').style.display='none';
-      startApp();
-    }else{
-      document.getElementById('loadingScreen').style.display='none';
-      document.getElementById('loginScreen').style.display='flex';
-    }
-  });
+  const ok = await loadAllFromFirestore();
+  if(!ok){
+    document.getElementById('loadingScreen').innerHTML=
+      '<div style="color:#f87171;font-size:14px;text-align:center;padding:20px">⚠️ データベースへの接続に失敗しました。<br>ネットワーク接続を確認してください。</div>';
+    return;
+  }
+  initDefaultData();
+  startRealtimeSync();
+  document.getElementById('loadingScreen').style.display='none';
+  if(getS()){
+    startApp();
+  }else{
+    document.getElementById('loginScreen').style.display='flex';
+  }
 }
 function startApp(){
   document.getElementById('loginScreen').style.display='none';
   document.getElementById('app').style.display='block';
-  // ログインユーザーを welbe_users に自動登録（初回のみ）
-  if(_currentUser?.email){
-    const wUsers=load('welbe_users',[]);
-    if(!wUsers.find(u=>u.email===_currentUser.email)){
-      wUsers.push({email:_currentUser.email, name:_currentUser.name||'', role:_currentUser.role||'staff', active:true});
-      save('welbe_users', wUsers);
-    }
-  }
-  // ユーザー情報をサイドバーに表示
-  if(_currentUser){
-    const wUsers=load('welbe_users',[]);
-    const wUser=wUsers.find(u=>u.email===_currentUser.email);
-    const displayName=wUser?.name||_currentUser.name||_currentUser.email?.split('@')[0]||'ユーザー';
-    const roleLabel={admin:'管理者',manager:'責任者',staff:'スタッフ'}[wUser?.role||_currentUser.role]||'';
+  // サイドバーにユーザー情報を表示
+  const s=getS();
+  if(s){
+    const displayName=s.name||s.loginId||'ユーザー';
+    const roleLabel={admin:'管理者',manager:'責任者',staff:'スタッフ',user:'スタッフ'}[s.role]||'';
     const el=document.getElementById('sb-user-name');
     const el2=document.getElementById('sb-user-email');
     const el3=document.getElementById('sb-user-avatar');
     if(el) el.textContent=displayName+(roleLabel?`（${roleLabel}）`:'');
-    if(el2) el2.textContent=_currentUser.email||'';
+    if(el2) el2.textContent=s.loginId||'';
     if(el3) el3.textContent=(displayName[0]||'?').toUpperCase();
   }
   const facs=load('facilities',[]);
   _curFacId = facs[0]?.id||'';
   buildFacSelector();
-  startRealtimeSync();
   showView('daily');
   initCrocoPanel();
   renderAlertBanner();
@@ -3383,7 +3378,7 @@ function renderUsers(){
     <tr>
       <td>${esc(u.name)}</td>
       <td style="font-family:monospace">${esc(u.loginId)}</td>
-      <td><span class="${u.role==='admin'?'role-admin':'role-user'}">${u.role==='admin'?'管理者':'一般'}</span></td>
+      <td><span class="${u.role==='admin'?'role-admin':u.role==='manager'?'role-user':'role-user'}">${{admin:'管理者',manager:'責任者',staff:'スタッフ',user:'スタッフ'}[u.role]||'スタッフ'}</span></td>
       <td><span class="${u.active!==false?'badge-active':'badge-inactive'}">${u.active!==false?'有効':'無効'}</span></td>
       <td style="display:flex;gap:6px">
         <button class="btn-edit2" onclick="openUserModal('${u.id}')">編集</button>
@@ -3406,8 +3401,9 @@ function openUserModal(id){
       <div style="display:flex;gap:12px">
         <div style="flex:1"><label style="font-size:12px;font-weight:600;color:#4a5568;display:block;margin-bottom:4px">権限</label>
           <select class="f-select" id="u-role" ${u?.loginId==='admin'?'disabled':''}>
-            <option value="admin" ${u?.role==='admin'?'selected':''}>管理者</option>
-            <option value="user" ${u?.role!=='admin'?'selected':''}>一般</option>
+            <option value="admin"   ${u?.role==='admin'  ?'selected':''}>管理者</option>
+            <option value="manager" ${u?.role==='manager'?'selected':''}>責任者</option>
+            <option value="staff"   ${(!u||u?.role==='staff'||u?.role==='user')?'selected':''}>スタッフ</option>
           </select></div>
         <div style="flex:1"><label style="font-size:12px;font-weight:600;color:#4a5568;display:block;margin-bottom:4px">状態</label>
           <select class="f-select" id="u-active" ${u?.loginId==='admin'?'disabled':''}>
@@ -3509,8 +3505,8 @@ function getWelbePerms(){
 }
 
 // ---- ユーザー設定 ----
-function markSysUserDirty(i){
-  const row=document.getElementById('sysurow-'+i);
+function markSysUserDirty(uid){
+  const row=document.getElementById('sysurow-'+uid);
   if(row) row.style.background='#fefce8';
   const btn=document.getElementById('bulkUpdBtn');
   if(btn){ btn.style.display='inline-block'; btn.style.boxShadow='0 0 0 2px #f59e0b'; }
@@ -3518,102 +3514,156 @@ function markSysUserDirty(i){
 
 function renderSysUsers(){
   const btn=document.getElementById('bulkUpdBtn');
-  if(btn){ btn.style.display='none'; btn.style.boxShadow=''; }
-  const users=load('welbe_users',[]);
+  if(btn){ btn.style.display='none'; btn.style.boxShadow=''; btn.textContent='⬆ 一括更新'; btn.style.background='#fef9c3'; btn.style.color='#78350f'; btn.style.borderColor='#ca8a04'; }
+  const users=load('users',[]);
   const tbody=document.getElementById('sysUserTbody');
   if(!tbody) return;
   if(!users.length){
     tbody.innerHTML=`<tr><td colspan="6" style="text-align:center;padding:28px;color:var(--text-lt)">ユーザーが登録されていません。「＋ 新規ユーザー」から追加してください。</td></tr>`;
     return;
   }
-  tbody.innerHTML=users.map((u,i)=>{
-    const roleSel=`<select class="inline-input" id="sysu-role-${i}" oninput="markSysUserDirty(${i})">
+  tbody.innerHTML=users.map(u=>{
+    const uid=u.id;
+    const roleSel=`<select class="inline-input" id="role-su-${uid}" oninput="markSysUserDirty('${uid}')">
       <option value="admin"   ${u.role==='admin'  ?'selected':''}>管理者</option>
       <option value="manager" ${u.role==='manager'?'selected':''}>責任者</option>
-      <option value="staff"   ${(u.role==='staff'||!u.role||u.role==='user')?'selected':''}>スタッフ</option>
+      <option value="staff"   ${(u.role==='staff'||u.role==='user'||!u.role)?'selected':''}>スタッフ</option>
     </select>`;
-    const activeSel=`<select class="inline-input" id="sysu-act-${i}" oninput="markSysUserDirty(${i})">
+    const activeSel=`<select class="inline-input" id="act-su-${uid}" oninput="markSysUserDirty('${uid}')">
       <option value="1" ${u.active!==false?'selected':''}>有効</option>
       <option value="0" ${u.active===false?'selected':''}>無効</option>
     </select>`;
-    return `<tr id="sysurow-${i}">
-      <td style="font-family:monospace;font-size:12px;color:var(--navy);word-break:break-all">${esc(u.email)}</td>
-      <td><input class="inline-input" id="sysu-name-${i}" value="${esc(u.name||'')}" placeholder="表示名" style="min-width:100px" oninput="markSysUserDirty(${i})"></td>
+    const isAdmin=u.loginId==='admin';
+    return `<tr id="sysurow-${uid}">
+      <td><input class="inline-input" id="name-su-${uid}" value="${esc(u.name||'')}" style="min-width:90px" oninput="markSysUserDirty('${uid}')"></td>
+      <td><input class="inline-input" id="lid-su-${uid}" value="${esc(u.loginId||'')}" style="min-width:100px" oninput="markSysUserDirty('${uid}')" ${isAdmin?'readonly':''}></td>
       <td><div class="inline-pw-wrap">
-        <span style="letter-spacing:2px;color:#9ca3af;font-size:14px;flex:1">••••••</span>
-        <button class="inline-copy" title="パスワードリセットメールを送信" onclick="sendPwReset(${i})">🔑</button>
+        <input class="inline-input" id="pw-su-${uid}" type="password" value="${esc(u.password||'')}" oninput="markSysUserDirty('${uid}')" readonly style="min-width:80px;cursor:default">
+        <button class="inline-lock" id="pwlock-su-${uid}" type="button" onclick="toggleSuPwLock('${uid}')" title="クリックして編集解除">🔒</button>
+        <button class="inline-eye"  type="button" onclick="toggleSuPw('${uid}')" title="表示/非表示">🙈</button>
+        <button class="inline-copy" type="button" onclick="copySuPw('${uid}')" title="パスワードをコピー">📋</button>
+        <button class="inline-eye"  type="button" onclick="genSuPw('${uid}')" title="パスワードを生成">🎲</button>
       </div></td>
       <td>${roleSel}</td>
       <td>${activeSel}</td>
       <td style="white-space:nowrap">
-        <button class="act-btn update-btn" id="sysu-upd-${i}" onclick="saveSysUser(${i})">更新</button>
-        <button class="btn-danger" onclick="deleteSysUser(${i})" style="margin-left:5px">削除</button>
+        <button class="act-btn update-btn" id="upd-su-${uid}" onclick="saveSysUser('${uid}')">更新</button>
+        ${!isAdmin?`<button class="btn-danger" onclick="deleteSysUser('${uid}')" style="margin-left:5px">削除</button>`:''}
       </td>
     </tr>`;
   }).join('');
 }
 
+function _readSysUserRow(uid,users){
+  const nameEl=document.getElementById('name-su-'+uid);
+  const lidEl =document.getElementById('lid-su-'+uid);
+  const pwEl  =document.getElementById('pw-su-'+uid);
+  const roleEl=document.getElementById('role-su-'+uid);
+  const actEl =document.getElementById('act-su-'+uid);
+  if(!nameEl||!lidEl||!pwEl) return null;
+  const newName=nameEl.value.trim();
+  const newLid =lidEl.value.trim();
+  const newPw  =pwEl.value;
+  const newRole=roleEl?.value||'staff';
+  const newActive=actEl?.value!=='0';
+  const u=users.find(x=>x.id===uid);
+  if(!u) return null;
+  if(!newName) return {err:(u.name||uid)+': 名前が空です'};
+  if(!newLid)  return {err:newName+': ログインIDが空です'};
+  if(!newPw)   return {err:newName+': パスワードが空です'};
+  if(newLid!==u.loginId && users.some(x=>x.id!==uid&&x.loginId===newLid))
+    return {err:newName+': ログインID「'+newLid+'」は重複しています'};
+  return {u,newName,newLid,newPw,newRole,newActive};
+}
+
 function saveAllSysUsers(){
-  const users=load('welbe_users',[]);
+  const users=load('users',[]);
   let errors=[],changed=0;
-  users.forEach((u,i)=>{
-    const nameEl=document.getElementById(`sysu-name-${i}`);
-    const roleEl=document.getElementById(`sysu-role-${i}`);
-    const actEl =document.getElementById(`sysu-act-${i}`);
-    if(!nameEl) return;
-    u.name  =nameEl.value.trim();
-    u.role  =roleEl?.value||'staff';
-    u.active=actEl?.value!=='0';
-    changed++;
+  users.forEach(u=>{
+    const r=_readSysUserRow(u.id,users);
+    if(!r) return;
+    if(r.err){errors.push(r.err);return;}
+    if(u.name!==r.newName||u.loginId!==r.newLid||u.password!==r.newPw||u.role!==r.newRole||u.active!==r.newActive){
+      u.name=r.newName;u.loginId=r.newLid;u.password=r.newPw;u.role=r.newRole;u.active=r.newActive;
+      changed++;
+    }
   });
-  if(errors.length){alert('エラー：\n'+errors.join('\n'));return;}
-  save('welbe_users',users);
+  if(errors.length){alert('以下のエラーがあります：\n\n'+errors.join('\n'));return;}
+  save('users',users);
   const btn=document.getElementById('bulkUpdBtn');
   if(btn){
     btn.textContent='✅ '+changed+'件 更新完了';
     btn.style.background='#d1fae5';btn.style.color='#065f46';btn.style.borderColor='#6ee7b7';btn.style.boxShadow='';
-    setTimeout(()=>{
-      btn.textContent='⬆ 一括更新';
-      btn.style.background='#fef9c3';btn.style.color='#78350f';btn.style.borderColor='#ca8a04';
-    },2000);
+    setTimeout(()=>{btn.textContent='⬆ 一括更新';btn.style.background='#fef9c3';btn.style.color='#78350f';btn.style.borderColor='#ca8a04';},2000);
   }
   renderSysUsers();
 }
 
-function saveSysUser(i){
-  const users=load('welbe_users',[]);
-  if(!users[i]) return;
-  users[i].name  =document.getElementById(`sysu-name-${i}`)?.value.trim()||'';
-  users[i].role  =document.getElementById(`sysu-role-${i}`)?.value||'staff';
-  users[i].active=document.getElementById(`sysu-act-${i}`)?.value!=='0';
-  save('welbe_users',users);
-  const updBtn=document.getElementById(`sysu-upd-${i}`);
+function saveSysUser(uid){
+  const users=load('users',[]);
+  const r=_readSysUserRow(uid,users);
+  if(!r) return;
+  if(r.err){alert(r.err);return;}
+  r.u.name=r.newName;r.u.loginId=r.newLid;r.u.password=r.newPw;r.u.role=r.newRole;r.u.active=r.newActive;
+  // パスワード入力を再ロック
+  const pwInp=document.getElementById('pw-su-'+uid);
+  const lockBtn=document.getElementById('pwlock-su-'+uid);
+  if(pwInp){pwInp.readOnly=true;pwInp.style.cursor='default';pwInp.type='password';}
+  if(lockBtn){lockBtn.textContent='🔒';lockBtn.classList.remove('unlocked');lockBtn.title='クリックして編集解除';}
+  save('users',users);
+  const updBtn=document.getElementById('upd-su-'+uid);
   if(updBtn){
-    updBtn.textContent='✅ 保存済';
-    updBtn.style.background='#d1fae5';updBtn.style.color='#065f46';
+    updBtn.textContent='✅ 保存済';updBtn.style.background='#d1fae5';updBtn.style.color='#065f46';
     setTimeout(()=>{updBtn.textContent='更新';updBtn.style.background='';updBtn.style.color='';},1800);
   }
-  const row=document.getElementById('sysurow-'+i);
+  const row=document.getElementById('sysurow-'+uid);
   if(row) row.style.background='';
 }
 
-function deleteSysUser(i){
-  const users=load('welbe_users',[]);
-  if(!confirm(`「${users[i]?.email}」をユーザーリストから削除しますか？`)) return;
-  users.splice(i,1);
-  save('welbe_users',users);
+function deleteSysUser(uid){
+  const users=load('users',[]);
+  const u=users.find(x=>x.id===uid);
+  if(!u||!confirm(`「${u.name||u.loginId}」を削除しますか？`)) return;
+  save('users',users.filter(x=>x.id!==uid));
   showToast('削除しました');
   renderSysUsers();
 }
 
-function sendPwReset(i){
-  const users=load('welbe_users',[]);
-  const email=users[i]?.email;
-  if(!email) return;
-  if(!confirm(`「${email}」にパスワードリセットメールを送信しますか？`)) return;
-  firebase.auth().sendPasswordResetEmail(email)
-    .then(()=>showToast('パスワードリセットメールを送信しました'))
-    .catch(e=>showToast('送信エラー: '+e.message));
+// パスワード操作（グループウェアと同パターン）
+function toggleSuPwLock(uid){
+  const inp=document.getElementById('pw-su-'+uid);
+  const btn=document.getElementById('pwlock-su-'+uid);
+  if(!inp||!btn) return;
+  if(inp.readOnly){
+    if(!confirm('パスワードの編集ロックを解除しますか？\n解除後は「更新」ボタンで保存されます。')) return;
+    inp.readOnly=false;inp.style.cursor='';btn.textContent='🔓';btn.classList.add('unlocked');btn.title='ロック中（クリックで再ロック）';inp.focus();
+  }else{
+    inp.readOnly=true;inp.style.cursor='default';btn.textContent='🔒';btn.classList.remove('unlocked');btn.title='クリックして編集解除';
+  }
+}
+function toggleSuPw(uid){
+  const inp=document.getElementById('pw-su-'+uid);
+  if(!inp) return;
+  const show=inp.type==='password';
+  inp.type=show?'text':'password';
+  const wrap=inp.parentElement;
+  if(wrap){ const btns=wrap.querySelectorAll('.inline-eye'); if(btns[0]) btns[0].textContent=show?'🐵':'🙈'; }
+}
+function copySuPw(uid){
+  const inp=document.getElementById('pw-su-'+uid);
+  if(!inp||!inp.value) return;
+  navigator.clipboard.writeText(inp.value).then(()=>showToast('パスワードをコピーしました 📋')).catch(()=>showToast('コピーできませんでした'));
+}
+function genSuPw(uid){
+  const inp=document.getElementById('pw-su-'+uid);
+  const btn=document.getElementById('pwlock-su-'+uid);
+  if(!inp) return;
+  inp.readOnly=false;
+  if(btn){btn.textContent='🔓';btn.classList.add('unlocked');btn.title='ロック中（クリックで再ロック）';}
+  const pw=genStrongPassword(12);
+  inp.value=pw;inp.type='text';
+  markSysUserDirty(uid);
+  navigator.clipboard.writeText(pw).then(()=>showToast('🎲 パスワードを生成・コピーしました 📋')).catch(()=>showToast('🎲 パスワードを生成しました（「更新」で保存）'));
 }
 
 function openAddSysUserModal(){
@@ -3621,12 +3671,19 @@ function openAddSysUserModal(){
   document.getElementById('modalBody').innerHTML=`
     <div style="display:flex;flex-direction:column;gap:14px">
       <div>
-        <label style="font-size:12px;font-weight:600;color:var(--navy);display:block;margin-bottom:5px">メールアドレス <span style="color:#ef4444">*</span></label>
-        <input type="email" id="adduser-email" class="f-input" placeholder="example@email.com" style="width:100%">
+        <label style="font-size:12px;font-weight:600;color:var(--navy);display:block;margin-bottom:5px">名前 <span style="color:#ef4444">*</span></label>
+        <input type="text" id="adduser-name" class="f-input" placeholder="山田 太郎" style="width:100%">
       </div>
       <div>
-        <label style="font-size:12px;font-weight:600;color:var(--navy);display:block;margin-bottom:5px">表示名</label>
-        <input type="text" id="adduser-name" class="f-input" placeholder="山田 太郎（省略可）" style="width:100%">
+        <label style="font-size:12px;font-weight:600;color:var(--navy);display:block;margin-bottom:5px">ログインID <span style="color:#ef4444">*</span></label>
+        <input type="text" id="adduser-lid" class="f-input" placeholder="yamada" style="width:100%">
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:600;color:var(--navy);display:block;margin-bottom:5px">パスワード <span style="color:#ef4444">*</span></label>
+        <div style="display:flex;gap:6px">
+          <input type="text" id="adduser-pw" class="f-input" placeholder="パスワードを入力" style="flex:1">
+          <button type="button" class="act-btn update-btn" onclick="_genAddUserPw()" style="flex-shrink:0;padding:6px 10px">🎲 生成</button>
+        </div>
       </div>
       <div>
         <label style="font-size:12px;font-weight:600;color:var(--navy);display:block;margin-bottom:5px">権限</label>
@@ -3636,28 +3693,32 @@ function openAddSysUserModal(){
           <option value="admin">管理者</option>
         </select>
       </div>
-      <div style="font-size:12px;color:#92400e;background:#fef3c7;border:1px solid #fde68a;border-radius:6px;padding:10px;line-height:1.7">
-        ⚠️ Firebase Authentication でアカウントを事前に作成した後、このフォームでユーザー情報を登録してください。<br>
-        <a href="https://console.firebase.google.com/project/dainichi-001/authentication/users" target="_blank" style="color:#1d4ed8;font-weight:600">Firebase Console → Authentication ↗</a>
-      </div>
     </div>`;
   const saveBtn=document.getElementById('modalSaveBtn');
   saveBtn.textContent='追加';
   saveBtn.onclick=_doAddSysUser;
   document.getElementById('modalOverlay').style.display='flex';
-  setTimeout(()=>document.getElementById('adduser-email')?.focus(),50);
+  setTimeout(()=>document.getElementById('adduser-name')?.focus(),50);
 }
-
+function _genAddUserPw(){
+  const pw=genStrongPassword(12);
+  const el=document.getElementById('adduser-pw');
+  if(el) el.value=pw;
+  navigator.clipboard.writeText(pw).then(()=>showToast('パスワードを生成・コピーしました 📋')).catch(()=>{});
+}
 function _doAddSysUser(){
-  const email=(document.getElementById('adduser-email')?.value||'').trim().toLowerCase();
   const name=(document.getElementById('adduser-name')?.value||'').trim();
+  const lid =(document.getElementById('adduser-lid')?.value||'').trim();
+  const pw  =(document.getElementById('adduser-pw')?.value||'').trim();
   const role=document.getElementById('adduser-role')?.value||'staff';
-  if(!email||!email.includes('@')){ showToast('正しいメールアドレスを入力してください'); return; }
-  const users=load('welbe_users',[]);
-  if(users.find(u=>u.email===email)){ showToast('このメールアドレスはすでに登録されています'); return; }
-  users.push({email,name,role,active:true});
-  save('welbe_users',users);
-  showToast(`${email} を追加しました`);
+  if(!name){ showToast('名前を入力してください'); return; }
+  if(!lid){ showToast('ログインIDを入力してください'); return; }
+  if(!pw){ showToast('パスワードを入力してください'); return; }
+  const users=load('users',[]);
+  if(users.find(u=>u.loginId===lid)){ showToast('このログインIDはすでに使用されています'); return; }
+  users.push({id:'u'+Date.now(), name, loginId:lid, password:pw, role, active:true});
+  save('users',users);
+  showToast(`${name}（${lid}）を追加しました`);
   closeModal();
   renderSysUsers();
 }
