@@ -1246,8 +1246,21 @@ function initDefaultData(){
     });
     if(changed) save('users', existUsers);
   }
-  // clients：既存請求データがある場合は空配列で上書きしない
-  if(!load('clients') && !hasExistingData) save('clients',[]);
+  // clients：facilityId が未設定の利用者にデフォルト事業所を自動付与
+  if(!load('clients') && !hasExistingData){
+    save('clients',[]);
+  } else {
+    const clients = load('clients', []);
+    let cChanged = false;
+    clients.forEach(c => {
+      if(!c.facilityId){
+        // serviceType A型 → fac_hashima、B型 → fac_yamagata、不明 → fac_hashima
+        c.facilityId = c.serviceType === 'B' ? 'fac_yamagata' : 'fac_hashima';
+        cChanged = true;
+      }
+    });
+    if(cChanged) save('clients', clients);
+  }
   if(!load('claims'))  save('claims',[]);
   if(!load('config'))  save('config',{absenceMax:4,outsideMax:180,visitMax:2,weeksPerYear:5});
 }
@@ -3314,9 +3327,9 @@ function openImportModal(){
   document.getElementById('imp-next-btn').disabled = true;
   document.getElementById('imp-next-btn').style.display = 'inline-block';
   document.getElementById('imp-exec-btn').style.display = 'none';
-  // 事業所セレクタ構築
+  // 事業所セレクタ構築（現在選択中の事業所をデフォルト選択）
   const facSel = document.getElementById('imp-fac');
-  facSel.innerHTML = load('facilities',[]).map(f=>`<option value="${f.id}">${esc(f.name)}</option>`).join('');
+  facSel.innerHTML = load('facilities',[]).map(f=>`<option value="${f.id}" ${f.id===_curFacId?'selected':''}>${esc(f.name)}</option>`).join('');
   // ステップ表示
   _impSetStep(1);
   document.getElementById('importOverlay').style.display='flex';
@@ -3444,6 +3457,17 @@ function impExecute(){
     function gs(...ks){for(const k of ks){if(src[k]!==undefined&&src[k]!==null)return src[k];}return '';}
     function gb(...ks){for(const k of ks){if(src[k]!==undefined)return !!src[k];}return false;}
 
+    // ── period オブジェクト再構成（ネスト or フラットフィールド両対応）
+    function gPeriod(objKey, startKeys, endKeys){
+      const obj = g(objKey);
+      if(obj && typeof obj==='object' && ('start' in obj || 'end' in obj)){
+        return {enabled:!!(obj.start||obj.end), start:obj.start||'', end:obj.end||''};
+      }
+      const start = gs(...startKeys);
+      const end   = gs(...endKeys);
+      return {enabled:!!(start||end), start, end};
+    }
+
     const data = {
       id: 'c'+Date.now()+'_'+idx,
       facilityId: facId,
@@ -3451,35 +3475,41 @@ function impExecute(){
       kanaSei:  _kanaSei,
       kanaMei:  _kanaMei,
       kana:     _rawKana || (_kanaSei+(_kanaMei?' '+_kanaMei:'')).trim(),
-      receiptNo:gs('receiptNo','receipt_no','recipient_number',''),
+      receiptNo:gs('receiptNo','receipt_no','recipient_number','certification_number',''),
       noReceipt:gb('noReceipt','no_receipt'),
       serviceType: gs('serviceType','service_type','A'),
       disabilityTypes: Array.isArray(g('disabilityTypes'))?g('disabilityTypes'):
                        (Array.isArray(g('disability_types'))?g('disability_types'):[]),
-      gender:   gs('gender',''),
-      birthDate:gs('birthDate','birth_date','birthday',''),
-      zip:  gs('zip','postal_code',''),
+      gender:   gs('gender','sex',''),
+      birthDate:gs('birthDate','birth_date','birthday','date_of_birth',''),
+      zip:  gs('zip','postal_code','post_code',''),
       pref: gs('pref','prefecture',''),
       city: gs('city',''),
-      cityNo: gs('cityNo','city_no',''),
+      cityNo: gs('cityNo','city_no','municipality_code',''),
       addr: gs('addr','address',''),
-      tel:  gs('tel','phone',''),
+      tel:  gs('tel','phone','phone_number',''),
       email:gs('email','mail',''),
-      guardian:  gs('guardian',''),
-      relation:  gs('relation',''),
-      emergencyTel: gs('emergencyTel','emergency_tel',''),
-      note: gs('note','memo',''),
-      startDate: gs('startDate','start_date',''),
-      endDate:   gs('endDate','end_date',''),
+      guardian:  gs('guardian','guardian_name',''),
+      relation:  gs('relation','guardian_relation',''),
+      emergencyTel: gs('emergencyTel','emergency_tel','emergency_phone',''),
+      note: gs('note','memo','remarks',''),
+      startDate: gs('startDate','start_date','date_start_in_service','service_start_date',''),
+      endDate:   gs('endDate','end_date','date_end_in_service','service_end_date',''),
       sameCorp:  gb('sameCorp','same_corp'),
-      grantStart:gs('grantStart','grant_start',''),
-      grantEnd:  gs('grantEnd','grant_end',''),
-      disabilityClass: gs('disabilityClass','disability_class',''),
+      // 受給者証 支給決定期間（knowbeの各フィールド名に対応）
+      grantStart:gs('grantStart','grant_start','decision_start_date','benefit_start_date',
+                    'certification_start','start_of_grant','grant_period_start',''),
+      grantEnd:  gs('grantEnd','grant_end','decision_end_date','benefit_end_date',
+                    'certification_end','end_of_grant','grant_period_end','expiry_date',''),
+      disabilityClass: gs('disabilityClass','disability_class','support_category',
+                          'disability_support_category','category',''),
       quotaType: gs('quotaType','quota_type','default'),
       quotaDays: g('quotaDays')??g('quota_days')??null,
       quotaSpecial: gb('quotaSpecial','quota_special'),
-      limitAmount: gs('limitAmount','limit_amount') || '',
-      contractAmount: parseInt(gs('limitAmount','limit_amount') || '0') || 0,
+      limitAmount: gs('limitAmount','limit_amount','copay_ceiling','user_charge_ceiling',
+                      'cost_limit','burden_limit') || '',
+      contractAmount: parseInt(gs('limitAmount','limit_amount','copay_ceiling','user_charge_ceiling',
+                                  'cost_limit','burden_limit') || '0') || 0,
       localLimit:      gb('localLimit','local_limit'),
       subsidyTarget:   gb('subsidyTarget','subsidy_target'),
       aTypeExempt:     gb('aTypeExempt','a_type_exempt'),
@@ -3497,12 +3527,25 @@ function impExecute(){
         outside_sup:  {start:'09:00',end:'16:00',pickup:'なし',timeCard:false}
       },
       eSignRecord: gb('eSignRecord','e_sign_record'),
-      limitPeriod:      g('limitPeriod')      ||{enabled:false,start:'',end:''},
-      mealPeriod:       g('mealPeriod')       ||{enabled:false,start:'',end:''},
-      disabilityPeriod: g('disabilityPeriod') ||{enabled:false,start:'',end:''},
-      nursingPeriod:    g('nursingPeriod')    ||{enabled:false,start:'',end:''},
-      planPeriod:       g('planPeriod')       ||{enabled:false,start:'',end:''},
-      planMonitor:      g('planMonitor')      ||{enabled:false,start:'',end:''}
+      // 有効期限付き期間（ネスト or フラット両対応）
+      limitPeriod: gPeriod('limitPeriod',
+        ['limitPeriodStart','limit_period_start','copay_period_start'],
+        ['limitPeriodEnd','limit_period_end','copay_period_end','limit_end_date']),
+      mealPeriod: gPeriod('mealPeriod',
+        ['mealPeriodStart','meal_period_start'],
+        ['mealPeriodEnd','meal_period_end']),
+      disabilityPeriod: gPeriod('disabilityPeriod',
+        ['disabilityPeriodStart','disability_period_start','category_start_date','support_category_start'],
+        ['disabilityPeriodEnd','disability_period_end','category_end_date','support_category_end']),
+      nursingPeriod: gPeriod('nursingPeriod',
+        ['nursingPeriodStart','nursing_period_start','care_period_start'],
+        ['nursingPeriodEnd','nursing_period_end','care_period_end']),
+      planPeriod: gPeriod('planPeriod',
+        ['planPeriodStart','plan_period_start','consultation_period_start'],
+        ['planPeriodEnd','plan_period_end','consultation_period_end']),
+      planMonitor: gPeriod('planMonitor',
+        ['planMonitorStart','plan_monitor_start','monitoring_period_start'],
+        ['planMonitorEnd','plan_monitor_end','monitoring_period_end'])
     };
     clients.push(data);
     added++;
