@@ -2518,7 +2518,7 @@ function renderClients(){
       <td style="font-family:monospace">${esc(c.receiptNo||'')}</td>
       <td><span class="${c.serviceType==='A'?'badge-a':'badge-b'}">${c.serviceType||'B'}型</span></td>
       <td>${c.disabilityClass?`区分${c.disabilityClass}`:'-'}</td>
-      <td>${c.contractAmount?c.contractAmount.toLocaleString()+'円':'-'}</td>
+      <td>${_limitAmtHtml(c)}</td>
       <td><span class="${c.active!==false?'badge-active':'badge-inactive'}">${c.active!==false?'利用中':'停止'}</span></td>
       <td>${expBadge}</td>
       <td style="display:flex;gap:6px;flex-wrap:wrap">
@@ -2758,8 +2758,8 @@ function saveClientModal(){
     quotaType:radVal('cl-quota')||'default',
     quotaDays:parseInt(document.getElementById('cl-quota-days').value)||null,
     quotaSpecial:document.getElementById('cl-quota-special').checked,
-    limitAmount:radVal('cl-limit')||'9300',
-    contractAmount:parseInt(radVal('cl-limit'))||0,
+    limitAmount:radVal('cl-limit')??'9300',
+    contractAmount:radVal('cl-limit')!==null?parseInt(radVal('cl-limit'))??9300:9300,
     localLimit:document.getElementById('cl-local-limit').checked,
     subsidyTarget:document.getElementById('cl-subsidy').checked,
     aTypeExempt:document.getElementById('cl-a-exempt').checked,
@@ -3190,8 +3190,8 @@ function impExecute(){
       quotaType: gs('quotaType','quota_type','default'),
       quotaDays: g('quotaDays')??g('quota_days')??null,
       quotaSpecial: gb('quotaSpecial','quota_special'),
-      limitAmount: gs('limitAmount','limit_amount','9300'),
-      contractAmount: parseInt(gs('limitAmount','limit_amount','9300'))||0,
+      limitAmount: gs('limitAmount','limit_amount') || '',
+      contractAmount: parseInt(gs('limitAmount','limit_amount') || '0') || 0,
       localLimit:      gb('localLimit','local_limit'),
       subsidyTarget:   gb('subsidyTarget','subsidy_target'),
       aTypeExempt:     gb('aTypeExempt','a_type_exempt'),
@@ -3588,6 +3588,21 @@ function _daysUntil(dateStr){
   return Math.floor((t-n)/(1000*60*60*24));
 }
 
+// 負担上限額の表示HTML（0円・未設定の両方に対応）
+function _limitAmtHtml(c){
+  // limitAmount フィールドが設定されている場合（'0'=0円 も有効）
+  const lim = c.limitAmount;
+  if(lim!==undefined && lim!==null && lim!==''){
+    const n=parseInt(lim);
+    if(!isNaN(n)) return n===0?'<span style="color:var(--green-dk);font-size:12px;font-weight:600">0円</span>':n.toLocaleString()+'円';
+    return esc(lim);
+  }
+  // 旧データ互換：contractAmount が正の数ならそちらを使用
+  if(c.contractAmount>0) return c.contractAmount.toLocaleString()+'円';
+  // 未設定
+  return '<span style="color:#d1d5db;font-size:11px">未設定</span>';
+}
+
 // 利用者1件の期限バッジ（利用者一覧テーブル用）
 function _getExpiryBadge(c){
   const checks=[
@@ -3604,7 +3619,12 @@ function _getExpiryBadge(c){
     if(!cls) return;
     if(!worst||d<worst.days) worst={days:d,label,date,cls};
   });
-  if(!worst) return '<span style="color:#d1d5db;font-size:12px">—</span>';
+  if(!worst){
+    // 受給者証番号があるのにgrantEndが未設定 → 要入力を示す
+    if(c.receiptNo && !c.grantEnd)
+      return `<span style="color:#d1d5db;font-size:11px">期限未入力</span>`;
+    return '<span style="color:#d1d5db;font-size:12px">—</span>';
+  }
   const txt=worst.days<0?`期限切れ（${worst.label}）`
             :worst.days===0?`今日が期限（${worst.label}）`
             :`残${worst.days}日（${worst.label}）`;
