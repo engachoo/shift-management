@@ -492,7 +492,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
         <div id="croco-wrap" style="display:none;border-top:1px solid rgba(255,255,255,.1)">
           <div class="sb-sub-item" id="sm-croco" onclick="showView('croco')" style="gap:7px">
             <span>🤖</span>
-            <span style="flex:1">クロコの提案</span>
+            <span style="flex:1">Welbeからの提案</span>
             <span id="croco-badge" class="croco-badge" style="display:none;font-size:10px;padding:1px 5px">0</span>
             <span class="croco-live" style="font-size:9px">LIVE</span>
           </div>
@@ -520,7 +520,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
 
     <!-- ===== クロコの提案（メインビュー） ===== -->
     <div id="view-croco" style="display:none">
-      <div class="page-hdr">🤖 クロコの提案 <span class="ph-sub">AI によるサポート提案</span></div>
+      <div class="page-hdr">📋 Welbeからの提案 <span class="ph-sub">国保連・厚労省の最新情報に基づくシステム改善提案</span></div>
       <div class="content-area">
         <div id="croco-view-list">
           <div style="text-align:center;padding:40px;color:var(--text-lt);font-size:13px">読み込み中...</div>
@@ -2985,9 +2985,10 @@ function deleteClient(id){
 // 🤖 クロコパネル — 管理者専用リアルタイム改善提案
 // =========================================================
 const CROCO_COL = 'croco_suggestions';
-let _crocoUnsub = null;   // Firestoreリスナー解除用
-let _crocoOpen  = false;  // パネル開閉状態
-let _crocoExpanded = null; // 展開中のカードID
+let _crocoUnsub = null;
+let _crocoOpen  = false;
+let _crocoExpanded = null;
+let _crocoItems = [];   // 最新データキャッシュ
 
 // 未読IDをlocalStorageで管理
 function _crocoGetViewed(){ try{return JSON.parse(localStorage.getItem('croco_viewed')||'[]');}catch(e){return[];} }
@@ -2999,7 +3000,21 @@ function _crocoP(p){ return p==='high'?'🔴':p==='med'?'🟡':'🟢'; }
 
 // ─── 初期化 ─────────────────────────────────────────────
 function renderCrocoView(){
-  // クロコビューにカードを描画（メインエリア版）
+  if(_crocoItems.length>0){
+    _crocoRender(_crocoItems);
+  } else {
+    // まだFirestoreから届いていない場合は再取得
+    _db.collection(CROCO_COL).orderBy('createdAt','desc').limit(30).get()
+      .then(snap=>{
+        const items=[];
+        snap.forEach(doc=>items.push({id:doc.id,...doc.data()}));
+        _crocoItems=items;
+        _crocoRender(items);
+      }).catch(()=>{
+        const el=document.getElementById('croco-view-list');
+        if(el) el.innerHTML='<div style="text-align:center;padding:40px;color:var(--text-lt)">提案データの取得に失敗しました。</div>';
+      });
+  }
 }
 
 function initCrocoPanel(){
@@ -3015,8 +3030,9 @@ function initCrocoPanel(){
     .onSnapshot(snap=>{
       const items=[];
       snap.forEach(doc=>items.push({id:doc.id,...doc.data()}));
+      _crocoItems=items;
       _crocoRender(items);
-    }, err=>console.warn('クロコリスナーエラー:',err));
+    }, err=>console.warn('[Welbe提案] リスナーエラー:',err));
 }
 
 // ─── パネル開閉 ─────────────────────────────────────────
@@ -3170,65 +3186,76 @@ function crocoAction(id, view){
 // ─── 初期シード (コレクションが空の場合のみ投入) ──────────
 async function _crocoSeedIfEmpty(){
   try{
-    const snap = await _db.collection(CROCO_COL).limit(1).get();
-    if(!snap.empty) return; // すでにデータあり
+    // welbe_r6_01 が存在する場合はスキップ（旧シードデータがあっても新データを投入）
+    const chk = await _db.collection(CROCO_COL).doc('welbe_r6_01').get();
+    if(chk.exists) return;
     const batch = _db.batch();
-    const now = new Date('2026-05-26');
     const seeds = [
       {
-        id:'sug_r6_01',
-        title:'処遇改善加算を新区分（Ⅰ〜Ⅳ）に更新',
-        body:'令和6年4月より、旧3種（処遇改善加算・特定処遇改善加算・ベースアップ等支援加算）が新「福祉・介護職員等処遇改善加算」Ⅰ〜Ⅳの4段階に一本化されました。現在のwelbeには旧3種のトグルがありますが、新区分での入力に対応させる必要があります。',
-        category:'加算設定',priority:'high',
-        source:'厚労省 令和6年度障害福祉サービス等報酬改定',
-        sourceUrl:'https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/0000202214_00009.html',
+        id:'welbe_r6_01',
+        title:'【令和6年改定】処遇改善加算が新体系（Ⅰ〜Ⅳ）に一本化',
+        body:'令和6年4月より、「処遇改善加算」「特定処遇改善加算」「ベースアップ等支援加算」の3種が「福祉・介護職員等処遇改善加算」Ⅰ〜Ⅳの4段階に一本化されました。\n\n国保連請求では新区分コードでの請求が必要です。旧区分コードでの請求は令和6年9月請求分（8月サービス分）から無効となります。\n\n【対応が必要な内容】\n・事業所情報の加算区分を新体系に更新する\n・請求書類の加算コードを確認する',
+        category:'国保連請求対応',priority:'high',
+        source:'国保連 令和6年度障害福祉サービス等報酬改定に係る請求等について',
+        sourceUrl:'https://www.kokuhoren.or.jp/hoyoukyuufu/index.html',
         actionLabel:'事業所情報の加算設定を確認する',actionView:'facility',
+        createdAt:firebase.firestore.Timestamp.fromDate(new Date('2026-05-27'))
+      },
+      {
+        id:'welbe_r6_02',
+        title:'【令和6年改定】国保連伝送ソフト・請求書様式の変更',
+        body:'令和6年4月の報酬改定に伴い、国保連への電子請求の様式が変更されました。\n\n主な変更点：\n・サービスコードの追加・変更（処遇改善加算新区分など）\n・明細書の記載項目変更\n・受給者証番号の桁数確認（10桁であることを確認）\n\n【対応期限】\n令和6年10月以降の請求から完全移行。各都道府県の国保連から通知があった場合は速やかに対応してください。',
+        category:'国保連請求対応',priority:'high',
+        source:'国保連 障害福祉サービス費等の請求について',
+        sourceUrl:'https://www.kokuhoren.or.jp/hoyoukyuufu/index.html',
+        actionLabel:'利用者の受給者証番号を確認する',actionView:'clients',
+        createdAt:firebase.firestore.Timestamp.fromDate(new Date('2026-05-27'))
+      },
+      {
+        id:'welbe_r6_03',
+        title:'【令和6年改定】就労継続支援A型 基本報酬スコアに2項目追加',
+        body:'令和6年度改定でA型の基本報酬スコア方式に以下が新設されました。\n\n① 利用者の知識及び能力向上（0〜10点）\n② 経営改善計画未提出（−40点）\n\n国保連請求の明細書作成時に正しいスコアで申請しないと査定・返戻の原因となります。現在welbeのA型スコア設定にこれら2項目が未対応のため、設定画面への追加が必要です。',
+        category:'A型請求対応',priority:'high',
+        source:'厚労省 令和6年度障害福祉サービス等報酬改定について',
+        sourceUrl:'https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/0000202214_00009.html',
+        actionLabel:'事業所情報（A型スコア）を確認する',actionView:'facility',
         createdAt:firebase.firestore.Timestamp.fromDate(new Date('2026-05-26'))
       },
       {
-        id:'sug_r6_02',
-        title:'A型スコアに2項目を追加（利用者知識・経営改善計画）',
-        body:'R6改定でA型の基本報酬スコア方式に「利用者の知識及び能力向上（0〜10点）」と「経営改善計画未提出（0/−40点）」が新設されました。現在のwelbeには7項目のスコアがありますが、これら2項目が含まれていません。スコア計算の精度向上のために追加が必要です。',
-        category:'基本報酬スコア',priority:'high',
-        source:'knowbe.jp 令和6年度A型報酬改定解説',
-        sourceUrl:'https://knowbe.jp/media/x298tmzxd3ik-agata-score-2024',
-        actionLabel:'事業所情報のスコア設定を確認する',actionView:'facility',
-        createdAt:firebase.firestore.Timestamp.fromDate(new Date('2026-05-26'))
-      },
-      {
-        id:'sug_r6_03',
-        title:'B型に職員配置6:1区分が新設（R6改定）',
-        body:'令和6年度改定でB型事業所に「職員配置6:1」の新報酬区分が新設されました。現在のwelbeはA型のみ職員配置を設定できます。B型の事業所情報に6:1配置の選択肢を追加することで請求精度が上がります。',
-        category:'事業所設定',priority:'med',
+        id:'welbe_r6_04',
+        title:'【令和6年改定】就労継続支援B型 職員配置6:1区分が新設',
+        body:'令和6年度改定でB型に「職員配置6:1」の報酬区分が新設されました。\n\n報酬単価（岐阜県・地域区分）：\n・6:1　1,070単位（定員20名以下）など\n\n国保連への請求時には正しい職員配置区分のサービスコードを選択する必要があります。ウェルピア山県（B型）の事業所情報に6:1配置の選択肢を追加することをお勧めします。',
+        category:'B型請求対応',priority:'med',
         source:'厚労省 令和6年度報酬改定（就労継続支援B型）',
         sourceUrl:'https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/0000202214_00009.html',
-        actionLabel:'事業所情報を確認する',actionView:'facility',
+        actionLabel:'事業所情報（B型設定）を確認する',actionView:'facility',
+        createdAt:firebase.firestore.Timestamp.fromDate(new Date('2026-05-26'))
+      },
+      {
+        id:'welbe_r6_05',
+        title:'受給者証の支給決定期間・上限管理 — 期限切れ請求は返戻対象',
+        body:'国保連への請求において、受給者証の支給決定期間を超えた月の請求は自動的に返戻（差し戻し）されます。\n\n【welbeで確認すべき事項】\n・利用者の受給者証期限を「利用者情報」に正確に登録する\n・期限切れ・30日以内に期限が来る利用者には画面上のアラートが表示されます\n・更新手続きが完了したら速やかに期限を更新してください\n\n受給者証の期限管理は国保連請求の最優先確認事項です。',
+        category:'受給者証管理',priority:'high',
+        source:'国保連 障害福祉サービス費の審査について',
+        sourceUrl:'https://www.kokuhoren.or.jp/hoyoukyuufu/index.html',
+        actionLabel:'利用者情報の受給者証期限を確認する',actionView:'clients',
         createdAt:firebase.firestore.Timestamp.fromDate(new Date('2026-05-25'))
       },
       {
-        id:'sug_r6_04',
-        title:'施設外就労の実績報告書提出義務が廃止',
-        body:'R6改定より施設外就労加算の実績報告書提出義務が廃止されました。記録・請求フローを簡略化できる可能性があります。また施設外支援の個別支援計画の見直し時期も変更されています。',
-        category:'記録・実績',priority:'low',
-        source:'障がい者としごとマガジン 令和6年度報酬改定概要',
-        sourceUrl:'https://shigoto4you.com/remuneration-revision_r6_3/',
-        actionLabel:'利用実績の記録画面を確認する',actionView:'daily',
+        id:'welbe_r6_06',
+        title:'負担上限管理票の記載漏れは返戻原因に',
+        body:'複数の事業所を利用している利用者の場合、負担上限管理票の提出が必要です。\n\n国保連への請求で以下の場合は査定・返戻の対象となります：\n・「上限管理事業所」なのに管理票が未提出\n・負担上限月額と請求額の不一致\n・利用者負担額の集計誤り\n\nwelbeの利用者情報で「負担上限月額」を正確に登録し、請求前に確認することを推奨します。',
+        category:'負担上限管理',priority:'med',
+        source:'厚労省 障害者の利用者負担について',
+        sourceUrl:'https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/hukushi_kaigo/shougaishahukushi/service/hutan.html',
+        actionLabel:'利用者情報の負担上限額を確認する',actionView:'clients',
         createdAt:firebase.firestore.Timestamp.fromDate(new Date('2026-05-24'))
-      },
-      {
-        id:'sug_sys_01',
-        title:'knowbeからの利用者データ移行ツール完成',
-        body:'knowbe_extractor.jsを使ってknowbeの利用者情報をwelbeに一括インポートできます。knowbeの利用者一覧ページでF12→コンソールにスクリプトを貼り付けると全利用者データを取得できます。その後welbeの「📥 knowbeからインポート」ボタンから登録可能です。',
-        category:'システム改善',priority:'low',
-        source:'welbe開発チーム',sourceUrl:'',
-        actionLabel:'利用者情報のインポートを開始する',actionView:'clients',
-        createdAt:firebase.firestore.Timestamp.fromDate(new Date('2026-05-26'))
       }
     ];
     seeds.forEach(s=>{ const ref=_db.collection(CROCO_COL).doc(s.id); batch.set(ref,s); });
     await batch.commit();
-    console.log('[クロコ] 初期提案データを投入しました');
-  }catch(e){ console.warn('[クロコ] シードエラー:',e); }
+    console.log('[Welbe提案] 初期提案データを投入しました');
+  }catch(e){ console.warn('[Welbe提案] シードエラー:',e); }
 }
 
 // ─── 外部からの提案追加API (将来の拡張用) ────────────────
