@@ -512,7 +512,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
         <div id="croco-wrap" style="display:none;border-top:1px solid rgba(255,255,255,.1)">
           <div class="sb-sub-item" id="sm-croco" onclick="showView('croco')" style="gap:7px">
             <span>🤖</span>
-            <span style="flex:1">Welbeからの提案</span>
+            <span style="flex:1">Welbeの提案</span>
             <span id="croco-badge" class="croco-badge" style="display:none;font-size:10px;padding:1px 5px">0</span>
             <span class="croco-live" style="font-size:9px">LIVE</span>
           </div>
@@ -540,7 +540,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
 
     <!-- ===== クロコの提案（メインビュー） ===== -->
     <div id="view-croco" style="display:none">
-      <div class="page-hdr">📋 Welbeからの提案 <span class="ph-sub">国保連・厚労省の最新情報に基づくシステム改善提案</span></div>
+      <div class="page-hdr">📋 Welbeの提案 <span class="ph-sub">国保連・厚労省の最新情報に基づくシステム改善提案</span></div>
       <div class="content-area">
         <div id="croco-view-list">
           <div style="text-align:center;padding:40px;color:var(--text-lt);font-size:13px">読み込み中...</div>
@@ -3027,13 +3027,11 @@ function deleteClient(id){
 }
 
 // =========================================================
-// 🤖 クロコパネル — 管理者専用リアルタイム改善提案
+// 📋 Welbeの提案 — 管理者専用改善提案（kokuhoren_data 経由）
 // =========================================================
-const CROCO_COL = 'croco_suggestions';
-let _crocoUnsub = null;
+const CROCO_KEY = 'croco_suggestions';  // kokuhoren_data/{CROCO_KEY} に保存
 let _crocoOpen  = false;
 let _crocoExpanded = null;
-let _crocoItems = [];   // 最新データキャッシュ
 
 // 未読IDをlocalStorageで管理
 function _crocoGetViewed(){ try{return JSON.parse(localStorage.getItem('croco_viewed')||'[]');}catch(e){return[];} }
@@ -3043,52 +3041,35 @@ function _crocoMarkAllViewed(items){ const v=_crocoGetViewed(); items.forEach(i=
 // 優先度 → アイコン変換
 function _crocoP(p){ return p==='high'?'🔴':p==='med'?'🟡':'🟢'; }
 
-// ─── 初期化 ─────────────────────────────────────────────
-// Firestoreスナップをアイテム配列に変換（createdAtで降順ソート）
-function _snapToItems(snap){
-  const items=[];
-  snap.forEach(doc=>items.push({id:doc.id,...doc.data()}));
-  items.sort((a,b)=>{
-    const ta=a.createdAt?.toDate?a.createdAt.toDate().getTime():(a.createdAt instanceof Date?a.createdAt.getTime():0);
-    const tb=b.createdAt?.toDate?b.createdAt.toDate().getTime():(b.createdAt instanceof Date?b.createdAt.getTime():0);
-    return tb-ta;
+// 日付文字列変換（Unix ms / Firestore Timestamp / Date 対応）
+function _crocoDateStr(ts){
+  if(!ts) return '';
+  const d = typeof ts==='number' ? new Date(ts)
+          : ts?.toDate ? ts.toDate()
+          : ts instanceof Date ? ts : null;
+  return d ? d.toLocaleDateString('ja-JP',{month:'short',day:'numeric'}) : '';
+}
+
+// ─── 提案データ取得（load経由） ─────────────────────────
+function _crocoItems(){
+  const items = load(CROCO_KEY, []);
+  return [...items].sort((a,b)=>{
+    const ta = typeof a.createdAt==='number' ? a.createdAt : (a.createdAt?.toDate ? a.createdAt.toDate().getTime() : 0);
+    const tb = typeof b.createdAt==='number' ? b.createdAt : (b.createdAt?.toDate ? b.createdAt.toDate().getTime() : 0);
+    return tb - ta;
   });
-  return items;
 }
 
 function renderCrocoView(){
-  if(_crocoItems.length>0){
-    _crocoRender(_crocoItems);
-  } else {
-    // まだFirestoreから届いていない場合は再取得（orderBy不使用でインデックスエラー回避）
-    const el=document.getElementById('croco-view-list');
-    if(el) el.innerHTML='<div style="text-align:center;padding:40px;color:var(--text-lt);font-size:13px">読み込み中...</div>';
-    _db.collection(CROCO_COL).limit(30).get()
-      .then(snap=>{
-        const items=_snapToItems(snap);
-        _crocoItems=items;
-        _crocoRender(items);
-      }).catch(e=>{
-        console.warn('[Welbe提案] 取得エラー:',e);
-        if(el) el.innerHTML='<div style="text-align:center;padding:40px;color:var(--text-lt)">提案データの取得に失敗しました。</div>';
-      });
-  }
+  _crocoSeedIfEmpty();
+  _crocoRender(_crocoItems());
 }
 
 function initCrocoPanel(){
   if(getS()?.role !== 'admin') return;
   document.getElementById('croco-wrap').style.display = 'block';
-  // シードデータ投入（初回のみ）
   _crocoSeedIfEmpty();
-  // リアルタイムリスナー（orderBy不使用でインデックスエラー回避、JS側でソート）
-  if(_crocoUnsub) _crocoUnsub();
-  _crocoUnsub = _db.collection(CROCO_COL)
-    .limit(30)
-    .onSnapshot(snap=>{
-      const items=_snapToItems(snap);
-      _crocoItems=items;
-      _crocoRender(items);
-    }, err=>console.warn('[Welbe提案] リスナーエラー:',err));
+  _crocoRender(_crocoItems());
 }
 
 // ─── パネル開閉 ─────────────────────────────────────────
@@ -3131,7 +3112,7 @@ function _crocoRender(items){
       viewList.innerHTML=items.map(item=>{
         const isNew=!_crocoGetViewed().includes(item.id);
         const isExp=_crocoExpanded===item.id;
-        const dateStr=item.createdAt?.toDate?item.createdAt.toDate().toLocaleDateString('ja-JP',{month:'short',day:'numeric'}):'';
+        const dateStr=_crocoDateStr(item.createdAt);
         return `<div class="croco-view-card${isNew?' unread':''}" onclick="toggleCrocoViewCard('${item.id}')">
           <div class="croco-view-meta">
             <span style="font-size:14px;flex-shrink:0">${_crocoP(item.priority)}</span>
@@ -3159,8 +3140,7 @@ function _crocoRender(items){
   list.innerHTML = items.map(item=>{
     const isNew   = !viewed.includes(item.id);
     const isExp   = _crocoExpanded===item.id;
-    const dateStr = item.createdAt?.toDate ? item.createdAt.toDate().toLocaleDateString('ja-JP',{month:'short',day:'numeric'}) :
-                    (item.createdAt instanceof Date ? item.createdAt.toLocaleDateString('ja-JP',{month:'short',day:'numeric'}) : '');
+    const dateStr = _crocoDateStr(item.createdAt);
     return `<div class="croco-card${isNew?' unread':''}${isNew?' new-item':''}" data-id="${item.id}" onclick="toggleCrocoCard('${item.id}')">
       <div class="croco-card-inner">
         <div class="croco-card-top">
@@ -3239,90 +3219,85 @@ function crocoAction(id, view){
   if(view) showView(view);
 }
 
-// ─── 初期シード (コレクションが空の場合のみ投入) ──────────
-async function _crocoSeedIfEmpty(){
-  try{
-    // welbe_r6_01 が存在する場合はスキップ（旧シードデータがあっても新データを投入）
-    const chk = await _db.collection(CROCO_COL).doc('welbe_r6_01').get();
-    if(chk.exists) return;
-    const batch = _db.batch();
-    const seeds = [
-      {
-        id:'welbe_r6_01',
-        title:'【令和6年改定】処遇改善加算が新体系（Ⅰ〜Ⅳ）に一本化',
-        body:'令和6年4月より、「処遇改善加算」「特定処遇改善加算」「ベースアップ等支援加算」の3種が「福祉・介護職員等処遇改善加算」Ⅰ〜Ⅳの4段階に一本化されました。\n\n国保連請求では新区分コードでの請求が必要です。旧区分コードでの請求は令和6年9月請求分（8月サービス分）から無効となります。\n\n【対応が必要な内容】\n・事業所情報の加算区分を新体系に更新する\n・請求書類の加算コードを確認する',
-        category:'国保連請求対応',priority:'high',
-        source:'国保連 令和6年度障害福祉サービス等報酬改定に係る請求等について',
-        sourceUrl:'https://www.kokuhoren.or.jp/hoyoukyuufu/index.html',
-        actionLabel:'事業所情報の加算設定を確認する',actionView:'facility',
-        createdAt:firebase.firestore.Timestamp.fromDate(new Date('2026-05-27'))
-      },
-      {
-        id:'welbe_r6_02',
-        title:'【令和6年改定】国保連伝送ソフト・請求書様式の変更',
-        body:'令和6年4月の報酬改定に伴い、国保連への電子請求の様式が変更されました。\n\n主な変更点：\n・サービスコードの追加・変更（処遇改善加算新区分など）\n・明細書の記載項目変更\n・受給者証番号の桁数確認（10桁であることを確認）\n\n【対応期限】\n令和6年10月以降の請求から完全移行。各都道府県の国保連から通知があった場合は速やかに対応してください。',
-        category:'国保連請求対応',priority:'high',
-        source:'国保連 障害福祉サービス費等の請求について',
-        sourceUrl:'https://www.kokuhoren.or.jp/hoyoukyuufu/index.html',
-        actionLabel:'利用者の受給者証番号を確認する',actionView:'clients',
-        createdAt:firebase.firestore.Timestamp.fromDate(new Date('2026-05-27'))
-      },
-      {
-        id:'welbe_r6_03',
-        title:'【令和6年改定】就労継続支援A型 基本報酬スコアに2項目追加',
-        body:'令和6年度改定でA型の基本報酬スコア方式に以下が新設されました。\n\n① 利用者の知識及び能力向上（0〜10点）\n② 経営改善計画未提出（−40点）\n\n国保連請求の明細書作成時に正しいスコアで申請しないと査定・返戻の原因となります。現在welbeのA型スコア設定にこれら2項目が未対応のため、設定画面への追加が必要です。',
-        category:'A型請求対応',priority:'high',
-        source:'厚労省 令和6年度障害福祉サービス等報酬改定について',
-        sourceUrl:'https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/0000202214_00009.html',
-        actionLabel:'事業所情報（A型スコア）を確認する',actionView:'facility',
-        createdAt:firebase.firestore.Timestamp.fromDate(new Date('2026-05-26'))
-      },
-      {
-        id:'welbe_r6_04',
-        title:'【令和6年改定】就労継続支援B型 職員配置6:1区分が新設',
-        body:'令和6年度改定でB型に「職員配置6:1」の報酬区分が新設されました。\n\n報酬単価（岐阜県・地域区分）：\n・6:1　1,070単位（定員20名以下）など\n\n国保連への請求時には正しい職員配置区分のサービスコードを選択する必要があります。ウェルピア山県（B型）の事業所情報に6:1配置の選択肢を追加することをお勧めします。',
-        category:'B型請求対応',priority:'med',
-        source:'厚労省 令和6年度報酬改定（就労継続支援B型）',
-        sourceUrl:'https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/0000202214_00009.html',
-        actionLabel:'事業所情報（B型設定）を確認する',actionView:'facility',
-        createdAt:firebase.firestore.Timestamp.fromDate(new Date('2026-05-26'))
-      },
-      {
-        id:'welbe_r6_05',
-        title:'受給者証の支給決定期間・上限管理 — 期限切れ請求は返戻対象',
-        body:'国保連への請求において、受給者証の支給決定期間を超えた月の請求は自動的に返戻（差し戻し）されます。\n\n【welbeで確認すべき事項】\n・利用者の受給者証期限を「利用者情報」に正確に登録する\n・期限切れ・30日以内に期限が来る利用者には画面上のアラートが表示されます\n・更新手続きが完了したら速やかに期限を更新してください\n\n受給者証の期限管理は国保連請求の最優先確認事項です。',
-        category:'受給者証管理',priority:'high',
-        source:'国保連 障害福祉サービス費の審査について',
-        sourceUrl:'https://www.kokuhoren.or.jp/hoyoukyuufu/index.html',
-        actionLabel:'利用者情報の受給者証期限を確認する',actionView:'clients',
-        createdAt:firebase.firestore.Timestamp.fromDate(new Date('2026-05-25'))
-      },
-      {
-        id:'welbe_r6_06',
-        title:'負担上限管理票の記載漏れは返戻原因に',
-        body:'複数の事業所を利用している利用者の場合、負担上限管理票の提出が必要です。\n\n国保連への請求で以下の場合は査定・返戻の対象となります：\n・「上限管理事業所」なのに管理票が未提出\n・負担上限月額と請求額の不一致\n・利用者負担額の集計誤り\n\nwelbeの利用者情報で「負担上限月額」を正確に登録し、請求前に確認することを推奨します。',
-        category:'負担上限管理',priority:'med',
-        source:'厚労省 障害者の利用者負担について',
-        sourceUrl:'https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/hukushi_kaigo/shougaishahukushi/service/hutan.html',
-        actionLabel:'利用者情報の負担上限額を確認する',actionView:'clients',
-        createdAt:firebase.firestore.Timestamp.fromDate(new Date('2026-05-24'))
-      }
-    ];
-    seeds.forEach(s=>{ const ref=_db.collection(CROCO_COL).doc(s.id); batch.set(ref,s); });
-    await batch.commit();
-    console.log('[Welbe提案] 初期提案データを投入しました');
-  }catch(e){ console.warn('[Welbe提案] シードエラー:',e); }
+// ─── 初期シード（kokuhoren_data/croco_suggestions に保存） ─
+function _crocoSeedIfEmpty(){
+  const existing = load(CROCO_KEY, null);
+  // welbe_r6_01 が含まれていれば最新シード済み
+  if(existing && Array.isArray(existing) && existing.some(s=>s.id==='welbe_r6_01')) return;
+  const D = (s)=> new Date(s).getTime(); // Unix ms タイムスタンプ
+  const seeds = [
+    {
+      id:'welbe_r6_01',
+      title:'【令和6年改定】処遇改善加算が新体系（Ⅰ〜Ⅳ）に一本化',
+      body:'令和6年4月より、「処遇改善加算」「特定処遇改善加算」「ベースアップ等支援加算」の3種が「福祉・介護職員等処遇改善加算」Ⅰ〜Ⅳの4段階に一本化されました。\n\n国保連請求では新区分コードでの請求が必要です。旧区分コードでの請求は令和6年9月請求分（8月サービス分）から無効となります。\n\n【対応が必要な内容】\n・事業所情報の加算区分を新体系に更新する\n・請求書類の加算コードを確認する',
+      category:'国保連請求対応',priority:'high',
+      source:'国保連 令和6年度障害福祉サービス等報酬改定に係る請求等について',
+      sourceUrl:'https://www.kokuhoren.or.jp/hoyoukyuufu/index.html',
+      actionLabel:'事業所情報の加算設定を確認する',actionView:'facility',
+      createdAt:D('2026-05-27')
+    },
+    {
+      id:'welbe_r6_02',
+      title:'【令和6年改定】国保連伝送ソフト・請求書様式の変更',
+      body:'令和6年4月の報酬改定に伴い、国保連への電子請求の様式が変更されました。\n\n主な変更点：\n・サービスコードの追加・変更（処遇改善加算新区分など）\n・明細書の記載項目変更\n・受給者証番号の桁数確認（10桁であることを確認）\n\n【対応期限】\n令和6年10月以降の請求から完全移行。各都道府県の国保連から通知があった場合は速やかに対応してください。',
+      category:'国保連請求対応',priority:'high',
+      source:'国保連 障害福祉サービス費等の請求について',
+      sourceUrl:'https://www.kokuhoren.or.jp/hoyoukyuufu/index.html',
+      actionLabel:'利用者の受給者証番号を確認する',actionView:'clients',
+      createdAt:D('2026-05-27')
+    },
+    {
+      id:'welbe_r6_03',
+      title:'【令和6年改定】就労継続支援A型 基本報酬スコアに2項目追加',
+      body:'令和6年度改定でA型の基本報酬スコア方式に以下が新設されました。\n\n① 利用者の知識及び能力向上（0〜10点）\n② 経営改善計画未提出（−40点）\n\n国保連請求の明細書作成時に正しいスコアで申請しないと査定・返戻の原因となります。現在welbeのA型スコア設定にこれら2項目が未対応のため、設定画面への追加が必要です。',
+      category:'A型請求対応',priority:'high',
+      source:'厚労省 令和6年度障害福祉サービス等報酬改定について',
+      sourceUrl:'https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/0000202214_00009.html',
+      actionLabel:'事業所情報（A型スコア）を確認する',actionView:'facility',
+      createdAt:D('2026-05-26')
+    },
+    {
+      id:'welbe_r6_04',
+      title:'【令和6年改定】就労継続支援B型 職員配置6:1区分が新設',
+      body:'令和6年度改定でB型に「職員配置6:1」の報酬区分が新設されました。\n\n報酬単価（岐阜県・地域区分）：\n・6:1　1,070単位（定員20名以下）など\n\n国保連への請求時には正しい職員配置区分のサービスコードを選択する必要があります。ウェルピア山県（B型）の事業所情報に6:1配置の選択肢を追加することをお勧めします。',
+      category:'B型請求対応',priority:'med',
+      source:'厚労省 令和6年度報酬改定（就労継続支援B型）',
+      sourceUrl:'https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/0000202214_00009.html',
+      actionLabel:'事業所情報（B型設定）を確認する',actionView:'facility',
+      createdAt:D('2026-05-26')
+    },
+    {
+      id:'welbe_r6_05',
+      title:'受給者証の支給決定期間・上限管理 — 期限切れ請求は返戻対象',
+      body:'国保連への請求において、受給者証の支給決定期間を超えた月の請求は自動的に返戻（差し戻し）されます。\n\n【welbeで確認すべき事項】\n・利用者の受給者証期限を「利用者情報」に正確に登録する\n・期限切れ・30日以内に期限が来る利用者には画面上のアラートが表示されます\n・更新手続きが完了したら速やかに期限を更新してください\n\n受給者証の期限管理は国保連請求の最優先確認事項です。',
+      category:'受給者証管理',priority:'high',
+      source:'国保連 障害福祉サービス費の審査について',
+      sourceUrl:'https://www.kokuhoren.or.jp/hoyoukyuufu/index.html',
+      actionLabel:'利用者情報の受給者証期限を確認する',actionView:'clients',
+      createdAt:D('2026-05-25')
+    },
+    {
+      id:'welbe_r6_06',
+      title:'負担上限管理票の記載漏れは返戻原因に',
+      body:'複数の事業所を利用している利用者の場合、負担上限管理票の提出が必要です。\n\n国保連への請求で以下の場合は査定・返戻の対象となります：\n・「上限管理事業所」なのに管理票が未提出\n・負担上限月額と請求額の不一致\n・利用者負担額の集計誤り\n\nwelbeの利用者情報で「負担上限月額」を正確に登録し、請求前に確認することを推奨します。',
+      category:'負担上限管理',priority:'med',
+      source:'厚労省 障害者の利用者負担について',
+      sourceUrl:'https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/hukushi_kaigo/shougaishahukushi/service/hutan.html',
+      actionLabel:'利用者情報の負担上限額を確認する',actionView:'clients',
+      createdAt:D('2026-05-24')
+    }
+  ];
+  save(CROCO_KEY, seeds);
+  console.log('[Welbeの提案] 初期提案データを登録しました');
 }
 
-// ─── 外部からの提案追加API (将来の拡張用) ────────────────
-// 使い方: addCrocoSuggestion({title,body,category,priority,source,sourceUrl,actionLabel,actionView})
-async function addCrocoSuggestion(data){
+// ─── 提案追加API (将来の拡張用) ─────────────────────────
+function addCrocoSuggestion(data){
   if(getS()?.role!=='admin'){console.warn('権限がありません');return;}
-  await _db.collection(CROCO_COL).add({
-    ...data,
-    createdAt: firebase.firestore.Timestamp.now()
-  });
-  showToast('クロコの提案を追加しました ✓');
+  const items = load(CROCO_KEY, []);
+  items.unshift({id:'ws_'+Date.now(), ...data, createdAt: Date.now()});
+  save(CROCO_KEY, items);
+  showToast('Welbeの提案を追加しました ✓');
 }
 
 // =========================================================
