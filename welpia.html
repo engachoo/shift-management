@@ -832,6 +832,53 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
       </div>
     </div>
 
+    <!-- ===== システム設定 > ユーザー設定 ===== -->
+    <div id="view-sysusers" style="display:none">
+      <div class="page-hdr">システム設定 <span class="ph-sub">› ユーザー設定</span></div>
+      <div class="content-area">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+          <div style="font-size:13px;color:var(--text-lt)">welbeにアクセスできるユーザーと権限を管理します。</div>
+          <button class="btn-add" onclick="openAddSysUser()">＋ ユーザーを追加</button>
+        </div>
+        <div class="form-section" style="padding:0;overflow:hidden">
+          <table class="sys-tbl">
+            <thead><tr>
+              <th>メールアドレス</th><th>表示名</th><th>権限</th><th>状態</th><th>操作</th>
+            </tr></thead>
+            <tbody id="sysUserTbody"></tbody>
+          </table>
+        </div>
+        <div class="sys-warn">
+          ⚠️ ログイン認証は Firebase Authentication で管理されています。パスワード変更・アカウント削除は
+          <a href="https://console.firebase.google.com/project/dainichi-001/authentication/users" target="_blank" style="color:#1d4ed8;font-weight:600">Firebase Console → Authentication ↗</a>
+          から行ってください。
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== システム設定 > 権限設定 ===== -->
+    <div id="view-sysperms" style="display:none">
+      <div class="page-hdr">システム設定 <span class="ph-sub">› 権限設定</span></div>
+      <div class="content-area">
+        <div style="font-size:13px;color:var(--text-lt);margin-bottom:14px">各権限ロールがアクセスできる機能を設定します。管理者のシステム設定は変更できません。</div>
+        <div class="form-section" style="padding:0;overflow:hidden">
+          <table class="sys-tbl">
+            <thead><tr>
+              <th style="width:50%">機能</th>
+              <th class="perm-th-center">管理者</th>
+              <th class="perm-th-center">責任者</th>
+              <th class="perm-th-center">スタッフ</th>
+            </tr></thead>
+            <tbody id="sysPermTbody"></tbody>
+          </table>
+        </div>
+        <div style="margin-top:14px;display:flex;gap:10px;justify-content:flex-end">
+          <button class="btn-cancel" onclick="renderSysPerms()">リセット</button>
+          <button class="btn-save" onclick="saveSysPerms()">💾 保存</button>
+        </div>
+      </div>
+    </div>
+
   </div><!-- /mainArea -->
 </div><!-- /app -->
 
@@ -1000,53 +1047,6 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
         <button class="btn-claim-reset" onclick="closeClaimHistImport()">キャンセル</button>
         <button id="chimExecBtn" class="btn-claim-dl" onclick="execClaimHistImport()" style="min-width:130px">✅ インポート実行</button>
       </div>
-    </div>
-  </div>
-</div>
-
-<!-- ===== システム設定 > ユーザー設定 ===== -->
-<div id="view-sysusers" style="display:none">
-  <div class="page-hdr">システム設定 <span class="ph-sub">› ユーザー設定</span></div>
-  <div class="content-area">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-      <div style="font-size:13px;color:var(--text-lt)">welbeにアクセスできるユーザーと権限を管理します。</div>
-      <button class="btn-add" onclick="openAddSysUser()">＋ ユーザーを追加</button>
-    </div>
-    <div class="form-section" style="padding:0;overflow:hidden">
-      <table class="sys-tbl">
-        <thead><tr>
-          <th>メールアドレス</th><th>表示名</th><th>権限</th><th>状態</th><th>操作</th>
-        </tr></thead>
-        <tbody id="sysUserTbody"></tbody>
-      </table>
-    </div>
-    <div class="sys-warn">
-      ⚠️ ログイン認証は Firebase Authentication で管理されています。パスワード変更・アカウント削除は
-      <a href="https://console.firebase.google.com/project/dainichi-001/authentication/users" target="_blank" style="color:#1d4ed8;font-weight:600">Firebase Console → Authentication ↗</a>
-      から行ってください。
-    </div>
-  </div>
-</div>
-
-<!-- ===== システム設定 > 権限設定 ===== -->
-<div id="view-sysperms" style="display:none">
-  <div class="page-hdr">システム設定 <span class="ph-sub">› 権限設定</span></div>
-  <div class="content-area">
-    <div style="font-size:13px;color:var(--text-lt);margin-bottom:14px">各権限ロールがアクセスできる機能を設定します。管理者のシステム設定は変更できません。</div>
-    <div class="form-section" style="padding:0;overflow:hidden">
-      <table class="sys-tbl">
-        <thead><tr>
-          <th style="width:50%">機能</th>
-          <th class="perm-th-center">管理者</th>
-          <th class="perm-th-center">責任者</th>
-          <th class="perm-th-center">スタッフ</th>
-        </tr></thead>
-        <tbody id="sysPermTbody"></tbody>
-      </table>
-    </div>
-    <div style="margin-top:14px;display:flex;gap:10px;justify-content:flex-end">
-      <button class="btn-cancel" onclick="renderSysPerms()">リセット</button>
-      <button class="btn-save" onclick="saveSysPerms()">💾 保存</button>
     </div>
   </div>
 </div>
