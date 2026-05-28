@@ -3421,16 +3421,18 @@ function impNext(){
       const limit  = c.limitAmount || c.limit_amount || c.income_kind_yen||'';
       // 重複チェック（氏名 + 生年月日）
       const dup = existing.find(e=>e.name===name && e.birthDate===birth);
-      const dupMark = dup ? '<span style="color:#f56565;font-size:10px">重複</span>' : '<span style="color:var(--green-dk);font-size:10px">新規</span>';
-      rows += `<tr style="border-bottom:1px solid #eef3ec${dup?';opacity:.45':''}">
-        <td style="padding:7px 10px"><input type="checkbox" data-idx="${idx}" class="imp-chk" ${dup?'':'checked'} ${dup?'disabled':''}></td>
+      const dupMark = dup
+        ? '<span style="color:#f59e0b;font-size:10px">上書き更新</span>'
+        : '<span style="color:var(--green-dk);font-size:10px">新規</span>';
+      rows += `<tr style="border-bottom:1px solid #eef3ec">
+        <td style="padding:7px 10px"><input type="checkbox" data-idx="${idx}" class="imp-chk" checked></td>
         <td style="padding:7px 10px;font-weight:600">${esc(name)}</td>
         <td style="padding:7px 10px;color:var(--text-lt)">${birth}</td>
         <td style="padding:7px 10px;color:var(--text-lt)">${esc(dtypes)}</td>
         <td style="padding:7px 10px;color:var(--text-lt)">${limit?limit+'円':''}</td>
         <td style="padding:7px 10px">${dupMark}</td>
       </tr>`;
-      if(!dup) count++;
+      count++;
     });
     tbody.innerHTML=rows;
     document.getElementById('imp-preview-count').textContent=count;
@@ -3446,7 +3448,7 @@ function impExecute(){
   if(!checked.length){ showToast('チェックされた利用者がいません'); return; }
 
   const clients = load('clients',[]);
-  let added=0;
+  let added=0, updated=0;
   checked.forEach(idx=>{
     const src = _impParsed[idx];
     if(!src) return;
@@ -3632,13 +3634,25 @@ function impExecute(){
         ['planMonitorEnd','plan_monitor_end','monitoring_period_end','date_end_plan_support_monitor'],
         ['plan_support_monitor_flg'])
     };
-    clients.push(data);
-    added++;
+    // 重複は上書き更新、新規は追加
+    const dupIdx = clients.findIndex(e=>e.name===data.name && e.birthDate===data.birthDate);
+    if(dupIdx>=0){
+      // 既存レコードのid・facilityIdを保持して上書き
+      clients[dupIdx] = Object.assign({}, clients[dupIdx], data, {
+        id: clients[dupIdx].id,
+        facilityId: clients[dupIdx].facilityId || data.facilityId
+      });
+      updated++;
+    } else {
+      clients.push(data);
+      added++;
+    }
   });
   save('clients', clients);
   // 完了画面
-  document.getElementById('imp-done-msg').textContent = `${added}名をインポートしました ✓`;
-  document.getElementById('imp-done-sub').textContent = `利用者情報一覧に追加されました`;
+  const _msg = [added?`${added}名を新規追加`:'', updated?`${updated}名を更新`:''].filter(Boolean).join('・');
+  document.getElementById('imp-done-msg').textContent = `${_msg} ✓`;
+  document.getElementById('imp-done-sub').textContent = `利用者情報一覧に反映されました`;
   _impSetStep(3);
   document.getElementById('imp-exec-btn').style.display='none';
   renderClients();
