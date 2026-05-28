@@ -13,7 +13,7 @@
   --green:    #87c177;   /* メイングリーン */
   --green-dk: #5a9e48;   /* 濃いグリーン */
   --green-lt: #e8f5e2;   /* 薄いグリーン */
-  --navy:     #2e6b47;   /* 淡いグリーン（A型） */
+  --navy:     #004063;   /* ダークネイビー */
   --navy-dk:  #003050;   /* 濃いネイビー */
   --text:     #333333;   /* テキスト */
   --text-lt:  #666666;   /* サブテキスト */
@@ -55,24 +55,21 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
 #mainArea{margin-left:224px;min-height:100vh;background:var(--bg)}
 
 /* ===== サイドバー事業所カラーテーマ ===== */
-/* A型（ウェルピア羽島）: 淡いグリーン */
-#sidebar{background:#2e6b47}
-#sidebar .sb-item.active{background:rgba(120,210,150,.18);border-left-color:#7dd9a0}
-#sidebar .sb-item:hover{background:rgba(255,255,255,.08)}
-/* B型（山県）: 淡いパープル */
-#sidebar[data-fac-type="B"]{background:#5a3590}
-#sidebar[data-fac-type="B"] .sb-item.active{background:rgba(180,140,255,.18);border-left-color:#c4a0ff}
-#sidebar[data-fac-type="B"] .sb-item:hover{background:rgba(255,255,255,.08)}
-#sidebar[data-fac-type="B"] .sb-sub-item.active{color:#c4a0ff}
-#sidebar[data-fac-type="B"] .sb-logo .sb-brand span{color:#c4a0ff}
-#sidebar[data-fac-type="B"] .croco-badge{background:#8b5cf6}
-#sidebar[data-fac-type="B"] .croco-live{color:#c4a0ff}
-#sidebar[data-fac-type="B"] .croco-live::before{background:#c4a0ff}
-#sidebar[data-fac-type="B"] .sb-fac-wrap{border-bottom-color:rgba(196,160,255,.25)}
-#sidebar[data-fac-type="B"] .sb-fac-sel{border-color:rgba(196,160,255,.4)}
+/* A型（デフォルト）: ネイビー #004063 */
+/* B型（山県）: ダークパープル */
+#sidebar[data-fac-type="B"]{background:#1e1535}
+#sidebar[data-fac-type="B"] .sb-item.active{background:rgba(139,92,246,.18);border-left-color:#a78bfa}
+#sidebar[data-fac-type="B"] .sb-item:hover{background:rgba(255,255,255,.06)}
+#sidebar[data-fac-type="B"] .sb-sub-item.active{color:#a78bfa}
+#sidebar[data-fac-type="B"] .sb-logo .sb-brand span{color:#a78bfa}
+#sidebar[data-fac-type="B"] .croco-badge{background:#7c3aed}
+#sidebar[data-fac-type="B"] .croco-live{color:#a78bfa}
+#sidebar[data-fac-type="B"] .croco-live::before{background:#a78bfa}
+#sidebar[data-fac-type="B"] .sb-fac-wrap{border-bottom-color:rgba(167,139,250,.25)}
+#sidebar[data-fac-type="B"] .sb-fac-sel{border-color:rgba(167,139,250,.4)}
 /* 事業所識別ストライプ */
-#sidebar::before{content:'';display:block;height:4px;background:#7dd9a0;transition:background .3s;flex-shrink:0}
-#sidebar[data-fac-type="B"]::before{background:#c4a0ff}
+#sidebar::before{content:'';display:block;height:4px;background:#5a9e48;transition:background .3s;flex-shrink:0}
+#sidebar[data-fac-type="B"]::before{background:#7c3aed}
 /* AB型 */
 #sidebar[data-fac-type="AB"]{background:#0d3340}
 #sidebar[data-fac-type="AB"]::before{background:#0891b2}
@@ -1366,7 +1363,7 @@ function _syncFacDisplays(){
   const sb=document.getElementById('sidebar');
   if(sb) sb.dataset.facType = f.serviceType||'A';
   // topbar アバター色
-  const avatarColors={A:'#2e6b47',B:'#5a3590',AB:'#0891b2'};
+  const avatarColors={A:'#5a9e48',B:'#7c3aed',AB:'#0891b2'};
   const av=document.getElementById('topbar-avatar');
   if(av) av.style.background = avatarColors[f.serviceType]||avatarColors.A;
 }
