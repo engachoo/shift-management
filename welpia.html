@@ -3487,6 +3487,10 @@ function impExecute(){
       return {enabled:!!(start||end), start, end};
     }
 
+    // serviceType: ソースデータにあればそれを使用、なければ選択施設から継承
+    const _importFac = load('facilities',[]).find(f=>f.id===facId);
+    const _facServiceType = _importFac ? (_importFac.serviceType==='AB'?'A':_importFac.serviceType) : 'A';
+
     // knowbe: 障害種別フラグ配列を構築
     const _disabilityTypes = (()=>{
       if(Array.isArray(g('disabilityTypes'))) return g('disabilityTypes');
@@ -3565,7 +3569,7 @@ function impExecute(){
       kana:     _rawKana || (_kanaSei+(_kanaMei?' '+_kanaMei:'')).trim(),
       receiptNo:gs('receiptNo','receipt_no','recipient_number','certification_number',''),
       noReceipt:gb('noReceipt','no_receipt','none_recipient_number_flg'),
-      serviceType: gs('serviceType','service_type','A'),
+      serviceType: gs('serviceType','service_type') || _facServiceType,
       disabilityTypes: _disabilityTypes,
       gender:   gs('gender','sex',''),
       birthDate:gs('birthDate','birth_date','date_birth','birthday','date_of_birth',''),
@@ -3657,6 +3661,7 @@ function impExecute(){
         addr: data.addr || ex.addr || '',
         tel:  data.tel  || ex.tel  || '',
         email:data.email|| ex.email|| '',
+        serviceType: data.serviceType || ex.serviceType || _facServiceType,
       });
       updated++;
     } else {
