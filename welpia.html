@@ -148,12 +148,27 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
 .croco-view-card{background:#fff;border-radius:10px;border:1px solid var(--border);margin-bottom:10px;overflow:hidden;cursor:pointer;transition:box-shadow .15s}
 .croco-view-card:hover{box-shadow:0 2px 10px rgba(0,0,0,.08)}
 .croco-view-card.unread{border-left:4px solid var(--green)}
-.croco-view-body{padding:14px 18px;font-size:13px;color:var(--text);line-height:1.75;display:none}
+.croco-view-body{padding:0 18px 16px;font-size:13px;color:var(--text);line-height:1.75;display:none}
 .croco-view-body.open{display:block}
 .croco-view-meta{display:flex;align-items:center;gap:10px;padding:13px 18px}
 .croco-view-title{font-size:13px;font-weight:600;color:var(--navy);flex:1}
-.croco-view-cat{font-size:11px;background:var(--green-lt);color:var(--green-dk);padding:2px 8px;border-radius:10px;font-weight:600}
-.croco-view-date{font-size:11px;color:var(--text-lt)}
+.croco-view-cat{font-size:11px;background:var(--green-lt);color:var(--green-dk);padding:2px 8px;border-radius:10px;font-weight:600;white-space:nowrap}
+.croco-view-date{font-size:11px;color:var(--text-lt);white-space:nowrap}
+/* 提案カード内セクション */
+.croco-sec{margin-bottom:12px;padding:10px 12px;border-radius:7px;background:#f8fafc;border-left:3px solid #cbd5e0}
+.croco-sec-label{font-size:11px;font-weight:700;color:#64748b;margin-bottom:4px;letter-spacing:.5px;text-transform:uppercase}
+.croco-sec-body{font-size:13px;color:var(--text);line-height:1.7}
+.croco-sec.sec-action{background:#f0fdf4;border-left-color:#22c55e}
+.croco-sec.sec-action .croco-sec-label{color:#15803d}
+.croco-sec.sec-deadline{background:#fff7ed;border-left-color:#f97316}
+.croco-sec.sec-deadline .croco-sec-label{color:#c2410c}
+.croco-sec.sec-deadline .croco-sec-body{color:#9a3412;font-weight:600}
+.croco-sec.sec-changes{background:#eff6ff;border-left-color:#3b82f6}
+.croco-sec.sec-changes .croco-sec-label{color:#1d4ed8}
+.croco-summary-btn{background:none;border:1px solid #93c5fd;color:#2563eb;border-radius:5px;padding:3px 10px;font-size:11px;font-weight:600;cursor:pointer;margin-top:6px;transition:background .15s}
+.croco-summary-btn:hover{background:#dbeafe}
+.croco-summary-detail{margin-top:8px;padding:8px 10px;background:#dbeafe;border-radius:6px;font-size:12px;color:#1e3a5f;line-height:1.7;display:none}
+.croco-summary-detail.open{display:block}
 
 /* ===== タブ ===== */
 .tab-bar{display:flex;background:#fff;border-bottom:2px solid var(--border)}
@@ -3170,7 +3185,14 @@ function _crocoRender(items){
             <span class="croco-view-date">${dateStr}</span>
           </div>
           <div class="croco-view-body${isExp?' open':''}" id="croco-vd-${item.id}">
-            <div style="color:var(--text);line-height:1.8">${esc(item.body||'').replace(/\n/g,'<br>')}</div>
+            ${item.notifiedAt?`<div style="font-size:11px;color:var(--text-lt);margin-bottom:10px">📅 通達日時：${esc(item.notifiedAt)}</div>`:''}
+            <div class="croco-sec sec-changes">
+              <div class="croco-sec-label">変更内容</div>
+              <div class="croco-sec-body">${esc(item.changes||item.body||'').replace(/\n/g,'<br>')}</div>
+              ${item.summary?`<button class="croco-summary-btn" onclick="event.stopPropagation();toggleCrocoSummary('${item.id}')" id="croco-sumbtn-${item.id}">詳しく見る ▼</button><div class="croco-summary-detail" id="croco-sum-${item.id}">${esc(item.summary).replace(/\n/g,'<br>')}</div>`:''}
+            </div>
+            ${item.actions?`<div class="croco-sec sec-action"><div class="croco-sec-label">対応が必要な内容</div><div class="croco-sec-body">${esc(item.actions).replace(/\n/g,'<br>')}</div></div>`:''}
+            ${item.deadline?`<div class="croco-sec sec-deadline"><div class="croco-sec-label">対応期限</div><div class="croco-sec-body">${esc(item.deadline)}</div></div>`:''}
             ${item.source?`<div style="margin-top:8px;font-size:11px;color:var(--text-lt)">📎 ${item.sourceUrl?`<a href="${item.sourceUrl}" target="_blank" style="color:var(--green-dk)">${esc(item.source)}</a>`:esc(item.source)}</div>`:''}
             ${item.actionLabel?`<button class="btn-add" style="margin-top:12px;font-size:12px;padding:7px 16px" onclick="event.stopPropagation();crocoAction('${item.id}','${(item.actionView||'').replace(/'/g,"\\'")}')">▶ ${esc(item.actionLabel)}</button>`:''}
             <button onclick="event.stopPropagation();crocoMarkRead('${item.id}')" style="background:none;border:none;color:var(--text-lt);font-size:11px;cursor:pointer;margin-top:8px;padding:0">✓ 既読にする</button>
@@ -3227,6 +3249,16 @@ function toggleCrocoViewCard(id){
   if(badge){ badge.textContent=rem||0; if(rem===0) badge.style.display='none'; }
 }
 
+// ─── 変更内容詳細の展開 ──────────────────────────────────
+function toggleCrocoSummary(id){
+  const detail = document.getElementById('croco-sum-'+id);
+  const btn    = document.getElementById('croco-sumbtn-'+id);
+  if(!detail) return;
+  const isOpen = detail.classList.contains('open');
+  detail.classList.toggle('open', !isOpen);
+  if(btn) btn.textContent = isOpen ? '詳しく見る ▼' : '折りたたむ ▲';
+}
+
 // ─── カード展開（サイドバー版） ─────────────────────────
 function toggleCrocoCard(id){
   _crocoMarkViewed(id);
@@ -3271,14 +3303,18 @@ function crocoAction(id, view){
 // ─── 初期シード（kokuhoren_data/croco_suggestions に保存） ─
 function _crocoSeedIfEmpty(){
   const existing = load(CROCO_KEY, null);
-  // welbe_r6_01v2 が含まれていれば最新シード済み（URLバグ修正版）
-  if(existing && Array.isArray(existing) && existing.some(s=>s.id==='welbe_r6_01v2')) return;
+  // welbe_r6_01v3 が含まれていれば最新シード済み（提案カード新形式版）
+  if(existing && Array.isArray(existing) && existing.some(s=>s.id==='welbe_r6_01v3')) return;
   const D = (s)=> new Date(s).getTime(); // Unix ms タイムスタンプ
   const seeds = [
     {
-      id:'welbe_r6_01v2',
+      id:'welbe_r6_01v3',
       title:'【令和6年改定】処遇改善加算が新体系（Ⅰ〜Ⅳ）に一本化',
-      body:'令和6年4月より、「処遇改善加算」「特定処遇改善加算」「ベースアップ等支援加算」の3種が「福祉・介護職員等処遇改善加算」Ⅰ〜Ⅳの4段階に一本化されました。\n\n国保連請求では新区分コードでの請求が必要です。旧区分コードでの請求は令和6年9月請求分（8月サービス分）から無効となります。\n\n【対応が必要な内容】\n・事業所情報の加算区分を新体系に更新する\n・請求書類の加算コードを確認する',
+      notifiedAt:'令和6年（2024年）3月29日　厚生労働省告示',
+      changes:'「処遇改善加算」「特定処遇改善加算」「ベースアップ等支援加算」の3種が「福祉・介護職員等処遇改善加算」Ⅰ〜Ⅳの4段階に一本化されました。令和6年4月サービス提供分から新区分コードでの請求が必要です。',
+      summary:'【統合の背景】\n3種類の加算制度が複雑で事業所の事務負担が大きいため、一本化されました。\n\n【新区分の概要】\n・加算Ⅰ（最高）: 旧「ベースアップ加算＋特定＋処遇改善」相当\n・加算Ⅱ: 旧「特定処遇改善加算＋処遇改善加算」相当\n・加算Ⅲ: 旧「処遇改善加算Ⅰ〜Ⅲ」相当\n・加算Ⅳ: 旧「処遇改善加算Ⅳ・Ⅴ」相当\n\n【請求コードの変更】\n旧区分コードは令和6年9月請求分（8月サービス分）から無効となります。新区分コードへの切り替えが必須です。',
+      actions:'・事業所情報の加算区分を新体系（Ⅰ〜Ⅳ）に更新する\n・国保連への届出（処遇改善計画書）を新様式で提出する\n・請求書類の加算コードを新コードに切り替える',
+      deadline:'令和6年9月請求分（8月サービス分）から旧コード無効',
       category:'国保連請求対応',priority:'high',
       source:'国保連 令和6年度障害福祉サービス等報酬改定に係る請求等について',
       sourceUrl:'https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/0000202214_00009.html',
@@ -3288,7 +3324,11 @@ function _crocoSeedIfEmpty(){
     {
       id:'welbe_r6_02',
       title:'【令和6年改定】国保連伝送ソフト・請求書様式の変更',
-      body:'令和6年4月の報酬改定に伴い、国保連への電子請求の様式が変更されました。\n\n主な変更点：\n・サービスコードの追加・変更（処遇改善加算新区分など）\n・明細書の記載項目変更\n・受給者証番号の桁数確認（10桁であることを確認）\n\n【対応期限】\n令和6年10月以降の請求から完全移行。各都道府県の国保連から通知があった場合は速やかに対応してください。',
+      notifiedAt:'令和6年（2024年）3月　国保中央会通知',
+      changes:'令和6年4月の報酬改定に伴い、国保連への電子請求の様式が変更されました。サービスコードの追加・変更（処遇改善加算新区分など）、明細書の記載項目変更、受給者証番号の桁数確認（10桁）が必要です。',
+      summary:'【主な変更点】\n① サービスコードの追加・変更\n　処遇改善加算新区分に対応する新コードが追加されました。\n\n② 明細書フォーマット変更\n　加算欄の項目名・コード体系が変更されています。\n\n③ 受給者証番号の確認\n　10桁であることを確認。古いシステムで9桁登録している場合は修正が必要です。\n\n④ 伝送ソフトのバージョン確認\n　国保連の伝送ソフトが旧バージョンのままだと送信エラーになります。',
+      actions:'・利用者の受給者証番号が10桁であることを確認する\n・国保連伝送ソフトを最新バージョンに更新する\n・テスト請求で新様式での送信を確認する',
+      deadline:'令和6年10月以降の請求から完全移行',
       category:'国保連請求対応',priority:'high',
       source:'国保連 障害福祉サービス費等の請求について',
       sourceUrl:'https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/0000202214_00009.html',
@@ -3298,7 +3338,11 @@ function _crocoSeedIfEmpty(){
     {
       id:'welbe_r6_03',
       title:'【令和6年改定】就労継続支援A型 基本報酬スコアに2項目追加',
-      body:'令和6年度改定でA型の基本報酬スコア方式に以下が新設されました。\n\n① 利用者の知識及び能力向上（0〜10点）\n② 経営改善計画未提出（−40点）\n\n国保連請求の明細書作成時に正しいスコアで申請しないと査定・返戻の原因となります。現在welbeのA型スコア設定にこれら2項目が未対応のため、設定画面への追加が必要です。',
+      notifiedAt:'令和6年（2024年）3月29日　厚生労働省告示',
+      changes:'令和6年度改定でA型の基本報酬スコア方式に2項目が新設されました。①利用者の知識及び能力向上（0〜10点）②経営改善計画未提出（−40点）。正しいスコアで申請しないと査定・返戻の原因となります。',
+      summary:'【スコア方式の背景】\nA型の基本報酬は「スコア方式」で算定されます。各評価項目の合計点数によって報酬単価が決まります。\n\n【令和6年新設項目の詳細】\n① 利用者の知識及び能力向上（0〜10点）\n　・利用者へのスキルアップ研修実施状況を評価\n　・研修計画書の作成・実施・評価が要件\n\n② 経営改善計画未提出（−40点）\n　・赤字事業所が経営改善計画書を提出しない場合に減点\n　・黒字事業所は対象外\n\n【影響】\nスコア合計によって報酬単価（例：70点以上なら最高単価）が変わるため、新項目の計上漏れは報酬の過少申請につながります。',
+      actions:'・事業所情報のA型スコア設定を確認・更新する\n・利用者スキルアップ研修の実施状況を確認する\n・経営改善計画書の提出要否を確認する',
+      deadline:'令和6年4月サービス提供分から適用（遡及確認要）',
       category:'A型請求対応',priority:'high',
       source:'厚労省 令和6年度障害福祉サービス等報酬改定について',
       sourceUrl:'https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/0000202214_00009.html',
@@ -3308,7 +3352,11 @@ function _crocoSeedIfEmpty(){
     {
       id:'welbe_r6_04',
       title:'【令和6年改定】就労継続支援B型 職員配置6:1区分が新設',
-      body:'令和6年度改定でB型に「職員配置6:1」の報酬区分が新設されました。\n\n報酬単価（岐阜県・地域区分）：\n・6:1　1,070単位（定員20名以下）など\n\n国保連への請求時には正しい職員配置区分のサービスコードを選択する必要があります。ウェルピア山県（B型）の事業所情報に6:1配置の選択肢を追加することをお勧めします。',
+      notifiedAt:'令和6年（2024年）3月29日　厚生労働省告示',
+      changes:'令和6年度改定でB型に「職員配置6:1」の報酬区分が新設されました。報酬単価（岐阜県・定員20名以下）：6:1で1,070単位など。請求時には正しい職員配置区分のサービスコードを選択する必要があります。',
+      summary:'【新設の背景】\nB型の職員配置基準は従来「7.5:1」でしたが、手厚い支援を行う事業所への加算として「6:1」区分が追加されました。\n\n【算定要件（6:1）】\n・常勤換算で利用者6名につき職員1名以上を配置\n・前年度の平均障害支援区分が一定以上\n・就労に関するアセスメントを毎年実施\n\n【報酬単価例（岐阜県・地域区分4級地）】\n・定員20名以下：1,070単位/日\n・定員21〜40名：959単位/日\n・定員41〜60名：865単位/日\n\n従来の7.5:1区分より約5〜10%高い単価となります。',
+      actions:'・職員配置が6:1の基準を満たしているか確認する\n・事業所情報にB型6:1区分の選択肢を確認・追加する\n・翌月請求から新区分コードで申請する',
+      deadline:'令和6年4月サービス提供分から算定可能',
       category:'B型請求対応',priority:'med',
       source:'厚労省 令和6年度報酬改定（就労継続支援B型）',
       sourceUrl:'https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/0000202214_00009.html',
@@ -3318,7 +3366,11 @@ function _crocoSeedIfEmpty(){
     {
       id:'welbe_r6_05',
       title:'受給者証の支給決定期間・上限管理 — 期限切れ請求は返戻対象',
-      body:'国保連への請求において、受給者証の支給決定期間を超えた月の請求は自動的に返戻（差し戻し）されます。\n\n【welbeで確認すべき事項】\n・利用者の受給者証期限を「利用者情報」に正確に登録する\n・期限切れ・30日以内に期限が来る利用者には画面上のアラートが表示されます\n・更新手続きが完了したら速やかに期限を更新してください\n\n受給者証の期限管理は国保連請求の最優先確認事項です。',
+      notifiedAt:'随時（国保連審査の基本ルール）',
+      changes:'国保連への請求において、受給者証の支給決定期間を超えた月の請求は自動的に返戻（差し戻し）されます。期限切れの利用者がいないか、定期的な確認が必要です。',
+      summary:'【返戻とは】\n審査で不備が見つかった場合、請求が差し戻されることを「返戻」といいます。返戻された請求は翌月以降に再請求が必要で、入金が1ヶ月以上遅れます。\n\n【受給者証期限切れによる返戻の流れ】\n① 月次請求→国保連審査→受給者証期限切れを検出→返戻\n② 事業所に「返戻一覧表」が送付される\n③ 受給者証の更新を確認後、翌月以降に再請求\n\n【welbeのアラート機能】\n・利用者情報に受給者証期限を登録すると\n・期限切れ：赤色アラート表示\n・30日以内に期限：黄色アラート表示\n\n早めの対応で返戻を防いでください。',
+      actions:'・利用者情報の受給者証期限（支給決定終了日）を登録する\n・期限が近い利用者に受給者証の更新を促す\n・更新後は速やかにwelbeの期限情報を更新する',
+      deadline:'毎月の請求前（原則、請求月の前月末まで）に確認',
       category:'受給者証管理',priority:'high',
       source:'国保連 障害福祉サービス費の審査について',
       sourceUrl:'https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/0000202214_00009.html',
@@ -3328,7 +3380,11 @@ function _crocoSeedIfEmpty(){
     {
       id:'welbe_r6_06',
       title:'負担上限管理票の記載漏れは返戻原因に',
-      body:'複数の事業所を利用している利用者の場合、負担上限管理票の提出が必要です。\n\n国保連への請求で以下の場合は査定・返戻の対象となります：\n・「上限管理事業所」なのに管理票が未提出\n・負担上限月額と請求額の不一致\n・利用者負担額の集計誤り\n\nwelbeの利用者情報で「負担上限月額」を正確に登録し、請求前に確認することを推奨します。',
+      notifiedAt:'随時（国保連審査の基本ルール）',
+      changes:'複数の事業所を利用している利用者の場合、負担上限管理票の提出が必要です。「上限管理事業所」なのに管理票が未提出、または負担上限月額と請求額の不一致がある場合は査定・返戻の対象となります。',
+      summary:'【負担上限管理票とは】\n同一月に複数の障害福祉サービスを利用する場合、利用者の月額負担が上限を超えないよう管理するための書類です。\n\n【提出が必要なケース】\n・同一月に2つ以上の事業所のサービスを利用している\n・かつ利用者負担額の合計が上限月額を超える可能性がある\n\n【上限管理事業所の役割】\n・各利用事業所から請求額を集計\n・合計が上限月額を超える場合は調整\n・管理票を国保連に提出\n\n【注意点】\n上限管理事業所でない場合でも、管理票の写しを受け取り保管が必要です。\n\n【welbeでの確認】\n利用者情報の「負担上限月額」欄に正確な金額を登録してください。',
+      actions:'・利用者情報に負担上限月額を正確に登録する\n・複数事業所利用者の上限管理票を毎月確認する\n・上限管理事業所としての役割を確認する',
+      deadline:'毎月の国保連請求期限（翌月10日）まで',
       category:'負担上限管理',priority:'med',
       source:'厚労省 障害者の利用者負担について',
       sourceUrl:'https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/hukushi_kaigo/shougaishahukushi/service/hutan.html',
