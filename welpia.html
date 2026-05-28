@@ -766,6 +766,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
             <span id="clientsFacName" style="font-weight:600;font-size:13px;color:var(--navy)"></span>
             <span id="clientsFacBadge" style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:12px"></span>
             <button id="btnBulkFixType" onclick="bulkFixServiceType()" style="display:none;background:#fef9c3;border:1px solid #ca8a04;color:#78350f;border-radius:5px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer">⚠ 種別を一括修正</button>
+            <button id="btnDedupClients" onclick="dedupClients()" style="display:none;background:#fee2e2;border:1px solid #dc2626;color:#7f1d1d;border-radius:5px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer">⚠ 重複を削除</button>
           </div>
           <div style="display:flex;gap:8px;align-items:center">
             <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:13px;color:#374151;user-select:none">
@@ -2721,6 +2722,33 @@ function bulkFixServiceType(){
   renderClients();
 }
 
+// 重複利用者を削除（knowbeId一致 or 氏名+生年月日一致、データが少ない方を削除）
+function dedupClients(){
+  const clients = load('clients',[]).filter(c=>c.facilityId===_curFacId);
+  const others  = load('clients',[]).filter(c=>c.facilityId!==_curFacId);
+  const seen = new Map();
+  const result = [];
+  // データ量スコア（フィールドが多い方を優先）
+  const score = c => [c.birthDate,c.grantEnd,c.grantStart,c.disabilityClass,c.limitAmount,c.kana].filter(Boolean).length;
+  clients.forEach(c=>{
+    const key = c.knowbeId ? String(c.knowbeId) : (c.name+'|'+(c.birthDate||''));
+    if(!seen.has(key)){
+      seen.set(key, c);
+    } else {
+      // データが多い方を保持
+      const existing = seen.get(key);
+      if(score(c) > score(existing)) seen.set(key, c);
+    }
+  });
+  const deduped = [...seen.values()];
+  const removed = clients.length - deduped.length;
+  if(removed===0){ showToast('重複はありませんでした'); return; }
+  if(!confirm(`${removed}件の重複を削除します。よろしいですか？`)) return;
+  save('clients', [...others, ...deduped]);
+  showToast(`${removed}件の重複を削除しました ✓`);
+  renderClients();
+}
+
 // サイドバー統合後は _syncFacDisplays() が担当
 function buildClaimFacSel(){ _syncFacDisplays(); }
 function _updateClaimFacBadge(){ _syncFacDisplays(); }
@@ -2736,6 +2764,14 @@ function toggleShowInactive(){
 function renderClients(){
   const fid=_curFacId;
   let clients=load('clients',[]).filter(c=>c.facilityId===fid);
+  // 重複チェック → ボタン表示
+  const keys=new Set(); let hasDup=false;
+  clients.forEach(c=>{
+    const k=c.knowbeId?String(c.knowbeId):(c.name+'|'+(c.birthDate||''));
+    if(keys.has(k)) hasDup=true; else keys.add(k);
+  });
+  const dedupBtn=document.getElementById('btnDedupClients');
+  if(dedupBtn) dedupBtn.style.display=hasDup?'inline-block':'none';
   if(!_showInactive) clients=clients.filter(c=>c.active!==false);
   const tbody=document.getElementById('clientTbody');
   const total=load('clients',[]).filter(c=>c.facilityId===fid).length;
