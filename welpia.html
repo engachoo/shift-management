@@ -3361,28 +3361,36 @@ function impJsonChanged(){
     if(obj && obj.welbe_import && Array.isArray(obj.clients)) arr = obj.clients;
     else if(Array.isArray(obj)) arr = obj;
     else if(obj && typeof obj==='object'){
-      const keys=['clients','members','users','data','items','results','list'];
-      for(const k of keys){ if(Array.isArray(obj[k])){ arr=obj[k]; break; } }
-      if(!arr){ const fa=Object.values(obj).find(v=>Array.isArray(v)&&v.length>0); if(fa) arr=fa; }
+      // knowbe API単一ユーザー形式: {"data":{id:..., name_sei:...}}
+      if(obj.data && typeof obj.data==='object' && !Array.isArray(obj.data) && obj.data.id){
+        arr = [obj.data];
+      } else {
+        const keys=['clients','members','users','data','items','results','list'];
+        for(const k of keys){ if(Array.isArray(obj[k])){ arr=obj[k]; break; } }
+        if(!arr){ const fa=Object.values(obj).find(v=>Array.isArray(v)&&v.length>0); if(fa) arr=fa; }
+      }
     }
     if(!arr||arr.length===0){
       msg.style.color='#e53e3e'; msg.textContent='⚠️ 利用者データの配列が見つかりません'; btn.disabled=true; return;
     }
-    // knowbe生データ（displayName形式）を welbe形式に正規化
+    // knowbe生データを welbe形式に正規化
     _impParsed = arr.map(c=>{
-      if(c.displayName && !c.name){
-        const parts = (c.displayName||'').split(/\s|　/);
-        const kanaParts = (c.kanaName||'').split(/\s|　/);
+      // knowbe APIレスポンス形式: name_sei / name_mei を使用
+      const hasKnowbeFields = c.name_sei !== undefined || c.name_mei !== undefined;
+      if(hasKnowbeFields || (c.displayName && !c.name)){
+        const sei  = c.name_sei  || (c.displayName||'').split(/\s|　/)[0]||'';
+        const mei  = c.name_mei  || (c.displayName||'').split(/\s|　/).slice(1).join('')||'';
+        const kSei = c.name_sei_kana || (c.kanaName||'').split(/\s|　/)[0]||'';
+        const kMei = c.name_mei_kana || (c.kanaName||'').split(/\s|　/).slice(1).join('')||'';
         return Object.assign({}, c, {
-          name:     c.displayName,
-          sei:      parts[0]||'',
-          mei:      parts.slice(1).join('')||'',
-          kana:     c.kanaName||'',
-          kanaSei:  kanaParts[0]||'',
-          kanaMei:  kanaParts.slice(1).join('')||'',
+          name:     (sei+(mei?' '+mei:'')).trim() || c.displayName || '',
+          sei, mei,
+          kana:     (kSei+(kMei?' '+kMei:'')).trim() || c.kanaName||'',
+          kanaSei:  kSei,
+          kanaMei:  kMei,
           receiptNo: c.recipient_number||c.receiptNo||'',
-          active:   c.date_end_in_service===null||c.date_end_in_service===undefined,
-          knowbeId: c.uif_id
+          active:   c.deleted_at===null && (c.date_end_in_service===null||c.date_end_in_service===undefined),
+          knowbeId: c.id || c.uif_id
         });
       }
       return c;
@@ -3404,10 +3412,13 @@ function impNext(){
     const tbody = document.getElementById('imp-preview-tbody');
     let rows='', count=0;
     _impParsed.forEach((c,idx)=>{
-      const name = c.name || c._sourceName || c.displayName || ((c.sei||'')+(c.mei?' '+c.mei:''));
-      const birth = c.birthDate || c.birth_date || '';
-      const dtypes = Array.isArray(c.disabilityTypes)?c.disabilityTypes.join('・'):(c.disabilityTypes||'');
-      const limit  = c.limitAmount || c.limit_amount || '';
+      const _pSei = c.sei||c.name_sei||'';
+      const _pMei = c.mei||c.name_mei||'';
+      const name = c.name || c.displayName || c._sourceName || (_pSei+(_pMei?' '+_pMei:''));
+      const birth = c.birthDate || c.birth_date || c.date_birth || '';
+      const _dArr = Array.isArray(c.disabilityTypes)?c.disabilityTypes:[];
+      const dtypes = _dArr.length ? _dArr.join('・') : (c.disabilityTypes||'');
+      const limit  = c.limitAmount || c.limit_amount || c.income_kind_yen||'';
       // 重複チェック（氏名 + 生年月日）
       const dup = existing.find(e=>e.name===name && e.birthDate===birth);
       const dupMark = dup ? '<span style="color:#f56565;font-size:10px">重複</span>' : '<span style="color:var(--green-dk);font-size:10px">新規</span>';
@@ -3439,34 +3450,109 @@ function impExecute(){
   checked.forEach(idx=>{
     const src = _impParsed[idx];
     if(!src) return;
-    // knowbe生データ（displayName形式）にも対応
-    const _rawName = src.displayName || src.name || src._sourceName || '';
-    const sei = src.sei || src.last_name || _rawName.split(/\s|　/)[0]||'';
-    const mei = src.mei || src.first_name || _rawName.split(/\s|　/).slice(1).join('')||'';
-    const name= _rawName || (sei+(mei?' '+mei:''));
-    // kana（knowbe: kanaName, welbe_extractor: kanaSei/kanaMei）
-    const _rawKana = src.kanaName || src.kana || '';
-    const _kanaSei = src.kanaSei || src.kana_sei || _rawKana.split(/\s|　/)[0]||'';
-    const _kanaMei = src.kanaMei || src.kana_mei || _rawKana.split(/\s|　/).slice(1).join('')||'';
-    // active判定（date_end_in_serviceがnullなら在籍中）
+    // knowbe形式: name_sei/name_mei / displayName / sei+mei すべて対応
+    const sei = src.sei || src.name_sei || src.last_name || (src.name||src.displayName||'').split(/\s|　/)[0]||'';
+    const mei = src.mei || src.name_mei || src.first_name || (src.name||src.displayName||'').split(/\s|　/).slice(1).join('')||'';
+    const name= src.name || src.displayName || src._sourceName || (sei+(mei?' '+mei:''));
+    // kana（knowbe: name_sei_kana/name_mei_kana, kanaName）
+    const _rawKana = src.kana || src.kanaName || '';
+    const _kanaSei = src.kanaSei || src.name_sei_kana || src.kana_sei || _rawKana.split(/\s|　/)[0]||'';
+    const _kanaMei = src.kanaMei || src.name_mei_kana || src.kana_mei || _rawKana.split(/\s|　/).slice(1).join('')||'';
+    // active判定（knowbe: deleted_at=null かつ date_end_in_service=null なら在籍中）
     const _active = src.active!==undefined ? src.active :
-                    (src.date_end_in_service===null || src.date_end_in_service===undefined);
+                    (src.deleted_at===null||src.deleted_at===undefined) &&
+                    (src.date_end_in_service===null||src.date_end_in_service===undefined);
 
     // フィールド安全取得ヘルパー
     function g(a){return src[a]!==undefined&&src[a]!==null?src[a]:undefined;}
     function gs(...ks){for(const k of ks){if(src[k]!==undefined&&src[k]!==null)return src[k];}return '';}
     function gb(...ks){for(const k of ks){if(src[k]!==undefined)return !!src[k];}return false;}
 
-    // ── period オブジェクト再構成（ネスト or フラットフィールド両対応）
-    function gPeriod(objKey, startKeys, endKeys){
+    // ── period オブジェクト再構成（ネスト・フラット・knowbe flg形式 すべて対応）
+    function gPeriod(objKey, startKeys, endKeys, flagKeys){
       const obj = g(objKey);
       if(obj && typeof obj==='object' && ('start' in obj || 'end' in obj)){
         return {enabled:!!(obj.start||obj.end), start:obj.start||'', end:obj.end||''};
       }
       const start = gs(...startKeys);
       const end   = gs(...endKeys);
+      // knowbe形式: 個別のflagフィールドで有効/無効を判定
+      if(flagKeys && flagKeys.length){
+        for(const fk of flagKeys){
+          if(src[fk]!==undefined){ return {enabled:!!Number(src[fk]), start, end}; }
+        }
+      }
       return {enabled:!!(start||end), start, end};
     }
+
+    // knowbe: 障害種別フラグ配列を構築
+    const _disabilityTypes = (()=>{
+      if(Array.isArray(g('disabilityTypes'))) return g('disabilityTypes');
+      if(Array.isArray(g('disability_types'))) return g('disability_types');
+      const types=[];
+      if(Number(src.classify_physical_flg))     types.push('身体障害');
+      if(Number(src.classify_intelligence_flg)) types.push('知的障害');
+      if(Number(src.classify_mind_flg))         types.push('精神障害');
+      if(Number(src.classify_growth_flg))       types.push('発達障害');
+      if(Number(src.classify_brain_flg))        types.push('高次脳機能障害');
+      if(Number(src.classify_handicapped_flg))  types.push('障害児');
+      if(Number(src.classify_incurable_flg))    types.push('難病等対象者');
+      return types;
+    })();
+
+    // knowbe: 障害支援区分（0=なし, 1-6=区分N）
+    const _disabilityClass = (()=>{
+      const direct = gs('disabilityClass','disability_class','support_category','disability_support_category','category');
+      if(direct) return direct;
+      if(src.classify_disability_support!==undefined){
+        return Number(src.classify_disability_support)>0 ? String(src.classify_disability_support) : '';
+      }
+      return '';
+    })();
+
+    // knowbe: 負担上限月額（income_kind → 標準金額にフォールバック）
+    const _limitAmountStr = (()=>{
+      const direct = gs('limitAmount','limit_amount','copay_ceiling','user_charge_ceiling','cost_limit','burden_limit');
+      if(direct) return direct;
+      if(src.income_kind_yen!==undefined && Number(src.income_kind_yen)>0) return String(src.income_kind_yen);
+      const kindMap={'1':'0','2':'0','3':'9300','4':'37200'};
+      if(src.income_kind!==undefined) return kindMap[String(src.income_kind)]||'';
+      return '';
+    })();
+
+    // knowbe: 週デフォルト曜日（個別フラグ形式）
+    const _defaultDays = g('defaultDays')||g('default_days')||(()=>{
+      if(src.mon_scheduled_flg!==undefined){
+        return {
+          mon:!!Number(src.mon_scheduled_flg), tue:!!Number(src.tue_scheduled_flg),
+          wed:!!Number(src.wed_scheduled_flg), thu:!!Number(src.thu_scheduled_flg),
+          fri:!!Number(src.fri_scheduled_flg), sat:!!Number(src.sat_scheduled_flg),
+          sun:!!Number(src.sun_scheduled_flg)
+        };
+      }
+      return {mon:true,tue:true,wed:true,thu:true,fri:true,sat:true,sun:false};
+    })();
+
+    // knowbe: default_status_settings → serviceDefaults変換
+    const _serviceDefaults = (()=>{
+      const existing = g('serviceDefaults')||g('service_defaults');
+      if(existing) return existing;
+      const base={
+        tsusho:       {start:'09:00',end:'16:00',pickup:'なし',timeCard:false},
+        outside_work: {start:'09:00',end:'16:00',pickup:'なし',timeCard:false},
+        outside_sup:  {start:'09:00',end:'16:00',pickup:'なし',timeCard:false}
+      };
+      const settings=Array.isArray(src.default_status_settings)?src.default_status_settings:[];
+      const map={2:'tsusho',3:'outside_work',4:'outside_sup'};
+      settings.forEach(s=>{
+        const key=map[s.status]; if(!key) return;
+        base[key]={
+          start:s.start_time||'09:00', end:s.end_time||'16:00',
+          pickup:s.def_pickup==='1'?'あり':'なし', timeCard:!!s.time_card_display_flg
+        };
+      });
+      return base;
+    })();
 
     const data = {
       id: 'c'+Date.now()+'_'+idx,
@@ -3476,76 +3562,75 @@ function impExecute(){
       kanaMei:  _kanaMei,
       kana:     _rawKana || (_kanaSei+(_kanaMei?' '+_kanaMei:'')).trim(),
       receiptNo:gs('receiptNo','receipt_no','recipient_number','certification_number',''),
-      noReceipt:gb('noReceipt','no_receipt'),
+      noReceipt:gb('noReceipt','no_receipt','none_recipient_number_flg'),
       serviceType: gs('serviceType','service_type','A'),
-      disabilityTypes: Array.isArray(g('disabilityTypes'))?g('disabilityTypes'):
-                       (Array.isArray(g('disability_types'))?g('disability_types'):[]),
+      disabilityTypes: _disabilityTypes,
       gender:   gs('gender','sex',''),
-      birthDate:gs('birthDate','birth_date','birthday','date_of_birth',''),
+      birthDate:gs('birthDate','birth_date','date_birth','birthday','date_of_birth',''),
       zip:  gs('zip','postal_code','post_code',''),
-      pref: gs('pref','prefecture',''),
+      pref: gs('pref','prefecture','prefecture_name',''),
       city: gs('city',''),
-      cityNo: gs('cityNo','city_no','municipality_code',''),
+      cityNo: gs('cityNo','city_no','city_id','municipality_code',''),
       addr: gs('addr','address',''),
       tel:  gs('tel','phone','phone_number',''),
       email:gs('email','mail',''),
       guardian:  gs('guardian','guardian_name',''),
       relation:  gs('relation','guardian_relation',''),
-      emergencyTel: gs('emergencyTel','emergency_tel','emergency_phone',''),
+      emergencyTel: gs('emergencyTel','emergency_tel','guardian_tel','emergency_phone',''),
       note: gs('note','memo','remarks',''),
-      startDate: gs('startDate','start_date','date_start_in_service','service_start_date',''),
+      startDate: gs('startDate','start_date','date_begin_in_service','date_start_in_service','service_start_date',''),
       endDate:   gs('endDate','end_date','date_end_in_service','service_end_date',''),
-      sameCorp:  gb('sameCorp','same_corp'),
-      // 受給者証 支給決定期間（knowbeの各フィールド名に対応）
-      grantStart:gs('grantStart','grant_start','decision_start_date','benefit_start_date',
+      sameCorp:  gb('sameCorp','same_corp','same_corporation_movement_flg'),
+      // 受給者証 支給決定期間
+      grantStart:gs('grantStart','grant_start','date_pay_begin','decision_start_date','benefit_start_date',
                     'certification_start','start_of_grant','grant_period_start',''),
-      grantEnd:  gs('grantEnd','grant_end','decision_end_date','benefit_end_date',
+      grantEnd:  gs('grantEnd','grant_end','date_pay_end','decision_end_date','benefit_end_date',
                     'certification_end','end_of_grant','grant_period_end','expiry_date',''),
-      disabilityClass: gs('disabilityClass','disability_class','support_category',
-                          'disability_support_category','category',''),
+      disabilityClass: _disabilityClass,
       quotaType: gs('quotaType','quota_type','default'),
       quotaDays: g('quotaDays')??g('quota_days')??null,
       quotaSpecial: gb('quotaSpecial','quota_special'),
-      limitAmount: gs('limitAmount','limit_amount','copay_ceiling','user_charge_ceiling',
-                      'cost_limit','burden_limit') || '',
-      contractAmount: parseInt(gs('limitAmount','limit_amount','copay_ceiling','user_charge_ceiling',
-                                  'cost_limit','burden_limit') || '0') || 0,
-      localLimit:      gb('localLimit','local_limit'),
-      subsidyTarget:   gb('subsidyTarget','subsidy_target'),
-      aTypeExempt:     gb('aTypeExempt','a_type_exempt'),
-      upperManagement: gb('upperManagement','upper_management'),
-      noPlan:          gb('noPlan','no_plan'),
+      limitAmount: _limitAmountStr,
+      contractAmount: parseInt(_limitAmountStr||'0')||0,
+      localLimit:      gb('localLimit','local_limit','municipal_defined_user_load_flg'),
+      subsidyTarget:   gb('subsidyTarget','subsidy_target','subsidized_flg'),
+      aTypeExempt:     gb('aTypeExempt','a_type_exempt','a_target_for_reduction_flg'),
+      upperManagement: gb('upperManagement','upper_management','uplimit_facility_flg'),
+      // knowbe: create_support_plan_flg=1はプランあり → noPlan=false（反転）
+      noPlan: (src.noPlan!==undefined)?!!src.noPlan:(src.no_plan!==undefined)?!!src.no_plan:
+              (src.create_support_plan_flg!==undefined)?!Number(src.create_support_plan_flg):false,
       employLink:      gb('employLink','employ_link'),
-      intensiveSupport:gb('intensiveSupport','intensive_support'),
+      intensiveSupport:gb('intensiveSupport','intensive_support','intensive_support_flg'),
       active: _active,
-      knowbeId: src.uif_id || src._sourceId || undefined,
-      defaultDays: g('defaultDays')||g('default_days')||
-        {mon:true,tue:true,wed:true,thu:true,fri:true,sat:true,sun:false},
-      serviceDefaults: g('serviceDefaults')||g('service_defaults')||{
-        tsusho:       {start:'09:00',end:'16:00',pickup:'なし',timeCard:false},
-        outside_work: {start:'09:00',end:'16:00',pickup:'なし',timeCard:false},
-        outside_sup:  {start:'09:00',end:'16:00',pickup:'なし',timeCard:false}
-      },
-      eSignRecord: gb('eSignRecord','e_sign_record'),
-      // 有効期限付き期間（ネスト or フラット両対応）
+      knowbeId: src.id || src.uif_id || src._sourceId || undefined,
+      defaultDays: _defaultDays,
+      serviceDefaults: _serviceDefaults,
+      eSignRecord: gb('eSignRecord','e_sign_record','electronic_signature_flg'),
+      // 有効期限付き期間（knowbe flg形式にも対応）
       limitPeriod: gPeriod('limitPeriod',
-        ['limitPeriodStart','limit_period_start','copay_period_start'],
-        ['limitPeriodEnd','limit_period_end','copay_period_end','limit_end_date']),
+        ['limitPeriodStart','limit_period_start','copay_period_start','date_begin_user_charge_limit'],
+        ['limitPeriodEnd','limit_period_end','copay_period_end','limit_end_date','date_end_user_charge_limit'],
+        ['user_charge_limit_flg']),
       mealPeriod: gPeriod('mealPeriod',
-        ['mealPeriodStart','meal_period_start'],
-        ['mealPeriodEnd','meal_period_end']),
+        ['mealPeriodStart','meal_period_start','date_begin_food_serve_addition'],
+        ['mealPeriodEnd','meal_period_end','date_end_food_serve_addition'],
+        ['food_serve_addition_flg']),
       disabilityPeriod: gPeriod('disabilityPeriod',
-        ['disabilityPeriodStart','disability_period_start','category_start_date','support_category_start'],
-        ['disabilityPeriodEnd','disability_period_end','category_end_date','support_category_end']),
+        ['disabilityPeriodStart','disability_period_start','category_start_date','support_category_start','date_begin_care_support_auth'],
+        ['disabilityPeriodEnd','disability_period_end','category_end_date','support_category_end','date_end_care_support_auth'],
+        ['care_support_auth_flg']),
       nursingPeriod: gPeriod('nursingPeriod',
-        ['nursingPeriodStart','nursing_period_start','care_period_start'],
-        ['nursingPeriodEnd','nursing_period_end','care_period_end']),
+        ['nursingPeriodStart','nursing_period_start','care_period_start','date_begin_care_support_payment'],
+        ['nursingPeriodEnd','nursing_period_end','care_period_end','date_end_care_support_payment'],
+        ['care_support_payment_flg']),
       planPeriod: gPeriod('planPeriod',
-        ['planPeriodStart','plan_period_start','consultation_period_start'],
-        ['planPeriodEnd','plan_period_end','consultation_period_end']),
+        ['planPeriodStart','plan_period_start','consultation_period_start','date_begin_plan_support_payment'],
+        ['planPeriodEnd','plan_period_end','consultation_period_end','date_end_plan_support_payment'],
+        ['plan_support_payment_flg']),
       planMonitor: gPeriod('planMonitor',
-        ['planMonitorStart','plan_monitor_start','monitoring_period_start'],
-        ['planMonitorEnd','plan_monitor_end','monitoring_period_end'])
+        ['planMonitorStart','plan_monitor_start','monitoring_period_start','date_begin_plan_support_monitor'],
+        ['planMonitorEnd','plan_monitor_end','monitoring_period_end','date_end_plan_support_monitor'],
+        ['plan_support_monitor_flg'])
     };
     clients.push(data);
     added++;
