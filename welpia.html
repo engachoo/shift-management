@@ -3389,7 +3389,7 @@ function impJsonChanged(){
           kanaSei:  kSei,
           kanaMei:  kMei,
           receiptNo: c.recipient_number||c.receiptNo||'',
-          active:   c.deleted_at===null && (c.date_end_in_service===null||c.date_end_in_service===undefined),
+          active:   (c.deleted_at==null) && (c.date_end_in_service==null),
           knowbeId: c.id || c.uif_id
         });
       }
@@ -3635,12 +3635,28 @@ function impExecute(){
         ['plan_support_monitor_flg'])
     };
     // 重複は上書き更新、新規は追加
-    const dupIdx = clients.findIndex(e=>e.name===data.name && e.birthDate===data.birthDate);
+    // knowbeId(uif_id) 一致を優先、なければ 氏名+生年月日 でマッチ
+    const dupIdx = clients.findIndex(e=>
+      (data.knowbeId && e.knowbeId && String(e.knowbeId)===String(data.knowbeId)) ||
+      (e.name===data.name && (e.birthDate||'')===(data.birthDate||''))
+    );
     if(dupIdx>=0){
-      // 既存レコードのid・facilityIdを保持して上書き
-      clients[dupIdx] = Object.assign({}, clients[dupIdx], data, {
-        id: clients[dupIdx].id,
-        facilityId: clients[dupIdx].facilityId || data.facilityId
+      // 既存レコードを上書き（空値の場合は既存値を保持）
+      const ex = clients[dupIdx];
+      clients[dupIdx] = Object.assign({}, ex, data, {
+        id: ex.id,
+        facilityId: ex.facilityId || data.facilityId,
+        // 新データが空の場合は既存値を保持（詳細情報を消さない）
+        birthDate:       data.birthDate       || ex.birthDate       || '',
+        grantStart:      data.grantStart      || ex.grantStart      || '',
+        grantEnd:        data.grantEnd        || ex.grantEnd        || '',
+        disabilityClass: data.disabilityClass || ex.disabilityClass || '',
+        limitAmount:     data.limitAmount     || ex.limitAmount     || '',
+        contractAmount:  data.contractAmount  || ex.contractAmount  || 0,
+        zip:  data.zip  || ex.zip  || '',
+        addr: data.addr || ex.addr || '',
+        tel:  data.tel  || ex.tel  || '',
+        email:data.email|| ex.email|| '',
       });
       updated++;
     } else {
