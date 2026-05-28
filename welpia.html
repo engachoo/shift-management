@@ -3271,17 +3271,17 @@ function crocoAction(id, view){
 // ─── 初期シード（kokuhoren_data/croco_suggestions に保存） ─
 function _crocoSeedIfEmpty(){
   const existing = load(CROCO_KEY, null);
-  // welbe_r6_01 が含まれていれば最新シード済み
-  if(existing && Array.isArray(existing) && existing.some(s=>s.id==='welbe_r6_01')) return;
+  // welbe_r6_01v2 が含まれていれば最新シード済み（URLバグ修正版）
+  if(existing && Array.isArray(existing) && existing.some(s=>s.id==='welbe_r6_01v2')) return;
   const D = (s)=> new Date(s).getTime(); // Unix ms タイムスタンプ
   const seeds = [
     {
-      id:'welbe_r6_01',
+      id:'welbe_r6_01v2',
       title:'【令和6年改定】処遇改善加算が新体系（Ⅰ〜Ⅳ）に一本化',
       body:'令和6年4月より、「処遇改善加算」「特定処遇改善加算」「ベースアップ等支援加算」の3種が「福祉・介護職員等処遇改善加算」Ⅰ〜Ⅳの4段階に一本化されました。\n\n国保連請求では新区分コードでの請求が必要です。旧区分コードでの請求は令和6年9月請求分（8月サービス分）から無効となります。\n\n【対応が必要な内容】\n・事業所情報の加算区分を新体系に更新する\n・請求書類の加算コードを確認する',
       category:'国保連請求対応',priority:'high',
       source:'国保連 令和6年度障害福祉サービス等報酬改定に係る請求等について',
-      sourceUrl:'https://www.kokuhoren.or.jp/hoyoukyuufu/index.html',
+      sourceUrl:'https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/0000202214_00009.html',
       actionLabel:'事業所情報の加算設定を確認する',actionView:'facility',
       createdAt:D('2026-05-27')
     },
@@ -3291,7 +3291,7 @@ function _crocoSeedIfEmpty(){
       body:'令和6年4月の報酬改定に伴い、国保連への電子請求の様式が変更されました。\n\n主な変更点：\n・サービスコードの追加・変更（処遇改善加算新区分など）\n・明細書の記載項目変更\n・受給者証番号の桁数確認（10桁であることを確認）\n\n【対応期限】\n令和6年10月以降の請求から完全移行。各都道府県の国保連から通知があった場合は速やかに対応してください。',
       category:'国保連請求対応',priority:'high',
       source:'国保連 障害福祉サービス費等の請求について',
-      sourceUrl:'https://www.kokuhoren.or.jp/hoyoukyuufu/index.html',
+      sourceUrl:'https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/0000202214_00009.html',
       actionLabel:'利用者の受給者証番号を確認する',actionView:'clients',
       createdAt:D('2026-05-27')
     },
@@ -3321,7 +3321,7 @@ function _crocoSeedIfEmpty(){
       body:'国保連への請求において、受給者証の支給決定期間を超えた月の請求は自動的に返戻（差し戻し）されます。\n\n【welbeで確認すべき事項】\n・利用者の受給者証期限を「利用者情報」に正確に登録する\n・期限切れ・30日以内に期限が来る利用者には画面上のアラートが表示されます\n・更新手続きが完了したら速やかに期限を更新してください\n\n受給者証の期限管理は国保連請求の最優先確認事項です。',
       category:'受給者証管理',priority:'high',
       source:'国保連 障害福祉サービス費の審査について',
-      sourceUrl:'https://www.kokuhoren.or.jp/hoyoukyuufu/index.html',
+      sourceUrl:'https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/0000202214_00009.html',
       actionLabel:'利用者情報の受給者証期限を確認する',actionView:'clients',
       createdAt:D('2026-05-25')
     },
