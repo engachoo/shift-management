@@ -3546,13 +3546,9 @@ function invDrawSeal(ctx, companyName, approvedAt){
     });
   };
 
-  // ① 大日産業株式会社 → 2列4行（縦書き）
+  // ① 大日産業株式会社 → 2行
   if(/大日産業/.test(name)&&/株式会社/.test(name)){
-    const cW=iW/2, rH=iH/4;
-    const right=['大','日','産','業'], left=['株','式','会','社'];
-    let fs=Math.floor(rH*0.88); ctx.font=`bold ${fs}px serif`;
-    right.forEach((c,i)=>ctx.fillText(c,iX+cW*0.5, iY+rH*i+rH*0.5));
-    left.forEach( (c,i)=>ctx.fillText(c,iX+cW*1.5, iY+rH*i+rH*0.5));
+    drawLines(['大日産業','株式会社']);
     return;
   }
 
