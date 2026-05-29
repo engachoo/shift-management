@@ -3439,7 +3439,7 @@ function renderInvDetail(invId){
         <div style="font-weight:700;color:#1a2b4a;margin-bottom:14px;font-size:13px">📋 進捗</div>
         ${[{step:1,label:'作成・申請',done:!!inv.submittedAt,by:uName(inv.createdBy),at:inv.submittedAt},{step:2,label:'総務受領・確認',done:['reviewing','approved','sent'].includes(inv.status),by:uName(inv.reviewedBy),at:inv.reviewedAt},{step:3,label:'承認・押印',done:['approved','sent'].includes(inv.status),by:uName(inv.approvedBy),at:inv.approvedAt},{step:4,label:'PDF発送',done:inv.status==='sent',by:'',at:inv.sentAt}].map(s=>`<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:12px"><div style="width:22px;height:22px;border-radius:50%;background:${s.done?'#16a34a':'#e2e8f0'};color:${s.done?'#fff':'#9ca3af'};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">${s.done?'✓':s.step}</div><div><div style="font-size:12px;font-weight:600;color:${s.done?'#166534':'#6b7280'}">${s.label}</div>${s.done&&s.by?`<div style="font-size:11px;color:#9ca3af">${s.by}　${(s.at||'').slice(0,10)}</div>`:''}</div></div>`).join('')}
       </div>
-      ${['approved','sent'].includes(inv.status)?`<div style="background:#f0fdf4;border:2px solid #16a34a;border-radius:12px;padding:16px;text-align:center"><canvas id="inv-seal-canvas" width="90" height="90" style="display:block;margin:0 auto 8px"></canvas><div style="font-size:11px;color:#166534">承認済　${(inv.approvedAt||'').slice(0,10)}</div></div>`:''}
+      ${['approved','sent'].includes(inv.status)?`<div style="background:#f0fdf4;border:2px solid #16a34a;border-radius:12px;padding:16px;text-align:center"><canvas id="inv-seal-canvas" width="88" height="104" style="display:block;margin:0 auto 8px"></canvas><div style="font-size:11px;color:#166534">承認済　${(inv.approvedAt||'').slice(0,10)}</div></div>`:''}
     </div>
   </div>
   ${actions?`<div style="margin-top:20px;display:flex;flex-wrap:wrap;gap:8px">${actions}</div>`:''}`;
@@ -3474,12 +3474,89 @@ function invMarkSent(invId){
   invs[i]={...invs[i],status:'sent',sentAt:new Date().toISOString()};
   save('invoices',invs); showToast('発送済みにしました 📮'); _invView='list'; renderInvApp();
 }
-function invDrawSeal(ctx,companyName,approvedAt){
-  const s=90; ctx.clearRect(0,0,s,s); ctx.strokeStyle='#cc0000'; ctx.fillStyle='#cc0000'; ctx.lineWidth=2.5; ctx.strokeRect(5,5,s-10,s-10);
-  ctx.font='bold 10px serif'; ctx.textAlign='center';
-  const short=companyName.replace('株式会社','㈱'); const lines=short.length>7?[short.slice(0,Math.ceil(short.length/2)),short.slice(Math.ceil(short.length/2))]:['',short];
-  if(lines[0]) ctx.fillText(lines[0],s/2,27); ctx.fillText(lines[1]||short,s/2,42);
-  ctx.font='bold 11px serif'; ctx.fillText('角　印',s/2,58); ctx.font='8px sans-serif'; ctx.fillText((approvedAt||'').slice(0,10),s/2,74);
+function invDrawSeal(ctx, companyName, approvedAt){
+  const W=ctx.canvas.width, H=ctx.canvas.height;
+  ctx.clearRect(0,0,W,H);
+  const RED='#cc1100';
+  ctx.strokeStyle=RED; ctx.fillStyle=RED;
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+
+  // 角丸矩形ヘルパー
+  const rrect=(x,y,w,h,r,lw)=>{
+    ctx.beginPath();
+    ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y);
+    ctx.arcTo(x+w,y,x+w,y+r,r);
+    ctx.lineTo(x+w,y+h-r);
+    ctx.arcTo(x+w,y+h,x+w-r,y+h,r);
+    ctx.lineTo(x+r,y+h);
+    ctx.arcTo(x,y+h,x,y+h-r,r);
+    ctx.lineTo(x,y+r);
+    ctx.arcTo(x,y,x+r,y,r);
+    ctx.closePath(); ctx.lineWidth=lw; ctx.stroke();
+  };
+  rrect(2,2,W-4,H-4,8,2.8);          // 外枠（太め）
+  rrect(5.5,5.5,W-11,H-11,6,1.3);    // 内枠（細め）
+
+  const name=(companyName||'').replace(/[　 ]+/g,' ').trim();
+  const iX=9, iY=9, iW=W-18, iH=H-18, cx=W/2;
+
+  // 複数行描画ヘルパー
+  const drawLines=lines=>{
+    const rH=iH/lines.length;
+    lines.forEach((line,i)=>{
+      const y=iY+rH*i+rH*0.5;
+      // 2文字以下は均等配置
+      if(line.length<=2&&line.length>0){
+        const cW=iW/(line.length+1);
+        [...line].forEach((c,ci)=>{
+          let fs=Math.floor(rH*0.78); ctx.font=`bold ${fs}px serif`;
+          ctx.fillText(c, iX+cW*(ci+1), y);
+        });
+      } else {
+        let fs=Math.floor(rH*0.75); ctx.font=`bold ${fs}px serif`;
+        while(ctx.measureText(line).width>iW-2&&fs>6){fs--;ctx.font=`bold ${fs}px serif`;}
+        ctx.fillText(line,cx,y);
+      }
+    });
+  };
+
+  // ① 大日産業株式会社 → 2列4行（縦書き）
+  if(/大日産業/.test(name)&&/株式会社/.test(name)){
+    const cW=iW/2, rH=iH/4;
+    const right=['大','日','産','業'], left=['株','式','会','社'];
+    let fs=Math.floor(rH*0.82); ctx.font=`bold ${fs}px serif`;
+    right.forEach((c,i)=>ctx.fillText(c,iX+cW*0.5, iY+rH*i+rH*0.5));
+    left.forEach( (c,i)=>ctx.fillText(c,iX+cW*1.5, iY+rH*i+rH*0.5));
+    return;
+  }
+
+  // ② 先頭に法人格がつく（株式会社○○ / 有限会社○○ 等）
+  const m=name.match(/^(株式会社|有限会社|合同会社|一般社団法人)/);
+  if(m){
+    const corp=m[1], rest=name.slice(corp.length).trim();
+    const parts=rest.split(' ').filter(Boolean);
+    let lines;
+    if(parts.length>=2)        lines=[corp,...parts.slice(0,2)];
+    else if(!rest)             lines=[corp];
+    else if(rest.length<=4)   lines=[corp,rest];
+    else { const mid=Math.ceil(rest.length/2); lines=[corp,rest.slice(0,mid),rest.slice(mid)]; }
+    drawLines(lines); return;
+  }
+
+  // ③ 末尾に法人格がつく
+  const ms=name.match(/(株式会社|有限会社|合同会社)$/);
+  if(ms){
+    const main=name.slice(0,-ms[1].length).trim();
+    const mid=Math.ceil(main.length/2);
+    drawLines(main.length<=4?[main,ms[1]]:[main.slice(0,mid),main.slice(mid),ms[1]]);
+    return;
+  }
+
+  // ④ 汎用
+  const words=name.split(' ').filter(Boolean);
+  if(words.length>=2){ drawLines(words.slice(0,3)); return; }
+  const mid=Math.ceil(name.length/2);
+  drawLines([name.slice(0,mid),name.slice(mid)]);
 }
 function renderInvPrint(invId){
   const el=document.getElementById('devAppsContent'); if(!el)return;
@@ -3506,7 +3583,7 @@ function renderInvPrint(invId){
         <div>${esc(dept.companyZip||'')} ${esc(dept.companyAddr||'')}</div>
         <div>TEL：${esc(dept.companyTel||'-')}　FAX：${esc(dept.companyFax||'')}</div>
         ${dept.regNo?`<div style="font-size:11px;color:#555;margin-top:2px">登録番号 ${esc(dept.regNo)}</div>`:''}
-        ${['approved','sent'].includes(inv.status)?`<canvas id="inv-print-seal" width="80" height="80" style="position:absolute;right:0;bottom:-12px;opacity:.85"></canvas>`:''}
+        ${['approved','sent'].includes(inv.status)?`<canvas id="inv-print-seal" width="80" height="94" style="position:absolute;right:0;bottom:-20px;opacity:.88"></canvas>`:''}
       </div>
     </div>
     <div style="font-size:12px;margin-bottom:8px">下記の通り、ご請求申し上げます。</div>
