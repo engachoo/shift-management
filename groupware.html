@@ -3161,6 +3161,12 @@ function openDevApp(id){
 // 📄 請求書発行フォーム（大日産業テンプレート準拠）
 // =========================================================
 let _invView='list', _invEditId=null, _invFilter='all', _invVendorCallback=null;
+let _invSort='createdAt', _invSortDir=-1; // ソート列と方向（1=昇順,-1=降順）
+function invSortBy(col){
+  if(_invSort===col) _invSortDir*=-1;
+  else { _invSort=col; _invSortDir=col==='createdAt'?-1:1; }
+  renderInvList();
+}
 const INV_ST={
   draft:     {label:'下書き',   icon:'📝', color:'#6b7280', bg:'#f3f4f6', border:'#d1d5db'},
   submitted: {label:'申請中',   icon:'🔔', color:'#d97706', bg:'#fffbeb', border:'#fcd34d'},
@@ -3240,10 +3246,42 @@ function renderInvList(){
   const el=document.getElementById('devAppsContent'); if(!el)return;
   const me=myId(); const canManage=invCanManage(); const canCreate=invCanCreate();
   let invs=load('invoices',[]); if(!canManage) invs=invs.filter(i=>i.createdBy===me);
-  invs=invs.slice().sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''));
-  const tabs=['all','draft','submitted','reviewing','approved','sent','rejected'];
-  const filtered=_invFilter==='all'?invs:invs.filter(i=>i.status===_invFilter);
   const depts=load('inv_depts',[]);
+  const vendors=load('inv_vendors',[]);
+  const tabs=['all','draft','submitted','reviewing','approved','sent','rejected'];
+  const filtered=(_invFilter==='all'?invs:invs.filter(i=>i.status===_invFilter)).slice();
+
+  // ── ソート ──────────────────────────────────────────────
+  filtered.sort((a,b)=>{
+    let va='',vb='';
+    switch(_invSort){
+      case 'dept':
+        va=depts.find(d=>d.id===a.deptId)?.name||'';
+        vb=depts.find(d=>d.id===b.deptId)?.name||'';
+        break;
+      case 'vendor':
+        va=vendors.find(v=>v.id===a.vendorId)?.name||'';
+        vb=vendors.find(v=>v.id===b.vendorId)?.name||'';
+        break;
+      case 'closing':
+        va=a.closingDate||'';
+        vb=b.closingDate||'';
+        break;
+      default: // createdAt
+        va=a.createdAt||'';
+        vb=b.createdAt||'';
+    }
+    return va===vb?0:va<vb?-_invSortDir:_invSortDir;
+  });
+
+  // ── ソートヘッダー生成 ──────────────────────────────────
+  const sh=(label,col,align='left')=>{
+    const act=_invSort===col;
+    const arr=act?(_invSortDir===1?'&nbsp;↑':'&nbsp;↓'):'<span style="color:#d1d5db">&nbsp;↕</span>';
+    return `<th onclick="invSortBy('${col}')" style="padding:9px 12px;text-align:${align};border-bottom:2px solid ${act?'#3b82f6':'#e2e8f0'};color:${act?'#1e40af':'#475569'};font-size:12px;white-space:nowrap;cursor:pointer;user-select:none;background:${act?'#eff6ff':'#f8fafc'};transition:.1s">${label}${arr}</th>`;
+  };
+  const fixedHdr=h=>`<th style="padding:9px 12px;border-bottom:2px solid #e2e8f0;color:#475569;font-size:12px;white-space:nowrap;background:#f8fafc;text-align:${h==='税込金額'?'right':'left'}">${h}</th>`;
+
   el.innerHTML=`
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
     <div style="display:flex;align-items:center;gap:8px">
@@ -3259,14 +3297,29 @@ function renderInvList(){
   <div style="display:flex;gap:4px;margin-bottom:14px;flex-wrap:wrap">
     ${tabs.map(s=>{ const def=s==='all'?{label:'全て',color:'#fff',bg:'#1a2b4a',border:'#1a2b4a'}:INV_ST[s]; const cnt=s==='all'?invs.length:invs.filter(i=>i.status===s).length; const act=_invFilter===s; return `<button onclick="_invFilter='${s}';renderInvList()" style="background:${act?def.bg:'#f8fafc'};color:${act?def.color:'#6b7280'};border:1.5px solid ${act?def.border:'#e2e8f0'};border-radius:20px;padding:4px 13px;font-size:12px;font-weight:${act?700:400};cursor:pointer">${s!=='all'?INV_ST[s].icon+' ':''}${def.label}${cnt?' ('+cnt+')':''}</button>`; }).join('')}
   </div>
+  <div style="font-size:11px;color:#94a3b8;margin-bottom:8px">💡 列ヘッダーをクリックしてソート</div>
   ${filtered.length===0?`<div style="text-align:center;padding:48px;color:#9ca3af;font-size:14px">該当する請求書がありません</div>`:`
   <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">
-    <thead><tr style="background:#f8fafc">${['No.','発行部署','件名・摘要','税込金額','締め日','状態','操作'].map(h=>`<th style="padding:9px 12px;text-align:${h==='税込金額'?'right':'left'};border-bottom:2px solid #e2e8f0;color:#475569;font-size:12px;white-space:nowrap">${h}</th>`).join('')}</tr></thead>
-    <tbody>${filtered.map(inv=>{ const def=INV_ST[inv.status]||INV_ST.draft; const dept=depts.find(d=>d.id===inv.deptId); const t=invCalcTotals(inv.items||[]);
+    <thead><tr>
+      ${fixedHdr('No.')}
+      ${sh('発行部署','dept')}
+      ${sh('相手先','vendor')}
+      ${fixedHdr('件名・摘要')}
+      ${fixedHdr('税込金額')}
+      ${sh('締め日','closing')}
+      ${fixedHdr('状態')}
+      ${fixedHdr('操作')}
+    </tr></thead>
+    <tbody>${filtered.map(inv=>{
+      const def=INV_ST[inv.status]||INV_ST.draft;
+      const dept=depts.find(d=>d.id===inv.deptId);
+      const vendor=vendors.find(v=>v.id===inv.vendorId);
+      const t=invCalcTotals(inv.items||[]);
       return `<tr style="border-bottom:1px solid #f1f5f9" onmouseenter="this.style.background='#f8fafc'" onmouseleave="this.style.background=''">
         <td style="padding:9px 12px;font-family:monospace;font-size:12px;color:#1a2b4a;font-weight:600">${esc(inv.invoiceNo||'-')}</td>
-        <td style="padding:9px 12px">${esc(dept?.name||'-')}</td>
-        <td style="padding:9px 12px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(inv.subject||inv.description||'-')}</td>
+        <td style="padding:9px 12px;white-space:nowrap">${esc(dept?.name||'-')}</td>
+        <td style="padding:9px 12px;white-space:nowrap">${esc(vendor?.name||'-')}</td>
+        <td style="padding:9px 12px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(inv.subject||inv.description||'-')}</td>
         <td style="padding:9px 12px;text-align:right;font-weight:700;color:#1a2b4a">¥${(t.total||inv.totalAmount||0).toLocaleString()}</td>
         <td style="padding:9px 12px;white-space:nowrap">${inv.closingDate||'-'}</td>
         <td style="padding:9px 12px"><span class="inv-badge" style="background:${def.bg};color:${def.color};border-color:${def.border}">${def.icon} ${def.label}</span></td>
