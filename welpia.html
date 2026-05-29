@@ -341,8 +341,10 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
 .sys-tbl td{padding:9px 12px;border:1px solid var(--border);vertical-align:middle}
 .sys-tbl tbody tr:hover td{background:#f9fdf6}
 .perm-th-center{text-align:center!important}
-.inline-input{border:1px solid var(--border);border-radius:5px;padding:5px 8px;font-size:12px;font-family:inherit;background:#fff;color:var(--text)}
-.inline-input:focus{outline:none;border-color:var(--green)}
+.inline-input{width:100%;border:1px solid var(--border);border-radius:5px;padding:5px 8px;font-size:12px;font-family:inherit;background:#fff;color:var(--text);box-sizing:border-box}
+.inline-input:not([readonly]):hover{border-color:var(--green)}
+.inline-input:focus{outline:none;border-color:var(--green);box-shadow:0 0 0 2px rgba(135,193,119,.18)}
+.inline-input[readonly]{background:#f3f4f6;color:#9ca3af;cursor:not-allowed;border-color:#e5e7eb}
 .act-btn{border:none;border-radius:5px;padding:5px 12px;font-size:11px;font-weight:600;cursor:pointer}
 .update-btn{background:var(--green);color:#fff}
 .update-btn:hover{background:var(--green-dk)}
@@ -459,15 +461,15 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
       <div class="lc-title">Wel<span>be</span></div>
       <div class="lc-sub">国保連請求サポート — 福祉サービス事業所向け</div>
     </div>
-    <form onsubmit="doLogin();return false;" autocomplete="on">
+    <form id="wp-login-form" onsubmit="doLogin();return false;" autocomplete="on">
     <div class="lc-field">
       <label>ログインID</label>
-      <input id="loginId" type="text" name="username" placeholder="ログインIDを入力" autocomplete="username">
+      <input id="loginId" type="text" name="wp-username" placeholder="ログインIDを入力" autocomplete="username">
     </div>
     <div class="lc-field">
       <label>パスワード</label>
       <div class="lc-pass-wrap">
-        <input id="loginPass" type="password" name="password" placeholder="パスワードを入力" autocomplete="current-password" style="width:100%">
+        <input id="loginPass" type="password" name="wp-password" placeholder="パスワードを入力" autocomplete="current-password" style="width:100%">
         <button class="lc-eye" type="button" onclick="lcToggleEye()" tabindex="-1">🐵</button>
       </div>
     </div>
@@ -4042,8 +4044,8 @@ function renderSysUsers(){
     </select>`;
     const isAdmin=u.loginId==='admin';
     return `<tr id="sysurow-${uid}">
-      <td><input class="inline-input" id="name-su-${uid}" value="${esc(u.name||'')}" style="min-width:90px" oninput="markSysUserDirty('${uid}')"></td>
-      <td><input class="inline-input" id="lid-su-${uid}" value="${esc(u.loginId||'')}" style="min-width:100px" oninput="markSysUserDirty('${uid}')" ${isAdmin?'readonly':''}></td>
+      <td><input class="inline-input" id="name-su-${uid}" value="${esc(u.name||'')}" oninput="markSysUserDirty('${uid}')"></td>
+      <td><input class="inline-input" id="lid-su-${uid}" value="${esc(u.loginId||'')}" oninput="markSysUserDirty('${uid}')" ${isAdmin?'readonly title="adminのログインIDは変更できません"':''}></td>
       <td><div class="inline-pw-wrap">
         <input class="inline-input" id="pw-su-${uid}" type="password" value="${esc(u.password||'')}" oninput="markSysUserDirty('${uid}')" readonly style="min-width:80px;cursor:default">
         <button class="inline-lock" id="pwlock-su-${uid}" type="button" onclick="toggleSuPwLock('${uid}')" title="クリックして編集解除">🔒</button>
