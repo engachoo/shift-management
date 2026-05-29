@@ -4363,7 +4363,10 @@ function pcAddRow(){
   // 現在のストレージデータを読み込み、新行を追加してから保存→再描画
   const cur=JSON.parse(JSON.stringify(load(pcKey(),{openingBalance:0,entries:[]})));
   if(!cur.entries) cur.entries=[];
-  const defDate=_pcYearMonth?_pcYearMonth+'-01':todayStr();
+  // 最後の行の日付を継承（ソート後末尾）→ ソートで先頭に来るのを防ぐ
+  const sorted=[...cur.entries].sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  const lastDate=sorted.length>0?sorted[sorted.length-1].date:null;
+  const defDate=lastDate||(_pcYearMonth?_pcYearMonth+'-01':todayStr());
   cur.entries.push({date:defDate,department:'',purchaser:'',invoiceCheck:false,payee:'',receiptDate:'',content:'',income:0,expense:0,receiptUrl:'',receiptKey:''});
   save(pcKey(),cur); // 先にストレージに保存
   _pcDirty=true;
