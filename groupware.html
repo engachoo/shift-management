@@ -3557,16 +3557,30 @@ function invDrawSeal(ctx, companyName, approvedAt){
     return;
   }
 
+  // 文字種境界で自然に分割（カタカナ⇔漢字 etc.）
+  const naturalSplit=str=>{
+    const isKana=c=>c>='ァ'&&c<='ン';
+    const isKanji=c=>(c>='一'&&c<='鿿')||(c>='㐀'&&c<='䶿');
+    const isAlpha=c=>/[A-Za-z0-9]/.test(c);
+    for(let i=1;i<str.length;i++){
+      const p=str[i-1],q=str[i];
+      if((isKana(p)&&isKanji(q))||(isKanji(p)&&isKana(q))||(isAlpha(p)&&isKanji(q))||(isKanji(p)&&isAlpha(q)))
+        return[str.slice(0,i),str.slice(i)];
+    }
+    const mid=Math.ceil(str.length/2);
+    return[str.slice(0,mid),str.slice(mid)];
+  };
+
   // ② 先頭に法人格がつく（株式会社○○ / 有限会社○○ 等）
   const m=name.match(/^(株式会社|有限会社|合同会社|一般社団法人)/);
   if(m){
     const corp=m[1], rest=name.slice(corp.length).trim();
     const parts=rest.split(' ').filter(Boolean);
     let lines;
-    if(parts.length>=2)        lines=[corp,...parts.slice(0,2)];
-    else if(!rest)             lines=[corp];
-    else if(rest.length<=4)   lines=[corp,rest];
-    else { const mid=Math.ceil(rest.length/2); lines=[corp,rest.slice(0,mid),rest.slice(mid)]; }
+    if(parts.length>=2)       lines=[corp,...parts.slice(0,2)];
+    else if(!rest)            lines=[corp];
+    else if(rest.length<=4)  lines=[corp,rest];
+    else                     lines=[corp,...naturalSplit(rest)];
     drawLines(lines); return;
   }
 
