@@ -577,7 +577,22 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
 .inv-field input:focus,.inv-field select:focus,.inv-field textarea:focus{outline:none;border-color:#1a3a6b;box-shadow:0 0 0 2px rgba(26,58,107,.1)}
 .inv-badge{display:inline-block;border-radius:20px;font-size:11px;font-weight:700;padding:2px 10px;border:1px solid}
 .inv-no-print{}.inv-print-only{display:none}
-@media print{#sidebar,#loadingScreen,#loginScreen,.side-badge,button,.inv-no-print{display:none!important}#app,#mainArea{display:block!important;margin-left:0!important}#devAppsView{display:block!important;padding:0!important}.inv-print-only{display:block!important}body{background:#fff}}
+@page{size:A4 portrait;margin:12mm 15mm}
+@media print{
+  #sidebar,#loadingScreen,#loginScreen,.side-badge,button,.inv-no-print{display:none!important}
+  #app,#mainArea{display:block!important;margin:0!important;padding:0!important}
+  #devAppsContent{padding:0!important;margin:0!important}
+  #devAppsView{display:block!important;padding:0!important}
+  .inv-print-only{display:block!important}
+  body,html{background:#fff!important;margin:0!important;padding:0!important}
+  #inv-print-wrap{background:transparent!important;padding:0!important}
+  #inv-print-body{
+    width:100%!important;max-width:none!important;
+    border:none!important;border-radius:0!important;
+    box-shadow:none!important;padding:0!important;margin:0!important;
+    font-size:10.5pt!important;
+  }
+}
 /* 現金出納帳 numberスピナー非表示 */
 #devAppsContent input[type="number"]::-webkit-inner-spin-button,
 #devAppsContent input[type="number"]::-webkit-outer-spin-button { -webkit-appearance:none; margin:0; }
@@ -3601,49 +3616,99 @@ function renderInvPrint(invId){
   const t=invCalcTotals(inv.items||[]); const today=new Date().toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric'});
   const rows10=Array.from({length:10},(_,i)=>(inv.items||[])[i]||null);
   el.innerHTML=`
-  <div class="inv-no-print" style="display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap">
+  <!-- 操作バー（印刷非表示） -->
+  <div class="inv-no-print" style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
     <button onclick="_invEditId='${invId}';_invView='detail';renderInvApp()" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#475569;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:12px">← 詳細</button>
     <button onclick="window.print()" style="background:#7c3aed;color:#fff;border:none;border-radius:7px;padding:8px 20px;font-size:13px;font-weight:700;cursor:pointer">🖨 印刷 / PDF保存</button>
-    <span style="font-size:12px;color:#6b7280">印刷ダイアログ→「PDFに保存」でPDF出力できます</span>
+    <span style="font-size:12px;color:#6b7280">印刷ダイアログ →「PDFに保存」でPDF出力　※A4縦1枚</span>
   </div>
-  <div id="inv-print-body" style="background:#fff;padding:20px 28px;max-width:740px;font-family:'MS Mincho','Hiragino Mincho Pro','Yu Mincho',serif;font-size:13px;border:1px solid #e2e8f0;border-radius:8px">
-    <div style="text-align:right;font-size:12px;margin-bottom:4px">発行日：${today}</div>
-    <div style="text-align:center;font-size:26px;font-weight:700;letter-spacing:6px;margin-bottom:16px">請　求　書</div>
-    <div style="display:flex;justify-content:space-between;margin-bottom:16px;align-items:flex-start">
-      <div style="flex:1">
-        <div style="font-size:17px;font-weight:700;border-bottom:2px solid #000;padding-bottom:6px;margin-bottom:6px;min-width:240px">${vendor?esc(vendor.name)+'　御中':'　　　　　　　　　御中'}</div>
-        ${vendor?`<div style="font-size:12px;color:#555">${esc(vendor.address||'')}</div>${vendor.contact?`<div style="font-size:12px">担当：${esc(vendor.contact)}</div>`:''}`:'' }
+  <!-- A4プレビュー背景 -->
+  <div id="inv-print-wrap" style="background:#888;padding:20px;display:flex;justify-content:center;min-height:600px">
+  <!-- A4用紙（210mm × 297mm） -->
+  <div id="inv-print-body" style="background:#fff;width:210mm;min-height:257mm;padding:14mm 17mm;font-family:'MS Mincho','Hiragino Mincho Pro','Yu Mincho',serif;font-size:10.5pt;box-shadow:0 4px 20px rgba(0,0,0,.3);box-sizing:border-box;position:relative">
+
+    <div style="text-align:right;font-size:9pt;margin-bottom:3mm">発行日：${today}</div>
+    <div style="text-align:center;font-size:20pt;font-weight:700;letter-spacing:8px;margin-bottom:6mm">請　求　書</div>
+
+    <!-- 宛先 / 発行元 -->
+    <div style="display:flex;justify-content:space-between;margin-bottom:5mm;align-items:flex-start">
+      <div style="flex:1;padding-right:10mm">
+        <div style="font-size:14pt;font-weight:700;border-bottom:2px solid #000;padding-bottom:2mm;margin-bottom:2mm">${vendor?esc(vendor.name)+'　御中':'　　　　　　　　御中'}</div>
+        ${vendor?`<div style="font-size:9pt;color:#444">${esc(vendor.address||vendor.addr1||'')}</div>${vendor.contact?`<div style="font-size:9pt">担当：${esc(vendor.contact)}</div>`:''}`:'' }
       </div>
-      <div style="text-align:right;font-size:12px;min-width:200px;position:relative">
-        <div style="font-size:14px;font-weight:700;margin-bottom:2px">${esc(dept.company||dept.name||'')}</div>
+      <div style="text-align:right;font-size:9pt;min-width:68mm;position:relative;padding-bottom:8mm">
+        <div style="font-size:11pt;font-weight:700;margin-bottom:1mm">${esc(dept.company||dept.name||'')}</div>
         <div>${esc(dept.companyZip||'')} ${esc(dept.companyAddr||'')}</div>
-        <div>TEL：${esc(dept.companyTel||'-')}　FAX：${esc(dept.companyFax||'')}</div>
-        ${dept.regNo?`<div style="font-size:11px;color:#555;margin-top:2px">登録番号 ${esc(dept.regNo)}</div>`:''}
-        ${['approved','sent'].includes(inv.status)?`<canvas id="inv-print-seal" width="90" height="90" style="position:absolute;right:0;bottom:-8px;opacity:.88"></canvas>`:''}
+        <div>TEL：${esc(dept.companyTel||'-')}　FAX：${esc(dept.companyFax||'-')}</div>
+        ${dept.regNo?`<div style="font-size:8pt;margin-top:1mm">登録番号 ${esc(dept.regNo)}</div>`:''}
+        ${['approved','sent'].includes(inv.status)?`<canvas id="inv-print-seal" width="90" height="90" style="position:absolute;right:0;bottom:0;opacity:.88"></canvas>`:''}
       </div>
     </div>
-    <div style="font-size:12px;margin-bottom:8px">下記の通り、ご請求申し上げます。</div>
-    <div style="display:flex;align-items:center;gap:16px;margin-bottom:8px;flex-wrap:wrap">
-      <div style="display:flex;align-items:center;gap:8px"><span style="font-size:12px">合計金額</span><span style="font-size:22px;font-weight:700;border-bottom:2px solid #000;padding:0 8px">&yen;${t.total.toLocaleString()}</span><span style="font-size:12px">（税込）</span></div>
-      ${inv.paymentDeadline?`<div style="font-size:12px">お支払期限：${inv.paymentDeadline}</div>`:''}
+
+    <div style="font-size:9pt;margin-bottom:3mm">下記の通り、ご請求申し上げます。</div>
+
+    <!-- 合計金額 -->
+    <div style="display:flex;align-items:center;gap:8mm;margin-bottom:3mm;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:4mm">
+        <span style="font-size:9pt">合計金額</span>
+        <span style="font-size:18pt;font-weight:700;border-bottom:2px solid #000;padding:0 4mm">&yen;${t.total.toLocaleString()}</span>
+        <span style="font-size:9pt">（税込）</span>
+      </div>
+      ${inv.paymentDeadline?`<div style="font-size:9pt">お支払期限：${inv.paymentDeadline}</div>`:''}
     </div>
-    <div style="font-size:12px;margin-bottom:10px">件名：${esc(inv.subject||inv.description||'')}</div>
-    <table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:8px">
-      <thead><tr style="background:#333;color:#fff"><th style="padding:6px 8px;border:1px solid #999;text-align:center;width:28px">No.</th><th style="padding:6px 8px;border:1px solid #999;text-align:left">摘　要</th><th style="padding:6px 8px;border:1px solid #999;text-align:right;width:52px">数量</th><th style="padding:6px 8px;border:1px solid #999;text-align:right;width:90px">単　価</th><th style="padding:6px 8px;border:1px solid #999;text-align:right;width:100px">金　額</th></tr></thead>
-      <tbody>${rows10.map((it,i)=>`<tr style="border-bottom:1px solid #ccc;min-height:24px"><td style="padding:5px 8px;border:1px solid #ccc;text-align:center;color:#999;font-size:11px">${i+1}</td><td style="padding:5px 8px;border:1px solid #ccc">${it?esc(it.desc||it.description||''):''}</td><td style="padding:5px 8px;border:1px solid #ccc;text-align:right">${it&&it.qty?it.qty:''}</td><td style="padding:5px 8px;border:1px solid #ccc;text-align:right">${it&&it.unitPrice?'¥'+it.unitPrice.toLocaleString():''}</td><td style="padding:5px 8px;border:1px solid #ccc;text-align:right;font-weight:${it?600:400}">${it?'¥'+((it.qty||0)*(it.unitPrice||0)).toLocaleString():''}</td></tr>`).join('')}</tbody>
+
+    <div style="font-size:9pt;margin-bottom:3mm">件名：${esc(inv.subject||inv.description||'')}</div>
+
+    <!-- 明細表 -->
+    <table style="width:100%;border-collapse:collapse;font-size:9pt;margin-bottom:3mm">
+      <thead>
+        <tr style="background:#333;color:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact">
+          <th style="padding:2mm 2.5mm;border:0.3mm solid #999;text-align:center;width:8mm">No.</th>
+          <th style="padding:2mm 2.5mm;border:0.3mm solid #999;text-align:left">摘　要</th>
+          <th style="padding:2mm 2.5mm;border:0.3mm solid #999;text-align:right;width:14mm">数量</th>
+          <th style="padding:2mm 2.5mm;border:0.3mm solid #999;text-align:right;width:26mm">単　価</th>
+          <th style="padding:2mm 2.5mm;border:0.3mm solid #999;text-align:right;width:28mm">金　額</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows10.map((it,i)=>`<tr>
+          <td style="padding:1.8mm 2.5mm;border:0.3mm solid #ccc;text-align:center;color:#999;font-size:8pt">${i+1}</td>
+          <td style="padding:1.8mm 2.5mm;border:0.3mm solid #ccc">${it?esc(it.desc||it.description||''):''}</td>
+          <td style="padding:1.8mm 2.5mm;border:0.3mm solid #ccc;text-align:right">${it&&it.qty?it.qty:''}</td>
+          <td style="padding:1.8mm 2.5mm;border:0.3mm solid #ccc;text-align:right">${it&&it.unitPrice?'¥'+it.unitPrice.toLocaleString():''}</td>
+          <td style="padding:1.8mm 2.5mm;border:0.3mm solid #ccc;text-align:right;font-weight:${it?600:400}">${it?'¥'+((it.qty||0)*(it.unitPrice||0)).toLocaleString():''}</td>
+        </tr>`).join('')}
+      </tbody>
     </table>
-    <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
-      <table style="border-collapse:collapse;font-size:12px;min-width:340px">
-        <tr><td style="padding:4px 10px;text-align:right">8％対象</td><td style="padding:4px 10px;text-align:right;width:90px">¥${t.sub8.toLocaleString()}</td><td style="padding:4px 10px;text-align:left">8％消費税額</td><td style="padding:4px 10px;text-align:right;width:90px">¥${t.tax8.toLocaleString()}</td><td style="padding:4px 10px;text-align:right;border-left:1px solid #ccc">小　計</td><td style="padding:4px 10px;text-align:right;width:90px">¥${t.sub.toLocaleString()}</td></tr>
-        <tr style="border-top:1px solid #ccc"><td style="padding:4px 10px;text-align:right">10％対象</td><td style="padding:4px 10px;text-align:right">¥${t.sub10.toLocaleString()}</td><td style="padding:4px 10px;text-align:left">10%消費税額</td><td style="padding:4px 10px;text-align:right">¥${t.tax10.toLocaleString()}</td><td style="padding:4px 10px;text-align:right;border-left:1px solid #ccc;font-weight:700">合　計</td><td style="padding:4px 10px;text-align:right;font-weight:700">¥${t.total.toLocaleString()}</td></tr>
+
+    <!-- 小計・税 -->
+    <div style="display:flex;justify-content:flex-end;margin-bottom:4mm">
+      <table style="border-collapse:collapse;font-size:9pt">
+        <tr>
+          <td style="padding:1.5mm 3mm;text-align:right;color:#555">8％対象</td><td style="padding:1.5mm 3mm;text-align:right;width:24mm">¥${t.sub8.toLocaleString()}</td>
+          <td style="padding:1.5mm 3mm;text-align:right;color:#555">8％消費税額</td><td style="padding:1.5mm 3mm;text-align:right;width:24mm">¥${t.tax8.toLocaleString()}</td>
+          <td style="padding:1.5mm 3mm;text-align:right;border-left:0.3mm solid #ccc;color:#555">小　計</td><td style="padding:1.5mm 3mm;text-align:right;width:28mm">¥${t.sub.toLocaleString()}</td>
+        </tr>
+        <tr style="border-top:0.3mm solid #ccc">
+          <td style="padding:1.5mm 3mm;text-align:right;color:#555">10％対象</td><td style="padding:1.5mm 3mm;text-align:right">¥${t.sub10.toLocaleString()}</td>
+          <td style="padding:1.5mm 3mm;text-align:right;color:#555">10%消費税額</td><td style="padding:1.5mm 3mm;text-align:right">¥${t.tax10.toLocaleString()}</td>
+          <td style="padding:1.5mm 3mm;text-align:right;border-left:0.3mm solid #ccc;font-weight:700">合　計</td><td style="padding:1.5mm 3mm;text-align:right;font-weight:700">¥${t.total.toLocaleString()}</td>
+        </tr>
       </table>
     </div>
-    <div style="font-size:12px;margin-bottom:4px">　【お振込先】</div>
-    <div style="font-size:12px;margin-bottom:2px">　　${esc(dept.bankName||'')}　${esc(dept.bankBranch||'')}</div>
-    <div style="font-size:12px;margin-bottom:2px">　　${esc(dept.bankType||'')}　${esc(dept.bankNo||'')}　　${esc(dept.bankHolder||'')}</div>
-    <div style="font-size:11px;color:#555;margin-bottom:10px">　　※恐れ入りますが、お振込み手数料は貴社にてご負担お願い致します。</div>
-    ${inv.notes?`<div style="font-size:12px;border:1px solid #ccc;padding:8px 12px;margin-top:4px"><span style="font-weight:700">備　考</span><br>${esc(inv.notes)}</div>`:`<div style="font-size:12px;border:1px solid #ccc;padding:8px 12px;margin-top:4px;min-height:40px"><span style="font-weight:700">備　考</span></div>`}
-  </div>`;
+
+    <!-- 振込先 -->
+    <div style="font-size:9pt;margin-bottom:1mm">【お振込先】</div>
+    <div style="font-size:9pt;margin-bottom:1mm;padding-left:4mm">${esc(dept.bankName||'')}　${esc(dept.bankBranch||'')}　${esc(dept.bankType||'')}　${esc(dept.bankNo||'')}　${esc(dept.bankHolder||'')}</div>
+    <div style="font-size:8pt;color:#555;margin-bottom:4mm;padding-left:4mm">※恐れ入りますが、お振込み手数料は貴社にてご負担お願い致します。</div>
+
+    <!-- 備考 -->
+    <div style="font-size:9pt;border:0.3mm solid #ccc;padding:2.5mm 3mm;min-height:12mm">
+      <span style="font-weight:700">備　考</span>${inv.notes?`<br><span style="white-space:pre-wrap">${esc(inv.notes)}</span>`:''}
+    </div>
+
+  </div><!-- /inv-print-body -->
+  </div><!-- /inv-print-wrap -->`;
   if(['approved','sent'].includes(inv.status)){
     setTimeout(()=>{const c=document.getElementById('inv-print-seal');if(c){const ctx=c.getContext('2d');invDrawSeal(ctx,dept.company||'大日産業㈱',inv.approvedAt);}},100);
   }
