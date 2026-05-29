@@ -6334,9 +6334,7 @@ function startApp(){
 
   initData(); // デフォルトデータ投入（未存在キーのみ）
   migrateTimestamps(); // UTC→JSTタイムスタンプ修正（初回のみ）
-  // 【緊急パスワードリセット】ログイン後に必ず新パスワードへ変更してください
-  (()=>{ const us=load('users',[]); const i=us.findIndex(u=>u.role==='system'); if(i>=0){us[i].password='reset0529';save('users',us);} })();
-  startRealtimeSync(); // 他ユーザーの変更をリアルタイムで反映
+startRealtimeSync(); // 他ユーザーの変更をリアルタイムで反映
 
   document.getElementById('loadingScreen').style.display = 'none';
 
