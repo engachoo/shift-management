@@ -3625,7 +3625,14 @@ function renderInvVendors(){
       <button onclick="_invView='list';renderInvApp()" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#475569;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:12px">← 一覧</button>
       <h2 style="font-size:17px;font-weight:700;color:#1a2b4a;margin:0">📋 業者名簿</h2>
     </div>
-    <button onclick="openInvVendorModal(null)" style="background:#1a3a6b;color:#fff;border:none;border-radius:7px;padding:7px 18px;font-size:13px;font-weight:700;cursor:pointer">＋ 業者を追加</button>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button onclick="invVendorDownloadTemplate()" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#374151;border-radius:7px;padding:7px 14px;font-size:12px;cursor:pointer">📥 Excelテンプレートを取得</button>
+      <label style="background:#f0fdf4;border:1px solid #86efac;color:#16a34a;border-radius:7px;padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer">
+        📤 Excelインポート
+        <input type="file" accept=".xlsx,.xls,.csv" style="display:none" onchange="invVendorImportExcel(this.files[0]);this.value=''">
+      </label>
+      <button onclick="openInvVendorModal(null)" style="background:#1a3a6b;color:#fff;border:none;border-radius:7px;padding:7px 18px;font-size:13px;font-weight:700;cursor:pointer">＋ 業者を追加</button>
+    </div>
   </div>
   ${vendors.length===0?`<div style="text-align:center;padding:40px;color:#9ca3af">業者が登録されていません</div>`:`
   <div style="display:grid;gap:12px;max-width:760px">${vendors.map(v=>{
@@ -3782,6 +3789,104 @@ function saveInvVendor(editId){
 function deleteInvVendor(id){
   if(!confirm('この業者を削除しますか？'))return;
   save('inv_vendors',load('inv_vendors',[]).filter(v=>v.id!==id)); renderInvVendors();
+}
+
+// ─── 業者名簿 Excel テンプレートダウンロード ───────────────
+function invVendorDownloadTemplate(){
+  const headers = ['業者名（必須）','業者区分（法人/個人）','部署名','担当者名','郵便番号（数字のみ）','住所1（都道府県・市区町村・番地）','住所2（ビル・建物名・部屋番号）','電話番号','メールアドレス','状態（有効/無効）'];
+  const sample  = ['株式会社サンプル','法人','営業部','山田 太郎','5016264','岐阜県羽島市小熊町島5-10','サンプルビル3F','058-000-0000','sample@example.com','有効'];
+  const ws = XLSX.utils.aoa_to_sheet([headers, sample]);
+  // 列幅設定
+  ws['!cols'] = [20,14,12,14,16,30,20,14,24,12].map(w=>({wch:w}));
+  // ヘッダー行スタイル（背景色 ※xlsxフルライブラリで対応）
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, '業者名簿');
+  XLSX.writeFile(wb, '業者名簿_インポートテンプレート.xlsx');
+  showToast('テンプレートをダウンロードしました');
+}
+
+// ─── 業者名簿 Excel インポート ─────────────────────────────
+function invVendorImportExcel(file){
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try{
+      const wb   = XLSX.read(e.target.result, {type:'array'});
+      const ws   = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+      if(rows.length < 2){ showToast('データ行がありません','err'); return; }
+
+      // ヘッダー行を読んで列インデックスを特定（順不同対応）
+      const hdrs = rows[0].map(h=>String(h).trim());
+      const col  = key => hdrs.findIndex(h=>h.includes(key));
+      const iName   = col('業者名');
+      const iType   = col('業者区分');
+      const iDept   = col('部署');
+      const iCont   = col('担当者');
+      const iZip    = col('郵便番号');
+      const iAddr1  = col('住所1');
+      const iAddr2  = col('住所2');
+      const iTel    = col('電話');
+      const iEmail  = col('メール');
+      const iActive = col('状態');
+
+      if(iName < 0){ showToast('「業者名」列が見つかりません。テンプレートを使用してください。','err'); return; }
+
+      const vendors = load('inv_vendors', []);
+      let added=0, skipped=0;
+
+      rows.slice(1).forEach(row => {
+        const name = String(row[iName]||'').trim();
+        if(!name){ skipped++; return; } // 業者名なし → スキップ
+
+        const typeRaw = String(row[iType]||'').trim();
+        const vType   = typeRaw==='個人' ? 'individual' : 'corporate';
+        const zip     = String(row[iZip]||'').replace(/[^0-9]/g,'').slice(0,7);
+        const addr1   = iAddr1>=0 ? String(row[iAddr1]||'').trim() : '';
+        const addr2   = iAddr2>=0 ? String(row[iAddr2]||'').trim() : '';
+        const activeRaw = String(row[iActive]||'有効').trim();
+        const active  = activeRaw!=='無効';
+
+        // 同名業者が既存にあれば重複チェック（スキップ or 上書き選択は後で）
+        const dup = vendors.find(v=>v.name===name);
+        if(dup){
+          // 既存を上書き更新
+          Object.assign(dup, {
+            vendorType:vType,
+            dept:  iDept>=0  ? String(row[iDept]||'').trim()  : dup.dept||'',
+            contact:iCont>=0 ? String(row[iCont]||'').trim()  : dup.contact||'',
+            zip, addr1, addr2,
+            address:(zip?'〒'+zip+' ':'')+addr1+(addr2?' '+addr2:''),
+            tel:   iTel>=0   ? String(row[iTel]||'').trim()   : dup.tel||'',
+            email: iEmail>=0 ? String(row[iEmail]||'').trim() : dup.email||'',
+            active
+          });
+          added++; // 上書きもカウント
+        } else {
+          vendors.push({
+            id: uid(),
+            name, vendorType:vType,
+            dept:   iDept>=0  ? String(row[iDept]||'').trim()  : '',
+            contact:iCont>=0  ? String(row[iCont]||'').trim()  : '',
+            zip, addr1, addr2,
+            address:(zip?'〒'+zip+' ':'')+addr1+(addr2?' '+addr2:''),
+            tel:    iTel>=0   ? String(row[iTel]||'').trim()   : '',
+            email:  iEmail>=0 ? String(row[iEmail]||'').trim() : '',
+            meishiUrls:[], active
+          });
+          added++;
+        }
+      });
+
+      save('inv_vendors', vendors);
+      renderInvVendors();
+      showToast(`✓ ${added}件をインポートしました${skipped?'（空白行 '+skipped+'件スキップ）':''}`);
+    }catch(err){
+      console.error(err);
+      showToast('インポートに失敗しました：'+err.message,'err');
+    }
+  };
+  reader.readAsArrayBuffer(file);
 }
 
 // 請求書フォーム内から新規業者登録
