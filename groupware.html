@@ -3162,10 +3162,21 @@ function openDevApp(id){
 // 📄 請求書発行フォーム（大日産業テンプレート準拠）
 // =========================================================
 let _invView='list', _invEditId=null, _invFilter='all', _invVendorCallback=null;
-let _invSort='createdAt', _invSortDir=-1; // ソート列と方向（1=昇順,-1=降順）
+let _invSort='createdAt', _invSortDir=-1;
+let _invFDept='', _invFVendor='', _invFClosing=''; // 絞り込みフィルター
 function invSortBy(col){
   if(_invSort===col) _invSortDir*=-1;
   else { _invSort=col; _invSortDir=col==='createdAt'?-1:1; }
+  renderInvList();
+}
+function invApplyFilter(){
+  _invFDept   = document.getElementById('invFDept')?.value  || '';
+  _invFVendor = document.getElementById('invFVendor')?.value || '';
+  _invFClosing= document.getElementById('invFClosing')?.value|| '';
+  renderInvList();
+}
+function invClearFilter(){
+  _invFDept=''; _invFVendor=''; _invFClosing='';
   renderInvList();
 }
 const INV_ST={
@@ -3250,7 +3261,18 @@ function renderInvList(){
   const depts=load('inv_depts',[]);
   const vendors=load('inv_vendors',[]);
   const tabs=['all','draft','submitted','reviewing','approved','sent','rejected'];
-  const filtered=(_invFilter==='all'?invs:invs.filter(i=>i.status===_invFilter)).slice();
+
+  // ステータス絞り込み → プルダウン絞り込み
+  let filtered=(_invFilter==='all'?invs:invs.filter(i=>i.status===_invFilter)).slice();
+  if(_invFDept)    filtered=filtered.filter(i=>i.deptId===_invFDept);
+  if(_invFVendor)  filtered=filtered.filter(i=>i.vendorId===_invFVendor);
+  if(_invFClosing) filtered=filtered.filter(i=>i.closingDate===_invFClosing);
+
+  // プルダウン用ユニーク値（全件から抽出）
+  const allInvs=_invFilter==='all'?invs:invs.filter(i=>i.status===_invFilter);
+  const uniqueDepts  =[...new Set(allInvs.map(i=>i.deptId).filter(Boolean))];
+  const uniqueVendors=[...new Set(allInvs.map(i=>i.vendorId).filter(Boolean))];
+  const uniqueClosing=[...new Set(allInvs.map(i=>i.closingDate).filter(Boolean))].sort();
 
   // ── ソート ──────────────────────────────────────────────
   filtered.sort((a,b)=>{
@@ -3297,6 +3319,32 @@ function renderInvList(){
   </div>
   <div style="display:flex;gap:4px;margin-bottom:14px;flex-wrap:wrap">
     ${tabs.map(s=>{ const def=s==='all'?{label:'全て',color:'#fff',bg:'#1a2b4a',border:'#1a2b4a'}:INV_ST[s]; const cnt=s==='all'?invs.length:invs.filter(i=>i.status===s).length; const act=_invFilter===s; return `<button onclick="_invFilter='${s}';renderInvList()" style="background:${act?def.bg:'#f8fafc'};color:${act?def.color:'#6b7280'};border:1.5px solid ${act?def.border:'#e2e8f0'};border-radius:20px;padding:4px 13px;font-size:12px;font-weight:${act?700:400};cursor:pointer">${s!=='all'?INV_ST[s].icon+' ':''}${def.label}${cnt?' ('+cnt+')':''}</button>`; }).join('')}
+  </div>
+  <!-- 絞り込みフィルター -->
+  <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px 16px;margin-bottom:12px;display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end">
+    <div style="display:flex;flex-direction:column;gap:4px">
+      <label style="font-size:11px;font-weight:600;color:#64748b">発行部署</label>
+      <select id="invFDept" onchange="invApplyFilter()" style="border:1.5px solid #d1d5db;border-radius:6px;padding:6px 10px;font-size:13px;min-width:140px;background:#fff">
+        <option value="">すべて</option>
+        ${uniqueDepts.map(id=>{const d=depts.find(x=>x.id===id);return d?`<option value="${id}" ${_invFDept===id?'selected':''}>${esc(d.name)}</option>`:''}).join('')}
+      </select>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:4px">
+      <label style="font-size:11px;font-weight:600;color:#64748b">相手先</label>
+      <select id="invFVendor" onchange="invApplyFilter()" style="border:1.5px solid #d1d5db;border-radius:6px;padding:6px 10px;font-size:13px;min-width:160px;background:#fff">
+        <option value="">すべて</option>
+        ${uniqueVendors.map(id=>{const v=vendors.find(x=>x.id===id);return v?`<option value="${id}" ${_invFVendor===id?'selected':''}>${esc(v.name)}</option>`:''}).join('')}
+      </select>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:4px">
+      <label style="font-size:11px;font-weight:600;color:#64748b">締め日</label>
+      <select id="invFClosing" onchange="invApplyFilter()" style="border:1.5px solid #d1d5db;border-radius:6px;padding:6px 10px;font-size:13px;min-width:130px;background:#fff">
+        <option value="">すべて</option>
+        ${uniqueClosing.map(d=>`<option value="${d}" ${_invFClosing===d?'selected':''}>${d}</option>`).join('')}
+      </select>
+    </div>
+    ${(_invFDept||_invFVendor||_invFClosing)?`<button onclick="invClearFilter()" style="background:#fee2e2;border:1px solid #fca5a5;color:#dc2626;border-radius:6px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer;align-self:flex-end">✕ 絞り込み解除</button>`:''}
+    <div style="align-self:flex-end;font-size:12px;color:#64748b;margin-left:auto">${filtered.length} 件</div>
   </div>
   <div style="font-size:11px;color:#94a3b8;margin-bottom:8px">💡 列ヘッダーをクリックしてソート</div>
   ${filtered.length===0?`<div style="text-align:center;padding:48px;color:#9ca3af;font-size:14px">該当する請求書がありません</div>`:`
