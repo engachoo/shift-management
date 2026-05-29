@@ -571,6 +571,13 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
 .btn-danger{background:#e53e3e;color:#fff;border:none;padding:8px 20px;border-radius:4px;cursor:pointer;font-size:13px}
 .pass-note{font-size:11px;color:#6b7280;margin-top:3px}
 .section-divider{border:none;border-top:1px solid #e5e7eb;margin:14px 0}
+/* 請求書フォーム */
+.inv-field label{display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:5px}
+.inv-field input,.inv-field select,.inv-field textarea{width:100%;border:1.5px solid #d1d5db;border-radius:6px;padding:8px 12px;font-size:13px;font-family:inherit;box-sizing:border-box}
+.inv-field input:focus,.inv-field select:focus,.inv-field textarea:focus{outline:none;border-color:#1a3a6b;box-shadow:0 0 0 2px rgba(26,58,107,.1)}
+.inv-badge{display:inline-block;border-radius:20px;font-size:11px;font-weight:700;padding:2px 10px;border:1px solid}
+.inv-no-print{}.inv-print-only{display:none}
+@media print{#sidebar,#loadingScreen,#loginScreen,.side-badge,button,.inv-no-print{display:none!important}#app,#mainArea{display:block!important;margin-left:0!important}#devAppsView{display:block!important;padding:0!important}.inv-print-only{display:block!important}body{background:#fff}}
 /* 現金出納帳 numberスピナー非表示 */
 #devAppsContent input[type="number"]::-webkit-inner-spin-button,
 #devAppsContent input[type="number"]::-webkit-outer-spin-button { -webkit-appearance:none; margin:0; }
@@ -842,6 +849,18 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
 
   </div><!-- /mainArea -->
 </div><!-- /app -->
+
+<!-- 請求書用モーダル -->
+<div class="modal-bg" id="invModal">
+  <div class="modal" style="min-width:480px;max-width:560px">
+    <div class="modal-hdr"><h3 id="invModalTitle">編集</h3><button class="modal-close" onclick="closeModal('invModal')">×</button></div>
+    <div class="modal-body" id="invModalBody"></div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeModal('invModal')">キャンセル</button>
+      <button class="btn-primary" id="invModalSaveBtn">保存</button>
+    </div>
+  </div>
+</div>
 
 <!-- ===== モーダル ===== -->
 
@@ -3577,11 +3596,10 @@ function openInvDeptModal(id){
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div class="inv-field"><label>銀行名</label><input id="idm-bank" value="${esc(f.bankName||'')}"></div><div class="inv-field"><label>支店名</label><input id="idm-branch" value="${esc(f.bankBranch||'')}"></div><div class="inv-field"><label>種別</label><select id="idm-btype"><option ${f.bankType==='普通'||!f.bankType?'selected':''}>普通</option><option ${f.bankType==='当座'?'selected':''}>当座</option></select></div><div class="inv-field"><label>口座番号</label><input id="idm-bno" value="${esc(f.bankNo||'')}"></div></div>
     <div class="inv-field"><label>口座名義</label><input id="idm-bholder" value="${esc(f.bankHolder||'')}"></div>
   </div>`;
-  const mod=document.getElementById('modalOverlay'); if(!mod)return;
-  document.getElementById('modalTitle').textContent=id?'部署を編集':'部署を追加';
-  document.getElementById('modalBody').innerHTML=html;
-  document.getElementById('modalSaveBtn').onclick=()=>saveInvDept(id);
-  mod.classList.add('show');
+  document.getElementById('invModalTitle').textContent=id?'部署を編集':'部署を追加';
+  document.getElementById('invModalBody').innerHTML=html;
+  document.getElementById('invModalSaveBtn').onclick=()=>saveInvDept(id);
+  document.getElementById('invModal').classList.add('open');
 }
 function saveInvDept(editId){
   const g=id=>document.getElementById(id)?.value?.trim()||'';
@@ -3590,7 +3608,7 @@ function saveInvDept(editId){
   const obj={name,company:g('idm-company'),companyZip:g('idm-zip'),companyAddr:g('idm-addr'),companyTel:g('idm-tel'),companyFax:g('idm-fax'),regNo:g('idm-regno'),bankName:g('idm-bank'),bankBranch:g('idm-branch'),bankType:g('idm-btype'),bankNo:g('idm-bno'),bankHolder:g('idm-bholder')};
   if(editId){const i=depts.findIndex(x=>x.id===editId);if(i>=0)depts[i]={...depts[i],...obj};}
   else depts.push({id:uid(),...obj});
-  save('inv_depts',depts); document.getElementById('modalOverlay').classList.remove('show');
+  save('inv_depts',depts); closeModal('invModal');
   showToast('部署を保存しました'); renderInvDepts();
 }
 function deleteInvDept(id){
@@ -3619,11 +3637,10 @@ function renderInvVendors(){
 function openInvVendorModal(id){
   const v=id?load('inv_vendors',[]).find(x=>x.id===id):null; const f=v||{};
   const html=`<div style="display:flex;flex-direction:column;gap:12px;min-width:360px"><div class="inv-field"><label>業者名 *</label><input id="ivm-name" value="${esc(f.name||'')}"></div><div class="inv-field"><label>住所（〒含む）</label><input id="ivm-addr" value="${esc(f.address||'')}"></div><div class="inv-field"><label>担当者名</label><input id="ivm-contact" value="${esc(f.contact||'')}"></div><div class="inv-field"><label>メールアドレス</label><input type="email" id="ivm-email" value="${esc(f.email||'')}"></div><div class="inv-field"><label>状態</label><select id="ivm-active"><option value="1" ${f.active!==false?'selected':''}>有効</option><option value="0" ${f.active===false?'selected':''}>無効</option></select></div></div>`;
-  const mod=document.getElementById('modalOverlay'); if(!mod)return;
-  document.getElementById('modalTitle').textContent=id?'業者を編集':'業者を追加';
-  document.getElementById('modalBody').innerHTML=html;
-  document.getElementById('modalSaveBtn').onclick=()=>saveInvVendor(id);
-  mod.classList.add('show');
+  document.getElementById('invModal').classList.add('open');
+  document.getElementById('invModalTitle').textContent=id?'業者を編集':'業者を追加';
+  document.getElementById('invModalBody').innerHTML=html;
+  document.getElementById('invModalSaveBtn').onclick=()=>saveInvVendor(id);
 }
 function saveInvVendor(editId){
   const g=id=>document.getElementById(id)?.value?.trim()||'';
@@ -3632,7 +3649,7 @@ function saveInvVendor(editId){
   const obj={name,address:g('ivm-addr'),contact:g('ivm-contact'),email:g('ivm-email'),active:document.getElementById('ivm-active')?.value!=='0'};
   if(editId){const i=vendors.findIndex(x=>x.id===editId);if(i>=0)vendors[i]={...vendors[i],...obj};}
   else vendors.push({id:uid(),...obj});
-  save('inv_vendors',vendors); document.getElementById('modalOverlay').classList.remove('show');
+  save('inv_vendors',vendors); closeModal('invModal');
   showToast('業者を保存しました'); renderInvVendors();
 }
 function deleteInvVendor(id){
