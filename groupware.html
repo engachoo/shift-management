@@ -3177,7 +3177,26 @@ function invInitDepts(){
     if(updated) save('inv_depts',cur);
   }
 }
-function openInvoiceApp(){ invInitDepts(); _invView='list'; _invFilter='all'; renderInvApp(); }
+// グループ4社のデフォルト業者
+const _INV_DEFAULT_GROUP_VENDORS = [
+  {id:'inv_vendor_dainichi',  name:'大日産業株式会社',        vendorType:'corporate', zip:'5016264', addr1:'岐阜県羽島市小熊町島5-14', addr2:'', address:'〒501-6264 岐阜県羽島市小熊町島5-14', tel:'058-394-1661', email:'', dept:'', contact:'', meishiUrls:[], active:true},
+  {id:'inv_vendor_amuse',     name:'株式会社AMUSE JAPAN',    vendorType:'corporate', zip:'5016264', addr1:'岐阜県羽島市小熊町島5-10', addr2:'', address:'〒501-6264 岐阜県羽島市小熊町島5-10', tel:'058-322-5255', email:'', dept:'', contact:'', meishiUrls:[], active:true},
+  {id:'inv_vendor_welpia',    name:'株式会社ウェルピア羽島',   vendorType:'corporate', zip:'5016264', addr1:'岐阜県羽島市小熊町島5-14', addr2:'', address:'〒501-6264 岐阜県羽島市小熊町島5-14', tel:'058-394-1661', email:'', dept:'', contact:'', meishiUrls:[], active:true},
+  {id:'inv_vendor_gt',        name:'有限会社グローバルトーカイ', vendorType:'corporate', zip:'5016264', addr1:'岐阜県羽島市小熊町島5-14', addr2:'', address:'〒501-6264 岐阜県羽島市小熊町島5-14', tel:'058-394-1151', email:'', dept:'', contact:'', meishiUrls:[], active:true},
+];
+function invInitVendors(){
+  const cur = load('inv_vendors', null);
+  if(cur === null){
+    save('inv_vendors', [..._INV_DEFAULT_GROUP_VENDORS]);
+  } else if(Array.isArray(cur)){
+    let updated = false;
+    _INV_DEFAULT_GROUP_VENDORS.forEach(def => {
+      if(!cur.find(v => v.id === def.id)){ cur.push(def); updated = true; }
+    });
+    if(updated) save('inv_vendors', cur);
+  }
+}
+function openInvoiceApp(){ invInitDepts(); invInitVendors(); _invView='list'; _invFilter='all'; renderInvApp(); }
 function renderInvApp(){
   if(_invView==='list')     renderInvList();
   else if(_invView==='form')    renderInvForm(_invEditId);
