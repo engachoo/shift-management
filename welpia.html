@@ -3966,7 +3966,9 @@ function openInfoModal(title,bodyHtml){
   document.getElementById('modalOverlay').classList.add('show');
 }
 function closeModal(){
-  document.getElementById('modalOverlay').classList.remove('show');
+  const ov=document.getElementById('modalOverlay');
+  ov.classList.remove('show');
+  ov.style.display='';
   document.getElementById('modalSaveBtn').style.display='';
   document.querySelector('.modal-box').style.width='';
   _mCtx=null;
@@ -4206,7 +4208,7 @@ function openAddSysUserModal(){
   const saveBtn=document.getElementById('modalSaveBtn');
   saveBtn.textContent='追加';
   saveBtn.onclick=_doAddSysUser;
-  document.getElementById('modalOverlay').style.display='flex';
+  document.getElementById('modalOverlay').classList.add('show');
   setTimeout(()=>document.getElementById('adduser-name')?.focus(),50);
 }
 function _genAddUserPw(){
