@@ -1,0 +1,16 @@
+# Netlify設定 — welpia（国保連請求サポート）
+
+[build]
+  publish = "."
+
+# ルートURLにアクセスしたらwelpia.htmlを表示
+[[redirects]]
+  from = "/"
+  to = "/welpia.html"
+  status = 200
+
+# 存在しないページはwelpia.htmlへ
+[[redirects]]
+  from = "/*"
+  to = "/welpia.html"
+  status = 200
