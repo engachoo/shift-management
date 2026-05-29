@@ -3162,11 +3162,19 @@ const _INV_DEFAULT_DEPTS=[
   {id:'inv_dept_body',     name:'大日当座ボディケア',        company:'大日産業株式会社',                    regNo:'T5200001011178',companyZip:'〒501-6264',companyAddr:'岐阜県羽島市小熊町島5-14',companyTel:'058-394-1661',companyFax:'058-392-9877',bankName:'岐阜信用金庫',bankBranch:'羽島支店',bankType:'当座',bankNo:'0121838',bankHolder:'ﾀﾞｲﾆﾁｻﾝｷﾞｮｳ(ｶ'},
   {id:'inv_dept_welpia_h', name:'ウェルピア羽島',            company:'株式会社ウェルピア羽島',               regNo:'T4200001034519',companyZip:'〒501-6264',companyAddr:'岐阜県羽島市小熊町島5-14',companyTel:'058-394-1661',companyFax:'058-392-9877',bankName:'岐阜信用金庫',bankBranch:'羽島支店',bankType:'普通',bankNo:'1219401',bankHolder:'ｶ)ｳｪﾙﾋﾟｱﾊｼﾏ'},
   {id:'inv_dept_welpia_y', name:'ウェルピア山県',            company:'株式会社ウェルピア羽島',               regNo:'T4200001034519',companyZip:'〒501-6264',companyAddr:'岐阜県羽島市小熊町島5-14',companyTel:'058-394-1661',companyFax:'058-392-9877',bankName:'岐阜信用金庫',bankBranch:'羽島支店',bankType:'普通',bankNo:'1223123',bankHolder:'ｶ)ｳｪﾙﾋﾟｱﾊｼﾏ'},
+  {id:'inv_dept_gt',       name:'グローバルトーカイ',         company:'有限会社グローバルトーカイ',              regNo:'T5200002011945',companyZip:'〒501-6264',companyAddr:'岐阜県羽島市小熊町島5-14',companyTel:'058-394-1151',companyFax:'058-392-9877',bankName:'岐阜信用金庫',bankBranch:'羽島支店',bankType:'当座',bankNo:'0904585',bankHolder:'ﾕ)ｸﾞﾛｰﾊﾞﾙﾄｰｶｲ'},
 ];
 function invInitDepts(){
   const cur=load('inv_depts',null);
   if(cur===null||(Array.isArray(cur)&&cur.length<=1&&(!cur[0]||cur[0].id==='inv_dept_dainichi'))){
     save('inv_depts',_INV_DEFAULT_DEPTS);
+  } else if(Array.isArray(cur)){
+    // 新部署がデフォルトに追加された場合、既存データにも自動マージ
+    let updated=false;
+    _INV_DEFAULT_DEPTS.forEach(def=>{
+      if(!cur.find(d=>d.id===def.id)){ cur.push(def); updated=true; }
+    });
+    if(updated) save('inv_depts',cur);
   }
 }
 function openInvoiceApp(){ invInitDepts(); _invView='list'; _invFilter='all'; renderInvApp(); }
