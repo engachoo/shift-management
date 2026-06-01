@@ -707,6 +707,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
     <div id="acctMenu" style="display:none">
       <div class="side-group">経理・事務</div>
       <div class="side-item" id="m-pc" onclick="showMod('pettycash')"><span class="si-icon">💰</span>現金出納簿</div>
+      <div class="side-item" id="m-inv" style="display:none" onclick="showInvoiceApp()"><span class="si-icon">📄</span>請求書フォーム</div>
     </div>
     <div id="adminMenu" style="display:none">
       <div class="side-group">システム設定</div>
@@ -3151,6 +3152,14 @@ function buildPmMemberSel(){
 // =========================================================
 // 開発中アプリ（システム管理者専用）
 // =========================================================
+function showInvoiceApp(){
+  showMod('devapps');
+  _invView='list'; _invFilter='all';
+  renderInvApp();
+  // サイドバーのアクティブ状態
+  document.querySelectorAll('.side-item').forEach(el=>el.classList.remove('active'));
+  document.getElementById('m-inv')?.classList.add('active');
+}
 function renderDevApps(){
   if(!getS()) return;
   const apps = [
@@ -7630,6 +7639,8 @@ function startApp(){
   }
   // 経理・事務メニューはログイン済み全ユーザーに表示
   document.getElementById('acctMenu').style.display='block';
+  // 請求書フォームは system・soumu のみ表示
+  if(s.role==='system'||s.role==='soumu') document.getElementById('m-inv').style.display='flex';
   // システム設定・開発中のアプリは system のみ表示
   if(isSystem()){
     document.getElementById('adminMenu').style.display='block';
