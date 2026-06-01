@@ -3335,7 +3335,9 @@ function renderInvList(){
     </div>
   </div>
   <div style="display:flex;gap:4px;margin-bottom:14px;flex-wrap:wrap">
-    ${tabs.map(s=>{ const def=s==='all'?{label:'全て',color:'#fff',bg:'#1a2b4a',border:'#1a2b4a'}:INV_ST[s]; const cnt=s==='all'?invs.length:invs.filter(i=>i.status===s).length; const act=_invFilter===s; return `<button onclick="_invFilter='${s}';renderInvList()" style="background:${act?def.bg:'#f8fafc'};color:${act?def.color:'#6b7280'};border:1.5px solid ${act?def.border:'#e2e8f0'};border-radius:20px;padding:4px 13px;font-size:12px;font-weight:${act?700:400};cursor:pointer">${s!=='all'?INV_ST[s].icon+' ':''}${def.label}${cnt?' ('+cnt+')':''}</button>`; }).join('')}
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px">
+    ${tabs.map(s=>{ const def=s==='all'?{label:'全て',icon:'📄',color:'#fff',bg:'#1a2b4a',border:'#1a2b4a'}:INV_ST[s]; const cnt=s==='all'?invs.length:invs.filter(i=>i.status===s).length; const act=_invFilter===s; return `<button onclick="_invFilter='${s}';renderInvList()" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-width:80px;padding:10px 14px;background:${act?def.bg:'#fff'};color:${act?def.color:'#6b7280'};border:2px solid ${act?def.border:'#e2e8f0'};border-radius:10px;cursor:pointer;box-shadow:${act?'0 2px 8px rgba(0,0,0,.12)':'0 1px 3px rgba(0,0,0,.06)'};transition:all .15s"><span style="font-size:20px;line-height:1">${def.icon}</span><span style="font-size:11px;font-weight:700;white-space:nowrap">${def.label}</span><span style="font-size:15px;font-weight:800;line-height:1">${cnt}</span></button>`; }).join('')}
+    </div>
   </div>
   <!-- 絞り込みフィルター -->
   <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px 16px;margin-bottom:12px;display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end">
