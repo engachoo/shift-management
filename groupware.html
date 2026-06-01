@@ -6053,6 +6053,8 @@ function renderCiList(){
   };
   const ciPending=(c)=>{
     if(c.withdrawn||isCcOnly(c)) return false; // 取り下げ済・Cc専用は未承認に出さない
+    // システムが宛先・作成者でもない場合（閲覧権限のみ）は未承認に出さない
+    if(isSystem()&&c.author!==me&&!(c.recipients&&c.recipients.includes(me))) return false;
     return c.author===me ? !_allConf(c) : (!c.responses[me]||c.responses[me]?.status==='pending');
   };
   const ciChecking=(c)=>(!c.withdrawn&&!isCcOnly(c)&&c.author!==me&&c.responses[me]?.status==='checking');
@@ -6604,17 +6606,19 @@ function switchCiMode(mode){
       btn.style.fontWeight='600';
     }
   });
-  // 宛先（To）・返信ボタンのデフォルト設定
-  if(isPetty){
-    _ciRecips=normalUsers().filter(u=>u.role==='soumu').map(u=>u.id);
-    _ciCustomBtns=['確認済','保留'];
-    const presetSel=document.getElementById('ci-preset-sel');
-    if(presetSel) presetSel.value='confirm';
-  } else {
-    _ciRecips=[];
-    _ciCustomBtns=['承認','保留','見送り'];
-    const presetSel=document.getElementById('ci-preset-sel');
-    if(presetSel) presetSel.value='approval';
+  // 宛先（To）・返信ボタンのデフォルト設定（編集中は宛先をリセットしない）
+  if(!_ciEditId){
+    if(isPetty){
+      _ciRecips=normalUsers().filter(u=>u.role==='soumu').map(u=>u.id);
+      _ciCustomBtns=['確認済','保留'];
+      const presetSel=document.getElementById('ci-preset-sel');
+      if(presetSel) presetSel.value='confirm';
+    } else {
+      _ciRecips=[];
+      _ciCustomBtns=['承認','保留','見送り'];
+      const presetSel=document.getElementById('ci-preset-sel');
+      if(presetSel) presetSel.value='approval';
+    }
   }
   renderCiRecipSel();
   renderCiRecipCand();
