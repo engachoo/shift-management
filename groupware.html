@@ -6052,14 +6052,19 @@ function renderCiList(){
     return others.every(id=>c.responses?.[id]?.status==='confirmed');
   };
   const ciPending=(c)=>{
-    if(c.withdrawn||isCcOnly(c)) return false; // 取り下げ済・Cc専用は未承認に出さない
-    // システムが宛先・作成者でもない場合（閲覧権限のみ）は未承認に出さない
-    if(isSystem()&&c.author!==me&&!(c.recipients&&c.recipients.includes(me))) return false;
+    if(c.withdrawn||isCcOnly(c)) return false;
+    // システムは組織全体を監視：まだ全員承認が揃っていない案件を未承認として表示
+    if(isSystem()) return !_allConf(c);
     return c.author===me ? !_allConf(c) : (!c.responses[me]||c.responses[me]?.status==='pending');
   };
   const ciChecking=(c)=>(!c.withdrawn&&!isCcOnly(c)&&c.author!==me&&c.responses[me]?.status==='checking');
   // 取り下げ済みは申請者本人の承認済タブにのみ表示（他メンバーには一切表示しない）
-  const ciDone=(c)=>(c.withdrawn&&c.author===me)||isCcOnly(c)||(c.author===me ? _allConf(c) : c.responses[me]?.status==='confirmed');
+  const ciDone=(c)=>{
+    if(c.withdrawn) return c.author===me;
+    if(isCcOnly(c)) return true;
+    if(isSystem()) return _allConf(c); // システムは全員承認済みで完了
+    return c.author===me ? _allConf(c) : c.responses[me]?.status==='confirmed';
+  };
 
   const cntPend=all.filter(c=>ciPending(c)&&!ciChecking(c)).length;
   const cntCheck=all.filter(c=>ciChecking(c)).length;
