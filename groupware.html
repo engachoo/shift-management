@@ -3954,10 +3954,11 @@ function renderInvVendors(){
   // 社名検索フィルター
   const kw=_invVendorSearch.trim().toLowerCase();
   let shown=kw ? vendors.filter(v=>(v.name||'').toLowerCase().includes(kw)) : vendors;
-  // 部門フィルター（取引部門）
-  if(_invVendorDeptFilter) shown=shown.filter(v=>(v.tradingDept||'（未設定）')===_invVendorDeptFilter);
+  // 部門フィルター（取引部門・複数対応）
+  const vTradingDepts=v=>(Array.isArray(v.tradingDepts)?v.tradingDepts:(v.tradingDept?[v.tradingDept]:[]));
+  if(_invVendorDeptFilter) shown=shown.filter(v=>vTradingDepts(v).includes(_invVendorDeptFilter));
   // 部門プルダウン用の選択肢を全業者から収集
-  const allDepts=[...new Set(vendors.map(v=>v.tradingDept||'（未設定）'))].sort((a,b)=>a==='（未設定）'?1:b==='（未設定）'?-1:a.localeCompare(b,'ja'));
+  const allDepts=[...new Set(vendors.flatMap(v=>vTradingDepts(v).length?vTradingDepts(v):['（未設定）']))].sort((a,b)=>a==='（未設定）'?1:b==='（未設定）'?-1:a.localeCompare(b,'ja'));
 
   // 分類ごとにグループ化
   const catOf=v=>v.category||'（未分類）';
@@ -3972,24 +3973,24 @@ function renderInvVendors(){
     const meishiHtml=meishiUrls.length
       ? '<div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">'+meishiUrls.map(u=>'<img src="'+u+'" style="height:52px;border-radius:4px;border:1px solid #e2e8f0;cursor:pointer" onclick="window.open(\''+u+'\',\'_blank\')" title="名刺">').join('')+'</div>'
       : '';
-    return '<div style="background:#fff;border:1.5px solid #e2e8f0;border-radius:10px;padding:14px 18px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px">'
+    const tds=Array.isArray(v.tradingDepts)?v.tradingDepts:(v.tradingDept?[v.tradingDept]:[]);
+    return '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:8px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px">'
       +'<div style="flex:1;min-width:0">'
-      +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap">'
-      +'<span style="font-weight:700;color:#1a2b4a;font-size:15px">'+esc(v.name)+'</span>'
-      +'<span style="font-size:11px;background:#eff6ff;color:#1e40af;border-radius:10px;padding:1px 7px">'+typeLabel+'</span>'
-      +(v.active!==false?'<span style="font-size:11px;background:#dcfce7;color:#166534;border-radius:10px;padding:1px 7px">有効</span>':'<span style="font-size:11px;background:#f3f4f6;color:#6b7280;border-radius:10px;padding:1px 7px">無効</span>')
-      +(v.tradingDept?'<span style="font-size:11px;background:#fef3c7;color:#92400e;border-radius:10px;padding:1px 7px">🏢 '+esc(v.tradingDept)+'</span>':'')
+      +'<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">'
+      +'<span style="font-weight:700;color:#1a2b4a;font-size:13px">'+esc(v.name)+'</span>'
+      +'<span style="font-size:10px;background:#eff6ff;color:#1e40af;border-radius:8px;padding:0 6px">'+typeLabel+'</span>'
+      +(v.active!==false?'':'<span style="font-size:10px;background:#f3f4f6;color:#6b7280;border-radius:8px;padding:0 6px">無効</span>')
+      +tds.map(d=>'<span style="font-size:10px;background:#fef3c7;color:#92400e;border-radius:8px;padding:0 6px">🏢 '+esc(d)+'</span>').join('')
       +'</div>'
-      +'<div style="font-size:12px;color:#6b7280;line-height:1.8">'
-      +(v.dept?'<span>部署：'+esc(v.dept)+'</span>　':'')
-      +(v.contact?'<span>担当：'+esc(v.contact)+'</span>　':'')
+      +'<div style="font-size:11px;color:#6b7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px">'
+      +(v.dept?'<span>'+esc(v.dept)+'</span>　':'')
+      +(v.contact?'<span>'+esc(v.contact)+'</span>　':'')
       +(v.tel?'<span>☎ '+esc(v.tel)+'</span>　':'')
-      +(v.email?'<span>✉ '+esc(v.email)+'</span>':'')
-      +(addr?'<br>📍 '+(v.zip?'〒'+v.zip+' ':'')+esc(addr)+(v.addr2?' '+esc(v.addr2):''):'')
+      +(addr?'<span>📍 '+(v.zip?'〒'+v.zip+' ':'')+esc(addr)+(v.addr2?' '+esc(v.addr2):'')+'</span>':'')
       +'</div>'
       +meishiHtml
       +'</div>'
-      +'<div style="display:flex;gap:6px;flex-shrink:0;margin-top:2px">'
+      +'<div style="display:flex;gap:4px;flex-shrink:0">'
       +'<button onclick="openInvVendorModal(\''+v.id+'\')" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#374151;border-radius:5px;padding:5px 12px;font-size:12px;cursor:pointer">編集</button>'
       +'<button onclick="deleteInvVendor(\''+v.id+'\')" style="background:#fee2e2;border:1px solid #fca5a5;color:#dc2626;border-radius:5px;padding:5px 12px;font-size:12px;cursor:pointer">削除</button>'
       +'</div></div>';
@@ -4045,12 +4046,12 @@ function openInvVendorModal(id, callback){
   window._ivmMeishiUrls = [...meishiUrls];
   const invDepts=load('inv_depts',[]);
   const tradingDeptOptions=['大日グループ',...invDepts.map(d=>d.name)];
+  const curTradingDepts=Array.isArray(f.tradingDepts)?f.tradingDepts:(f.tradingDept?[f.tradingDept]:[]);
   const html=`<div style="display:flex;flex-direction:column;gap:14px;min-width:360px;max-width:460px">
-    <div class="inv-field"><label>取引部門</label>
-      <select id="ivm-trading-dept" style="width:100%">
-        <option value="">─ 未設定 ─</option>
-        ${tradingDeptOptions.map(n=>`<option value="${esc(n)}"${(f.tradingDept||'')===(n)?` selected`:''}>${esc(n)}</option>`).join('')}
-      </select>
+    <div class="inv-field"><label>取引部門（複数選択可）</label>
+      <div style="display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:4px;padding:8px 10px;border:1px solid #d1d5db;border-radius:6px;background:#f9fafb">
+        ${tradingDeptOptions.map(n=>`<label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-weight:normal;font-size:13px"><input type="checkbox" class="ivm-td-cb" value="${esc(n)}"${curTradingDepts.includes(n)?' checked':''}> ${esc(n)}</label>`).join('')}
+      </div>
     </div>
     <div class="inv-field"><label class="req">＊ 業者区分</label>
       <div style="display:flex;gap:20px;margin-top:4px">
@@ -4150,7 +4151,7 @@ function saveInvVendor(editId){
   const zip=gv('ivm-zip');
   const obj={
     name, vendorType:type,
-    tradingDept:gv('ivm-trading-dept'),
+    tradingDepts:[...document.querySelectorAll('.ivm-td-cb:checked')].map(cb=>cb.value),
     dept:gv('ivm-dept'), contact:gv('ivm-contact'),
     zip, addr1, addr2:gv('ivm-addr2'),
     address:(zip?'〒'+zip+' ':'')+addr1+(gv('ivm-addr2')?' '+gv('ivm-addr2'):''),
