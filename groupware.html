@@ -3246,6 +3246,7 @@ function renderInvApp(){
 }
 function invCanManage(){ const r=getS()?.role; return r==='soumu'||r==='system'||r==='admin'; }
 function invCanCreate(){ const r=getS()?.role; return ['manager','admin','soumu','system'].includes(r); }
+function invCanEditAny(){ const r=getS()?.role; return r==='system'||r==='soumu'; }
 function invNextNo(){
   const invs=load('invoices',[]); const yr=new Date().getFullYear();
   const max=invs.filter(i=>i.invoiceNo&&i.invoiceNo.startsWith('INV-'+yr+'-')).reduce((m,i)=>Math.max(m,parseInt(i.invoiceNo.split('-')[2])||0),0);
@@ -3387,7 +3388,7 @@ function renderInvList(){
         <td style="padding:9px 12px"><span class="inv-badge" style="background:${def.bg};color:${def.color};border-color:${def.border}">${def.icon} ${def.label}</span></td>
         <td style="padding:9px 12px;white-space:nowrap">
           <button onclick="_invEditId='${inv.id}';_invView='detail';renderInvApp()" style="background:#1a3a6b;color:#fff;border:none;border-radius:5px;padding:4px 12px;font-size:12px;cursor:pointer">詳細</button>
-          ${(inv.status==='draft'||inv.status==='rejected')&&inv.createdBy===me?`<button onclick="_invEditId='${inv.id}';_invView='form';renderInvApp()" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#374151;border-radius:5px;padding:4px 10px;font-size:12px;cursor:pointer;margin-left:4px">編集</button>`:''}
+          ${(inv.status==='draft'||inv.status==='rejected')&&(inv.createdBy===me||invCanEditAny())?`<button onclick="_invEditId='${inv.id}';_invView='form';renderInvApp()" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#374151;border-radius:5px;padding:4px 10px;font-size:12px;cursor:pointer;margin-left:4px">編集</button>`:''}
         </td></tr>`;
     }).join('')}</tbody>
   </table></div>`}`;
@@ -3581,7 +3582,7 @@ function renderInvDetail(invId){
   if(inv.status==='submitted'&&canManage) actions=`<button onclick="invReview('${invId}')" style="background:#7c3aed;color:#fff;border:none;border-radius:7px;padding:9px 20px;font-size:13px;font-weight:700;cursor:pointer">📋 確認済み → 承認申請へ</button><button onclick="invReject('${invId}')" style="background:#dc2626;color:#fff;border:none;border-radius:7px;padding:9px 20px;font-size:13px;font-weight:700;cursor:pointer;margin-left:8px">↩ 差し戻し</button>`;
   else if(inv.status==='reviewing'&&canManage) actions=`<button onclick="invApprove('${invId}')" style="background:#16a34a;color:#fff;border:none;border-radius:7px;padding:10px 24px;font-size:14px;font-weight:700;cursor:pointer">✅ 承認する（電子押印）</button><button onclick="invReject('${invId}')" style="background:#dc2626;color:#fff;border:none;border-radius:7px;padding:9px 20px;font-size:13px;font-weight:700;cursor:pointer;margin-left:8px">↩ 差し戻し</button>`;
   else if((inv.status==='approved'||inv.status==='sent')&&canManage) actions=`<button onclick="_invEditId='${invId}';_invView='print';renderInvApp()" style="background:#7c3aed;color:#fff;border:none;border-radius:7px;padding:9px 20px;font-size:13px;font-weight:700;cursor:pointer">🖨 PDF出力・印刷</button>${vendor?`<button onclick="_invEditId='${invId}';_invView='label';renderInvApp()" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#374151;border-radius:7px;padding:9px 20px;font-size:13px;cursor:pointer;margin-left:8px">🏷 封筒ラベル</button>`:''}${inv.status==='approved'?`<button onclick="invMarkSent('${invId}')" style="background:#7c3aed;color:#fff;border:none;border-radius:7px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;margin-left:8px">📮 発送済にする</button>`:''}`;
-  if((inv.status==='draft'||inv.status==='rejected')&&inv.createdBy===me) actions+=`<button onclick="_invEditId='${invId}';_invView='form';renderInvApp()" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#374151;border-radius:7px;padding:9px 20px;font-size:13px;cursor:pointer;margin-left:8px">✏ 編集</button>`;
+  if((inv.status==='draft'||inv.status==='rejected')&&(inv.createdBy===me||invCanEditAny())) actions+=`<button onclick="_invEditId='${invId}';_invView='form';renderInvApp()" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#374151;border-radius:7px;padding:9px 20px;font-size:13px;cursor:pointer;margin-left:8px">✏ 編集</button>`;
   el.innerHTML=`
   <div style="display:flex;align-items:center;gap:8px;margin-bottom:20px;flex-wrap:wrap">
     <button onclick="_invView='list';renderInvApp()" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#475569;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:12px">← 一覧</button>
