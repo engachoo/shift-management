@@ -3335,8 +3335,17 @@ function renderInvList(){
     </div>
   </div>
   <div style="display:flex;gap:4px;margin-bottom:14px;flex-wrap:wrap">
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px">
-    ${tabs.map(s=>{ const def=s==='all'?{label:'全て',icon:'📄',color:'#fff',bg:'#1a2b4a',border:'#1a2b4a'}:INV_ST[s]; const cnt=s==='all'?invs.length:invs.filter(i=>i.status===s).length; const act=_invFilter===s; return `<button onclick="_invFilter='${s}';renderInvList()" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-width:80px;padding:10px 14px;background:${act?def.bg:'#fff'};color:${act?def.color:'#6b7280'};border:2px solid ${act?def.border:'#e2e8f0'};border-radius:10px;cursor:pointer;box-shadow:${act?'0 2px 8px rgba(0,0,0,.12)':'0 1px 3px rgba(0,0,0,.06)'};transition:all .15s"><span style="font-size:20px;line-height:1">${def.icon}</span><span style="font-size:11px;font-weight:700;white-space:nowrap">${def.label}</span><span style="font-size:15px;font-weight:800;line-height:1">${cnt}</span></button>`; }).join('')}
+    <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-bottom:4px">
+    ${tabs.map((s,idx)=>{
+      const def=s==='all'?{label:'全て',icon:'📄',color:'#fff',bg:'#1a2b4a',border:'#1a2b4a'}:INV_ST[s];
+      const cnt=s==='all'?invs.length:invs.filter(i=>i.status===s).length;
+      const act=_invFilter===s;
+      const flowOrder=['draft','submitted','reviewing','approved','sent'];
+      const prevS=tabs[idx-1];
+      const arrow=(flowOrder.includes(s)&&flowOrder.includes(prevS))?'<span style="color:#94a3b8;font-size:18px;font-weight:700;flex-shrink:0">→</span>':'';
+      const btn=`<button onclick="_invFilter='${s}';renderInvList()" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-width:80px;padding:10px 14px;background:${act?def.bg:'#fff'};color:${act?def.color:'#6b7280'};border:2px solid ${act?def.border:'#e2e8f0'};border-radius:10px;cursor:pointer;box-shadow:${act?'0 2px 8px rgba(0,0,0,.12)':'0 1px 3px rgba(0,0,0,.06)'};transition:all .15s"><span style="font-size:20px;line-height:1">${def.icon}</span><span style="font-size:11px;font-weight:700;white-space:nowrap">${def.label}</span><span style="font-size:15px;font-weight:800;line-height:1">${cnt}</span></button>`;
+      return arrow+btn;
+    }).join('')}
     </div>
   </div>
   <!-- 絞り込みフィルター -->
