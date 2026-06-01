@@ -3584,7 +3584,8 @@ function submitInvRequest(){
   const data={deptId,closingDate:closing,subject,description:subject,items,paymentDeadline:deadline,vendorId,notes,totalAmount:t.total,status:'submitted',submittedAt:now,updatedAt:now};
   if(_invEditId){const i=invs.findIndex(x=>x.id===_invEditId);if(i>=0)invs[i]={...invs[i],...data};}
   else invs.push({id:uid(),invoiceNo:invNextNo(),createdBy:myId(),createdAt:now,...data});
-  save('invoices',invs); showToast('発行依頼を送信しました 📤'); _invView='list'; renderInvApp();
+  const saved=invs.find(i=>i.invoiceNo===data.invoiceNo)||invs[invs.length-1];
+  save('invoices',invs); invStatusNotif({...data,createdBy:myId()}, '🔔', '申請中'); showToast('発行依頼を送信しました 📤'); _invView='list'; renderInvApp();
 }
 function renderInvDetail(invId){
   const el=document.getElementById('devAppsContent'); if(!el)return;
@@ -3642,31 +3643,45 @@ function renderInvDetail(invId){
     if(ctx) invDrawSeal(ctx,dept.company||'大日産業㈱',inv.approvedAt);
   }
 }
+// ─── 請求書ステータス変更通知 ──────────────────────────────
+function invStatusNotif(inv, icon, label){
+  const users=load('users',[]);
+  // 総務経理ユーザーのID一覧
+  const soumuIds=users.filter(u=>u.active&&u.role==='soumu').map(u=>u.id);
+  // 申請者（作成者）のID
+  const creatorId=inv.createdBy;
+  const subject=inv.subject||inv.description||inv.invoiceNo||'請求書';
+  const msg=`【請求書】${label}：${subject}`;
+  // 総務経理へ通知（申請中・承認申請・承認済・発送済・差し戻し）
+  if(soumuIds.length) sendEvNotif(soumuIds, icon, msg);
+  // 申請者へも進捗通知（自分の案件のステータス変化）
+  if(creatorId&&creatorId!==myId()) sendEvNotif([creatorId], icon, msg);
+}
 function invReview(invId){
   const memo=document.getElementById('inv-review-memo')?.value||'';
   if(!confirm('確認済みにして「承認申請」へ進みますか？'))return;
   const invs=load('invoices',[]); const i=invs.findIndex(x=>x.id===invId); if(i<0)return;
   invs[i]={...invs[i],status:'reviewing',reviewedBy:myId(),reviewedAt:new Date().toISOString(),reviewNotes:memo};
-  save('invoices',invs); showToast('確認済みにしました 🔍'); renderInvDetail(invId);
+  save('invoices',invs); invStatusNotif(invs[i],'📋','承認申請へ'); showToast('確認済みにしました 🔍'); renderInvDetail(invId);
 }
 function invApprove(invId){
   if(!confirm('この請求書を承認し、電子角印を押印しますか？'))return;
   const invs=load('invoices',[]); const i=invs.findIndex(x=>x.id===invId); if(i<0)return;
   const memo=document.getElementById('inv-review-memo')?.value||invs[i].reviewNotes||'';
   invs[i]={...invs[i],status:'approved',approvedBy:myId(),approvedAt:new Date().toISOString(),reviewNotes:memo};
-  save('invoices',invs); showToast('承認しました ✅'); renderInvDetail(invId);
+  save('invoices',invs); invStatusNotif(invs[i],'✅','承認済'); showToast('承認しました ✅'); renderInvDetail(invId);
 }
 function invReject(invId){
   const memo=prompt('差し戻し理由を入力してください');if(memo===null)return;
   const invs=load('invoices',[]); const i=invs.findIndex(x=>x.id===invId); if(i<0)return;
   invs[i]={...invs[i],status:'rejected',reviewNotes:memo,rejectedAt:new Date().toISOString()};
-  save('invoices',invs); showToast('差し戻しました ↩'); _invView='list'; renderInvApp();
+  save('invoices',invs); invStatusNotif(invs[i],'↩','差し戻し'); showToast('差し戻しました ↩'); _invView='list'; renderInvApp();
 }
 function invMarkSent(invId){
   if(!confirm('発送済みにしますか？'))return;
   const invs=load('invoices',[]); const i=invs.findIndex(x=>x.id===invId); if(i<0)return;
   invs[i]={...invs[i],status:'sent',sentAt:new Date().toISOString()};
-  save('invoices',invs); showToast('発送済みにしました 📮'); _invView='list'; renderInvApp();
+  save('invoices',invs); invStatusNotif(invs[i],'📮','発送済'); showToast('発送済みにしました 📮'); _invView='list'; renderInvApp();
 }
 function invDrawSeal(ctx, companyName, approvedAt){
   const W=ctx.canvas.width, H=ctx.canvas.height;
