@@ -3268,11 +3268,23 @@ function renderInvList(){
   if(_invFVendor)  filtered=filtered.filter(i=>i.vendorId===_invFVendor);
   if(_invFClosing) filtered=filtered.filter(i=>i.closingDate===_invFClosing);
 
-  // プルダウン用ユニーク値（全件から抽出）
-  const allInvs=_invFilter==='all'?invs:invs.filter(i=>i.status===_invFilter);
-  const uniqueDepts  =[...new Set(allInvs.map(i=>i.deptId).filter(Boolean))];
-  const uniqueVendors=[...new Set(allInvs.map(i=>i.vendorId).filter(Boolean))];
-  const uniqueClosing=[...new Set(allInvs.map(i=>i.closingDate).filter(Boolean))].sort();
+  // プルダウン用ユニーク値（ステータスフィルター後の全件から抽出）
+  const allForFilter=_invFilter==='all'?invs:invs.filter(i=>i.status===_invFilter);
+  const uniqueDepts  =[...new Set(allForFilter.map(i=>i.deptId).filter(Boolean))];
+  const uniqueVendors=[...new Set(allForFilter.map(i=>i.vendorId).filter(Boolean))];
+  const uniqueClosing=[...new Set(allForFilter.map(i=>i.closingDate).filter(Boolean))].sort();
+
+  // オプションHTMLをテンプレートの外で生成（ネスト回避）
+  const optDept = uniqueDepts.map(id=>{
+    const d=depts.find(x=>x.id===id);
+    return d ? '<option value="'+id+'"'+(_invFDept===id?' selected':'')+'>'+(d.name||id)+'</option>' : '';
+  }).join('');
+  const optVendor = uniqueVendors.map(id=>{
+    const v=vendors.find(x=>x.id===id);
+    return v ? '<option value="'+id+'"'+(_invFVendor===id?' selected':'')+'>'+(v.name||id)+'</option>' : '';
+  }).join('');
+  const optClosing = uniqueClosing.map(d=>'<option value="'+d+'"'+(_invFClosing===d?' selected':'')+'>'+d+'</option>').join('');
+  const hasFilter  = _invFDept||_invFVendor||_invFClosing;
 
   // ── ソート ──────────────────────────────────────────────
   filtered.sort((a,b)=>{
@@ -3325,25 +3337,22 @@ function renderInvList(){
     <div style="display:flex;flex-direction:column;gap:4px">
       <label style="font-size:11px;font-weight:600;color:#64748b">発行部署</label>
       <select id="invFDept" onchange="invApplyFilter()" style="border:1.5px solid #d1d5db;border-radius:6px;padding:6px 10px;font-size:13px;min-width:140px;background:#fff">
-        <option value="">すべて</option>
-        ${uniqueDepts.map(id=>{const d=depts.find(x=>x.id===id);return d?`<option value="${id}" ${_invFDept===id?'selected':''}>${esc(d.name)}</option>`:''}).join('')}
+        <option value="">すべて</option>${optDept}
       </select>
     </div>
     <div style="display:flex;flex-direction:column;gap:4px">
       <label style="font-size:11px;font-weight:600;color:#64748b">相手先</label>
       <select id="invFVendor" onchange="invApplyFilter()" style="border:1.5px solid #d1d5db;border-radius:6px;padding:6px 10px;font-size:13px;min-width:160px;background:#fff">
-        <option value="">すべて</option>
-        ${uniqueVendors.map(id=>{const v=vendors.find(x=>x.id===id);return v?`<option value="${id}" ${_invFVendor===id?'selected':''}>${esc(v.name)}</option>`:''}).join('')}
+        <option value="">すべて</option>${optVendor}
       </select>
     </div>
     <div style="display:flex;flex-direction:column;gap:4px">
       <label style="font-size:11px;font-weight:600;color:#64748b">締め日</label>
       <select id="invFClosing" onchange="invApplyFilter()" style="border:1.5px solid #d1d5db;border-radius:6px;padding:6px 10px;font-size:13px;min-width:130px;background:#fff">
-        <option value="">すべて</option>
-        ${uniqueClosing.map(d=>`<option value="${d}" ${_invFClosing===d?'selected':''}>${d}</option>`).join('')}
+        <option value="">すべて</option>${optClosing}
       </select>
     </div>
-    ${(_invFDept||_invFVendor||_invFClosing)?`<button onclick="invClearFilter()" style="background:#fee2e2;border:1px solid #fca5a5;color:#dc2626;border-radius:6px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer;align-self:flex-end">✕ 絞り込み解除</button>`:''}
+    ${hasFilter ? '<button onclick="invClearFilter()" style="background:#fee2e2;border:1px solid #fca5a5;color:#dc2626;border-radius:6px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer;align-self:flex-end">✕ 絞り込み解除</button>' : ''}
     <div style="align-self:flex-end;font-size:12px;color:#64748b;margin-left:auto">${filtered.length} 件</div>
   </div>
   <div style="font-size:11px;color:#94a3b8;margin-bottom:8px">💡 列ヘッダーをクリックしてソート</div>
