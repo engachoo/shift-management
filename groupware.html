@@ -3896,6 +3896,21 @@ function renderInvPrint(invId){
   }
 }
 let _invLabelMode='both'; // 'to' | 'from' | 'both'
+let _invLabelPos=new Set([0]); // 印刷する位置（0-11）
+function invLabelTogglePos(idx){
+  if(_invLabelPos.has(idx)) _invLabelPos.delete(idx);
+  else _invLabelPos.add(idx);
+  // グリッドとカウントのみ再描画
+  const g=document.getElementById('invLabelGrid'); if(g) g.innerHTML=window._invLabelGridFn();
+  const c=document.getElementById('invLabelCount'); if(c) c.textContent=_invLabelPos.size+'枚選択中';
+  const s=document.getElementById('invPosGrid'); if(s) s.innerHTML=window._invPosCellsFn();
+}
+function invLabelQuickSelect(n){
+  _invLabelPos=new Set(Array.from({length:n},(_,i)=>i));
+  const g=document.getElementById('invLabelGrid'); if(g) g.innerHTML=window._invLabelGridFn();
+  const c=document.getElementById('invLabelCount'); if(c) c.textContent=_invLabelPos.size+'枚選択中';
+  const s=document.getElementById('invPosGrid'); if(s) s.innerHTML=window._invPosCellsFn();
+}
 function renderInvLabel(invId){
   const el=document.getElementById('devAppsContent'); if(!el)return;
   const inv=load('invoices',[]).find(i=>i.id===invId);
@@ -3942,41 +3957,63 @@ function renderInvLabel(invId){
   const blankSeal=`<div class="inv-label-seal" style="${sealStyle}"></div>`;
   const toSeal=`<div class="inv-label-seal" style="${sealStyle}">${buildToLabel()}</div>`;
   const fromSeal=`<div class="inv-label-seal" style="${sealStyle}">${buildFromLabel()}</div>`;
-  // 12枚グリッド生成（2列×6行）
-  const buildGrid=()=>{
+  // モード変更時のデフォルト位置リセット
+  if(_invLabelMode==='from') _invLabelPos=new Set(Array.from({length:12},(_,i)=>i));
+  else if(_invLabelMode==='to'&&_invLabelPos.size===12) _invLabelPos=new Set([0]);
+
+  // 12枚グリッド生成
+  window._invLabelGridFn=()=>{
     const cells=[];
-    if(_invLabelMode==='to'){
-      // 宛名のみ：1枚目に宛名、残りは空
-      for(let i=0;i<12;i++) cells.push(i===0?toSeal:blankSeal);
-    } else if(_invLabelMode==='from'){
-      // 差出人のみ：全12枚に差出人
-      for(let i=0;i<12;i++) cells.push(fromSeal);
-    } else {
-      // 両方：奇数列に宛名、偶数列に差出人（1枚ずつ）
-      cells.push(toSeal); cells.push(fromSeal);
-      for(let i=2;i<12;i++) cells.push(blankSeal);
+    for(let i=0;i<12;i++){
+      const sel=_invLabelPos.has(i);
+      if(_invLabelMode==='to') cells.push(sel?toSeal:blankSeal);
+      else if(_invLabelMode==='from') cells.push(sel?fromSeal:blankSeal);
+      else { // 両方：0=宛名,1=差出人
+        cells.push(i===0?toSeal:i===1?fromSeal:blankSeal);
+      }
     }
     return cells.join('');
   };
 
+  // 位置選択ミニグリッド（セル）
+  window._invPosCellsFn=()=>Array.from({length:12},(_,i)=>{
+    const sel=_invLabelPos.has(i);
+    const row=Math.floor(i/2)+1, col=(i%2)+1;
+    return `<div onclick="invLabelTogglePos(${i})" style="width:36px;height:21px;border:1.5px solid ${sel?'#1a3a6b':'#d1d5db'};border-radius:3px;background:${sel?'#1a3a6b':'#f8fafc'};color:${sel?'#fff':'#9ca3af'};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;cursor:pointer">${i+1}</div>`;
+  }).join('');
+
   const btnStyle=(mode)=>`background:${_invLabelMode===mode?'#1a3a6b':'#f1f5f9'};color:${_invLabelMode===mode?'#fff':'#374151'};border:1.5px solid ${_invLabelMode===mode?'#1a3a6b':'#d1d5db'};border-radius:7px;padding:8px 18px;font-size:13px;font-weight:600;cursor:pointer`;
+  const showPosUI=_invLabelMode!=='both';
 
   el.innerHTML=`
-  <div class="inv-no-print" style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+  <div class="inv-no-print" style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
     <button onclick="_invEditId='${invId}';_invView='detail';renderInvApp()" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#475569;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:12px">← 詳細</button>
-    <h3 style="font-size:15px;font-weight:700;color:#1a2b4a;margin:0">🏷 宛名ラベル（タックシール 8.4×4.2cm｜A4 2列×6行）</h3>
+    <h3 style="font-size:15px;font-weight:700;color:#1a2b4a;margin:0">🏷 宛名ラベル（8.4×4.2cm｜A4 2列×6行）</h3>
   </div>
-  <div class="inv-no-print" style="display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap">
+  <div class="inv-no-print" style="display:flex;align-items:center;gap:10px;margin-bottom:${showPosUI?'14px':'20px'};flex-wrap:wrap">
     <span style="font-size:13px;font-weight:600;color:#374151">印刷パターン：</span>
-    <button style="${btnStyle('to')}" onclick="_invLabelMode='to';renderInvLabel('${invId}')">① 宛名のみ</button>
+    <button style="${btnStyle('to')}"   onclick="_invLabelMode='to';  renderInvLabel('${invId}')">① 宛名のみ</button>
     <button style="${btnStyle('from')}" onclick="_invLabelMode='from';renderInvLabel('${invId}')">② 差出人のみ</button>
     <button style="${btnStyle('both')}" onclick="_invLabelMode='both';renderInvLabel('${invId}')">③ 両方</button>
-    <button onclick="window.print()" style="background:#ea580c;color:#fff;border:none;border-radius:7px;padding:8px 20px;font-size:13px;font-weight:700;cursor:pointer;margin-left:8px">🖨 印刷する</button>
+    <button onclick="window.print()" style="background:#ea580c;color:#fff;border:none;border-radius:7px;padding:8px 20px;font-size:13px;font-weight:700;cursor:pointer;margin-left:auto">🖨 印刷する</button>
   </div>
-  <div style="font-size:11px;color:#94a3b8;margin-bottom:10px" class="inv-no-print">※ 実際の印刷サイズ 8.4cm × 4.2cm｜A4 2列×6行＝12枚シート</div>
-  <div class="inv-no-print" style="font-size:11px;color:#94a3b8;margin-bottom:6px">A4シート（2列×6行＝12枚）プレビュー</div>
+  ${showPosUI?`
+  <div class="inv-no-print" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px 18px;margin-bottom:16px;display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap">
+    <div>
+      <div style="font-size:12px;font-weight:700;color:#374151;margin-bottom:8px">📍 印刷位置（クリックで選択）</div>
+      <div id="invPosGrid" style="display:grid;grid-template-columns:repeat(2,36px);gap:4px">${window._invPosCellsFn()}</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="font-size:12px;font-weight:700;color:#374151">⚡ クイック選択</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        ${[1,2,3,4,6,12].map(n=>`<button onclick="invLabelQuickSelect(${n})" style="background:#fff;border:1.5px solid #d1d5db;border-radius:6px;padding:4px 12px;font-size:12px;font-weight:600;cursor:pointer;color:#374151">${n}枚</button>`).join('')}
+      </div>
+      <div style="font-size:13px;font-weight:700;color:#1a3a6b;margin-top:4px"><span id="invLabelCount">${_invLabelPos.size}枚選択中</span></div>
+    </div>
+  </div>`:''}
+  <div style="font-size:11px;color:#94a3b8;margin-bottom:6px" class="inv-no-print">A4シート プレビュー（灰色＝空白）</div>
   <div class="inv-label-print-area" style="display:grid;grid-template-columns:8.4cm 8.4cm;grid-template-rows:repeat(6,4.2cm);gap:0;background:#e5e7eb;border:1px solid #d1d5db">
-    ${buildGrid()}
+    <div id="invLabelGrid" style="display:contents">${window._invLabelGridFn()}</div>
   </div>`;
 }
 function renderInvDepts(){
