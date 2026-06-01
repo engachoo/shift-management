@@ -593,6 +593,16 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
     box-shadow:none!important;padding:0!important;margin:0!important;
     font-size:10.5pt!important;
   }
+  /* タックシール印刷 */
+  .inv-label-print-area{display:flex!important;flex-direction:column;gap:0;align-items:flex-start}
+  .inv-label-seal{
+    width:7.4cm!important;height:4.2cm!important;
+    border:1px solid #999!important;box-shadow:none!important;
+    border-radius:0!important;background:#fff!important;
+    page-break-inside:avoid;break-inside:avoid;
+    margin-bottom:3mm;
+  }
+  @page{size:A4 portrait;margin:10mm}
 }
 /* 現金出納帳 numberスピナー非表示 */
 #devAppsContent input[type="number"]::-webkit-inner-spin-button,
@@ -3880,65 +3890,65 @@ function renderInvPrint(invId){
     setTimeout(()=>{const c=document.getElementById('inv-print-seal');if(c){const ctx=c.getContext('2d');invDrawSeal(ctx,dept.company||'大日産業㈱',inv.approvedAt);}},100);
   }
 }
+let _invLabelMode='both'; // 'to' | 'from' | 'both'
 function renderInvLabel(invId){
   const el=document.getElementById('devAppsContent'); if(!el)return;
   const inv=load('invoices',[]).find(i=>i.id===invId);
   const vendor=load('inv_vendors',[]).find(v=>v.id===inv?.vendorId)||null;
   const dept=invDeptInfo(inv?.deptId)||{};
 
-  // 宛名ブロックの組み立て
-  let addrBlock='', nameBlock='', honorific='';
-  if(vendor){
-    const addr=(vendor.zip?'〒'+vendor.zip+' ':'')+
+  // ── 宛名ブロック ────────────────────────────────────────
+  const buildToLabel=()=>{
+    if(!vendor) return '<div style="color:#999;font-size:11px;padding:8px">業者未設定</div>';
+    const addr=(vendor.zip?'〒'+vendor.zip+'　':'')+
                (vendor.addr1||vendor.address||'')+
                (vendor.addr2?' '+vendor.addr2:'');
-    addrBlock=`<div style="font-size:12px;margin-bottom:5px;line-height:1.6">${esc(addr)}</div>`;
+    const isInd=vendor.vendorType==='individual';
+    const hasCont=!!vendor.contact;
+    const honorific=isInd||hasCont?'様':'御中';
+    const mainName=hasCont&&!isInd?vendor.contact:vendor.name;
+    const subName=hasCont&&!isInd?vendor.name:'';
+    const deptName=hasCont&&!isInd?vendor.dept||'':'';
+    return `
+      <div style="font-size:8.5pt;color:#333;margin-bottom:4px;line-height:1.4">${esc(addr)}</div>
+      ${subName?`<div style="font-size:9pt;color:#333;margin-bottom:1px">${esc(subName)}</div>`:''}
+      ${deptName?`<div style="font-size:8.5pt;color:#555;margin-bottom:2px">${esc(deptName)}</div>`:''}
+      <div style="display:flex;align-items:flex-end;gap:6px;margin-top:2px">
+        <div style="font-size:15pt;font-weight:700;line-height:1.1">${esc(mainName)}</div>
+        <div style="font-size:12pt;font-weight:700;padding-bottom:1px">${honorific}</div>
+      </div>`;
+  };
 
-    const isInd = vendor.vendorType==='individual';
-    const hasCont = !!(vendor.contact);
+  // ── 差出人ブロック ──────────────────────────────────────
+  const buildFromLabel=()=>`
+    <div style="font-size:8pt;color:#666;margin-bottom:3px">差出人</div>
+    <div style="font-size:11pt;font-weight:700;color:#1a2b4a;margin-bottom:2px">${esc(dept.company||dept.name||'')}</div>
+    <div style="font-size:8pt;color:#374151;line-height:1.5">${esc(dept.companyZip||'')} ${esc(dept.companyAddr||'')}</div>
+    <div style="font-size:8pt;color:#374151">TEL: ${esc(dept.companyTel||'')}</div>`;
 
-    if(isInd){
-      // 個人：氏名　様
-      nameBlock=`<div style="font-size:22px;font-weight:700;margin-bottom:3px">${esc(vendor.name)}</div>`;
-      honorific='様';
-    } else if(hasCont){
-      // 法人 + 担当者：会社名 / 部署名 / 担当者名　様
-      nameBlock=`
-        <div style="font-size:18px;font-weight:700;margin-bottom:2px">${esc(vendor.name)}</div>
-        ${vendor.dept?`<div style="font-size:13px;margin-bottom:2px">${esc(vendor.dept)}</div>`:''}
-        <div style="font-size:20px;font-weight:700;margin-bottom:3px">${esc(vendor.contact)}</div>`;
-      honorific='様';
-    } else {
-      // 法人 + 担当者なし：会社名　御中
-      nameBlock=`<div style="font-size:22px;font-weight:700;margin-bottom:3px">${esc(vendor.name)}</div>`;
-      honorific='御中';
-    }
-  }
+  // ── ラベルHTML（タックシール 7.4cm×4.2cm） ─────────────
+  const sealStyle='width:7.4cm;height:4.2cm;box-sizing:border-box;padding:6px 10px;border:1.5px solid #888;border-radius:4px;font-family:"MS Mincho","Hiragino Mincho Pro","Yu Mincho",serif;background:#fff;display:flex;flex-direction:column;justify-content:center;overflow:hidden';
+  const toLabelHtml=`<div class="inv-label-seal" style="${sealStyle}">${buildToLabel()}</div>`;
+  const fromLabelHtml=`<div class="inv-label-seal" style="${sealStyle}">${buildFromLabel()}</div>`;
+
+  const btnStyle=(mode)=>`background:${_invLabelMode===mode?'#1a3a6b':'#f1f5f9'};color:${_invLabelMode===mode?'#fff':'#374151'};border:1.5px solid ${_invLabelMode===mode?'#1a3a6b':'#d1d5db'};border-radius:7px;padding:8px 18px;font-size:13px;font-weight:600;cursor:pointer`;
 
   el.innerHTML=`
-  <div class="inv-no-print" style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
+  <div class="inv-no-print" style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
     <button onclick="_invEditId='${invId}';_invView='detail';renderInvApp()" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#475569;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:12px">← 詳細</button>
-    <h3 style="font-size:15px;font-weight:700;color:#1a2b4a;margin:0">🏷 封筒ラベル</h3>
-    <button onclick="window.print()" style="background:#1a3a6b;color:#fff;border:none;border-radius:7px;padding:7px 18px;font-size:13px;font-weight:700;cursor:pointer">🖨 印刷</button>
+    <h3 style="font-size:15px;font-weight:700;color:#1a2b4a;margin:0">🏷 宛名ラベル（タックシール 7.4×4.2cm）</h3>
   </div>
-  <div style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:20px;max-width:500px">
-    <!-- 宛先ラベル -->
-    <div style="border:2px solid #333;padding:24px 28px;margin-bottom:16px;font-family:'MS Mincho','Hiragino Mincho Pro','Yu Mincho',serif;min-height:160px">
-      ${vendor ? `
-        ${addrBlock}
-        <div style="display:flex;align-items:flex-end;gap:8px">
-          <div>${nameBlock}</div>
-          <div style="font-size:18px;font-weight:700;padding-bottom:4px">${honorific}</div>
-        </div>
-      ` : `<div style="color:#999;font-size:13px">業者が設定されていません</div>`}
-    </div>
-    <!-- 差出人 -->
-    <div style="border:1px solid #ccc;padding:12px 16px;font-size:12px;font-family:'MS Mincho','Hiragino Mincho Pro','Yu Mincho',serif">
-      <div style="font-size:10px;color:#666;margin-bottom:4px">差出人</div>
-      <div style="font-weight:700">${esc(dept.company||dept.name||'')}</div>
-      <div>${esc(dept.companyZip||'')} ${esc(dept.companyAddr||'')}</div>
-      <div>TEL: ${esc(dept.companyTel||'')}</div>
-    </div>
+  <div class="inv-no-print" style="display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap">
+    <span style="font-size:13px;font-weight:600;color:#374151">印刷パターン：</span>
+    <button style="${btnStyle('to')}" onclick="_invLabelMode='to';renderInvLabel('${invId}')">① 宛名のみ</button>
+    <button style="${btnStyle('from')}" onclick="_invLabelMode='from';renderInvLabel('${invId}')">② 差出人のみ</button>
+    <button style="${btnStyle('both')}" onclick="_invLabelMode='both';renderInvLabel('${invId}')">③ 両方</button>
+    <button onclick="window.print()" style="background:#ea580c;color:#fff;border:none;border-radius:7px;padding:8px 20px;font-size:13px;font-weight:700;cursor:pointer;margin-left:8px">🖨 印刷する</button>
+  </div>
+  <div style="font-size:11px;color:#94a3b8;margin-bottom:12px" class="inv-no-print">※ プレビューです。実際の印刷サイズは 7.4cm × 4.2cm のタックシールに合わせています。</div>
+  <div class="inv-label-print-area" style="display:flex;flex-direction:column;gap:12px">
+    ${_invLabelMode==='to'||_invLabelMode==='both'?toLabelHtml:''}
+    ${_invLabelMode==='from'||_invLabelMode==='both'?fromLabelHtml:''}
   </div>`;
 }
 function renderInvDepts(){
