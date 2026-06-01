@@ -3342,7 +3342,12 @@ function renderInvList(){
       const act=_invFilter===s;
       const flowOrder=['draft','submitted','reviewing','approved','sent'];
       const prevS=tabs[idx-1];
-      const arrow=(flowOrder.includes(s)&&flowOrder.includes(prevS))?'<span style="color:#94a3b8;font-size:18px;font-weight:700;flex-shrink:0">→</span>':'';
+      const isFlowArrow=flowOrder.includes(s)&&flowOrder.includes(prevS);
+      const isDivBefore=(s==='draft'&&prevS==='all')||(s==='rejected'&&prevS==='sent');
+      const arrow=isFlowArrow
+        ?'<span style="display:flex;align-items:center;flex-shrink:0"><svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="ag" x1="0" y1="14" x2="28" y2="14" gradientUnits="userSpaceOnUse"><stop stop-color="#60a5fa"/><stop offset="1" stop-color="#818cf8"/></linearGradient></defs><path d="M4 14h16M16 9l7 5-7 5" stroke="url(#ag)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>'
+        :isDivBefore?'<span style="display:inline-block;width:2px;height:54px;background:linear-gradient(to bottom,#e2e8f0,#cbd5e1,#e2e8f0);border-radius:2px;flex-shrink:0;margin:0 4px"></span>'
+        :'';
       const btn=`<button onclick="_invFilter='${s}';renderInvList()" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-width:80px;padding:10px 14px;background:${act?def.bg:'#fff'};color:${act?def.color:'#6b7280'};border:2px solid ${act?def.border:'#e2e8f0'};border-radius:10px;cursor:pointer;box-shadow:${act?'0 2px 8px rgba(0,0,0,.12)':'0 1px 3px rgba(0,0,0,.06)'};transition:all .15s"><span style="font-size:20px;line-height:1">${def.icon}</span><span style="font-size:11px;font-weight:700;white-space:nowrap">${def.label}</span><span style="font-size:15px;font-weight:800;line-height:1">${cnt}</span></button>`;
       return arrow+btn;
     }).join('')}
