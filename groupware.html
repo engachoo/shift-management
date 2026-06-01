@@ -4325,14 +4325,18 @@ function deleteInvVendor(id){
 
 // ─── 業者名簿 Excel テンプレートダウンロード ───────────────
 function invVendorDownloadTemplate(){
-  const headers = ['業者名（必須）','業者区分（法人/個人）','部署名','担当者名','郵便番号（数字のみ）','住所1（都道府県・市区町村・番地）','住所2（ビル・建物名・部屋番号）','電話番号','メールアドレス','状態（有効/無効）'];
-  const sample  = ['株式会社サンプル','法人','営業部','山田 太郎','5016264','岐阜県羽島市小熊町島5-10','サンプルビル3F','058-000-0000','sample@example.com','有効'];
+  const allDepts=[{id:'inv_dept_dainichi_group',name:'大日グループ'},...load('inv_depts',[])];
+  const headers = ['業者名（必須）','業者区分（法人/個人）','取引部門（複数はカンマ区切り）','部署名','担当者名','郵便番号（数字のみ）','住所1（都道府県・市区町村・番地）','住所2（ビル・建物名・部屋番号）','電話番号','メールアドレス','状態（有効/無効）'];
+  const sample  = ['株式会社サンプル','法人','大日グループ','営業部','山田 太郎','5016264','岐阜県羽島市小熊町島5-10','サンプルビル3F','058-000-0000','sample@example.com','有効'];
   const ws = XLSX.utils.aoa_to_sheet([headers, sample]);
-  // 列幅設定
-  ws['!cols'] = [20,14,12,14,16,30,20,14,24,12].map(w=>({wch:w}));
-  // ヘッダー行スタイル（背景色 ※xlsxフルライブラリで対応）
+  ws['!cols'] = [20,14,28,12,14,16,30,20,14,24,12].map(w=>({wch:w}));
+  // 取引部門一覧シート
+  const deptRows=[['取引部門名（コピーして貼り付けてください）'],...allDepts.map(d=>[d.name])];
+  const wsDepts = XLSX.utils.aoa_to_sheet(deptRows);
+  wsDepts['!cols']=[{wch:36}];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, '業者名簿');
+  XLSX.utils.book_append_sheet(wb, wsDepts, '取引部門一覧');
   XLSX.writeFile(wb, '業者名簿_インポートテンプレート.xlsx');
   showToast('テンプレートをダウンロードしました');
 }
@@ -4353,7 +4357,8 @@ function invVendorImportExcel(file){
       const col  = key => hdrs.findIndex(h=>h.includes(key));
       const iName   = col('業者名');
       const iType   = col('業者区分');
-      const iDept   = col('部署');
+      const iTDept  = col('取引部門');
+      const iDept   = col('部署名');
       const iCont   = col('担当者');
       const iZip    = col('郵便番号');
       const iAddr1  = col('住所1');
@@ -4361,6 +4366,10 @@ function invVendorImportExcel(file){
       const iTel    = col('電話');
       const iEmail  = col('メール');
       const iActive = col('状態');
+      // 取引部門名→IDマップ
+      const allDepts4imp=[{id:'inv_dept_dainichi_group',name:'大日グループ'},...load('inv_depts',[])];
+      const deptNameToId=n=>{const d=allDepts4imp.find(x=>x.name===n.trim());return d?d.id:null;};
+      const parseTDepts=raw=>String(raw||'').split(',').map(s=>s.trim()).filter(Boolean).map(deptNameToId).filter(Boolean);
 
       if(iName < 0){ showToast('「業者名」列が見つかりません。テンプレートを使用してください。','err'); return; }
 
@@ -4379,12 +4388,14 @@ function invVendorImportExcel(file){
         const activeRaw = String(row[iActive]||'有効').trim();
         const active  = activeRaw!=='無効';
 
+        const tdIds = iTDept>=0 ? parseTDepts(row[iTDept]) : [];
         // 同名業者が既存にあれば重複チェック（スキップ or 上書き選択は後で）
         const dup = vendors.find(v=>v.name===name);
         if(dup){
           // 既存を上書き更新
           Object.assign(dup, {
             vendorType:vType,
+            tradingDeptIds: tdIds.length ? tdIds : (dup.tradingDeptIds||[]),
             dept:  iDept>=0  ? String(row[iDept]||'').trim()  : dup.dept||'',
             contact:iCont>=0 ? String(row[iCont]||'').trim()  : dup.contact||'',
             zip, addr1, addr2,
@@ -4398,6 +4409,7 @@ function invVendorImportExcel(file){
           vendors.push({
             id: uid(),
             name, vendorType:vType,
+            tradingDeptIds: tdIds,
             dept:   iDept>=0  ? String(row[iDept]||'').trim()  : '',
             contact:iCont>=0  ? String(row[iCont]||'').trim()  : '',
             zip, addr1, addr2,
