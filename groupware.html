@@ -3396,7 +3396,7 @@ function renderInvForm(editId){
   const el=document.getElementById('devAppsContent'); if(!el)return;
   const invs=load('invoices',[]); const inv=editId?invs.find(i=>i.id===editId)||{}:{};
   const depts=load('inv_depts',[]); const vendors=load('inv_vendors',[]).filter(x=>x.active!==false);
-  const myInvs=invs.filter(i=>i.createdBy===myId()&&i.id!==editId).slice(0,10);
+  const myInvs=invs.filter(i=>i.createdBy===myId()&&i.id!==editId);
   const items=inv.items&&inv.items.length?inv.items:[{desc:'',qty:1,unitPrice:0,taxRate:10},{desc:'',qty:'',unitPrice:0,taxRate:10},{desc:'',qty:'',unitPrice:0,taxRate:10}];
   const rowHtml=(it,i)=>`<tr id="inv-row-${i}">
     <td style="padding:4px;text-align:center;color:#9ca3af;font-size:12px">${i+1}</td>
@@ -3411,11 +3411,20 @@ function renderInvForm(editId){
     <button onclick="_invView='list';renderInvApp()" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#475569;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:12px">← 一覧</button>
     <h2 style="font-size:17px;font-weight:700;color:#1a2b4a;margin:0">${editId?'📄 請求書を編集':'📄 請求書を作成'}</h2>
   </div>
-  ${myInvs.length&&!editId?`<div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:10px 14px;margin-bottom:16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-    <span style="font-size:12px;color:#0369a1;font-weight:600">📋 前回から引用：</span>
-    <select id="inv-ref-sel" style="border:1px solid #bae6fd;border-radius:5px;padding:5px 8px;font-size:12px"><option value="">選択してください</option>${myInvs.map(i=>`<option value="${i.id}">[${i.invoiceNo}] ${esc((i.subject||i.description||'').slice(0,25))}</option>`).join('')}</select>
-    <button onclick="invApplyRef()" style="background:#0369a1;color:#fff;border:none;border-radius:5px;padding:5px 12px;font-size:12px;cursor:pointer">引用して反映</button>
-  </div>`:''}
+  ${myInvs.length&&!editId?(()=>{
+    const vmap=Object.fromEntries(load('inv_vendors',[]).map(v=>[v.id,v.name]));
+    const opts=myInvs.map(i=>`<option value="${i.id}" data-vendor="${esc(vmap[i.vendorId]||'')}" data-subject="${esc((i.subject||i.description||''))}">【${esc(vmap[i.vendorId]||'業者未設定')}】${esc((i.subject||i.description||'').slice(0,20))} (${i.invoiceNo||''})</option>`).join('');
+    return `<div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:10px 14px;margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+        <span style="font-size:12px;color:#0369a1;font-weight:600">📋 前回から引用：</span>
+        <input id="inv-ref-search" type="text" placeholder="業者名で検索..." oninput="invRefFilter()" style="border:1px solid #bae6fd;border-radius:5px;padding:4px 8px;font-size:12px;width:180px">
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <select id="inv-ref-sel" size="1" style="border:1px solid #bae6fd;border-radius:5px;padding:5px 8px;font-size:12px;flex:1"><option value="">選択してください</option>${opts}</select>
+        <button onclick="invApplyRef()" style="background:#0369a1;color:#fff;border:none;border-radius:5px;padding:5px 12px;font-size:12px;cursor:pointer;white-space:nowrap">引用して反映</button>
+      </div>
+    </div>`;
+  })():''}
   <div style="background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;padding:24px;max-width:800px">
     <div style="font-size:12px;color:#dc2626;margin-bottom:16px">＊ は必須項目です</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:14px">
@@ -3493,6 +3502,17 @@ function invOnDeptChange(){
   const d=invDeptInfo(deptId); if(!d){info.style.display='none';return;}
   info.style.display='block';
   info.innerHTML=`<strong>${esc(d.company||d.name)}</strong>　${esc(d.companyZip||'')} ${esc(d.companyAddr||'')}　TEL:${esc(d.companyTel||'-')}　FAX:${esc(d.companyFax||'')}<br>振込先：${esc(d.bankName||'')} ${esc(d.bankBranch||'')} ${esc(d.bankType||'')} ${esc(d.bankNo||'')}　${esc(d.bankHolder||'')}　登録番号:${esc(d.regNo||'')}`;
+}
+function invRefFilter(){
+  const kw=(document.getElementById('inv-ref-search')?.value||'').trim().toLowerCase();
+  const sel=document.getElementById('inv-ref-sel'); if(!sel)return;
+  [...sel.options].forEach(o=>{
+    if(!o.value){o.style.display='';return;}
+    const vendor=(o.dataset.vendor||'').toLowerCase();
+    const subject=(o.dataset.subject||'').toLowerCase();
+    o.style.display=(!kw||vendor.includes(kw)||subject.includes(kw))?'':'none';
+  });
+  if(sel.options[sel.selectedIndex]?.style.display==='none') sel.value='';
 }
 function invApplyRef(){
   const refId=document.getElementById('inv-ref-sel')?.value; if(!refId)return;
