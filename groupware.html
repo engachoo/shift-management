@@ -3911,9 +3911,9 @@ function renderInvLabel(invId){
     const deptTxt=vendor.dept||'';
     const personName=hasCont?vendor.contact:(isInd?vendor.name:'');
     return `
-      <div style="font-size:7.5pt;color:#333;letter-spacing:.05em;line-height:1.3;margin-bottom:1px">${esc(zip)}</div>
-      <div style="font-size:8.5pt;color:#222;letter-spacing:.04em;line-height:1.45;margin-bottom:5px">${esc(addr1)}${addr2?' '+esc(addr2):''}</div>
-      ${corpName?`<div style="font-size:11pt;font-weight:700;color:#000;letter-spacing:.06em;line-height:1.3;margin-bottom:3px">${esc(corpName)}</div>`:''}
+      <div style="font-size:7.5pt;color:#333;letter-spacing:.05em;line-height:1.35;text-align:left">${esc(zip)}</div>
+      <div style="font-size:8.5pt;color:#222;letter-spacing:.04em;line-height:1.4;text-align:left;margin-bottom:5px">${esc(addr1)}${addr2?'<br>'+esc(addr2):''}</div>
+      ${corpName?`<div style="font-size:11pt;font-weight:700;color:#000;letter-spacing:.06em;line-height:1.3;text-align:center;margin-bottom:3px">${esc(corpName)}</div>`:''}
       <div style="display:flex;align-items:flex-end;justify-content:center;gap:5px;margin-top:2px">
         ${deptTxt?`<span style="font-size:8pt;color:#333;padding-bottom:2px;letter-spacing:.03em">${esc(deptTxt)}</span>`:''}
         <span style="font-size:13.5pt;font-weight:700;color:#000;letter-spacing:.06em;line-height:1.1">${esc(personName)}</span>
@@ -3923,12 +3923,13 @@ function renderInvLabel(invId){
 
   // ── 差出人ブロック ──────────────────────────────────────
   const buildFromLabel=()=>`
-    <div style="font-size:11.5pt;font-weight:700;color:#000;letter-spacing:.06em;line-height:1.3;margin-bottom:4px">${esc(dept.company||dept.name||'')}</div>
-    <div style="font-size:8pt;color:#333;letter-spacing:.04em;line-height:1.6">${esc(dept.companyZip||'')}　${esc(dept.companyAddr||'')}</div>
-    <div style="font-size:8pt;color:#333;letter-spacing:.03em">TEL: ${esc(dept.companyTel||'')}</div>`;
+    <div style="font-size:11.5pt;font-weight:700;color:#000;letter-spacing:.06em;line-height:1.3;text-align:center;margin-bottom:5px">${esc(dept.company||dept.name||'')}</div>
+    <div style="font-size:7.5pt;color:#333;letter-spacing:.05em;line-height:1.35;text-align:left">${esc(dept.companyZip||'')}</div>
+    <div style="font-size:8pt;color:#333;letter-spacing:.04em;line-height:1.45;text-align:left;margin-bottom:2px">${esc(dept.companyAddr||'')}</div>
+    <div style="font-size:8pt;color:#333;letter-spacing:.03em;text-align:left">TEL: ${esc(dept.companyTel||'')}</div>`;
 
   // ── ラベルHTML（タックシール 7.4cm×4.2cm） ─────────────
-  const sealStyle='width:7.4cm;height:4.2cm;box-sizing:border-box;padding:8px 14px;border:1.5px solid #888;border-radius:4px;font-family:"MS Mincho","Hiragino Mincho Pro","Yu Mincho",serif;background:#fff;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;overflow:hidden';
+  const sealStyle='width:7.4cm;height:4.2cm;box-sizing:border-box;padding:8px 12px;border:1.5px solid #888;border-radius:4px;font-family:"MS Mincho","Hiragino Mincho Pro","Yu Mincho",serif;background:#fff;display:flex;flex-direction:column;justify-content:center;overflow:hidden';
   const toLabelHtml=`<div class="inv-label-seal" style="${sealStyle}">${buildToLabel()}</div>`;
   const fromLabelHtml=`<div class="inv-label-seal" style="${sealStyle}">${buildFromLabel()}</div>`;
 
