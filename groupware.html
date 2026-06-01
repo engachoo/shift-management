@@ -4061,14 +4061,10 @@ function openInvVendorModal(id, callback){
   const curTradingNames=curTradingIds.map(id=>{ const d=_modalAllDepts.find(x=>x.id===id); return d?d.name:id; });
   const html=`<div style="display:flex;flex-direction:column;gap:14px;min-width:360px;max-width:460px">
     <div class="inv-field"><label>取引部門（複数選択可）</label>
-      <div style="position:relative;margin-top:4px">
-        <button type="button" id="ivm-td-btn" onclick="document.getElementById('ivm-td-list').style.display=document.getElementById('ivm-td-list').style.display==='none'?'block':'none'" style="width:100%;text-align:left;padding:7px 10px;border:1.5px solid #d1d5db;border-radius:6px;background:#fff;cursor:pointer;font-size:13px;color:#374151">
-          <span id="ivm-td-label">${curTradingNames.length?curTradingNames.join('、'):'─ 選択してください ─'}</span> ▾
-        </button>
-        <div id="ivm-td-list" style="display:none;position:absolute;z-index:200;top:calc(100% + 2px);left:0;width:100%;background:#fff;border:1.5px solid #d1d5db;border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,.12);max-height:220px;overflow-y:auto;overflow-x:hidden;box-sizing:border-box">
-          ${_modalAllDepts.map(d=>`<label style="display:block;padding:8px 12px;cursor:pointer;font-weight:normal;font-size:13px;color:#1a2b4a;box-sizing:border-box;width:100%" onmouseenter="this.style.background='#f1f5f9'" onmouseleave="this.style.background=''"><input type="checkbox" class="ivm-td-cb" value="${esc(d.id)}" data-name="${esc(d.name)}"${curTradingIds.includes(d.id)?' checked':''} onchange="(function(){const sel=[...document.querySelectorAll('.ivm-td-cb:checked')].map(c=>c.dataset.name);document.getElementById('ivm-td-label').textContent=sel.length?sel.join('、'):'─ 選択してください ─';})()"> ${esc(d.name)}</label>`).join('')}
-        </div>
-      </div>
+      <select id="ivm-td-sel" class="ivm-td-cb" multiple size="${Math.min(_modalAllDepts.length,6)}" style="width:100%;margin-top:4px;border:1.5px solid #d1d5db;border-radius:6px;font-size:13px;padding:4px;color:#1a2b4a">
+        ${_modalAllDepts.map(d=>`<option value="${esc(d.id)}"${curTradingIds.includes(d.id)?' selected':''}>${esc(d.name)}</option>`).join('')}
+      </select>
+      <div style="font-size:11px;color:#9ca3af;margin-top:3px">Ctrl（Mac：⌘）を押しながらクリックで複数選択</div>
     </div>
     <div class="inv-field"><label class="req">＊ 業者区分</label>
       <div style="display:flex;gap:20px;margin-top:4px">
@@ -4168,7 +4164,7 @@ function saveInvVendor(editId){
   const zip=gv('ivm-zip');
   const obj={
     name, vendorType:type,
-    tradingDeptIds:[...document.querySelectorAll('.ivm-td-cb:checked')].map(cb=>cb.value),
+    tradingDeptIds:[...document.getElementById('ivm-td-sel').selectedOptions].map(o=>o.value),
     dept:gv('ivm-dept'), contact:gv('ivm-contact'),
     zip, addr1, addr2:gv('ivm-addr2'),
     address:(zip?'〒'+zip+' ':'')+addr1+(gv('ivm-addr2')?' '+gv('ivm-addr2'):''),
