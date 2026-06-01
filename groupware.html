@@ -578,20 +578,23 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
 .inv-field input:focus,.inv-field select:focus,.inv-field textarea:focus{outline:none;border-color:#1a3a6b;box-shadow:0 0 0 2px rgba(26,58,107,.1)}
 .inv-badge{display:inline-block;border-radius:20px;font-size:11px;font-weight:700;padding:2px 10px;border:1px solid}
 .inv-no-print{}.inv-print-only{display:none}
-@page{size:A4 portrait;margin:12mm 15mm}
+@page{size:A4 portrait;margin:0}
 @media print{
   #sidebar,#loadingScreen,#loginScreen,.side-badge,button,.inv-no-print{display:none!important}
   #app,#mainArea{display:block!important;margin:0!important;padding:0!important}
-  #devAppsContent{padding:0!important;margin:0!important}
+  #devAppsContent{padding:0!important;margin:0!important;overflow:hidden!important}
   #devAppsView{display:block!important;padding:0!important}
   .inv-print-only{display:block!important}
-  body,html{background:#fff!important;margin:0!important;padding:0!important}
-  #inv-print-wrap{background:transparent!important;padding:0!important}
+  body,html{background:#fff!important;margin:0!important;padding:0!important;width:100%!important;overflow:hidden!important}
+  #inv-print-wrap{background:transparent!important;padding:0!important;display:block!important}
   #inv-print-body{
-    width:100%!important;max-width:none!important;
+    width:210mm!important;max-width:210mm!important;
     border:none!important;border-radius:0!important;
-    box-shadow:none!important;padding:0!important;margin:0!important;
+    box-shadow:none!important;
+    padding:14mm 17mm!important;margin:0!important;
     font-size:10.5pt!important;
+    box-sizing:border-box!important;
+    overflow:hidden!important;
   }
   /* タックシール印刷 A4（2列×6行） */
   .inv-label-print-area{
