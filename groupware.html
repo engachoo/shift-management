@@ -3954,11 +3954,19 @@ function renderInvVendors(){
   // 社名検索フィルター
   const kw=_invVendorSearch.trim().toLowerCase();
   let shown=kw ? vendors.filter(v=>(v.name||'').toLowerCase().includes(kw)) : vendors;
-  // 部門フィルター（取引部門・複数対応）
-  const vTradingDepts=v=>(Array.isArray(v.tradingDepts)?v.tradingDepts:(v.tradingDept?[v.tradingDept]:[]));
-  if(_invVendorDeptFilter) shown=shown.filter(v=>vTradingDepts(v).includes(_invVendorDeptFilter));
-  // 部門プルダウン用の選択肢を全業者から収集
-  const allDepts=[...new Set(vendors.flatMap(v=>vTradingDepts(v).length?vTradingDepts(v):['（未設定）']))].sort((a,b)=>a==='（未設定）'?1:b==='（未設定）'?-1:a.localeCompare(b,'ja'));
+  // 取引部門IDリストを取得（新:tradingDeptIds、旧:tradingDepts名前配列も変換）
+  const _allInvDepts=[{id:'inv_dept_dainichi_group',name:'大日グループ'},...load('inv_depts',[])];
+  const vTradingIds=v=>{
+    if(Array.isArray(v.tradingDeptIds)&&v.tradingDeptIds.length) return v.tradingDeptIds;
+    const names=Array.isArray(v.tradingDepts)?v.tradingDepts:(v.tradingDept?[v.tradingDept]:[]);
+    return names.map(n=>{ const d=_allInvDepts.find(x=>x.name===n); return d?d.id:null; }).filter(Boolean);
+  };
+  const vTradingNames=v=>vTradingIds(v).map(id=>{ const d=_allInvDepts.find(x=>x.id===id); return d?d.name:id; });
+  // 部門フィルター（IDで比較）
+  if(_invVendorDeptFilter) shown=shown.filter(v=>vTradingIds(v).includes(_invVendorDeptFilter));
+  // 部門プルダウン用の選択肢（IDと名前のペア）
+  const usedIds=[...new Set(vendors.flatMap(v=>vTradingIds(v)))];
+  const allDepts=usedIds.length?usedIds.map(id=>_allInvDepts.find(d=>d.id===id)).filter(Boolean):[];
 
   // 分類ごとにグループ化
   const catOf=v=>v.category||'（未分類）';
@@ -3973,7 +3981,7 @@ function renderInvVendors(){
     const meishiHtml=meishiUrls.length
       ? '<div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">'+meishiUrls.map(u=>'<img src="'+u+'" style="height:52px;border-radius:4px;border:1px solid #e2e8f0;cursor:pointer" onclick="window.open(\''+u+'\',\'_blank\')" title="名刺">').join('')+'</div>'
       : '';
-    const tds=Array.isArray(v.tradingDepts)?v.tradingDepts:(v.tradingDept?[v.tradingDept]:[]);
+    const tds=vTradingNames(v);
     return '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:8px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px">'
       +'<div style="flex:1;min-width:0">'
       +'<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">'
@@ -4026,7 +4034,7 @@ function renderInvVendors(){
     +(kw?'<button onclick="_invVendorSearch=\'\';renderInvVendors()" style="background:#fee2e2;border:1px solid #fca5a5;color:#dc2626;border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer">✕ クリア</button>':'')
     +'<select id="invVDeptFilter" onchange="invVendorDeptFilter()" style="border:1.5px solid #d1d5db;border-radius:8px;padding:7px 10px;font-size:13px;color:#1a2b4a;background:#fff">'
     +'<option value="">🏢 部門：全て</option>'
-    +allDepts.map(d=>'<option value="'+esc(d)+'"'+(d===_invVendorDeptFilter?' selected':'')+'>'+esc(d)+'</option>').join('')
+    +allDepts.map(d=>'<option value="'+esc(d.id)+'"'+(d.id===_invVendorDeptFilter?' selected':'')+'>'+esc(d.name)+'</option>').join('')
     +'</select>'
     +(_invVendorDeptFilter?'<button onclick="_invVendorDeptFilter=\'\';renderInvVendors()" style="background:#fee2e2;border:1px solid #fca5a5;color:#dc2626;border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer">✕ 部門クリア</button>':'')
     +'<span style="font-size:12px;color:#6b7280">'+shown.length+' 件</span>'
@@ -4044,17 +4052,21 @@ function openInvVendorModal(id, callback){
     <button type="button" onclick="invVendorDeleteMeishi(${idx})" style="position:absolute;top:-6px;right:-6px;background:#dc2626;color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:11px;cursor:pointer;line-height:1">✕</button>
   </div>`).join('');
   window._ivmMeishiUrls = [...meishiUrls];
-  const invDepts=load('inv_depts',[]);
-  const tradingDeptOptions=['大日グループ',...invDepts.map(d=>d.name)];
-  const curTradingDepts=Array.isArray(f.tradingDepts)?f.tradingDepts:(f.tradingDept?[f.tradingDept]:[]);
+  const _modalAllDepts=[{id:'inv_dept_dainichi_group',name:'大日グループ'},...load('inv_depts',[])];
+  const curTradingIds=(()=>{
+    if(Array.isArray(f.tradingDeptIds)&&f.tradingDeptIds.length) return f.tradingDeptIds;
+    const names=Array.isArray(f.tradingDepts)?f.tradingDepts:(f.tradingDept?[f.tradingDept]:[]);
+    return names.map(n=>{ const d=_modalAllDepts.find(x=>x.name===n); return d?d.id:null; }).filter(Boolean);
+  })();
+  const curTradingNames=curTradingIds.map(id=>{ const d=_modalAllDepts.find(x=>x.id===id); return d?d.name:id; });
   const html=`<div style="display:flex;flex-direction:column;gap:14px;min-width:360px;max-width:460px">
     <div class="inv-field"><label>取引部門（複数選択可）</label>
       <div style="position:relative;margin-top:4px">
         <button type="button" id="ivm-td-btn" onclick="document.getElementById('ivm-td-list').style.display=document.getElementById('ivm-td-list').style.display==='none'?'block':'none'" style="width:100%;text-align:left;padding:7px 10px;border:1.5px solid #d1d5db;border-radius:6px;background:#fff;cursor:pointer;font-size:13px;color:#374151">
-          <span id="ivm-td-label">${curTradingDepts.length?curTradingDepts.join('、'):'─ 選択してください ─'}</span> ▾
+          <span id="ivm-td-label">${curTradingNames.length?curTradingNames.join('、'):'─ 選択してください ─'}</span> ▾
         </button>
         <div id="ivm-td-list" style="display:none;position:absolute;z-index:200;top:100%;left:0;right:0;background:#fff;border:1.5px solid #d1d5db;border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,.12);max-height:220px;overflow-y:auto;padding:6px 0">
-          ${tradingDeptOptions.map(n=>`<label style="display:flex;align-items:center;gap:8px;padding:7px 14px;cursor:pointer;font-weight:normal;font-size:13px;color:#1a2b4a" onmouseenter="this.style.background='#f1f5f9'" onmouseleave="this.style.background=''"><input type="checkbox" class="ivm-td-cb" value="${esc(n)}"${curTradingDepts.includes(n)?' checked':''} onchange="(function(){const sel=[...document.querySelectorAll('.ivm-td-cb:checked')].map(c=>c.value);document.getElementById('ivm-td-label').textContent=sel.length?sel.join('、'):'─ 選択してください ─';})()"> ${esc(n)}</label>`).join('')}
+          ${_modalAllDepts.map(d=>`<label style="display:flex;align-items:center;gap:8px;padding:7px 14px;cursor:pointer;font-weight:normal;font-size:13px;color:#1a2b4a" onmouseenter="this.style.background='#f1f5f9'" onmouseleave="this.style.background=''"><input type="checkbox" class="ivm-td-cb" value="${esc(d.id)}"${curTradingIds.includes(d.id)?' checked':''} onchange="(function(){const sel=[...document.querySelectorAll('.ivm-td-cb:checked')];const names=sel.map(c=>c.closest('label').textContent.trim());document.getElementById('ivm-td-label').textContent=names.length?names.join('、'):'─ 選択してください ─';})()"> ${esc(d.name)}</label>`).join('')}
         </div>
       </div>
     </div>
@@ -4156,7 +4168,7 @@ function saveInvVendor(editId){
   const zip=gv('ivm-zip');
   const obj={
     name, vendorType:type,
-    tradingDepts:[...document.querySelectorAll('.ivm-td-cb:checked')].map(cb=>cb.value),
+    tradingDeptIds:[...document.querySelectorAll('.ivm-td-cb:checked')].map(cb=>cb.value),
     dept:gv('ivm-dept'), contact:gv('ivm-contact'),
     zip, addr1, addr2:gv('ivm-addr2'),
     address:(zip?'〒'+zip+' ':'')+addr1+(gv('ivm-addr2')?' '+gv('ivm-addr2'):''),
