@@ -4330,13 +4330,13 @@ function invVendorDownloadTemplate(){
   const sample  = ['株式会社サンプル','法人','大日グループ','営業部','山田 太郎','5016264','岐阜県羽島市小熊町島5-10','サンプルビル3F','058-000-0000','sample@example.com','有効'];
   const ws = XLSX.utils.aoa_to_sheet([headers, sample]);
   ws['!cols'] = [20,14,28,12,14,16,30,20,14,24,12].map(w=>({wch:w}));
-  // 取引部門ドロップダウン（C列2行目以降）
-  const deptEndRow = allDepts.length + 1; // ヘッダー1行 + 部門数
+  // 取引部門ドロップダウン（C列2行目以降）- 部門名をインラインリストに埋め込む
+  const deptListStr = allDepts.map(d=>d.name).join(',');
   ws['!dataValidations'] = [{
     sqref: 'C2:C1000',
     type: 'list',
     showDropDown: false,
-    formula1: `'取引部門一覧'!$A$2:$A$${deptEndRow}`
+    formula1: '"' + deptListStr + '"'
   }];
   // 取引部門一覧シート（ドロップダウンのソース）
   const deptRows=[['取引部門名'],...allDepts.map(d=>[d.name])];
