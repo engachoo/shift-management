@@ -3840,13 +3840,13 @@ function renderInvPrint(invId){
     <div style="font-size:9pt;margin-bottom:3mm">下記の通り、ご請求申し上げます。</div>
 
     <!-- 合計金額 -->
-    <div style="display:flex;align-items:center;gap:8mm;margin-bottom:3mm;flex-wrap:wrap">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3mm;flex-wrap:wrap;gap:3mm">
       <div style="display:flex;align-items:center;gap:4mm">
         <span style="font-size:9pt">合計金額</span>
         <span style="font-size:18pt;font-weight:700;border-bottom:2px solid #000;padding:0 4mm">&yen;${t.total.toLocaleString()}</span>
         <span style="font-size:9pt">（税込）</span>
       </div>
-      ${inv.paymentDeadline?`<div style="font-size:9pt">お支払期限：${inv.paymentDeadline}</div>`:''}
+      ${inv.paymentDeadline?`<div style="text-align:right;font-size:13pt;font-weight:700;letter-spacing:.04em">お支払期限：<span style="font-size:15pt">${inv.paymentDeadline}</span></div>`:''}
     </div>
 
     <div style="font-size:9pt;margin-bottom:3mm">件名：${esc(inv.subject||inv.description||'')}</div>
