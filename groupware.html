@@ -6663,7 +6663,8 @@ function saveCi(){
   if(!_ciRecips.length){alert('宛先を選択してください');return;}
   if(_ciFiles.some(f=>f.uploading)){alert('添付ファイルをアップロード中です。完了後にもう一度「登録する」を押してください。');return;}
   const recipients=[..._ciRecips];
-  if(!recipients.includes(myId())) recipients.unshift(myId());
+  // 新規作成時のみ自分をrecipientに強制追加（編集時は操作通りに反映）
+  if(!_ciEditId && !recipients.includes(myId())) recipients.unshift(myId());
   const responses={};
   const now=jstISO().slice(0,16).replace('T',' ');
   recipients.forEach(id=>{
