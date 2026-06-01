@@ -3162,6 +3162,10 @@ function openDevApp(id){
 // 📄 請求書発行フォーム（大日産業テンプレート準拠）
 // =========================================================
 let _invView='list', _invEditId=null, _invFilter='all', _invVendorCallback=null;
+let _invVendorSearch=''; // 業者名簿 社名検索
+let _invVendorDeptFilter=''; // 業者名簿 部門フィルター
+function invVendorSearch(){ _invVendorSearch=document.getElementById('invVSearch')?.value||''; renderInvVendors(); }
+function invVendorDeptFilter(){ _invVendorDeptFilter=document.getElementById('invVDeptFilter')?.value||''; renderInvVendors(); }
 let _invSort='createdAt', _invSortDir=-1;
 let _invFDept='', _invFVendor='', _invFClosing=''; // 絞り込みフィルター
 function invSortBy(col){
@@ -3945,47 +3949,88 @@ function deleteInvDept(id){
 }
 function renderInvVendors(){
   const el=document.getElementById('devAppsContent'); if(!el)return;
-  const vendors=load('inv_vendors',[]);
-  el.innerHTML=`
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
-    <div style="display:flex;align-items:center;gap:8px">
-      <button onclick="_invView='list';renderInvApp()" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#475569;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:12px">← 一覧</button>
-      <h2 style="font-size:17px;font-weight:700;color:#1a2b4a;margin:0">📋 業者名簿</h2>
-    </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <button onclick="invVendorDownloadTemplate()" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#374151;border-radius:7px;padding:7px 14px;font-size:12px;cursor:pointer">📥 Excelテンプレートを取得</button>
-      <label style="background:#f0fdf4;border:1px solid #86efac;color:#16a34a;border-radius:7px;padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer">
-        📤 Excelインポート
-        <input type="file" accept=".xlsx,.xls,.csv" style="display:none" onchange="invVendorImportExcel(this.files[0]);this.value=''">
-      </label>
-      <button onclick="openInvVendorModal(null)" style="background:#1a3a6b;color:#fff;border:none;border-radius:7px;padding:7px 18px;font-size:13px;font-weight:700;cursor:pointer">＋ 業者を追加</button>
-    </div>
-  </div>
-  ${vendors.length===0?`<div style="text-align:center;padding:40px;color:#9ca3af">業者が登録されていません</div>`:`
-  <div style="display:grid;gap:12px;max-width:760px">${vendors.map(v=>{
+  let vendors=load('inv_vendors',[]);
+
+  // 社名検索フィルター
+  const kw=_invVendorSearch.trim().toLowerCase();
+  let shown=kw ? vendors.filter(v=>(v.name||'').toLowerCase().includes(kw)) : vendors;
+  // 部門フィルター
+  if(_invVendorDeptFilter) shown=shown.filter(v=>(v.dept||'（部門未設定）')===_invVendorDeptFilter);
+  // 部門プルダウン用の選択肢を全業者から収集
+  const allDepts=[...new Set(vendors.map(v=>v.dept||'（部門未設定）'))].sort((a,b)=>a==='（部門未設定）'?1:b==='（部門未設定）'?-1:a.localeCompare(b,'ja'));
+
+  // 分類ごとにグループ化
+  const catOf=v=>v.category||'（未分類）';
+  const categories=[...new Set(shown.map(catOf))].sort((a,b)=>
+    a==='（未分類）'?1:b==='（未分類）'?-1:a.localeCompare(b,'ja'));
+
+  // 1件分カード
+  const vendorCard=v=>{
     const meishiUrls=v.meishiUrls||(v.meishiUrl?[v.meishiUrl]:[]);
     const typeLabel=v.vendorType==='individual'?'個人':'法人';
-    const addr=(v.addr1||(v.address||''));
-    return `
-    <div style="background:#fff;border:1.5px solid #e2e8f0;border-radius:10px;padding:14px 18px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
-      <div style="flex:1;min-width:0">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-          <span style="font-weight:700;color:#1a2b4a;font-size:15px">${esc(v.name)}</span>
-          <span style="font-size:11px;background:#eff6ff;color:#1e40af;border-radius:10px;padding:1px 7px">${typeLabel}</span>
-          <span style="font-size:11px;background:${v.active!==false?'#dcfce7':'#f3f4f6'};color:${v.active!==false?'#166534':'#6b7280'};border-radius:10px;padding:1px 7px">${v.active!==false?'有効':'無効'}</span>
-        </div>
-        <div style="font-size:12px;color:#6b7280;line-height:1.8">
-          ${v.dept?'<span>部署：'+esc(v.dept)+'</span>　':''}${v.contact?'<span>担当：'+esc(v.contact)+'</span>　':''}${v.tel?'<span>☎ '+esc(v.tel)+'</span>　':''}${v.email?'<span>✉ '+esc(v.email)+'</span>':''}
-          ${addr?'<br>📍 '+(v.zip?'〒'+v.zip+' ':'')+esc(addr)+(v.addr2?' '+esc(v.addr2):''):''}
-        </div>
-        ${meishiUrls.length?`<div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">${meishiUrls.map(u=>`<img src="${u}" style="height:52px;border-radius:4px;border:1px solid #e2e8f0;cursor:pointer" onclick="window.open('${u}','_blank')" title="名刺">`).join('')}</div>`:''}
-      </div>
-      <div style="display:flex;gap:6px;flex-shrink:0;margin-top:2px">
-        <button onclick="openInvVendorModal('${v.id}')" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#374151;border-radius:5px;padding:5px 12px;font-size:12px;cursor:pointer">編集</button>
-        <button onclick="deleteInvVendor('${v.id}')" style="background:#fee2e2;border:1px solid #fca5a5;color:#dc2626;border-radius:5px;padding:5px 12px;font-size:12px;cursor:pointer">削除</button>
-      </div>
-    </div>`;}).join('')}
-  </div>`}`;
+    const addr=v.addr1||(v.address||'');
+    const meishiHtml=meishiUrls.length
+      ? '<div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">'+meishiUrls.map(u=>'<img src="'+u+'" style="height:52px;border-radius:4px;border:1px solid #e2e8f0;cursor:pointer" onclick="window.open(\''+u+'\',\'_blank\')" title="名刺">').join('')+'</div>'
+      : '';
+    return '<div style="background:#fff;border:1.5px solid #e2e8f0;border-radius:10px;padding:14px 18px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px">'
+      +'<div style="flex:1;min-width:0">'
+      +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap">'
+      +'<span style="font-weight:700;color:#1a2b4a;font-size:15px">'+esc(v.name)+'</span>'
+      +'<span style="font-size:11px;background:#eff6ff;color:#1e40af;border-radius:10px;padding:1px 7px">'+typeLabel+'</span>'
+      +(v.active!==false?'<span style="font-size:11px;background:#dcfce7;color:#166534;border-radius:10px;padding:1px 7px">有効</span>':'<span style="font-size:11px;background:#f3f4f6;color:#6b7280;border-radius:10px;padding:1px 7px">無効</span>')
+      +'</div>'
+      +'<div style="font-size:12px;color:#6b7280;line-height:1.8">'
+      +(v.dept?'<span>部署：'+esc(v.dept)+'</span>　':'')
+      +(v.contact?'<span>担当：'+esc(v.contact)+'</span>　':'')
+      +(v.tel?'<span>☎ '+esc(v.tel)+'</span>　':'')
+      +(v.email?'<span>✉ '+esc(v.email)+'</span>':'')
+      +(addr?'<br>📍 '+(v.zip?'〒'+v.zip+' ':'')+esc(addr)+(v.addr2?' '+esc(v.addr2):''):'')
+      +'</div>'
+      +meishiHtml
+      +'</div>'
+      +'<div style="display:flex;gap:6px;flex-shrink:0;margin-top:2px">'
+      +'<button onclick="openInvVendorModal(\''+v.id+'\')" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#374151;border-radius:5px;padding:5px 12px;font-size:12px;cursor:pointer">編集</button>'
+      +'<button onclick="deleteInvVendor(\''+v.id+'\')" style="background:#fee2e2;border:1px solid #fca5a5;color:#dc2626;border-radius:5px;padding:5px 12px;font-size:12px;cursor:pointer">削除</button>'
+      +'</div></div>';
+  };
+
+  // 分類セクションHTML
+  const groupHtml = categories.length===0 ? '<div style="text-align:center;padding:40px;color:#9ca3af">該当する業者がありません</div>'
+    : categories.map(cat=>{
+        const items=shown.filter(v=>catOf(v)===cat);
+        return '<div style="margin-bottom:20px">'
+          +'<div style="font-size:12px;font-weight:700;color:#475569;padding:6px 12px;background:#f1f5f9;border-radius:6px;margin-bottom:10px;border-left:3px solid #3b82f6">📂 '+esc(cat)+' （'+items.length+'件）</div>'
+          +'<div style="display:grid;gap:10px">'+items.map(vendorCard).join('')+'</div>'
+          +'</div>';
+      }).join('');
+
+  el.innerHTML=
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">'
+    +'<div style="display:flex;align-items:center;gap:8px">'
+    +'<button onclick="_invView=\'list\';renderInvApp()" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#475569;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:12px">← 一覧</button>'
+    +'<h2 style="font-size:17px;font-weight:700;color:#1a2b4a;margin:0">📋 業者名簿</h2>'
+    +'</div>'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+    +'<button onclick="invVendorDownloadTemplate()" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#374151;border-radius:7px;padding:7px 14px;font-size:12px;cursor:pointer">📥 テンプレート</button>'
+    +'<label style="background:#f0fdf4;border:1px solid #86efac;color:#16a34a;border-radius:7px;padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer">📤 Excelインポート<input type="file" accept=".xlsx,.xls,.csv" style="display:none" onchange="invVendorImportExcel(this.files[0]);this.value=\'\'"></label>'
+    +'<button onclick="openInvVendorModal(null)" style="background:#1a3a6b;color:#fff;border:none;border-radius:7px;padding:7px 18px;font-size:13px;font-weight:700;cursor:pointer">＋ 業者を追加</button>'
+    +'</div></div>'
+    // 検索ボックス
+    +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">'
+    +'<div style="position:relative;flex:1;max-width:400px">'
+    +'<span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#9ca3af;font-size:16px">🔍</span>'
+    +'<input id="invVSearch" type="text" value="'+esc(_invVendorSearch)+'" oninput="invVendorSearch()" placeholder="社名で検索..." style="width:100%;padding:8px 12px 8px 34px;border:1.5px solid #d1d5db;border-radius:8px;font-size:13px;box-sizing:border-box">'
+    +'</div>'
+    +(kw?'<button onclick="_invVendorSearch=\'\';renderInvVendors()" style="background:#fee2e2;border:1px solid #fca5a5;color:#dc2626;border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer">✕ クリア</button>':'')
+    +'<select id="invVDeptFilter" onchange="invVendorDeptFilter()" style="border:1.5px solid #d1d5db;border-radius:8px;padding:7px 10px;font-size:13px;color:#1a2b4a;background:#fff">'
+    +'<option value="">🏢 部門：全て</option>'
+    +allDepts.map(d=>'<option value="'+esc(d)+'"'+(d===_invVendorDeptFilter?' selected':'')+'>'+esc(d)+'</option>').join('')
+    +'</select>'
+    +(_invVendorDeptFilter?'<button onclick="_invVendorDeptFilter=\'\';renderInvVendors()" style="background:#fee2e2;border:1px solid #fca5a5;color:#dc2626;border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer">✕ 部門クリア</button>':'')
+    +'<span style="font-size:12px;color:#6b7280">'+shown.length+' 件</span>'
+    +'</div>'
+    // 分類グループ
+    +(vendors.length===0?'<div style="text-align:center;padding:40px;color:#9ca3af">業者が登録されていません</div>':groupHtml);
 }
 // ─── 業者名簿モーダル（強化版）────────────────────────────
 function openInvVendorModal(id, callback){
