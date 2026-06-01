@@ -593,16 +593,21 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
     box-shadow:none!important;padding:0!important;margin:0!important;
     font-size:10.5pt!important;
   }
-  /* タックシール印刷 */
-  .inv-label-print-area{display:flex!important;flex-direction:column;gap:0;align-items:flex-start}
-  .inv-label-seal{
-    width:7.4cm!important;height:4.2cm!important;
-    border:1px solid #999!important;box-shadow:none!important;
-    border-radius:0!important;background:#fff!important;
-    page-break-inside:avoid;break-inside:avoid;
-    margin-bottom:3mm;
+  /* タックシール印刷 A4（2列×6行） */
+  .inv-label-print-area{
+    display:grid!important;
+    grid-template-columns:8.4cm 8.4cm!important;
+    grid-template-rows:repeat(6,4.2cm)!important;
+    gap:0!important;margin:0!important;padding:0!important;
+    width:16.8cm!important;
   }
-  @page{size:A4 portrait;margin:10mm}
+  .inv-label-seal{
+    width:8.4cm!important;height:4.2cm!important;
+    border:0.5pt solid #aaa!important;box-shadow:none!important;
+    border-radius:0!important;background:#fff!important;
+    box-sizing:border-box!important;
+  }
+  @page{size:A4 portrait;margin:12mm 21mm}
 }
 /* 現金出納帳 numberスピナー非表示 */
 #devAppsContent input[type="number"]::-webkit-inner-spin-button,
@@ -3933,16 +3938,33 @@ function renderInvLabel(invId){
     </div>`;
 
   // ── ラベルHTML（タックシール 7.4cm×4.2cm） ─────────────
-  const sealStyle='width:7.4cm;height:4.2cm;box-sizing:border-box;padding:8px 12px;border:1.5px solid #888;border-radius:4px;font-family:"MS Mincho","Hiragino Mincho Pro","Yu Mincho",serif;background:#fff;display:flex;flex-direction:column;align-items:stretch;overflow:hidden';
-  const toLabelHtml=`<div class="inv-label-seal" style="${sealStyle}">${buildToLabel()}</div>`;
-  const fromLabelHtml=`<div class="inv-label-seal" style="${sealStyle}">${buildFromLabel()}</div>`;
+  const sealStyle='width:8.4cm;height:4.2cm;box-sizing:border-box;padding:8px 14px;border:1px solid #bbb;border-radius:3px;font-family:"MS Mincho","Hiragino Mincho Pro","Yu Mincho",serif;background:#fff;display:flex;flex-direction:column;align-items:stretch;overflow:hidden';
+  const blankSeal=`<div class="inv-label-seal" style="${sealStyle}"></div>`;
+  const toSeal=`<div class="inv-label-seal" style="${sealStyle}">${buildToLabel()}</div>`;
+  const fromSeal=`<div class="inv-label-seal" style="${sealStyle}">${buildFromLabel()}</div>`;
+  // 12枚グリッド生成（2列×6行）
+  const buildGrid=()=>{
+    const cells=[];
+    if(_invLabelMode==='to'){
+      // 宛名のみ：1枚目に宛名、残りは空
+      for(let i=0;i<12;i++) cells.push(i===0?toSeal:blankSeal);
+    } else if(_invLabelMode==='from'){
+      // 差出人のみ：全12枚に差出人
+      for(let i=0;i<12;i++) cells.push(fromSeal);
+    } else {
+      // 両方：奇数列に宛名、偶数列に差出人（1枚ずつ）
+      cells.push(toSeal); cells.push(fromSeal);
+      for(let i=2;i<12;i++) cells.push(blankSeal);
+    }
+    return cells.join('');
+  };
 
   const btnStyle=(mode)=>`background:${_invLabelMode===mode?'#1a3a6b':'#f1f5f9'};color:${_invLabelMode===mode?'#fff':'#374151'};border:1.5px solid ${_invLabelMode===mode?'#1a3a6b':'#d1d5db'};border-radius:7px;padding:8px 18px;font-size:13px;font-weight:600;cursor:pointer`;
 
   el.innerHTML=`
   <div class="inv-no-print" style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
     <button onclick="_invEditId='${invId}';_invView='detail';renderInvApp()" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#475569;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:12px">← 詳細</button>
-    <h3 style="font-size:15px;font-weight:700;color:#1a2b4a;margin:0">🏷 宛名ラベル（タックシール 7.4×4.2cm）</h3>
+    <h3 style="font-size:15px;font-weight:700;color:#1a2b4a;margin:0">🏷 宛名ラベル（タックシール 8.4×4.2cm｜A4 2列×6行）</h3>
   </div>
   <div class="inv-no-print" style="display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap">
     <span style="font-size:13px;font-weight:600;color:#374151">印刷パターン：</span>
@@ -3951,10 +3973,10 @@ function renderInvLabel(invId){
     <button style="${btnStyle('both')}" onclick="_invLabelMode='both';renderInvLabel('${invId}')">③ 両方</button>
     <button onclick="window.print()" style="background:#ea580c;color:#fff;border:none;border-radius:7px;padding:8px 20px;font-size:13px;font-weight:700;cursor:pointer;margin-left:8px">🖨 印刷する</button>
   </div>
-  <div style="font-size:11px;color:#94a3b8;margin-bottom:12px" class="inv-no-print">※ プレビューです。実際の印刷サイズは 7.4cm × 4.2cm のタックシールに合わせています。</div>
-  <div class="inv-label-print-area" style="display:flex;flex-direction:column;gap:12px">
-    ${_invLabelMode==='to'||_invLabelMode==='both'?toLabelHtml:''}
-    ${_invLabelMode==='from'||_invLabelMode==='both'?fromLabelHtml:''}
+  <div style="font-size:11px;color:#94a3b8;margin-bottom:10px" class="inv-no-print">※ 実際の印刷サイズ 8.4cm × 4.2cm｜A4 2列×6行＝12枚シート</div>
+  <div class="inv-no-print" style="font-size:11px;color:#94a3b8;margin-bottom:6px">A4シート（2列×6行＝12枚）プレビュー</div>
+  <div class="inv-label-print-area" style="display:grid;grid-template-columns:8.4cm 8.4cm;grid-template-rows:repeat(6,4.2cm);gap:0;background:#e5e7eb;border:1px solid #d1d5db">
+    ${buildGrid()}
   </div>`;
 }
 function renderInvDepts(){
