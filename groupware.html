@@ -898,6 +898,11 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
 
     <!-- 開発中アプリ（システム専用） -->
     <div id="devAppsView" style="display:none;padding:16px">
+      <!-- 印刷用固定ボタンバー（PDF画面のみ表示） -->
+      <div id="invPrintBar" style="display:none;padding:8px 0 12px;display:none;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+        <button id="invPrintBackBtn" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#475569;border-radius:6px;padding:8px 14px;cursor:pointer;font-size:13px">← 詳細</button>
+        <button id="invPrintExecBtn" style="background:#7c3aed;color:#fff;border:none;border-radius:7px;padding:10px 24px;font-size:14px;font-weight:700;cursor:pointer;min-width:160px">🖨 印刷 / PDF保存</button>
+      </div>
       <div id="devAppsContent"></div>
     </div>
 
@@ -3435,6 +3440,9 @@ function invInitVendors(){
 }
 function openInvoiceApp(){ invInitDepts(); invInitVendors(); _invView='list'; _invFilter='all'; renderInvApp(); }
 function renderInvApp(){
+  // 固定印刷バーの表示切替
+  const bar=document.getElementById('invPrintBar');
+  if(bar) bar.style.display=_invView==='print'?'flex':'none';
   if(_invView==='list')     renderInvList();
   else if(_invView==='form')    renderInvForm(_invEditId);
   else if(_invView==='detail')  renderInvDetail(_invEditId);
@@ -3445,6 +3453,13 @@ function renderInvApp(){
   else if(_invView==='label')      renderInvLabel(_invEditId);
   else if(_invView==='bulk')       renderInvBulk();
 }
+// 固定印刷バーのボタンイベント（ページ読み込み後に1回だけ登録）
+document.addEventListener('DOMContentLoaded',()=>{
+  const execBtn=document.getElementById('invPrintExecBtn');
+  const backBtn=document.getElementById('invPrintBackBtn');
+  if(execBtn) execBtn.addEventListener('click',()=>{ window.print(); });
+  if(backBtn) backBtn.addEventListener('click',()=>{ _invEditId=_invEditId;_invView='detail';renderInvApp(); });
+});
 function invCanManage(){ const r=getS()?.role; return r==='soumu'||r==='system'||r==='admin'; }
 function invCanCreate(){ const r=getS()?.role; return ['manager','admin','soumu','system','user'].includes(r); }
 function invCanEditAny(){ const r=getS()?.role; return r==='system'||r==='soumu'; }
@@ -4031,10 +4046,6 @@ function renderInvPrint(invId){
   const t=invCalcTotals(inv.items||[]); const today=new Date().toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric'});
   const rows10=Array.from({length:10},(_,i)=>(inv.items||[])[i]||null);
   el.innerHTML=`
-  <div class="inv-no-print" style="padding:8px 0 12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
-    <button onclick="_invEditId='${invId}';_invView='detail';renderInvApp();" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#475569;border-radius:6px;padding:8px 14px;cursor:pointer;font-size:13px">← 詳細</button>
-    <button onclick="window.print();" style="background:#7c3aed;color:#fff;border:none;border-radius:7px;padding:10px 24px;font-size:14px;font-weight:700;cursor:pointer;min-width:160px">🖨 印刷 / PDF保存</button>
-  </div>
   <!-- A4プレビュー背景 -->
   <div id="inv-print-wrap" style="background:#888;padding:20px;display:flex;justify-content:center;min-height:600px">
   <!-- A4用紙（210mm × 297mm） -->
