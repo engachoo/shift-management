@@ -3172,6 +3172,19 @@ function _bulkUpdateTotal(ri){
   const el=document.getElementById('bulk-total-'+ri);
   if(el){ const t=_bulkRowTotal(_bulkRows[ri]); el.textContent=t?'合計 ¥'+t.toLocaleString():''; }
 }
+function bulkApplyRef(ri,invId){
+  if(!invId) return;
+  const ref=load('invoices',[]).find(i=>i.id===invId); if(!ref) return;
+  const r=_bulkRows[ri];
+  r.deptId=ref.deptId||r.deptId;
+  r.vendorId=ref.vendorId||r.vendorId;
+  r.subject=ref.subject||ref.description||r.subject;
+  r.closing=ref.closingDate||r.closing;
+  r.deadline=ref.paymentDeadline||r.deadline;
+  r.notes=ref.notes||r.notes;
+  r.items=(ref.items&&ref.items.length)?ref.items.map(it=>({desc:it.desc||it.description||'',qty:it.qty||1,price:it.unitPrice||0,tax:it.taxRate||10})):[_bulkEmptyItem()];
+  renderInvBulk();
+}
 function renderInvBulk(){
   const el=document.getElementById('devAppsContent'); if(!el)return;
   const depts=load('inv_depts',[]);
@@ -3181,6 +3194,10 @@ function renderInvBulk(){
   const vendorOpts='<option value="">相手先を選択＊</option>'+vendors.map(v=>`<option value="${v.id}">${esc(v.name)}</option>`).join('');
   const inSt='border:1.5px solid #d1d5db;border-radius:5px;padding:5px 8px;font-size:12px;box-sizing:border-box;';
   const selSt=inSt+'cursor:pointer;width:100%;';
+  // 過去請求書の選択肢（業者名付き）
+  const vmap=Object.fromEntries(vendors.map(v=>[v.id,v.name]));
+  const pastInvs=load('invoices',[]).filter(i=>i.createdBy===myId()&&i.status!=='draft');
+  const refOpts='<option value="">📋 前回から引用...</option>'+pastInvs.slice(0,50).map(i=>`<option value="${i.id}">[${i.invoiceNo}] ${esc(vmap[i.vendorId]||'')} - ${esc((i.subject||'').slice(0,15))}</option>`).join('');
   const cardsHtml=_bulkRows.map((r,ri)=>{
     const multi=r.items.length>1;
     const itemsHtml=r.items.map((it,ii)=>`
@@ -3193,6 +3210,10 @@ function renderInvBulk(){
         <td style="padding:3px 2px;width:26px;text-align:center">${multi?`<button onclick="_bulkRows[${ri}].items.splice(${ii},1);renderInvBulk()" style="background:#fee2e2;border:none;color:#dc2626;border-radius:3px;padding:1px 5px;font-size:11px;cursor:pointer">✕</button>`:''}</td>
       </tr>`).join('');
     return `<div style="background:#fff;border:1.5px solid #e2e8f0;border-radius:10px;padding:10px 14px;margin-bottom:10px">
+      <!-- 引用行 -->
+      <div style="margin-bottom:6px">
+        <select style="${selSt}background:#f0f9ff;border-color:#bae6fd;color:#0369a1;font-size:11px;width:100%" onchange="bulkApplyRef(${ri},this.value);this.value=''">${refOpts}</select>
+      </div>
       <!-- 1行目：番号・基本情報・削除 -->
       <div style="display:flex;align-items:center;gap:6px;margin-bottom:7px;flex-wrap:wrap">
         <span style="font-size:11px;font-weight:700;color:#fff;background:#475569;border-radius:10px;padding:1px 8px;flex-shrink:0">${ri+1}</span>
