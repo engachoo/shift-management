@@ -3920,6 +3920,11 @@ function deleteInvoice(invId){
   showToast('請求書を削除しました');
   renderInvList();
 }
+function invPrint(){
+  const t=document.title;
+  document.title=' ';
+  setTimeout(()=>{window.print();setTimeout(()=>{document.title=t;},800);},100);
+}
 function invMarkSent(invId){
   if(!confirm('発送済みにしますか？'))return;
   const invs=load('invoices',[]); const i=invs.findIndex(x=>x.id===invId); if(i<0)return;
@@ -4029,13 +4034,13 @@ function renderInvPrint(invId){
   <!-- 操作バー（印刷非表示） -->
   <div class="inv-no-print" style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
     <button onclick="_invEditId='${invId}';_invView='detail';renderInvApp()" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#475569;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:12px">← 詳細</button>
-    <button onclick="(function(){const t=document.title;document.title='';window.print();setTimeout(()=>document.title=t,500);})()" style="background:#7c3aed;color:#fff;border:none;border-radius:7px;padding:8px 20px;font-size:13px;font-weight:700;cursor:pointer">🖨 印刷 / PDF保存</button>
+    <button onclick="invPrint()" style="background:#7c3aed;color:#fff;border:none;border-radius:7px;padding:8px 20px;font-size:13px;font-weight:700;cursor:pointer">🖨 印刷 / PDF保存</button>
   </div>
-  <div class="inv-no-print" style="background:#fef3c7;border:1.5px solid #f59e0b;border-radius:8px;padding:12px 16px;margin-bottom:14px;font-size:12px;color:#92400e;line-height:1.8">
-    <strong>⚠️ 印刷前に必ず設定してください（Edge / Chrome）</strong><br>
-    印刷ダイアログが開いたら ➡ <strong>「その他の設定」</strong> をクリック<br>
-    ① <strong>「ヘッダーとフッター」のチェックを外す</strong>（グループウェア名・Produced by などが消えます）<br>
-    ② <strong>「余白」→「なし」</strong> に変更（A4ぴったりに収まります）
+  <div class="inv-no-print" style="background:#fef3c7;border:1.5px solid #f59e0b;border-radius:8px;padding:12px 16px;margin-bottom:14px;font-size:12px;color:#92400e;line-height:1.9">
+    <strong>⚠️ 上下の余分な文字を消す方法（Edge）</strong><br>
+    印刷ダイアログが開いたら ➡ 左下の <strong>「その他の設定」</strong> をクリック<br>
+    ▼ 下にスクロールすると <strong>「ヘッダーとフッター」</strong> のチェックボックスがあります → <strong>チェックを外す</strong><br>
+    ▼ 「余白」を <strong>「なし」</strong> に変更 → <strong>「印刷」</strong>
   </div>
   <!-- A4プレビュー背景 -->
   <div id="inv-print-wrap" style="background:#888;padding:20px;display:flex;justify-content:center;min-height:600px">
