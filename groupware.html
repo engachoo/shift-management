@@ -578,6 +578,22 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
 .inv-field input:focus,.inv-field select:focus,.inv-field textarea:focus{outline:none;border-color:#1a3a6b;box-shadow:0 0 0 2px rgba(26,58,107,.1)}
 .inv-badge{display:inline-block;border-radius:20px;font-size:11px;font-weight:700;padding:2px 10px;border:1px solid}
 .inv-no-print{}.inv-print-only{display:none}
+/* 請求書 スマホ対応 */
+@media(max-width:700px){
+  /* ステータスカードを横スクロール */
+  .inv-status-wrap{display:flex;overflow-x:auto;-webkit-overflow-scrolling:touch;gap:6px;padding-bottom:6px;flex-wrap:nowrap!important}
+  .inv-status-wrap>*{flex-shrink:0}
+  /* 一覧テーブルをカード表示 */
+  .inv-list-table{display:none!important}
+  .inv-list-cards{display:block!important}
+  /* フォームを1列に */
+  .inv-form-grid{grid-template-columns:1fr!important}
+  /* フィルターを折りたたみ */
+  .inv-filter-row{flex-direction:column!important;gap:6px!important}
+  .inv-filter-row select{width:100%!important}
+  /* ボタンを大きく */
+  #devAppsContent button.inv-sp-btn{padding:12px!important;font-size:15px!important;width:100%!important;justify-content:center}
+}
 @page{size:A4 portrait;margin:0}
 @media print{
   #sidebar,#loadingScreen,#loginScreen,.side-badge,button,.inv-no-print{display:none!important}
@@ -3506,8 +3522,8 @@ function renderInvList(){
   const fixedHdr=h=>`<th style="padding:9px 12px;border-bottom:2px solid #e2e8f0;color:#475569;font-size:12px;white-space:nowrap;background:#f8fafc;text-align:${h==='税込金額'?'right':'left'}">${h}</th>`;
 
   el.innerHTML=`
-  <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-bottom:14px">
-    <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">
+  <div class="inv-status-wrap" style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-bottom:14px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px">
+    <div style="display:flex;align-items:center;gap:4px;flex-wrap:nowrap;flex-shrink:0">
     ${tabs.map((s,idx)=>{
       const def=s==='all'?{label:'全て',icon:'📄',color:'#fff',bg:'#1a2b4a',border:'#1a2b4a'}:INV_ST[s];
       const cnt=s==='all'?invs.length:invs.filter(i=>i.status===s).length;
@@ -3520,25 +3536,24 @@ function renderInvList(){
         ?'<span style="display:flex;align-items:center;flex-shrink:0"><svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="ag" x1="0" y1="14" x2="28" y2="14" gradientUnits="userSpaceOnUse"><stop stop-color="#60a5fa"/><stop offset="1" stop-color="#818cf8"/></linearGradient></defs><path d="M4 14h16M16 9l7 5-7 5" stroke="url(#ag)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>'
         :isDivBefore?'<span style="display:inline-block;width:2px;height:54px;background:linear-gradient(to bottom,#e2e8f0,#cbd5e1,#e2e8f0);border-radius:2px;flex-shrink:0;margin:0 4px"></span>'
         :'';
-      const btn=`<button onclick="_invFilter='${s}';renderInvList()" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-width:80px;padding:10px 14px;background:${act?def.bg:'#fff'};color:${act?def.color:'#6b7280'};border:2px solid ${act?def.border:'#e2e8f0'};border-radius:10px;cursor:pointer;box-shadow:${act?'0 2px 8px rgba(0,0,0,.12)':'0 1px 3px rgba(0,0,0,.06)'};transition:all .15s"><span style="font-size:20px;line-height:1">${def.icon}</span><span style="font-size:11px;font-weight:700;white-space:nowrap">${def.label}</span><span style="font-size:15px;font-weight:800;line-height:1">${cnt}</span></button>`;
+      const btn=`<button onclick="_invFilter='${s}';renderInvList()" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-width:64px;padding:8px 10px;background:${act?def.bg:'#fff'};color:${act?def.color:'#6b7280'};border:2px solid ${act?def.border:'#e2e8f0'};border-radius:10px;cursor:pointer;box-shadow:${act?'0 2px 8px rgba(0,0,0,.12)':'0 1px 3px rgba(0,0,0,.06)'};transition:all .15s;flex-shrink:0"><span style="font-size:18px;line-height:1">${def.icon}</span><span style="font-size:10px;font-weight:700;white-space:nowrap">${def.label}</span><span style="font-size:14px;font-weight:800;line-height:1">${cnt}</span></button>`;
       return arrow+btn;
     }).join('')}
     </div>
   </div>
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
-    <div style="display:flex;align-items:center;gap:8px">
-      <button onclick="renderDevApps()" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#475569;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:12px">← アプリ一覧</button>
-      <h2 style="font-size:17px;font-weight:700;color:#1a2b4a;margin:0">📄 請求書発行フォーム</h2>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <button onclick="renderDevApps()" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#475569;border-radius:6px;padding:6px 12px;cursor:pointer;font-size:12px">← 戻る</button>
+      <h2 style="font-size:16px;font-weight:700;color:#1a2b4a;margin:0">📄 請求書</h2>
     </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
-      ${canManage?`<button onclick="_invView='depts';renderInvApp()" style="background:#fff7ed;border:1.5px solid #fb923c;color:#c2410c;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer">🏢 部署・口座設定</button>
-      <button onclick="_invView='vendors';renderInvApp()" style="background:#fff7ed;border:1.5px solid #fb923c;color:#c2410c;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer">📋 業者名簿</button>
-      <button onclick="_invView='bulk';renderInvApp()" style="background:#f0fdf4;border:1.5px solid #86efac;color:#166534;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer">📋 請求書一括登録</button>`:''}
-      ${canCreate?`<button onclick="_invEditId=null;_invView='vendor-choice';renderInvApp()" style="background:#ea580c;color:#fff;border:none;border-radius:8px;padding:10px 22px;font-size:14px;font-weight:700;cursor:pointer">＋ 新規請求書</button>`:''}
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+      ${canManage?`<button onclick="_invView='vendors';renderInvApp()" style="background:#fff7ed;border:1.5px solid #fb923c;color:#c2410c;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:600;cursor:pointer">📋 業者名簿</button>
+      <button onclick="_invView='bulk';renderInvApp()" style="background:#f0fdf4;border:1.5px solid #86efac;color:#166534;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:600;cursor:pointer">📋 一括登録</button>`:''}
+      ${canCreate?`<button onclick="_invEditId=null;_invView='vendor-choice';renderInvApp()" style="background:#ea580c;color:#fff;border:none;border-radius:8px;padding:10px 18px;font-size:14px;font-weight:700;cursor:pointer">＋ 新規</button>`:''}
     </div>
   </div>
   <!-- 絞り込みフィルター -->
-  <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px 16px;margin-bottom:12px;display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end">
+  <div class="inv-filter-row" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px 14px;margin-bottom:12px;display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end">
     <div style="display:flex;flex-direction:column;gap:4px">
       <label style="font-size:11px;font-weight:600;color:#64748b">発行部署</label>
       <select id="invFDept" onchange="invApplyFilter()" style="border:1.5px solid #d1d5db;border-radius:6px;padding:6px 10px;font-size:13px;min-width:140px;background:#fff">
@@ -3562,7 +3577,8 @@ function renderInvList(){
   </div>
   <div style="font-size:11px;color:#94a3b8;margin-bottom:8px">💡 列ヘッダーをクリックしてソート</div>
   ${filtered.length===0?`<div style="text-align:center;padding:48px;color:#9ca3af;font-size:14px">該当する請求書がありません</div>`:`
-  <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">
+  <!-- PC：テーブル表示 -->
+  <div class="inv-list-table" style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">
     <thead><tr>
       ${fixedHdr('No.')}
       ${sh('発行部署','dept')}
@@ -3592,7 +3608,35 @@ function renderInvList(){
           ${(inv.status==='draft'&&(inv.createdBy===me||invCanEditAny()))||invCanManage()?`<button onclick="deleteInvoice('${inv.id}')" style="background:#fee2e2;border:1px solid #fca5a5;color:#dc2626;border-radius:5px;padding:4px 10px;font-size:12px;cursor:pointer;margin-left:4px">削除</button>`:''}
         </td></tr>`;
     }).join('')}</tbody>
-  </table></div>`}`;
+  </table></div>
+  <!-- スマホ：カード表示 -->
+  <div class="inv-list-cards" style="display:none;flex-direction:column;gap:10px">
+    ${filtered.map(inv=>{
+      const def=INV_ST[inv.status]||INV_ST.draft;
+      const dept=depts.find(d=>d.id===inv.deptId);
+      const vendor=vendors.find(v=>v.id===inv.vendorId);
+      const t=invCalcTotals(inv.items||[]);
+      return `<div style="background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;padding:14px 16px;box-shadow:0 1px 4px rgba(0,0,0,.06)">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+          <div>
+            <div style="font-size:11px;color:#6b7280;font-family:monospace">${esc(inv.invoiceNo||'-')}</div>
+            <div style="font-size:15px;font-weight:700;color:#1a2b4a;margin-top:2px">${esc(vendor?.name||'-')}</div>
+            <div style="font-size:12px;color:#475569;margin-top:2px">${esc(inv.subject||inv.description||'-')}</div>
+          </div>
+          <span class="inv-badge" style="background:${def.bg};color:${def.color};border-color:${def.border};flex-shrink:0">${def.icon} ${def.label}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div style="font-size:11px;color:#6b7280">${esc(dept?.name||'-')}　締め日 ${inv.closingDate||'-'}</div>
+          <div style="font-size:16px;font-weight:700;color:#1a2b4a">¥${(t.total||inv.totalAmount||0).toLocaleString()}</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button onclick="_invEditId='${inv.id}';_invView='detail';renderInvApp()" style="background:#1a3a6b;color:#fff;border:none;border-radius:7px;padding:8px 0;font-size:13px;font-weight:700;cursor:pointer;flex:1">詳細</button>
+          ${(inv.status==='draft'||inv.status==='rejected')&&(inv.createdBy===me||invCanEditAny())?`<button onclick="_invEditId='${inv.id}';_invView='form';renderInvApp()" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#374151;border-radius:7px;padding:8px 0;font-size:13px;cursor:pointer;flex:1">編集</button>`:''}
+          ${(inv.status==='draft'&&(inv.createdBy===me||invCanEditAny()))||invCanManage()?`<button onclick="deleteInvoice('${inv.id}')" style="background:#fee2e2;border:1px solid #fca5a5;color:#dc2626;border-radius:7px;padding:8px 0;font-size:13px;cursor:pointer;flex:1">削除</button>`:''}
+        </div>
+      </div>`;
+    }).join('')}
+  </div>`}`;
 }
 function renderInvForm(editId){
   const el=document.getElementById('devAppsContent'); if(!el)return;
@@ -3629,7 +3673,7 @@ function renderInvForm(editId){
   })():''}
   <div style="background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;padding:24px;max-width:800px">
     <div style="font-size:12px;color:#dc2626;margin-bottom:16px">＊ は必須項目です</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:14px">
+    <div class="inv-form-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:14px">
       <div class="inv-field"><label class="req">＊ 締め日</label><input type="date" id="inv-closing" value="${inv.closingDate||''}"></div>
       <div class="inv-field"><label class="req">＊ 発行部署</label>
         <select id="inv-dept" onchange="invOnDeptChange()"><option value="">選択してください</option>${depts.map(d=>`<option value="${d.id}" ${inv.deptId===d.id?'selected':''}>${esc(d.name)}</option>`).join('')}</select>
