@@ -3193,7 +3193,7 @@ function invBulkImportFudosan(){
       vendors.push(vendor);addedV++;
     }
     nextNo++;
-    invoices.push({id:uid(),invoiceNo:'INV-'+String(nextNo).padStart(4,'0'),createdBy:me,createdAt:now,deptId:DEPT_ID,vendorId:vendor.id,subject:'',description:'',items:[],totalAmount:0,status:'draft',updatedAt:now});
+    invoices.push({id:uid(),invoiceNo:'INV-'+String(nextNo).padStart(4,'0'),createdBy:me,createdAt:now,deptId:DEPT_ID,vendorId:vendor.id,subject:'賃料',description:'賃料',closingDate:'2026-05-31',paymentDeadline:'2026-06-30',items:[],totalAmount:0,status:'draft',updatedAt:now});
     addedI++;
   });
   save('inv_vendors',vendors);
