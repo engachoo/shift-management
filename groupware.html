@@ -1934,11 +1934,12 @@ function save(k, v){
       });
   }
 }
+let _fbDocCount = 0; // Firestoreから実際に読み込んだドキュメント数
 async function loadAllFromFirestore(){
   try {
     const snap = await _db.collection(_COL).get();
     snap.forEach(doc => {
-      try { _cache[doc.id] = JSON.parse(doc.data().v); } catch(e){}
+      try { _cache[doc.id] = JSON.parse(doc.data().v); _fbDocCount++; } catch(e){}
     });
     _fbReady = true;
     return true;
@@ -2268,6 +2269,10 @@ function doLogout(){
 // 初期データ（差分追加型：既存データを消さない）
 // =========================================================
 function initData(){
+  // Firestoreから実際にデータが読み込まれた場合のみ該当キーを上書き可能
+  // （読み込み不完全時にデフォルト値でFirestoreを上書きしないための保護）
+  const _isSafeToSave = (k) => _fbDocCount === 0 || _cache.hasOwnProperty(k);
+
   // ---- 部署：不足分だけ追加 ----
   const defaultDepts = [
     {id:'d1',  name:'大日産業',    parentId:null, order:0},
@@ -2281,7 +2286,7 @@ function initData(){
   defaultDepts.forEach(dd=>{
     if(!depts.find(d=>d.id===dd.id)){ depts.push(dd); deptsChanged=true; }
   });
-  if(deptsChanged || !depts.length) save('depts', depts);
+  if((deptsChanged || !depts.length) && _isSafeToSave('depts')) save('depts', depts);
 
   // ---- 出納帳専用部署（pcDepts）：バージョン管理で上書き ----
   // groupId は load('depts') の部署IDと対応（アクセス制御用）
@@ -2298,7 +2303,7 @@ function initData(){
     {id:'pc9', name:'ウェルピア-山県',  groupId:'d3',  order:8, adminOnly:false},
   ];
   // 設定変更があればバージョンフラグで強制上書き
-  if(load('pcDeptsVersion','')!=='v2'){
+  if(load('pcDeptsVersion','')!=='v2' && _isSafeToSave('pcDepts')){
     save('pcDepts', defaultPcDepts);
     save('pcDeptsVersion','v2');
   }
@@ -2329,13 +2334,13 @@ function initData(){
 
   // ---- ロール再構築マイグレーション（一回限り） ----
   // システム管理者の所属を空に（独立）
-  { const users=load('users',[]); const a=users.find(u=>u.loginId==='admin'); if(a&&a.deptId){a.deptId='';save('users',users);} }
+  { const users=load('users',[]); const a=users.find(u=>u.loginId==='admin'); if(a&&a.deptId){a.deptId='';if(_isSafeToSave('users'))save('users',users);} }
   // admin loginId ユーザーを system に、それ以外の role=admin を admin のまま維持
   if(load('migrated_role_v2','')!=='1'){
     users.forEach(u=>{
       if(u.loginId==='admin' && u.role==='admin') u.role='system';
     });
-    save('migrated_role_v2','1');
+    if(_isSafeToSave('migrated_role_v2')) save('migrated_role_v2','1');
     usersChanged=true;
   }
 
@@ -2348,7 +2353,7 @@ function initData(){
       sasagihara:'pass123', taki:'pass123', miura:'pass123',
     };
     users.forEach(u=>{ if(pwDefaults[u.id]) u.password=pwDefaults[u.id]; });
-    save('migrated_pw_reset','1');
+    if(_isSafeToSave('migrated_pw_reset')) save('migrated_pw_reset','1');
     usersChanged=true;
   }
 
@@ -2357,11 +2362,11 @@ function initData(){
     const uu=load('users',[]);
     const mu=uu.find(u=>u.id==='matsubara');
     if(mu){ mu.role='soumu'; mu.name='松原美沙子'; }
-    save('users',uu);
-    save('migrated_soumu_v1','1');
+    if(_isSafeToSave('users')) save('users',uu);
+    if(_isSafeToSave('migrated_soumu_v1')) save('migrated_soumu_v1','1');
   }
 
-  if(usersChanged || !users.length) save('users', users);
+  if((usersChanged || !users.length) && _isSafeToSave('users')) save('users', users);
 
   const events = [
     {id:'e1', memberIds:['iwashimizu'],date:'2026-05-08',startTime:'09:00',endTime:'10:30',type:'visitor',title:'位田会計',memo:''},
@@ -2383,7 +2388,8 @@ function initData(){
     {id:'e17',memberIds:['hayashi'],date:'2026-05-08',startTime:'09:00',endTime:'10:30',type:'visitor',title:'位田会計',memo:''},
   ];
   // events・circulars・bulletins・todos・facilitiesは存在しない場合だけ初期化
-  if(!load('events',null)){
+  // かつFirestoreから実際にデータが読み込まれた場合のみ書き込み可能
+  if(!load('events',null) && _isSafeToSave('events')){
     save('events',[
       {id:'e1', memberIds:['iwashimizu'],date:'2026-05-08',startTime:'09:00',endTime:'10:30',type:'visitor',title:'位田会計',memo:''},
       {id:'e2', memberIds:['iwashimizu'],date:'2026-05-10',startTime:'',endTime:'',type:'task',title:'ブリックスデータ/十六契約書 送信',memo:''},
@@ -2405,7 +2411,7 @@ function initData(){
     ]);
   }
 
-  if(!load('circulars',null)){
+  if(!load('circulars',null) && _isSafeToSave('circulars')){
     save('circulars',[
       {id:'c1',title:'クロロ スロッター×ワールド取材企画開催',priority:'high',deadline:'2026-04-15',
        addToSchedule:false,routeSequential:false,visibility:'public',
@@ -2431,7 +2437,7 @@ function initData(){
     ]);
   }
 
-  if(!load('facilities',null)){
+  if(!load('facilities',null) && _isSafeToSave('facilities')){
     save('facilities',[
       {id:'fac1',name:'会長室',type:'room'},
       {id:'fac2',name:'本社2階会議室',type:'room'},
@@ -2443,14 +2449,14 @@ function initData(){
     ]);
   }
 
-  if(!load('bulletins',null)){
+  if(!load('bulletins',null) && _isSafeToSave('bulletins')){
     save('bulletins',[
       {id:'b1',title:'5月の営業時間変更について',body:'GW期間中（5月3日〜6日）は営業時間を変更いたします。詳細はスケジュールをご確認ください。',author:'hanamura',createdAt:'2026-04-28 10:00',reactions:{},target:'all',targetId:'',targetRole:'all'},
       {id:'b2',title:'社内研修のご案内',body:'5月11日（月）10:00〜11:30 理念研修を実施します。全スタッフ参加をお願いします。',author:'iwashimizu',createdAt:'2026-04-25 14:00',reactions:{},target:'all',targetId:'',targetRole:'all'},
     ]);
   }
 
-  if(!load('todos',null)){
+  if(!load('todos',null) && _isSafeToSave('todos')){
     save('todos',[
       {id:'t1',title:'ブリックスデータ送信確認',done:false,priority:'high',due:'2026-05-10',userId:'iwashimizu'},
       {id:'t2',title:'給与データ提出',done:false,priority:'high',due:'2026-05-05',userId:'iwashimizu'},
