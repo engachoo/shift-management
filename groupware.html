@@ -3472,6 +3472,7 @@ function renderInvList(){
         <td style="padding:9px 12px;white-space:nowrap">
           <button onclick="_invEditId='${inv.id}';_invView='detail';renderInvApp()" style="background:#1a3a6b;color:#fff;border:none;border-radius:5px;padding:4px 12px;font-size:12px;cursor:pointer">詳細</button>
           ${(inv.status==='draft'||inv.status==='rejected')&&(inv.createdBy===me||invCanEditAny())?`<button onclick="_invEditId='${inv.id}';_invView='form';renderInvApp()" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#374151;border-radius:5px;padding:4px 10px;font-size:12px;cursor:pointer;margin-left:4px">編集</button>`:''}
+          ${(inv.status==='draft'&&(inv.createdBy===me||invCanEditAny()))||invCanManage()?`<button onclick="deleteInvoice('${inv.id}')" style="background:#fee2e2;border:1px solid #fca5a5;color:#dc2626;border-radius:5px;padding:4px 10px;font-size:12px;cursor:pointer;margin-left:4px">削除</button>`:''}
         </td></tr>`;
     }).join('')}</tbody>
   </table></div>`}`;
@@ -3743,6 +3744,14 @@ function invReject(invId){
   const invs=load('invoices',[]); const i=invs.findIndex(x=>x.id===invId); if(i<0)return;
   invs[i]={...invs[i],status:'rejected',reviewNotes:memo,rejectedAt:new Date().toISOString()};
   save('invoices',invs); invStatusNotif(invs[i],'↩','差し戻し'); showToast('差し戻しました ↩'); _invView='list'; renderInvApp();
+}
+function deleteInvoice(invId){
+  const inv=load('invoices',[]).find(i=>i.id===invId);
+  if(!inv)return;
+  if(!confirm(`「${inv.invoiceNo}」を削除しますか？`))return;
+  save('invoices',load('invoices',[]).filter(i=>i.id!==invId));
+  showToast('請求書を削除しました');
+  renderInvList();
 }
 function invMarkSent(invId){
   if(!confirm('発送済みにしますか？'))return;
