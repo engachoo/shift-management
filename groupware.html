@@ -3835,12 +3835,12 @@ function renderInvPrint(invId){
         <div style="font-size:14pt;font-weight:700;border-bottom:2px solid #000;padding-bottom:2mm;margin-bottom:2mm">${vendor?esc(vendor.name)+'　御中':'　　　　　　　　御中'}</div>
         ${vendor?`<div style="font-size:9pt;color:#444">${esc(vendor.address||vendor.addr1||'')}</div>${vendor.contact?`<div style="font-size:9pt">担当：${esc(vendor.contact)}</div>`:''}`:'' }
       </div>
-      <div style="text-align:right;font-size:9pt;min-width:68mm;position:relative;padding-right:${['approved','sent'].includes(inv.status)?'24mm':'0'}">
-        ${['approved','sent'].includes(inv.status)?`<canvas id="inv-print-seal" width="80" height="80" style="position:absolute;top:0;right:0;opacity:.88"></canvas>`:''}
+      <div style="text-align:right;font-size:9pt;min-width:68mm;position:relative">
         <div style="font-size:11pt;font-weight:700;margin-bottom:1mm">${esc(dept.company||dept.name||'')}</div>
         <div>${esc(dept.companyZip||'')} ${esc(dept.companyAddr||'')}</div>
         <div>TEL：${esc(dept.companyTel||'-')}　FAX：${esc(dept.companyFax||'-')}</div>
         ${dept.regNo?`<div style="font-size:8pt;margin-top:2mm">登録番号 ${esc(dept.regNo)}</div>`:''}
+        ${['approved','sent'].includes(inv.status)?`<canvas id="inv-print-seal" width="76" height="76" style="position:absolute;top:2mm;right:-4mm;opacity:.82"></canvas>`:''}
       </div>
     </div>
 
