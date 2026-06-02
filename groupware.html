@@ -3199,8 +3199,8 @@ function renderInvBulk(){
         <select style="${selSt}flex:1;min-width:120px" onchange="_bulkRows[${ri}].deptId=this.value">${deptOpts.replace(`value="${r.deptId}"`,`value="${r.deptId}" selected`)}</select>
         <select style="${selSt}flex:2;min-width:150px" onchange="_bulkRows[${ri}].vendorId=this.value">${vendorOpts.replace(`value="${r.vendorId}"`,`value="${r.vendorId}" selected`)}</select>
         <input style="${inSt}flex:2;min-width:120px" value="${esc(r.subject)}" placeholder="件名＊" oninput="_bulkRows[${ri}].subject=this.value">
-        <input type="date" style="${inSt}width:120px;flex-shrink:0" value="${r.closing}" oninput="_bulkRows[${ri}].closing=this.value" title="締め日">
-        <input type="date" style="${inSt}width:120px;flex-shrink:0" value="${r.deadline}" oninput="_bulkRows[${ri}].deadline=this.value" title="支払期限">
+        <label style="display:flex;align-items:center;gap:4px;flex-shrink:0"><span style="font-size:11px;font-weight:600;color:#64748b;white-space:nowrap">締日</span><input type="date" style="${inSt}width:120px" value="${r.closing}" oninput="_bulkRows[${ri}].closing=this.value"></label>
+        <label style="display:flex;align-items:center;gap:4px;flex-shrink:0"><span style="font-size:11px;font-weight:600;color:#64748b;white-space:nowrap">支払日</span><input type="date" style="${inSt}width:120px" value="${r.deadline}" oninput="_bulkRows[${ri}].deadline=this.value"></label>
         <button onclick="_bulkRows.splice(${ri},1);renderInvBulk()" style="background:#fee2e2;border:1px solid #fca5a5;color:#dc2626;border-radius:5px;padding:3px 8px;font-size:11px;cursor:pointer;flex-shrink:0">削除</button>
       </div>
       <!-- 摘要テーブル -->
