@@ -3929,6 +3929,8 @@ function deleteInvoice(invId){
   renderInvList();
 }
 function invPrint(){
+  console.log('invPrint called');
+  alert('印刷ダイアログを起動します');
   const t=document.title;
   document.title=' ';
   window.print();
