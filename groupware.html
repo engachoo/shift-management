@@ -589,9 +589,9 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
   .inv-list-cards{display:block!important}
   /* フォームを1列に */
   .inv-form-grid{grid-template-columns:1fr!important}
-  /* フィルターを折りたたみ */
-  .inv-filter-row{flex-direction:column!important;gap:6px!important}
-  .inv-filter-row select{width:100%!important}
+  /* フィルターを3列均等グリッド（スマホ） */
+  .inv-filter-row{grid-template-columns:1fr 1fr 1fr!important;gap:6px!important}
+  .inv-filter-row select{width:100%!important;font-size:12px!important;padding:6px 4px!important}
   /* ボタンを大きく */
   #devAppsContent button.inv-sp-btn{padding:12px!important;font-size:15px!important;width:100%!important;justify-content:center}
 }
@@ -3555,27 +3555,31 @@ function renderInvList(){
     </div>
   </div>
   <!-- 絞り込みフィルター -->
-  <div class="inv-filter-row" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px 14px;margin-bottom:12px;display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end">
-    <div style="display:flex;flex-direction:column;gap:4px">
-      <label style="font-size:11px;font-weight:600;color:#64748b">発行部署</label>
-      <select id="invFDept" onchange="invApplyFilter()" style="border:1.5px solid #d1d5db;border-radius:6px;padding:6px 10px;font-size:13px;min-width:140px;background:#fff">
-        <option value="">すべて</option>${optDept}
-      </select>
+  <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px 14px;margin-bottom:12px">
+    <div class="inv-filter-row" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px">
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <label style="font-size:11px;font-weight:600;color:#64748b">発行部署</label>
+        <select id="invFDept" onchange="invApplyFilter()" style="border:1.5px solid #d1d5db;border-radius:6px;padding:6px 8px;font-size:13px;width:100%;background:#fff;box-sizing:border-box">
+          <option value="">すべて</option>${optDept}
+        </select>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <label style="font-size:11px;font-weight:600;color:#64748b">相手先</label>
+        <select id="invFVendor" onchange="invApplyFilter()" style="border:1.5px solid #d1d5db;border-radius:6px;padding:6px 8px;font-size:13px;width:100%;background:#fff;box-sizing:border-box">
+          <option value="">すべて</option>${optVendor}
+        </select>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <label style="font-size:11px;font-weight:600;color:#64748b">締め日</label>
+        <select id="invFClosing" onchange="invApplyFilter()" style="border:1.5px solid #d1d5db;border-radius:6px;padding:6px 8px;font-size:13px;width:100%;background:#fff;box-sizing:border-box">
+          <option value="">すべて</option>${optClosing}
+        </select>
+      </div>
     </div>
-    <div style="display:flex;flex-direction:column;gap:4px">
-      <label style="font-size:11px;font-weight:600;color:#64748b">相手先</label>
-      <select id="invFVendor" onchange="invApplyFilter()" style="border:1.5px solid #d1d5db;border-radius:6px;padding:6px 10px;font-size:13px;min-width:160px;background:#fff">
-        <option value="">すべて</option>${optVendor}
-      </select>
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div style="font-size:12px;color:#64748b">${filtered.length} 件</div>
+      ${hasFilter ? '<button onclick="invClearFilter()" style="background:#fee2e2;border:1px solid #fca5a5;color:#dc2626;border-radius:6px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer">✕ 絞り込み解除</button>' : ''}
     </div>
-    <div style="display:flex;flex-direction:column;gap:4px">
-      <label style="font-size:11px;font-weight:600;color:#64748b">締め日</label>
-      <select id="invFClosing" onchange="invApplyFilter()" style="border:1.5px solid #d1d5db;border-radius:6px;padding:6px 10px;font-size:13px;min-width:130px;background:#fff">
-        <option value="">すべて</option>${optClosing}
-      </select>
-    </div>
-    ${hasFilter ? '<button onclick="invClearFilter()" style="background:#fee2e2;border:1px solid #fca5a5;color:#dc2626;border-radius:6px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer;align-self:flex-end">✕ 絞り込み解除</button>' : ''}
-    <div style="align-self:flex-end;font-size:12px;color:#64748b;margin-left:auto">${filtered.length} 件</div>
   </div>
   <div style="font-size:11px;color:#94a3b8;margin-bottom:8px">💡 列ヘッダーをクリックしてソート</div>
   ${filtered.length===0?`<div style="text-align:center;padding:48px;color:#9ca3af;font-size:14px">該当する請求書がありません</div>`:`
