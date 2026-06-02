@@ -4041,8 +4041,8 @@ function renderInvPrint(invId){
   const rows10=Array.from({length:10},(_,i)=>(inv.items||[])[i]||null);
   el.innerHTML=`
   <div class="inv-no-print" style="display:flex;align-items:center;gap:10px;padding:8px 0 12px;flex-wrap:wrap;margin-bottom:4px">
-    <button type="button" onclick="invPrintBack();" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#475569;border-radius:6px;padding:8px 14px;cursor:pointer;font-size:13px">← 詳細</button>
-    <button type="button" onclick="invPrint();" style="background:#7c3aed;color:#fff;border:none;border-radius:7px;padding:10px 24px;font-size:14px;font-weight:700;cursor:pointer;min-width:160px">🖨 印刷 / PDF保存</button>
+    <button type="button" id="invBackBtn" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#475569;border-radius:6px;padding:8px 14px;cursor:pointer;font-size:13px">← 詳細</button>
+    <button type="button" id="invPrintBtn" style="background:#7c3aed;color:#fff;border:none;border-radius:7px;padding:10px 24px;font-size:14px;font-weight:700;cursor:pointer;min-width:160px">🖨 印刷 / PDF保存</button>
   </div>
   <!-- A4プレビュー背景 -->
   <div id="inv-print-wrap" style="background:#888;padding:20px;display:flex;justify-content:center;min-height:600px">
@@ -4131,6 +4131,11 @@ function renderInvPrint(invId){
 
   </div><!-- /inv-print-body -->
   </div><!-- /inv-print-wrap -->`;
+  // ボタンにaddEventListenerで確実にバインド
+  const btnPrint=document.getElementById('invPrintBtn');
+  const btnBack=document.getElementById('invBackBtn');
+  if(btnPrint) btnPrint.addEventListener('click',function(){invPrint();});
+  if(btnBack)  btnBack.addEventListener('click',function(){invPrintBack();});
   if(['approved','sent'].includes(inv.status)){
     setTimeout(()=>{const c=document.getElementById('inv-print-seal');if(c){const ctx=c.getContext('2d');invDrawSeal(ctx,dept.company||'大日産業㈱',inv.approvedAt);}},100);
   }
