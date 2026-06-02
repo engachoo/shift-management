@@ -3987,13 +3987,13 @@ function renderInvPrint(invId){
   <!-- A4用紙（210mm × 297mm） -->
   <div id="inv-print-body" style="background:#fff;width:210mm;min-height:257mm;padding:14mm 17mm;font-family:'MS Mincho','Hiragino Mincho Pro','Yu Mincho',serif;font-size:10.5pt;box-shadow:0 4px 20px rgba(0,0,0,.3);box-sizing:border-box;position:relative">
 
-    <div style="text-align:right;font-size:9pt;margin-bottom:5mm">発行日：${today}</div>
-    <div style="text-align:center;font-size:22pt;font-weight:700;letter-spacing:10px;margin-bottom:8mm">請　求　書</div>
+    <div style="text-align:right;font-size:9pt;margin-bottom:5mm;color:#1e3a6b">発行日：${today}</div>
+    <div style="text-align:center;font-size:22pt;font-weight:700;letter-spacing:10px;margin-bottom:8mm;color:#1e3a6b">請　求　書</div>
 
     <!-- 宛先 / 発行元 -->
     <div style="display:flex;justify-content:space-between;margin-bottom:7mm;align-items:flex-start">
       <div style="flex:1;padding-right:10mm">
-        <div style="font-size:14pt;font-weight:700;border-bottom:2px solid #000;padding-bottom:2mm;margin-bottom:3mm">${vendor?esc(vendor.name)+'　御中':'　　　　　　　　御中'}</div>
+        <div style="font-size:14pt;font-weight:700;border-bottom:2.5px solid #1e3a6b;padding-bottom:2mm;margin-bottom:3mm;color:#000">${vendor?esc(vendor.name)+'　御中':'　　　　　　　　御中'}</div>
         ${vendor?`<div style="font-size:9pt;color:#444;line-height:1.8">${esc(vendor.address||vendor.addr1||'')}</div>${vendor.contact?`<div style="font-size:9pt;margin-top:1mm">担当：${esc(vendor.contact)}</div>`:''}`:'' }
       </div>
       <div style="text-align:right;font-size:9pt;min-width:72mm;position:relative;line-height:1.8">
@@ -4010,9 +4010,9 @@ function renderInvPrint(invId){
     <!-- 合計金額 -->
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5mm;flex-wrap:wrap;gap:3mm">
       <div style="display:flex;align-items:center;gap:4mm">
-        <span style="font-size:9pt">合計金額</span>
-        <span style="font-size:19pt;font-weight:700;border-bottom:2px solid #000;padding:0 4mm">&yen;${t.total.toLocaleString()}</span>
-        <span style="font-size:9pt">（税込）</span>
+        <span style="font-size:9pt;color:#1e3a6b;font-weight:600">合計金額</span>
+        <span style="font-size:19pt;font-weight:700;border-bottom:2.5px solid #1e3a6b;padding:0 4mm;color:#1e3a6b">&yen;${t.total.toLocaleString()}</span>
+        <span style="font-size:9pt;color:#1e3a6b">（税込）</span>
       </div>
       ${inv.paymentDeadline?`<div style="text-align:right;font-size:13pt;font-weight:700;letter-spacing:.04em">お支払期限：<span style="font-size:15pt">${inv.paymentDeadline}</span></div>`:''}
     </div>
@@ -4022,21 +4022,21 @@ function renderInvPrint(invId){
     <!-- 明細表 -->
     <table style="width:100%;border-collapse:collapse;font-size:9pt;margin-bottom:4mm">
       <thead>
-        <tr style="background:#333;color:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact">
-          <th style="padding:2.5mm 2.5mm;border:0.3mm solid #999;text-align:center;width:8mm">No.</th>
-          <th style="padding:2.5mm 2.5mm;border:0.3mm solid #999;text-align:left">摘　要</th>
-          <th style="padding:2.5mm 2.5mm;border:0.3mm solid #999;text-align:right;width:14mm">数量</th>
-          <th style="padding:2.5mm 2.5mm;border:0.3mm solid #999;text-align:right;width:26mm">単　価</th>
-          <th style="padding:2.5mm 2.5mm;border:0.3mm solid #999;text-align:right;width:28mm">金　額</th>
+        <tr style="background:#1e3a6b;color:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact">
+          <th style="padding:2.5mm 2.5mm;border:0.3mm solid #2d5298;text-align:center;width:8mm">No.</th>
+          <th style="padding:2.5mm 2.5mm;border:0.3mm solid #2d5298;text-align:left">摘　要</th>
+          <th style="padding:2.5mm 2.5mm;border:0.3mm solid #2d5298;text-align:right;width:14mm">数量</th>
+          <th style="padding:2.5mm 2.5mm;border:0.3mm solid #2d5298;text-align:right;width:26mm">単　価</th>
+          <th style="padding:2.5mm 2.5mm;border:0.3mm solid #2d5298;text-align:right;width:28mm">金　額</th>
         </tr>
       </thead>
       <tbody>
-        ${rows10.map((it,i)=>`<tr>
-          <td style="padding:2.5mm 2.5mm;border:0.3mm solid #ccc;text-align:center;color:#999;font-size:8pt">${i+1}</td>
-          <td style="padding:2.5mm 2.5mm;border:0.3mm solid #ccc">${it?esc(it.desc||it.description||''):''}</td>
-          <td style="padding:2.5mm 2.5mm;border:0.3mm solid #ccc;text-align:right">${it&&it.qty?it.qty:''}</td>
-          <td style="padding:2.5mm 2.5mm;border:0.3mm solid #ccc;text-align:right">${it&&it.unitPrice?'¥'+it.unitPrice.toLocaleString():''}</td>
-          <td style="padding:2.5mm 2.5mm;border:0.3mm solid #ccc;text-align:right;font-weight:${it?600:400}">${it?'¥'+((it.qty||0)*(it.unitPrice||0)).toLocaleString():''}</td>
+        ${rows10.map((it,i)=>`<tr style="background:${i%2?'#f0f4ff':'#fff'}">
+          <td style="padding:2.5mm 2.5mm;border:0.3mm solid #c5d0e8;text-align:center;color:#7a90b8;font-size:8pt">${i+1}</td>
+          <td style="padding:2.5mm 2.5mm;border:0.3mm solid #c5d0e8">${it?esc(it.desc||it.description||''):''}</td>
+          <td style="padding:2.5mm 2.5mm;border:0.3mm solid #c5d0e8;text-align:right">${it&&it.qty?it.qty:''}</td>
+          <td style="padding:2.5mm 2.5mm;border:0.3mm solid #c5d0e8;text-align:right">${it&&it.unitPrice?'¥'+it.unitPrice.toLocaleString():''}</td>
+          <td style="padding:2.5mm 2.5mm;border:0.3mm solid #c5d0e8;text-align:right;font-weight:${it?600:400};color:${it?'#1e3a6b':'inherit'}">${it?'¥'+((it.qty||0)*(it.unitPrice||0)).toLocaleString():''}</td>
         </tr>`).join('')}
       </tbody>
     </table>
@@ -4044,15 +4044,15 @@ function renderInvPrint(invId){
     <!-- 小計・税 -->
     <div style="display:flex;justify-content:flex-end;margin-bottom:4mm">
       <table style="border-collapse:collapse;font-size:9pt">
-        <tr>
-          <td style="padding:1.5mm 3mm;text-align:right;color:#555">8％対象</td><td style="padding:1.5mm 3mm;text-align:right;width:24mm">¥${t.sub8.toLocaleString()}</td>
-          <td style="padding:1.5mm 3mm;text-align:right;color:#555">8％消費税額</td><td style="padding:1.5mm 3mm;text-align:right;width:24mm">¥${t.tax8.toLocaleString()}</td>
-          <td style="padding:1.5mm 3mm;text-align:right;border-left:0.3mm solid #ccc;color:#555">小　計</td><td style="padding:1.5mm 3mm;text-align:right;width:28mm">¥${t.sub.toLocaleString()}</td>
+        <tr style="background:#f0f4ff">
+          <td style="padding:1.5mm 3mm;text-align:right;color:#4a6090">8％対象</td><td style="padding:1.5mm 3mm;text-align:right;width:24mm">¥${t.sub8.toLocaleString()}</td>
+          <td style="padding:1.5mm 3mm;text-align:right;color:#4a6090">8％消費税額</td><td style="padding:1.5mm 3mm;text-align:right;width:24mm">¥${t.tax8.toLocaleString()}</td>
+          <td style="padding:1.5mm 3mm;text-align:right;border-left:0.3mm solid #c5d0e8;color:#4a6090">小　計</td><td style="padding:1.5mm 3mm;text-align:right;width:28mm">¥${t.sub.toLocaleString()}</td>
         </tr>
-        <tr style="border-top:0.3mm solid #ccc">
-          <td style="padding:1.5mm 3mm;text-align:right;color:#555">10％対象</td><td style="padding:1.5mm 3mm;text-align:right">¥${t.sub10.toLocaleString()}</td>
-          <td style="padding:1.5mm 3mm;text-align:right;color:#555">10%消費税額</td><td style="padding:1.5mm 3mm;text-align:right">¥${t.tax10.toLocaleString()}</td>
-          <td style="padding:1.5mm 3mm;text-align:right;border-left:0.3mm solid #ccc;font-weight:700">合　計</td><td style="padding:1.5mm 3mm;text-align:right;font-weight:700">¥${t.total.toLocaleString()}</td>
+        <tr style="background:#1e3a6b;color:#fff;border-top:0.3mm solid #2d5298;-webkit-print-color-adjust:exact;print-color-adjust:exact">
+          <td style="padding:1.5mm 3mm;text-align:right">10％対象</td><td style="padding:1.5mm 3mm;text-align:right">¥${t.sub10.toLocaleString()}</td>
+          <td style="padding:1.5mm 3mm;text-align:right">10%消費税額</td><td style="padding:1.5mm 3mm;text-align:right">¥${t.tax10.toLocaleString()}</td>
+          <td style="padding:1.5mm 3mm;text-align:right;border-left:0.3mm solid #2d5298;font-weight:700">合　計</td><td style="padding:1.5mm 3mm;text-align:right;font-weight:700">¥${t.total.toLocaleString()}</td>
         </tr>
       </table>
     </div>
@@ -4063,8 +4063,8 @@ function renderInvPrint(invId){
     <div style="font-size:8pt;color:#555;margin-bottom:4mm;padding-left:4mm">※恐れ入りますが、お振込み手数料は貴社にてご負担お願い致します。</div>
 
     <!-- 備考 -->
-    <div style="font-size:9pt;border:0.3mm solid #ccc;padding:2.5mm 3mm;min-height:12mm">
-      <span style="font-weight:700">備　考</span>${inv.notes?`<br><span style="white-space:pre-wrap">${esc(inv.notes)}</span>`:''}
+    <div style="font-size:9pt;border:0.5mm solid #1e3a6b;border-radius:1mm;padding:2.5mm 3mm;min-height:12mm">
+      <span style="font-weight:700;color:#1e3a6b">備　考</span>${inv.notes?`<br><span style="white-space:pre-wrap">${esc(inv.notes)}</span>`:''}
     </div>
 
   </div><!-- /inv-print-body -->
