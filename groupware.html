@@ -597,7 +597,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
 }
 @page{size:A4 portrait;margin:0}
 @media print{
-  #sidebar,#loadingScreen,#loginScreen,.side-badge,.inv-no-print,#inv-print-bar{display:none!important}
+  #sidebar,#loadingScreen,#loginScreen,.side-badge,.inv-no-print,#invPrintBar,#appHeader,#sideOverlay{display:none!important}
   #app,#mainArea{display:block!important;margin:0!important;padding:0!important}
   #devAppsContent{padding:0!important;margin:0!important;overflow:hidden!important}
   #devAppsView{display:block!important;padding:0!important}
@@ -901,7 +901,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
       <!-- 印刷用固定ボタンバー（PDF画面のみ表示） -->
       <div id="invPrintBar" style="display:none;padding:8px 0 12px;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
         <button onclick="invPrintBack();" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#475569;border-radius:6px;padding:8px 14px;cursor:pointer;font-size:13px">← 詳細</button>
-        <button onclick="window.print();" style="background:#7c3aed;color:#fff;border:none;border-radius:7px;padding:10px 24px;font-size:14px;font-weight:700;cursor:pointer;min-width:160px">🖨 印刷 / PDF保存</button>
+        <button onclick="invPrint();" style="background:#7c3aed;color:#fff;border:none;border-radius:7px;padding:10px 24px;font-size:14px;font-weight:700;cursor:pointer;min-width:160px">🖨 印刷 / PDF保存</button>
       </div>
       <div id="devAppsContent"></div>
     </div>
@@ -3932,9 +3932,31 @@ function deleteInvoice(invId){
   renderInvList();
 }
 function invPrint(){
-  const t=document.title;
-  document.title=' ';
-  setTimeout(()=>{window.print();setTimeout(()=>{document.title=t;},800);},100);
+  const body=document.getElementById('inv-print-body');
+  if(!body){window.print();return;}
+  const iframe=document.createElement('iframe');
+  iframe.style.cssText='position:fixed;top:-9999px;left:-9999px;width:210mm;height:297mm;border:none;visibility:hidden';
+  document.body.appendChild(iframe);
+  const doc=iframe.contentDocument||iframe.contentWindow.document;
+  doc.open();
+  doc.write(`<!DOCTYPE html><html><head><meta charset="utf-8">
+<style>
+@page{size:A4 portrait;margin:0}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#fff;font-family:'MS Mincho','Hiragino Mincho Pro','Yu Mincho',serif;font-size:10.5pt;width:210mm;min-height:297mm;padding:18mm 17mm;box-sizing:border-box;overflow:hidden}
+table{border-collapse:collapse;width:100%}
+td,th{padding:4px 6px}
+canvas{display:block}
+</style>
+</head><body>${body.innerHTML}</body></html>`);
+  doc.close();
+  iframe.onload=()=>{
+    setTimeout(()=>{
+      iframe.contentWindow.focus();
+      iframe.contentWindow.print();
+      setTimeout(()=>{document.body.removeChild(iframe);},1000);
+    },200);
+  };
 }
 function invMarkSent(invId){
   if(!confirm('発送済みにしますか？'))return;
