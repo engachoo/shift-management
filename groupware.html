@@ -3932,38 +3932,10 @@ function deleteInvoice(invId){
   renderInvList();
 }
 function invPrint(){
-  const body=document.getElementById('inv-print-body');
-  if(!body){window.print();return;}
-  // Canvas（電子印鑑）を dataURL に変換してから iframe に渡す
-  let html=body.innerHTML;
-  const seal=document.getElementById('inv-print-seal');
-  if(seal){
-    try{
-      const dataUrl=seal.toDataURL();
-      html=html.replace(/<canvas[^>]*id="inv-print-seal"[^>]*><\/canvas>/,
-        `<img src="${dataUrl}" width="72" height="72" style="position:absolute;top:0;right:-2mm;opacity:.80">`);
-    }catch(e){}
-  }
-  const iframe=document.createElement('iframe');
-  iframe.style.cssText='position:fixed;top:0;left:0;width:0;height:0;border:none;opacity:0;pointer-events:none';
-  document.body.appendChild(iframe);
-  const doc=iframe.contentDocument||iframe.contentWindow.document;
-  doc.open();
-  doc.write(`<!DOCTYPE html><html><head><meta charset="utf-8">
-<style>
-@page{size:A4 portrait;margin:0}
-*{margin:0;padding:0;box-sizing:border-box}
-body{background:#fff;font-family:'MS Mincho','Hiragino Mincho Pro','Yu Mincho',serif;font-size:10.5pt;width:210mm;min-height:297mm;padding:18mm 17mm;box-sizing:border-box}
-table{border-collapse:collapse;width:100%}
-td,th{padding:4px 6px}
-</style>
-</head><body>${html}</body></html>`);
-  doc.close();
-  setTimeout(()=>{
-    iframe.contentWindow.focus();
-    iframe.contentWindow.print();
-    setTimeout(()=>{if(iframe.parentNode)iframe.parentNode.removeChild(iframe);},1500);
-  },400);
+  const t=document.title;
+  document.title=' ';
+  window.print();
+  setTimeout(()=>{document.title=t;},1000);
 }
 function invMarkSent(invId){
   if(!confirm('発送済みにしますか？'))return;
