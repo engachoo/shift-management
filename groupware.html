@@ -4032,10 +4032,10 @@ function renderInvPrint(invId){
   const rows10=Array.from({length:10},(_,i)=>(inv.items||[])[i]||null);
   el.innerHTML=`
   <!-- 操作バー（印刷非表示） -->
-  <div class="inv-no-print" id="inv-print-bar" style="position:sticky;top:0;z-index:999;background:#fff;padding:8px 0 10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;border-bottom:1px solid #e2e8f0;margin-bottom:12px">
-    <button id="inv-back-btn" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#475569;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:12px">← 詳細</button>
-    <button id="inv-print-btn" style="background:#7c3aed;color:#fff;border:none;border-radius:7px;padding:8px 20px;font-size:13px;font-weight:700;cursor:pointer">🖨 印刷 / PDF保存</button>
-    <span style="font-size:11px;color:#9ca3af">Edge：印刷ダイアログ →「その他の設定」→「ヘッダーとフッター」をオフ・余白なし</span>
+  <div class="inv-no-print" style="background:#fff;padding:8px 0 12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+    <button onclick="_invEditId='${invId}';_invView='detail';renderInvApp();" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#475569;border-radius:6px;padding:8px 14px;cursor:pointer;font-size:13px">← 詳細</button>
+    <button id="invPrintBtn_${invId}" style="background:#7c3aed;color:#fff;border:none;border-radius:7px;padding:10px 24px;font-size:14px;font-weight:700;cursor:pointer;min-width:160px">🖨 印刷 / PDF保存</button>
+    <span style="font-size:11px;color:#9ca3af">Edge：その他の設定 → ヘッダー/フッターをオフ・余白なし</span>
   </div>
   <!-- A4プレビュー背景 -->
   <div id="inv-print-wrap" style="background:#888;padding:20px;display:flex;justify-content:center;min-height:600px">
@@ -4124,9 +4124,9 @@ function renderInvPrint(invId){
 
   </div><!-- /inv-print-body -->
   </div><!-- /inv-print-wrap -->`;
-  // ボタンイベントをDOMで直接登録（onclick属性の代替）
-  document.getElementById('inv-back-btn')?.addEventListener('click',()=>{_invEditId=invId;_invView='detail';renderInvApp();});
-  document.getElementById('inv-print-btn')?.addEventListener('click',()=>window.print());
+  // 印刷ボタンにイベント登録（最も確実な方法）
+  const printBtn=document.getElementById('invPrintBtn_'+invId);
+  if(printBtn) printBtn.onclick=function(){window.print();};
   if(['approved','sent'].includes(inv.status)){
     setTimeout(()=>{const c=document.getElementById('inv-print-seal');if(c){const ctx=c.getContext('2d');invDrawSeal(ctx,dept.company||'大日産業㈱',inv.approvedAt);}},100);
   }
