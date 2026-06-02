@@ -3163,77 +3163,86 @@ function showInvoiceApp(){
   document.querySelectorAll('.side-item').forEach(el=>el.classList.remove('active'));
   document.getElementById('m-inv')?.classList.add('active');
 }
-// ─── 請求書一括登録（Excel風） ───────────────────────────────
+// ─── 請求書一括登録 ────────────────────────────────────────
 let _bulkRows=[];
+function _bulkEmptyRow(){ return {deptId:'',vendorId:'',subject:'',closing:'',deadline:'',notes:'',items:[{desc:'',qty:1,price:0,tax:10}]}; }
+function _bulkEmptyItem(){ return {desc:'',qty:1,price:0,tax:10}; }
+function _bulkRowTotal(r){ return r.items.reduce((s,it)=>s+Math.floor((it.qty||0)*(it.price||0)*(1+(it.tax||10)/100)),0); }
+function _bulkUpdateTotal(ri){
+  const el=document.getElementById('bulk-total-'+ri);
+  if(el){ const t=_bulkRowTotal(_bulkRows[ri]); el.textContent=t?'合計 ¥'+t.toLocaleString():''; }
+}
 function renderInvBulk(){
   const el=document.getElementById('devAppsContent'); if(!el)return;
   const depts=load('inv_depts',[]);
   const vendors=load('inv_vendors',[]).filter(v=>v.active!==false);
   if(!_bulkRows.length) _bulkRows=[_bulkEmptyRow()];
-  const deptOpts='<option value="">選択</option>'+depts.map(d=>`<option value="${d.id}">${esc(d.name)}</option>`).join('');
-  const vendorOpts='<option value="">選択</option>'+vendors.map(v=>`<option value="${v.id}">${esc(v.name)}</option>`).join('');
-  const cellSt='border:1px solid #d1d5db;padding:0;';
-  const inSt='width:100%;height:100%;border:none;padding:4px 6px;font-size:12px;box-sizing:border-box;background:transparent;';
-  const selSt=inSt+'cursor:pointer;';
-  const rowHtml=_bulkRows.map((r,i)=>`<tr id="brow-${i}" style="background:${i%2?'#f9fafb':'#fff'}">
-    <td style="${cellSt}width:28px;text-align:center;font-size:11px;color:#9ca3af">${i+1}</td>
-    <td style="${cellSt}min-width:130px"><select style="${selSt}" onchange="_bulkRows[${i}].deptId=this.value" data-b="deptId-${i}">${deptOpts.replace(`value="${r.deptId}"`,`value="${r.deptId}" selected`)}</select></td>
-    <td style="${cellSt}min-width:180px"><select style="${selSt}" onchange="_bulkRows[${i}].vendorId=this.value" data-b="vendorId-${i}">${vendorOpts.replace(`value="${r.vendorId}"`,`value="${r.vendorId}" selected`)}</select></td>
-    <td style="${cellSt}min-width:160px"><input style="${inSt}" value="${esc(r.subject)}" oninput="_bulkRows[${i}].subject=this.value" placeholder="件名"></td>
-    <td style="${cellSt}min-width:115px"><input type="date" style="${inSt}" value="${r.closing}" oninput="_bulkRows[${i}].closing=this.value"></td>
-    <td style="${cellSt}min-width:115px"><input type="date" style="${inSt}" value="${r.deadline}" oninput="_bulkRows[${i}].deadline=this.value"></td>
-    <td style="${cellSt}min-width:160px"><input style="${inSt}" value="${esc(r.desc)}" oninput="_bulkRows[${i}].desc=this.value" placeholder="摘要"></td>
-    <td style="${cellSt}min-width:70px"><input type="number" style="${inSt}text-align:right" value="${r.qty||''}" oninput="_bulkRows[${i}].qty=+this.value;_bulkCalc(${i})" placeholder="数量" min="0"></td>
-    <td style="${cellSt}min-width:100px"><input type="number" style="${inSt}text-align:right" value="${r.price||''}" oninput="_bulkRows[${i}].price=+this.value;_bulkCalc(${i})" placeholder="単価" min="0"></td>
-    <td style="${cellSt}min-width:60px"><select style="${selSt}" onchange="_bulkRows[${i}].tax=+this.value;_bulkCalc(${i})"><option value="10" ${r.tax===10?'selected':''}>10%</option><option value="8" ${r.tax===8?'selected':''}>8%</option></select></td>
-    <td style="${cellSt}min-width:90px;text-align:right;padding:4px 6px;font-size:12px;font-weight:600;color:#1a2b4a" id="btotal-${i}">${r.total?'¥'+r.total.toLocaleString():''}</td>
-    <td style="${cellSt}min-width:50px;text-align:center"><button onclick="_bulkRows.splice(${i},1);renderInvBulk()" style="background:#fee2e2;border:none;color:#dc2626;border-radius:4px;padding:2px 8px;font-size:11px;cursor:pointer">削除</button></td>
-  </tr>`).join('');
+  const deptOpts='<option value="">発行部署を選択＊</option>'+depts.map(d=>`<option value="${d.id}">${esc(d.name)}</option>`).join('');
+  const vendorOpts='<option value="">相手先を選択＊</option>'+vendors.map(v=>`<option value="${v.id}">${esc(v.name)}</option>`).join('');
+  const inSt='border:1.5px solid #d1d5db;border-radius:5px;padding:5px 8px;font-size:12px;box-sizing:border-box;';
+  const selSt=inSt+'cursor:pointer;width:100%;';
+  const cardsHtml=_bulkRows.map((r,ri)=>{
+    const itemsHtml=r.items.map((it,ii)=>`
+      <tr>
+        <td style="padding:3px 4px"><input style="${inSt}width:100%" value="${esc(it.desc)}" placeholder="摘要" oninput="_bulkRows[${ri}].items[${ii}].desc=this.value"></td>
+        <td style="padding:3px 4px;width:70px"><input type="number" style="${inSt}width:100%;text-align:right" value="${it.qty||''}" placeholder="数量" min="0" oninput="_bulkRows[${ri}].items[${ii}].qty=+this.value;_bulkUpdateTotal(${ri})"></td>
+        <td style="padding:3px 4px;width:110px"><input type="number" style="${inSt}width:100%;text-align:right" value="${it.price||''}" placeholder="単価" min="0" oninput="_bulkRows[${ri}].items[${ii}].price=+this.value;_bulkUpdateTotal(${ri})"></td>
+        <td style="padding:3px 4px;width:70px"><select style="${selSt}width:100%" onchange="_bulkRows[${ri}].items[${ii}].tax=+this.value;_bulkUpdateTotal(${ri})"><option value="10" ${it.tax===10?'selected':''}>10%</option><option value="8" ${it.tax===8?'selected':''}>8%</option></select></td>
+        <td style="padding:3px 4px;width:100px;text-align:right;font-size:12px;font-weight:600;color:#1a2b4a">¥${Math.floor((it.qty||0)*(it.price||0)).toLocaleString()}</td>
+        <td style="padding:3px 4px;width:36px;text-align:center">${r.items.length>1?`<button onclick="_bulkRows[${ri}].items.splice(${ii},1);renderInvBulk()" style="background:#fee2e2;border:none;color:#dc2626;border-radius:3px;padding:1px 6px;font-size:11px;cursor:pointer">✕</button>`:''}</td>
+      </tr>`).join('');
+    return `<div style="background:#fff;border:1.5px solid #e2e8f0;border-radius:10px;padding:14px 16px;margin-bottom:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <span style="font-size:12px;font-weight:700;color:#475569;background:#f1f5f9;border-radius:12px;padding:2px 10px"># ${ri+1}</span>
+        <button onclick="_bulkRows.splice(${ri},1);renderInvBulk()" style="background:#fee2e2;border:1px solid #fca5a5;color:#dc2626;border-radius:5px;padding:3px 10px;font-size:11px;cursor:pointer">削除</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 130px 130px;gap:8px;margin-bottom:10px">
+        <select style="${selSt}" onchange="_bulkRows[${ri}].deptId=this.value">${deptOpts.replace(`value="${r.deptId}"`,`value="${r.deptId}" selected`)}</select>
+        <select style="${selSt}" onchange="_bulkRows[${ri}].vendorId=this.value">${vendorOpts.replace(`value="${r.vendorId}"`,`value="${r.vendorId}" selected`)}</select>
+        <input style="${inSt}width:100%" value="${esc(r.subject)}" placeholder="件名＊" oninput="_bulkRows[${ri}].subject=this.value">
+        <input type="date" style="${inSt}width:100%" value="${r.closing}" oninput="_bulkRows[${ri}].closing=this.value" title="締め日">
+        <input type="date" style="${inSt}width:100%" value="${r.deadline}" oninput="_bulkRows[${ri}].deadline=this.value" title="支払期限">
+      </div>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:6px">
+        <thead><tr style="background:#f8fafc">
+          <th style="padding:4px 4px;font-size:11px;text-align:left;border-bottom:1px solid #e2e8f0">摘要</th>
+          <th style="padding:4px 4px;font-size:11px;text-align:right;border-bottom:1px solid #e2e8f0;width:70px">数量</th>
+          <th style="padding:4px 4px;font-size:11px;text-align:right;border-bottom:1px solid #e2e8f0;width:110px">単価</th>
+          <th style="padding:4px 4px;font-size:11px;text-align:center;border-bottom:1px solid #e2e8f0;width:70px">税率</th>
+          <th style="padding:4px 4px;font-size:11px;text-align:right;border-bottom:1px solid #e2e8f0;width:100px">金額</th>
+          <th style="width:36px;border-bottom:1px solid #e2e8f0"></th>
+        </tr></thead>
+        <tbody>${itemsHtml}</tbody>
+      </table>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <button onclick="_bulkRows[${ri}].items.push(_bulkEmptyItem());renderInvBulk()" style="background:#f0fdf4;border:1px solid #86efac;color:#16a34a;border-radius:5px;padding:4px 12px;font-size:12px;cursor:pointer">＋ 摘要を追加</button>
+        <span id="bulk-total-${ri}" style="font-size:13px;font-weight:700;color:#1a2b4a">${_bulkRowTotal(r)?'合計 ¥'+_bulkRowTotal(r).toLocaleString():''}</span>
+      </div>
+      <div>
+        <label style="font-size:11px;font-weight:600;color:#64748b;display:block;margin-bottom:3px">備考</label>
+        <textarea rows="2" style="${inSt}width:100%;resize:vertical;font-family:inherit" placeholder="振込先・連絡事項など" oninput="_bulkRows[${ri}].notes=this.value">${esc(r.notes||'')}</textarea>
+      </div>
+    </div>`;
+  }).join('');
   el.innerHTML=`
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
     <button onclick="_invView='list';renderInvApp()" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#475569;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:12px">← 一覧</button>
     <h2 style="font-size:17px;font-weight:700;color:#1a2b4a;margin:0">📋 請求書一括登録</h2>
-    <span style="font-size:12px;color:#6b7280">複数の下書きをまとめて作成できます</span>
+    <span style="font-size:12px;color:#6b7280">複数の下書きをまとめて作成</span>
+    <div style="margin-left:auto;display:flex;gap:8px">
+      <button onclick="saveBulkDrafts()" style="background:#1a3a6b;color:#fff;border:none;border-radius:7px;padding:9px 24px;font-size:14px;font-weight:700;cursor:pointer">💾 下書き一括保存</button>
+      <button onclick="if(confirm('クリアしますか？')){_bulkRows=[_bulkEmptyRow()];renderInvBulk()}" style="background:#fee2e2;border:1px solid #fca5a5;color:#dc2626;border-radius:7px;padding:8px 14px;font-size:12px;cursor:pointer">✕ クリア</button>
+    </div>
   </div>
-  <div style="overflow-x:auto;margin-bottom:14px;border:1.5px solid #e2e8f0;border-radius:8px">
-  <table style="border-collapse:collapse;width:100%;min-width:900px">
-    <thead><tr style="background:#1a2b4a;color:#fff">
-      <th style="padding:7px 4px;font-size:11px;width:28px">#</th>
-      <th style="padding:7px 8px;font-size:11px;text-align:left;min-width:130px">発行部署＊</th>
-      <th style="padding:7px 8px;font-size:11px;text-align:left;min-width:180px">相手先＊</th>
-      <th style="padding:7px 8px;font-size:11px;text-align:left;min-width:160px">件名＊</th>
-      <th style="padding:7px 8px;font-size:11px;text-align:left;min-width:115px">締め日</th>
-      <th style="padding:7px 8px;font-size:11px;text-align:left;min-width:115px">支払期限</th>
-      <th style="padding:7px 8px;font-size:11px;text-align:left;min-width:160px">摘要</th>
-      <th style="padding:7px 8px;font-size:11px;text-align:right;min-width:70px">数量</th>
-      <th style="padding:7px 8px;font-size:11px;text-align:right;min-width:100px">単価</th>
-      <th style="padding:7px 8px;font-size:11px;text-align:center;min-width:60px">税率</th>
-      <th style="padding:7px 8px;font-size:11px;text-align:right;min-width:90px">税込金額</th>
-      <th style="padding:7px 4px;font-size:11px;width:50px"></th>
-    </tr></thead>
-    <tbody>${rowHtml}</tbody>
-  </table></div>
-  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-    <button onclick="_bulkRows.push(_bulkEmptyRow());renderInvBulk()" style="background:#f1f5f9;border:1.5px solid #d1d5db;color:#374151;border-radius:7px;padding:8px 18px;font-size:13px;cursor:pointer">＋ 行を追加</button>
-    <button onclick="saveBulkDrafts()" style="background:#1a3a6b;color:#fff;border:none;border-radius:7px;padding:9px 24px;font-size:14px;font-weight:700;cursor:pointer">💾 下書き一括保存</button>
-    <button onclick="if(confirm('入力内容をクリアしますか？')){_bulkRows=[_bulkEmptyRow()];renderInvBulk()}" style="background:#fee2e2;border:1px solid #fca5a5;color:#dc2626;border-radius:7px;padding:8px 14px;font-size:12px;cursor:pointer">✕ クリア</button>
-  </div>`;
-}
-function _bulkEmptyRow(){
-  return {deptId:'',vendorId:'',subject:'',closing:'',deadline:'',desc:'',qty:1,price:0,tax:10,total:0};
-}
-function _bulkCalc(i){
-  const r=_bulkRows[i];
-  r.total=Math.floor((r.qty||0)*(r.price||0)*(1+(r.tax||10)/100));
-  const el=document.getElementById('btotal-'+i);
-  if(el) el.textContent=r.total?'¥'+r.total.toLocaleString():'';
+  ${cardsHtml}
+  <button onclick="_bulkRows.push(_bulkEmptyRow());renderInvBulk()" style="background:#f1f5f9;border:2px dashed #d1d5db;color:#374151;border-radius:8px;padding:10px;width:100%;font-size:13px;cursor:pointer">＋ 請求書を追加</button>`;
 }
 function saveBulkDrafts(){
   const errs=[];
   _bulkRows.forEach((r,i)=>{
-    if(!r.deptId) errs.push(`行${i+1}：発行部署が未選択`);
-    if(!r.vendorId) errs.push(`行${i+1}：相手先が未選択`);
-    if(!r.subject.trim()) errs.push(`行${i+1}：件名が未入力`);
+    if(!r.deptId) errs.push(`#${i+1}：発行部署が未選択`);
+    if(!r.vendorId) errs.push(`#${i+1}：相手先が未選択`);
+    if(!r.subject.trim()) errs.push(`#${i+1}：件名が未入力`);
   });
   if(errs.length){alert('入力エラー：\n'+errs.join('\n'));return;}
   if(!confirm(_bulkRows.length+'件の下書きを作成しますか？'))return;
@@ -3241,15 +3250,14 @@ function saveBulkDrafts(){
   const me=myId();
   const invoices=load('invoices',[]);
   _bulkRows.forEach(r=>{
-    const items=r.price>0?[{desc:r.desc||r.subject,qty:r.qty||1,unitPrice:r.price,taxRate:r.tax||10}]:[];
-    const tax=r.tax||10;
-    const sub=(r.qty||0)*(r.price||0);
-    const total=Math.floor(sub*(1+tax/100));
+    const items=r.items.filter(it=>it.price>0||it.desc.trim()).map(it=>({desc:it.desc||r.subject,qty:it.qty||1,unitPrice:it.price||0,taxRate:it.tax||10}));
+    const total=_bulkRowTotal(r);
     invoices.push({
       id:uid(),invoiceNo:invNextNo(),createdBy:me,createdAt:now,
       deptId:r.deptId,vendorId:r.vendorId,
       subject:r.subject,description:r.subject,
       closingDate:r.closing,paymentDeadline:r.deadline,
+      notes:r.notes||'',
       items,totalAmount:total,status:'draft',updatedAt:now
     });
   });
