@@ -4032,15 +4032,10 @@ function renderInvPrint(invId){
   const rows10=Array.from({length:10},(_,i)=>(inv.items||[])[i]||null);
   el.innerHTML=`
   <!-- 操作バー（印刷非表示） -->
-  <div class="inv-no-print" style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
-    <button onclick="_invEditId='${invId}';_invView='detail';renderInvApp()" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#475569;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:12px">← 詳細</button>
-    <button onclick="window.print()" style="background:#7c3aed;color:#fff;border:none;border-radius:7px;padding:8px 20px;font-size:13px;font-weight:700;cursor:pointer">🖨 印刷 / PDF保存</button>
-  </div>
-  <div class="inv-no-print" style="background:#fef3c7;border:1.5px solid #f59e0b;border-radius:8px;padding:12px 16px;margin-bottom:14px;font-size:12px;color:#92400e;line-height:1.9">
-    <strong>⚠️ 上下の余分な文字を消す方法（Edge）</strong><br>
-    印刷ダイアログが開いたら ➡ 左下の <strong>「その他の設定」</strong> をクリック<br>
-    ▼ 下にスクロールすると <strong>「ヘッダーとフッター」</strong> のチェックボックスがあります → <strong>チェックを外す</strong><br>
-    ▼ 「余白」を <strong>「なし」</strong> に変更 → <strong>「印刷」</strong>
+  <div class="inv-no-print" id="inv-print-bar" style="position:sticky;top:0;z-index:999;background:#fff;padding:8px 0 10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;border-bottom:1px solid #e2e8f0;margin-bottom:12px">
+    <button id="inv-back-btn" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#475569;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:12px">← 詳細</button>
+    <button id="inv-print-btn" style="background:#7c3aed;color:#fff;border:none;border-radius:7px;padding:8px 20px;font-size:13px;font-weight:700;cursor:pointer">🖨 印刷 / PDF保存</button>
+    <span style="font-size:11px;color:#9ca3af">Edge：印刷ダイアログ →「その他の設定」→「ヘッダーとフッター」をオフ・余白なし</span>
   </div>
   <!-- A4プレビュー背景 -->
   <div id="inv-print-wrap" style="background:#888;padding:20px;display:flex;justify-content:center;min-height:600px">
@@ -4129,6 +4124,9 @@ function renderInvPrint(invId){
 
   </div><!-- /inv-print-body -->
   </div><!-- /inv-print-wrap -->`;
+  // ボタンイベントをDOMで直接登録（onclick属性の代替）
+  document.getElementById('inv-back-btn')?.addEventListener('click',()=>{_invEditId=invId;_invView='detail';renderInvApp();});
+  document.getElementById('inv-print-btn')?.addEventListener('click',()=>window.print());
   if(['approved','sent'].includes(inv.status)){
     setTimeout(()=>{const c=document.getElementById('inv-print-seal');if(c){const ctx=c.getContext('2d');invDrawSeal(ctx,dept.company||'大日産業㈱',inv.approvedAt);}},100);
   }
