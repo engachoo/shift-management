@@ -3163,6 +3163,44 @@ function showInvoiceApp(){
   document.querySelectorAll('.side-item').forEach(el=>el.classList.remove('active'));
   document.getElementById('m-inv')?.classList.add('active');
 }
+function invBulkImportFudosan(){
+  if(!confirm('大日不動産の業者12社と下書き請求書を一括登録します。よろしいですか？'))return;
+  const DEPT_ID='inv_dept_fudosan';
+  const now=new Date().toISOString().slice(0,16).replace('T',' ');
+  const vendors=load('inv_vendors',[]);
+  const invoices=load('invoices',[]);
+  const maxNo=invoices.reduce((m,i)=>{const n=parseInt((i.invoiceNo||'').replace(/[^0-9]/g,''),10);return isNaN(n)?m:Math.max(m,n);},0);
+  const list=[
+    {name:'センスオブリゾート株式会社',type:'corporate',zip:'5016257',addr1:'岐阜県羽島市福寿町平方字千代田72',addr2:'',contact:''},
+    {name:'向井　麻里',type:'individual',zip:'5016333',addr1:'岐阜県羽島市堀津町東山49-2',addr2:'',contact:''},
+    {name:'澤藤　健',type:'individual',zip:'5010458',addr1:'岐阜県本巣郡北方町高屋1033-1',addr2:'がーでんはうすY2　101号室',contact:''},
+    {name:'株式会社J-PRoach',type:'corporate',zip:'5016244',addr1:'羽島市竹鼻町丸の内５丁目137',addr2:'',contact:''},
+    {name:'ファステストダイニング株式会社',type:'corporate',zip:'5016031',addr1:'岐阜県羽島郡笠松町米野字西起81',addr2:'',contact:'谷口'},
+    {name:'株式会社アルファコンサルティング',type:'corporate',zip:'4600002',addr1:'名古屋市中区丸の内2-20-25',addr2:'メットライフ名古屋丸の内ビル9F',contact:''},
+    {name:'株式会社マルチプル',type:'corporate',zip:'7450812',addr1:'山口県周南市横浜町１４番５号',addr2:'',contact:''},
+    {name:'合同会社　万億',type:'corporate',zip:'5016256',addr1:'岐阜県羽島市福寿町千代田3-20',addr2:'香麻辣辣燙　岐阜羽島店',contact:''},
+    {name:'株式会社QuietHills',type:'corporate',zip:'4260026',addr1:'静岡県藤枝市岡出山1-12-14',addr2:'',contact:''},
+    {name:'日本シニアライフ株式会社',type:'corporate',zip:'1050003',addr1:'東京都港区西新橋三丁目一五番一二号',addr2:'GG　HOUSE　七階',contact:''},
+    {name:'株式会社　海帆',type:'corporate',zip:'4500002',addr1:'名古屋市中村区名駅4-15-15',addr2:'総合市場ビル3F0号',contact:''},
+    {name:'株式会社エターナルホスピタリティグループ',type:'corporate',zip:'5410047',addr1:'大阪市中央区淡路町4丁目2番13号',addr2:'アーバンネット御堂筋ビル20F',contact:''},
+  ];
+  let addedV=0,addedI=0,nextNo=maxNo;
+  const me=myId();
+  list.forEach(v=>{
+    let vendor=vendors.find(x=>x.name===v.name);
+    if(!vendor){
+      vendor={id:uid(),name:v.name,vendorType:v.type,tradingDeptIds:['inv_dept_fudosan'],dept:'',contact:v.contact,zip:v.zip,addr1:v.addr1,addr2:v.addr2,address:'〒'+v.zip+' '+v.addr1+(v.addr2?' '+v.addr2:''),tel:'',email:'',meishiUrls:[],active:true};
+      vendors.push(vendor);addedV++;
+    }
+    nextNo++;
+    invoices.push({id:uid(),invoiceNo:'INV-'+String(nextNo).padStart(4,'0'),createdBy:me,createdAt:now,deptId:DEPT_ID,vendorId:vendor.id,subject:'',description:'',items:[],totalAmount:0,status:'draft',updatedAt:now});
+    addedI++;
+  });
+  save('inv_vendors',vendors);
+  save('invoices',invoices);
+  showToast('✅ 業者 '+addedV+'社 登録、下書き請求書 '+addedI+'件 作成しました！');
+  _invView='list'; _invFilter='draft'; renderInvApp();
+}
 function renderDevApps(){
   if(!getS()) return;
   const apps = [
@@ -3377,7 +3415,8 @@ function renderInvList(){
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       ${canManage?`<button onclick="_invView='depts';renderInvApp()" style="background:#fff7ed;border:1.5px solid #fb923c;color:#c2410c;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer">🏢 部署・口座設定</button>
-      <button onclick="_invView='vendors';renderInvApp()" style="background:#fff7ed;border:1.5px solid #fb923c;color:#c2410c;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer">📋 業者名簿</button>`:''}
+      <button onclick="_invView='vendors';renderInvApp()" style="background:#fff7ed;border:1.5px solid #fb923c;color:#c2410c;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer">📋 業者名簿</button>
+      <button onclick="invBulkImportFudosan()" style="background:#f0fdf4;border:1.5px solid #86efac;color:#166534;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer">📥 不動産一括登録</button>`:''}
       ${canCreate?`<button onclick="_invEditId=null;_invView='vendor-choice';renderInvApp()" style="background:#ea580c;color:#fff;border:none;border-radius:8px;padding:10px 22px;font-size:14px;font-weight:700;cursor:pointer">＋ 新規請求書</button>`:''}
     </div>
   </div>
