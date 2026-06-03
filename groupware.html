@@ -3953,9 +3953,12 @@ function deleteInvoice(invId){
   renderInvList();
 }
 function invPrint(){
+  // window.print() はクリック直後に同期実行（setTimeoutで遅延させるとブラウザが
+  // ユーザー操作とみなさず印刷をブロックするため）
   const t=document.title;
   document.title=' ';
-  setTimeout(()=>{window.print();setTimeout(()=>{document.title=t;},800);},100);
+  window.print();
+  setTimeout(()=>{document.title=t;},800); // タイトル復元のみ後回し（印刷には影響しない）
 }
 function invMarkSent(invId){
   if(!confirm('発送済みにしますか？'))return;
