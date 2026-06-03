@@ -77,6 +77,10 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
 /* ===== サイドバー ===== */
 #sidebar{position:fixed;top:42px;left:0;width:186px;bottom:0;background:#fff;border-right:1px solid #dde3ec;overflow-y:auto;z-index:900}
 .side-group{padding:8px 12px 2px;font-size:10px;color:#8899aa;font-weight:700;text-transform:uppercase;letter-spacing:.6px;margin-top:4px}
+.side-group-toggle{display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none}
+.side-group-toggle:hover{color:#1a56db}
+.side-group-arrow{font-size:9px;transition:transform .2s;margin-right:2px}
+.side-group-toggle.collapsed .side-group-arrow{transform:rotate(-90deg)}
 .side-item{display:flex;align-items:center;gap:8px;padding:7px 14px;cursor:pointer;color:#445566;transition:background .15s;border-left:3px solid transparent;white-space:nowrap;overflow:hidden}
 .side-item:hover{background:#f0f4fa}
 .side-item.active{background:#e8f0fe;color:#1a56db;font-weight:600;border-left-color:#1a56db}
@@ -731,14 +735,16 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
       <div class="side-item" id="m-inv" style="display:none" onclick="showInvoiceApp()"><span class="si-icon">📄</span>請求書フォーム</div>
     </div>
     <div id="adminMenu" style="display:none">
-      <div class="side-group">システム設定</div>
-      <div class="side-item" id="m-au" onclick="showMod('admin','users')"><span class="si-icon">👤</span>ユーザー管理</div>
-      <div class="side-item" id="m-ad" onclick="showMod('admin','depts')"><span class="si-icon">🏢</span>部署管理</div>
-      <div class="side-item" id="m-ap" onclick="showMod('admin','perms')"><span class="si-icon">🔐</span>権限設定</div>
-    </div>
-    <div id="systemMenu" style="display:none">
-      <div class="side-group">開発中のアプリ</div>
-      <div class="side-item" id="m-da" onclick="showMod('devapps')"><span class="si-icon">🧪</span>アプリ一覧</div>
+      <div class="side-group side-group-toggle" id="sysGroupHdr" onclick="toggleSysGroup()">
+        <span>システム設定</span><span class="side-group-arrow" id="sysGroupArrow">▼</span>
+      </div>
+      <div id="sysGroupBody">
+        <div class="side-item" id="m-au" onclick="showMod('admin','users')"><span class="si-icon">👤</span>ユーザー管理</div>
+        <div class="side-item" id="m-ad" onclick="showMod('admin','depts')"><span class="si-icon">🏢</span>部署管理</div>
+        <div class="side-item" id="m-ap" onclick="showMod('admin','perms')"><span class="si-icon">🔐</span>権限設定</div>
+        <div class="side-item" id="m-ab" onclick="showMod('admin','backup')"><span class="si-icon">🛡️</span>バックアップ</div>
+        <div class="side-item" id="m-da" onclick="showMod('devapps')"><span class="si-icon">🧪</span>開発中のアプリ</div>
+      </div>
     </div>
   </div>
 
@@ -2778,7 +2784,7 @@ function showMod(mod,sub,_fromPop){
   } else if(mod==='admin'){
     if(!isSystem()) return; // system のみ
     document.getElementById('adminView').style.display='block';
-    const sideId = sub==='depts'?'d': sub==='perms'?'p':'u';
+    const sideId = sub==='depts'?'d': sub==='perms'?'p': sub==='backup'?'b':'u';
     document.getElementById('m-a'+sideId).classList.add('active');
     adminTab=sub||'users';
     switchAdminTab(adminTab);
@@ -7586,6 +7592,25 @@ function resetPermMatrix(){
 // =========================================================
 // 管理者パネル
 // =========================================================
+// システム設定グループの折りたたみ切替（状態は記憶）
+function toggleSysGroup(){
+  const body=document.getElementById('sysGroupBody');
+  const hdr=document.getElementById('sysGroupHdr');
+  if(!body||!hdr) return;
+  const collapsed = body.style.display!=='none';
+  body.style.display = collapsed ? 'none' : 'block';
+  hdr.classList.toggle('collapsed', collapsed);
+  try{ localStorage.setItem('gw2_sysGroupCollapsed', collapsed?'1':'0'); }catch(e){}
+}
+// 起動時に前回の折りたたみ状態を復元
+function restoreSysGroupState(){
+  let collapsed=false;
+  try{ collapsed = localStorage.getItem('gw2_sysGroupCollapsed')==='1'; }catch(e){}
+  const body=document.getElementById('sysGroupBody');
+  const hdr=document.getElementById('sysGroupHdr');
+  if(body&&hdr&&collapsed){ body.style.display='none'; hdr.classList.add('collapsed'); }
+}
+
 function switchAdminTab(tab){
   adminTab=tab;
   ['users','depts','perms','backup'].forEach(k=>{
@@ -8057,7 +8082,7 @@ function startApp(){
   // システム設定・開発中のアプリは system のみ表示
   if(isSystem()){
     document.getElementById('adminMenu').style.display='block';
-    document.getElementById('systemMenu').style.display='block';
+    restoreSysGroupState();
   }
   // 前回ログイン時刻を保存してからTOPへ
   const uid = s.userId;
