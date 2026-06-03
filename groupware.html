@@ -7602,7 +7602,7 @@ function switchAdminTab(tab){
 // バックアップ機能（自動スナップショット・手動エクスポート・復元）
 // =========================================================
 const _BACKUP_COL = 'gw_backups';
-const _BACKUP_KEEP = 30; // 保持日数
+const _BACKUP_DAILY_KEEP_DAYS = 60; // 日次は60日保持。毎月1日(月次)は永久保存
 
 // スナップショット対象データを収集（ci_file_ で始まる大きな添付は除外）
 // maxBytes 指定時は、小さいキーを優先して上限内に収める（重要データを確実に保護）
@@ -7632,14 +7632,18 @@ async function autoBackup(){
     const { data: snapObj, dropped } = _snapshotData(900000);
     await ref.set({ data: JSON.stringify(snapObj), at: new Date().toISOString(), by: (getS()?.name||'') });
     if(dropped.length) console.warn('[backup] サイズ上限で除外:', dropped);
-    // 古いバックアップを削除（保持日数を超えた分）
+    // 古い「日次」のみ整理。毎月1日(月次)は永久保存し、絶対に消さない
+    const cutoff = new Date(Date.now() - _BACKUP_DAILY_KEEP_DAYS*86400000)
+                     .toLocaleDateString('sv',{timeZone:'Asia/Tokyo'});
     const all = await _db.collection(_BACKUP_COL).get();
-    const dates = []; all.forEach(d=>dates.push(d.id)); dates.sort();
-    while(dates.length > _BACKUP_KEEP){
-      const old = dates.shift();
-      await _db.collection(_BACKUP_COL).doc(old).delete();
-    }
-    console.log('[backup] 自動スナップショット作成:', today);
+    const toDelete = [];
+    all.forEach(d=>{
+      const id = d.id;
+      const isMonthly = /-01$/.test(id);   // 毎月1日のスナップショットは永久保存
+      if(!isMonthly && id < cutoff) toDelete.push(id);
+    });
+    for(const old of toDelete){ await _db.collection(_BACKUP_COL).doc(old).delete(); }
+    console.log('[backup] 自動スナップショット作成:', today, '／日次整理:', toDelete.length+'件');
   }catch(e){ console.warn('[backup] 自動バックアップ失敗:', e); }
 }
 
@@ -7700,10 +7704,12 @@ async function backupListSnapshots(){
     snap.forEach(d=>{ const x=d.data(); rows.push({ id:d.id, at:x.at, by:x.by, size:(x.data||'').length }); });
     rows.sort((a,b)=>b.id.localeCompare(a.id));
     if(!rows.length){ el.innerHTML = '<div style="color:#9ca3af">まだ自動バックアップがありません。「📸 今すぐスナップショット」で作成できます。</div>'; return; }
-    el.innerHTML = rows.map(r=>`<div style="display:flex;align-items:center;gap:10px;padding:9px 14px;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:6px">
-      <div style="flex:1"><span style="font-weight:700;font-size:14px">${r.id}</span> <span style="font-size:11px;color:#9ca3af">${(r.at||'').slice(0,16).replace('T',' ')}　${esc(r.by||'')}　${(r.size/1024).toFixed(0)}KB</span></div>
+    el.innerHTML = rows.map(r=>{
+      const monthly = /-01$/.test(r.id);
+      return `<div style="display:flex;align-items:center;gap:10px;padding:9px 14px;border:1px solid ${monthly?'#c7d2fe':'#e2e8f0'};background:${monthly?'#eef2ff':'#fff'};border-radius:8px;margin-bottom:6px">
+      <div style="flex:1"><span style="font-weight:700;font-size:14px">${r.id}</span>${monthly?'<span style="font-size:10px;background:#4f46e5;color:#fff;border-radius:4px;padding:1px 6px;margin-left:6px;font-weight:700">月次・永久保存</span>':''} <span style="font-size:11px;color:#9ca3af">${(r.at||'').slice(0,16).replace('T',' ')}　${esc(r.by||'')}　${(r.size/1024).toFixed(0)}KB</span></div>
       <button onclick="backupRestoreSnapshot('${r.id}')" style="background:#7c3aed;color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer">この日に戻す</button>
-    </div>`).join('');
+    </div>`;}).join('');
   }catch(e){ el.innerHTML = '<div style="color:#dc2626">読み込みエラー: '+esc(e.message)+'</div>'; }
 }
 
