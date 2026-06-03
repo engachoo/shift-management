@@ -8063,8 +8063,9 @@ function startApp(){
   const uid = s.userId;
   const prevLogin = load('lastLogin_'+uid, null);
   save('lastLogin_'+uid, jstISO());
-  // 管理者ログイン時に1日1回の自動バックアップ（バックグラウンド実行）
-  if(s.role==='system'||s.role==='soumu'||s.role==='admin') autoBackup();
+  // 誰がログインしても1日1回の自動バックアップ（バックグラウンド実行）
+  // 全ユーザーが全データを読み込んでいるため、誰のログインでも完全なスナップショットになる
+  autoBackup();
   startActivityTimer(); // 自動ログアウトタイマー開始（管理者以外）
   markHelpNewSections(); // 説明書Newバッジ初期化
   // 初期履歴エントリを差し替え（ブラウザ戻るでアプリ内に留まる）
