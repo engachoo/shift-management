@@ -853,6 +853,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
         <div class="admin-tab active" id="at-users" onclick="switchAdminTab('users')">👤 ユーザー管理</div>
         <div class="admin-tab" id="at-depts" onclick="switchAdminTab('depts')">🏢 部署管理</div>
         <div class="admin-tab" id="at-perms" onclick="switchAdminTab('perms')">🔐 権限設定</div>
+        <div class="admin-tab" id="at-backup" onclick="switchAdminTab('backup')">🛡️ バックアップ</div>
       </div>
       <div class="admin-card">
         <div id="adminUsers">
@@ -892,6 +893,17 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
             <button class="btn-primary" onclick="savePermMatrix()">💾 保存する</button>
             <button class="btn-secondary" onclick="resetPermMatrix()">↩ デフォルトに戻す</button>
           </div>
+        </div>
+        <div id="adminBackup" style="display:none">
+          <div style="font-size:14px;font-weight:700;margin-bottom:6px">🛡️ データのバックアップと復元</div>
+          <div style="font-size:12px;color:#6b7280;margin-bottom:16px;line-height:1.8">毎日ログイン時に自動でスナップショットを保存します（過去30日分）。万一データが消えても、ここから戻せます。<br>重要な変更の前は「💾 ダウンロード」で<strong>手元やUSBにも保存</strong>しておくと、クラウドが全滅しても復元できます。</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:22px">
+            <button onclick="backupExportJSON()" style="background:#16a34a;color:#fff;border:none;border-radius:8px;padding:10px 18px;font-size:13px;font-weight:700;cursor:pointer">💾 バックアップをダウンロード</button>
+            <button onclick="backupCreateNow()" style="background:#1a56db;color:#fff;border:none;border-radius:8px;padding:10px 18px;font-size:13px;font-weight:700;cursor:pointer">📸 今すぐスナップショット</button>
+            <label style="background:#f59e0b;color:#fff;border-radius:8px;padding:10px 18px;font-size:13px;font-weight:700;cursor:pointer;display:inline-block">↺ ファイルから復元<input type="file" accept="application/json" onchange="backupImportJSON(this)" style="display:none"></label>
+          </div>
+          <div style="font-size:13px;font-weight:700;margin-bottom:10px">📅 自動スナップショット一覧（クリックでその日に復元）</div>
+          <div id="backupSnapList" style="font-size:13px;color:#9ca3af">読み込み中...</div>
         </div>
       </div>
     </div>
@@ -7576,13 +7588,136 @@ function resetPermMatrix(){
 // =========================================================
 function switchAdminTab(tab){
   adminTab=tab;
-  ['users','depts','perms'].forEach(k=>{
+  ['users','depts','perms','backup'].forEach(k=>{
     document.getElementById('admin'+k.charAt(0).toUpperCase()+k.slice(1)).style.display=k===tab?'block':'none';
     document.getElementById('at-'+k).classList.toggle('active',k===tab);
   });
   if(tab==='users') renderUserTable();
   else if(tab==='depts') renderDeptTree();
   else if(tab==='perms') renderPermMatrix();
+  else if(tab==='backup') backupListSnapshots();
+}
+
+// =========================================================
+// バックアップ機能（自動スナップショット・手動エクスポート・復元）
+// =========================================================
+const _BACKUP_COL = 'gw_backups';
+const _BACKUP_KEEP = 30; // 保持日数
+
+// スナップショット対象データを収集（ci_file_ で始まる大きな添付は除外）
+// maxBytes 指定時は、小さいキーを優先して上限内に収める（重要データを確実に保護）
+function _snapshotData(maxBytes){
+  const entries = [];
+  Object.keys(_cache).forEach(k=>{
+    if(k.startsWith('ci_file_')) return; // 添付ファイル本体は除外（サイズ大）
+    entries.push([k, JSON.stringify(_cache[k])]);
+  });
+  entries.sort((a,b)=>a[1].length - b[1].length); // 小さい順
+  const out = {}; const dropped = []; let total = 2;
+  for(const [k,v] of entries){
+    if(maxBytes && total + v.length + k.length + 5 > maxBytes){ dropped.push(k); continue; }
+    out[k] = _cache[k]; total += v.length + k.length + 5;
+  }
+  return { data: out, dropped };
+}
+
+// 自動スナップショット（1日1回・管理者ログイン時）
+async function autoBackup(){
+  if(!_fbReady || _fbDocCount===0) return; // 読み込み不完全時はバックアップしない
+  const today = new Date().toLocaleDateString('sv',{timeZone:'Asia/Tokyo'}); // YYYY-MM-DD
+  try{
+    const ref = _db.collection(_BACKUP_COL).doc(today);
+    const snap = await ref.get();
+    if(snap.exists) return; // 今日分は作成済み
+    const { data: snapObj, dropped } = _snapshotData(900000);
+    await ref.set({ data: JSON.stringify(snapObj), at: new Date().toISOString(), by: (getS()?.name||'') });
+    if(dropped.length) console.warn('[backup] サイズ上限で除外:', dropped);
+    // 古いバックアップを削除（保持日数を超えた分）
+    const all = await _db.collection(_BACKUP_COL).get();
+    const dates = []; all.forEach(d=>dates.push(d.id)); dates.sort();
+    while(dates.length > _BACKUP_KEEP){
+      const old = dates.shift();
+      await _db.collection(_BACKUP_COL).doc(old).delete();
+    }
+    console.log('[backup] 自動スナップショット作成:', today);
+  }catch(e){ console.warn('[backup] 自動バックアップ失敗:', e); }
+}
+
+// 今すぐスナップショット（手動）
+async function backupCreateNow(){
+  if(!_fbReady){ alert('データベースに接続していません'); return; }
+  const today = new Date().toLocaleDateString('sv',{timeZone:'Asia/Tokyo'});
+  try{
+    const { data: snapObj, dropped } = _snapshotData(900000);
+    await _db.collection(_BACKUP_COL).doc(today).set({ data: JSON.stringify(snapObj), at: new Date().toISOString(), by: (getS()?.name||'') });
+    if(dropped.length) console.warn('[backup] サイズ上限で除外:', dropped);
+    showToast('✅ 今日のスナップショットを保存しました');
+    backupListSnapshots();
+  }catch(e){ alert('スナップショット作成に失敗しました: '+e.message); }
+}
+
+// 全データをJSONファイルとしてダウンロード（添付ファイル含む完全バックアップ）
+function backupExportJSON(){
+  const all = {};
+  Object.keys(_cache).forEach(k=> all[k] = _cache[k]);
+  const blob = new Blob([JSON.stringify(all)], { type:'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const d = new Date().toLocaleDateString('sv',{timeZone:'Asia/Tokyo'});
+  const t = new Date().toLocaleTimeString('sv',{timeZone:'Asia/Tokyo'}).replace(/:/g,'');
+  a.href = url; a.download = `groupware_backup_${d}_${t}.json`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('💾 バックアップをダウンロードしました');
+}
+
+// JSONファイルから復元
+function backupImportJSON(input){
+  const file = input.files[0];
+  if(!file) return;
+  if(!confirm('このファイルの内容で現在のデータを上書きします。\nよろしいですか？\n\n（念のため先に「💾 ダウンロード」で現状を保存することを推奨します）')){ input.value=''; return; }
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    try{
+      const obj = JSON.parse(reader.result);
+      let n=0; Object.keys(obj).forEach(k=>{ save(k, obj[k]); n++; });
+      showToast(`✅ ${n}件のデータを復元しました。再読み込みします`);
+      setTimeout(()=>location.reload(), 1500);
+    }catch(e){ alert('ファイルの読み込みに失敗しました: '+e.message); }
+  };
+  reader.readAsText(file);
+  input.value='';
+}
+
+// 自動スナップショット一覧を表示
+async function backupListSnapshots(){
+  const el = document.getElementById('backupSnapList');
+  if(!el) return;
+  el.innerHTML = '読み込み中...';
+  try{
+    const snap = await _db.collection(_BACKUP_COL).get();
+    const rows = [];
+    snap.forEach(d=>{ const x=d.data(); rows.push({ id:d.id, at:x.at, by:x.by, size:(x.data||'').length }); });
+    rows.sort((a,b)=>b.id.localeCompare(a.id));
+    if(!rows.length){ el.innerHTML = '<div style="color:#9ca3af">まだ自動バックアップがありません。「📸 今すぐスナップショット」で作成できます。</div>'; return; }
+    el.innerHTML = rows.map(r=>`<div style="display:flex;align-items:center;gap:10px;padding:9px 14px;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:6px">
+      <div style="flex:1"><span style="font-weight:700;font-size:14px">${r.id}</span> <span style="font-size:11px;color:#9ca3af">${(r.at||'').slice(0,16).replace('T',' ')}　${esc(r.by||'')}　${(r.size/1024).toFixed(0)}KB</span></div>
+      <button onclick="backupRestoreSnapshot('${r.id}')" style="background:#7c3aed;color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer">この日に戻す</button>
+    </div>`).join('');
+  }catch(e){ el.innerHTML = '<div style="color:#dc2626">読み込みエラー: '+esc(e.message)+'</div>'; }
+}
+
+// スナップショットから復元
+async function backupRestoreSnapshot(date){
+  if(!confirm(`${date} のバックアップで現在のデータを上書きします。\nよろしいですか？`)) return;
+  try{
+    const doc = await _db.collection(_BACKUP_COL).doc(date).get();
+    if(!doc.exists){ alert('バックアップが見つかりません'); return; }
+    const obj = JSON.parse(doc.data().data);
+    let n=0; Object.keys(obj).forEach(k=>{ save(k, obj[k]); n++; });
+    showToast(`✅ ${date} の状態に復元しました（${n}件）。再読み込みします`);
+    setTimeout(()=>location.reload(), 1500);
+  }catch(e){ alert('復元に失敗しました: '+e.message); }
 }
 
 function markRowDirty(uid){
@@ -7922,6 +8057,8 @@ function startApp(){
   const uid = s.userId;
   const prevLogin = load('lastLogin_'+uid, null);
   save('lastLogin_'+uid, jstISO());
+  // 管理者ログイン時に1日1回の自動バックアップ（バックグラウンド実行）
+  if(s.role==='system'||s.role==='soumu'||s.role==='admin') autoBackup();
   startActivityTimer(); // 自動ログアウトタイマー開始（管理者以外）
   markHelpNewSections(); // 説明書Newバッジ初期化
   // 初期履歴エントリを差し替え（ブラウザ戻るでアプリ内に留まる）
