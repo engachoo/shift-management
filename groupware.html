@@ -2551,15 +2551,24 @@ function initData(){
     ]);
   }
 
-  // 届出書フォーム初期データ（3社×19種類・ファイルは後でアップロード）
+  // 届出書フォーム初期データ（会社ごとに種類が異なる・ファイルは後でアップロード）
+  // 大日・AMUSE JAPAN（19種類）
+  const tkNamesStd=['稟議','勤務・休暇','登録・休業関係','営業交通費','交通事故報告書','妊産婦誓約書','労災の件にて','紛失届','トラブル報告書','物品借用書','各種証明発行申請書','メールアドレス申請書','物品購入伺い兼発注依頼書','人事推薦書','退職願い','誓約書','給与明細　特別支給申請書','鍵の保管・利用に関する誓約書（羽島）','鍵の保管・利用に関する誓約書（桑名）'];
+  // ウェルピア（24種類・退職願い6種ほか独自）
+  const tkNamesWelpia=['勤務・休暇（山下）','稟議','勤務・休暇','登録・休業関係','営業交通費','交通事故報告書','妊産婦誓約書','労災の件にて','紛失届','トラブル報告書','物品借用書','各種証明発行申請書','メールアドレス申請書','物品購入伺い兼発注依頼書','人事推薦書','退職願い','退職願い (2)','退職願い（印無し）','退職願い（定年）','退職願い（契約満了）','退職願い（暫定）','誓約書','給与明細　特別支給申請書','鍵の保管・利用に関する誓約書'];
+  const tkToday=new Date().toLocaleDateString('sv',{timeZone:'Asia/Tokyo'});
+  const tkBuild=(co,names)=>names.map((nm,i)=>({id:uid(),company:co,name:nm,order:i,revDate:tkToday,excel:null,pdf:null,history:[]}));
   if(!load('todoke_forms',null) && _isSafeToSave('todoke_forms')){
-    const tkNames=['稟議','勤務・休暇','登録・休業関係','営業交通費','交通事故報告書','妊産婦誓約書','労災の件にて','紛失届','トラブル報告書','物品借用書','各種証明発行申請書','メールアドレス申請書','物品購入伺い兼発注依頼書','人事推薦書','退職願い','誓約書','給与明細　特別支給申請書','鍵の保管・利用に関する誓約書（羽島）','鍵の保管・利用に関する誓約書（桑名）'];
-    const tkToday=new Date().toLocaleDateString('sv',{timeZone:'Asia/Tokyo'});
-    const tkForms=[];
-    ['dainichi','amuse','welpia'].forEach(co=>{
-      tkNames.forEach((nm,i)=>tkForms.push({id:uid(),company:co,name:nm,order:i,revDate:tkToday,excel:null,pdf:null,history:[]}));
-    });
-    save('todoke_forms',tkForms);
+    save('todoke_forms',[...tkBuild('dainichi',tkNamesStd),...tkBuild('amuse',tkNamesStd),...tkBuild('welpia',tkNamesWelpia)]);
+  } else if(load('todoke_forms',null) && load('todoke_welpia_ver','')!=='v2' && _isSafeToSave('todoke_forms')){
+    // ウェルピアの一覧を正しい構成に修正（ファイル未登録の場合のみ安全に置換）
+    const all=load('todoke_forms',[]);
+    const welpiaHasFile=all.some(f=>f.company==='welpia'&&((f.excel&&f.excel.ref)||(f.pdf&&f.pdf.ref)));
+    if(!welpiaHasFile){
+      const others=all.filter(f=>f.company!=='welpia');
+      save('todoke_forms',[...others,...tkBuild('welpia',tkNamesWelpia)]);
+    }
+    save('todoke_welpia_ver','v2');
   }
 }
 
