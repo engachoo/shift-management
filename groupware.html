@@ -2356,9 +2356,11 @@ function doLogout(){
 // 初期データ（差分追加型：既存データを消さない）
 // =========================================================
 function initData(){
-  // Firestoreから実際にデータが読み込まれた場合のみ該当キーを上書き可能
-  // （読み込み不完全時にデフォルト値でFirestoreを上書きしないための保護）
-  const _isSafeToSave = (k) => _fbDocCount === 0 || _cache.hasOwnProperty(k);
+  // Firestoreの読み込みが成功している(=1件以上読めた)場合は、
+  // コレクション全体が取得できているため、存在しないキーは「本当に未登録」と判断でき
+  // 新キーの初期投入は安全。読み込みが0件の異常時のみ全保存を停止し、
+  // デフォルト値でクラウドのデータを上書きしないよう保護する。
+  const _isSafeToSave = (k) => _fbDocCount > 0 || _cache.hasOwnProperty(k);
 
   // ---- 部署：不足分だけ追加 ----
   const defaultDepts = [
