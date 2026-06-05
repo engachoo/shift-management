@@ -733,6 +733,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
       <div class="side-group">経理・事務</div>
       <div class="side-item" id="m-pc" onclick="showMod('pettycash')"><span class="si-icon">💰</span>現金出納簿</div>
       <div class="side-item" id="m-inv" style="display:none" onclick="showInvoiceApp()"><span class="si-icon">📄</span>請求書フォーム</div>
+      <div class="side-item" id="m-tk" onclick="showMod('todoke')"><span class="si-icon">📋</span>届出書ダウンロード</div>
     </div>
     <div id="adminMenu" style="display:none">
       <div class="side-group side-group-toggle" id="sysGroupHdr" onclick="toggleSysGroup()">
@@ -2549,6 +2550,17 @@ function initData(){
       {id:'t3',title:'福祉月例会 資料準備',done:false,priority:'med',due:'2026-05-13',userId:'iwashimizu'},
     ]);
   }
+
+  // 届出書フォーム初期データ（3社×19種類・ファイルは後でアップロード）
+  if(!load('todoke_forms',null) && _isSafeToSave('todoke_forms')){
+    const tkNames=['稟議','勤務・休暇','登録・休業関係','営業交通費','交通事故報告書','妊産婦誓約書','労災の件にて','紛失届','トラブル報告書','物品借用書','各種証明発行申請書','メールアドレス申請書','物品購入伺い兼発注依頼書','人事推薦書','退職願い','誓約書','給与明細　特別支給申請書','鍵の保管・利用に関する誓約書（羽島）','鍵の保管・利用に関する誓約書（桑名）'];
+    const tkToday=new Date().toLocaleDateString('sv',{timeZone:'Asia/Tokyo'});
+    const tkForms=[];
+    ['dainichi','amuse','welpia'].forEach(co=>{
+      tkNames.forEach((nm,i)=>tkForms.push({id:uid(),company:co,name:nm,order:i,revDate:tkToday,excel:null,pdf:null,history:[]}));
+    });
+    save('todoke_forms',tkForms);
+  }
 }
 
 // =========================================================
@@ -2866,6 +2878,11 @@ function showMod(mod,sub,_fromPop){
     document.getElementById('devAppsView').style.display='block';
     document.getElementById('m-da').classList.add('active');
     renderDevApps();
+  } else if(mod==='todoke'){
+    if(!getS()) return;
+    document.getElementById('devAppsView').style.display='block';
+    document.getElementById('m-tk').classList.add('active');
+    renderTodokeApp();
   }
   updateBadges();
 }
@@ -3434,6 +3451,7 @@ function renderDevApps(){
   const apps = [
     { id:'petty_cash', name:'小口出納帳',       icon:'💰', desc:'各部門の小口現金の収支を記録・管理します', status:'運用中', color:'#f0fdf4', border:'#16a34a' },
     { id:'invoice',    name:'請求書発行フォーム', icon:'📄', desc:'請求書の作成・承認・PDF出力・ラベル印刷を管理します', status:'運用中', color:'#eff6ff', border:'#3b82f6' },
+    { id:'todoke',     name:'届出書ダウンロード', icon:'📋', desc:'各社の届出書をExcel・PDFでダウンロード。書式変更は総務経理・システムのみ', status:'運用中', color:'#fff7ed', border:'#fb923c' },
   ];
   const el = document.getElementById('devAppsContent');
   if(!el) return;
@@ -3450,6 +3468,183 @@ function renderDevApps(){
 function openDevApp(id){
   if(id==='petty_cash') openPettyCash();
   else if(id==='invoice') openInvoiceApp();
+  else if(id==='todoke') showMod('todoke');
+}
+
+// =========================================================
+// 📋 届出書ダウンロード
+// =========================================================
+const TODOKE_COMPANIES = [
+  {id:'dainichi', name:'大日産業',    color:'#1a56db'},
+  {id:'amuse',    name:'AMUSE JAPAN', color:'#7c3aed'},
+  {id:'welpia',   name:'ウェルピア',  color:'#16a34a'},
+];
+let _tkCompany = 'dainichi';
+let _tkUpload = null; // { formId, name, excelFile, pdfFile }
+
+// フォーマット変更（アップロード）はシステム・総務経理のみ
+function tkCanManage(){ const r=getS()?.role; return r==='system'||r==='soumu'; }
+
+function renderTodokeApp(){
+  const el=document.getElementById('devAppsContent'); if(!el) return;
+  const forms=load('todoke_forms',[]).filter(f=>f.company===_tkCompany).sort((a,b)=>(a.order||0)-(b.order||0));
+  const canManage=tkCanManage();
+  const tabs=TODOKE_COMPANIES.map(c=>`<button onclick="_tkCompany='${c.id}';renderTodokeApp()" style="background:${_tkCompany===c.id?c.color:'#f1f5f9'};color:${_tkCompany===c.id?'#fff':'#374151'};border:1.5px solid ${_tkCompany===c.id?c.color:'#d1d5db'};border-radius:8px;padding:9px 22px;font-size:14px;font-weight:700;cursor:pointer">${esc(c.name)}</button>`).join('');
+  const rows=forms.map(f=>{
+    const hasExcel=!!(f.excel&&f.excel.ref), hasPdf=!!(f.pdf&&f.pdf.ref);
+    const histCount=(f.history||[]).length;
+    return `<tr style="border-bottom:1px solid #eef2f7">
+      <td style="padding:10px 12px;font-size:13px;font-weight:600;color:#1a2b4a">${esc(f.name)}</td>
+      <td style="padding:10px 12px;font-size:12px;color:#6b7280;white-space:nowrap;text-align:center">${esc(f.revDate||'-')}</td>
+      <td style="padding:10px 12px;text-align:center;white-space:nowrap">
+        ${hasExcel?`<button onclick="tkDownload('${f.id}','excel')" style="background:#16a34a;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;margin:2px">📥 Excel</button>`:`<span style="font-size:11px;color:#cbd5e1">Excel未登録</span>`}
+        ${hasPdf?`<button onclick="tkDownload('${f.id}','pdf')" style="background:#dc2626;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;margin:2px">📄 PDF</button>`:`<span style="font-size:11px;color:#cbd5e1">PDF未登録</span>`}
+      </td>
+      <td style="padding:10px 12px;text-align:center;white-space:nowrap">
+        <button onclick="tkHistory('${f.id}')" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;border-radius:6px;padding:6px 10px;font-size:12px;cursor:pointer">📜 改訂履歴${histCount?`(${histCount})`:''}</button>
+        ${canManage?`<button onclick="tkOpenUpload('${f.id}')" style="background:#fff7ed;border:1px solid #fdba74;color:#c2410c;border-radius:6px;padding:6px 10px;font-size:12px;cursor:pointer;margin-left:4px">⬆ フォーマット変更</button>`:''}
+      </td>
+    </tr>`;
+  }).join('');
+  el.innerHTML=`
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+      <h2 style="font-size:18px;font-weight:700;color:#1a2b4a;margin:0">📋 届出書ダウンロード</h2>
+      <span style="font-size:12px;color:#6b7280">各社の届出書をExcel・PDFでダウンロードできます</span>
+    </div>
+    <div style="display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap">${tabs}</div>
+    ${canManage?`<div style="display:flex;justify-content:flex-end;margin-bottom:8px"><button onclick="tkOpenUpload('')" style="background:#1a3a6b;color:#fff;border:none;border-radius:7px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer">＋ 届出書を追加</button></div>`:''}
+    <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;min-width:560px">
+        <thead><tr style="background:#1e3a6b;color:#fff">
+          <th style="padding:10px 12px;text-align:left;font-size:12px">届出書名</th>
+          <th style="padding:10px 12px;text-align:center;font-size:12px;white-space:nowrap">改訂年月日</th>
+          <th style="padding:10px 12px;text-align:center;font-size:12px">ダウンロード</th>
+          <th style="padding:10px 12px;text-align:center;font-size:12px">操作</th>
+        </tr></thead>
+        <tbody>${rows||`<tr><td colspan="4" style="padding:20px;text-align:center;color:#9ca3af">届出書がまだ登録されていません</td></tr>`}</tbody>
+      </table>
+    </div>
+    ${canManage?'':'<div style="font-size:11px;color:#9ca3af;margin-top:10px">※ 書式の変更（フォーマット変更）は総務経理・システム権限の担当者のみ可能です</div>'}`;
+}
+
+// ファイルをFirestoreに保存（請求書添付と同じ fs:// 方式・無料）
+async function tkUploadFileToStore(file){
+  const base64=await new Promise((res,rej)=>{const r=new FileReader();r.onload=e=>res(e.target.result);r.onerror=rej;r.readAsDataURL(file);});
+  if(base64.length>900000) throw new Error(`「${file.name}」が大きすぎます（目安650KB以下）。ファイルを軽くしてから再度お試しください。`);
+  const fileId=uid();
+  await _db.collection(_COL).doc('tk_file_'+fileId).set({ v: JSON.stringify({ name:file.name, type:file.type, size:file.size, data:base64 }) });
+  return { ref:'fs://'+fileId, name:file.name, size:file.size };
+}
+
+// ダウンロード
+async function tkDownload(formId, kind){
+  const f=load('todoke_forms',[]).find(x=>x.id===formId); if(!f) return;
+  const meta=kind==='excel'?f.excel:f.pdf;
+  if(!meta||!meta.ref){ alert('ファイルが未登録です'); return; }
+  try{
+    showToast('📄 ファイルを取得中...',3000);
+    const fileId=meta.ref.replace('fs://','');
+    const doc=await _db.collection(_COL).doc('tk_file_'+fileId).get();
+    if(!doc.exists){ alert('ファイルが見つかりません'); return; }
+    const data=JSON.parse(doc.data().v);
+    const a=document.createElement('a');
+    a.href=data.data; a.download=meta.name||(kind==='pdf'?'届出書.pdf':'届出書.xlsx');
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    showToast('✅ ダウンロードしました');
+  }catch(e){ alert('ダウンロードに失敗しました: '+e.message); }
+}
+
+// アップロード画面を開く
+function tkOpenUpload(formId){
+  if(!tkCanManage()){ alert('フォーマット変更はシステム・総務経理のみ可能です'); return; }
+  _tkUpload={ formId: formId||'', name:'', excelFile:null, pdfFile:null };
+  if(formId){ const f=load('todoke_forms',[]).find(x=>x.id===formId); if(f) _tkUpload.name=f.name; }
+  renderTkUpload();
+}
+
+function renderTkUpload(){
+  const el=document.getElementById('devAppsContent'); if(!el) return;
+  const isNew=!_tkUpload.formId;
+  const comp=TODOKE_COMPANIES.find(c=>c.id===_tkCompany)||TODOKE_COMPANIES[0];
+  el.innerHTML=`
+    <div style="max-width:560px;margin:0 auto">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+        <button onclick="renderTodokeApp()" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#475569;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:12px">← 一覧</button>
+        <h2 style="font-size:17px;font-weight:700;color:#1a2b4a;margin:0">${isNew?'届出書を追加':'フォーマット変更'}（${esc(comp.name)}）</h2>
+      </div>
+      <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:20px">
+        <label style="display:block;font-size:13px;font-weight:700;color:#374151;margin-bottom:6px">届出書名</label>
+        <input id="tk-name" value="${esc(_tkUpload.name)}" ${isNew?'':'readonly'} placeholder="例：稟議" style="width:100%;border:1.5px solid #d1d5db;border-radius:6px;padding:8px 10px;font-size:14px;box-sizing:border-box;margin-bottom:16px;${isNew?'':'background:#f3f4f6;color:#6b7280'}">
+        <label style="display:block;font-size:13px;font-weight:700;color:#374151;margin-bottom:6px">📥 Excelファイル（.xlsx / .xls）</label>
+        <input type="file" id="tk-excel" accept=".xlsx,.xls,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onchange="_tkUpload.excelFile=this.files[0]||null" style="margin-bottom:16px;font-size:13px;width:100%">
+        <label style="display:block;font-size:13px;font-weight:700;color:#374151;margin-bottom:6px">📄 PDFファイル</label>
+        <input type="file" id="tk-pdf" accept="application/pdf,.pdf" onchange="_tkUpload.pdfFile=this.files[0]||null" style="margin-bottom:16px;font-size:13px;width:100%">
+        <div style="font-size:11px;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:8px 10px;margin-bottom:16px;line-height:1.7">※ 1ファイルあたり <strong>650KB程度まで</strong>。変更すると<strong>改訂年月日が本日に更新</strong>され、改訂履歴に記録されます。${isNew?'':'空欄の項目は変更されません。'}</div>
+        <div style="display:flex;gap:10px;justify-content:flex-end">
+          <button onclick="renderTodokeApp()" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#374151;border-radius:7px;padding:9px 18px;font-size:13px;cursor:pointer">キャンセル</button>
+          <button id="tk-save-btn" onclick="tkSaveUpload()" style="background:#1a3a6b;color:#fff;border:none;border-radius:7px;padding:9px 24px;font-size:14px;font-weight:700;cursor:pointer">💾 保存</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function tkSaveUpload(){
+  if(!tkCanManage()) return;
+  const isNew=!_tkUpload.formId;
+  const name=document.getElementById('tk-name')?.value.trim();
+  if(!name){ alert('届出書名を入力してください'); return; }
+  if(isNew && !_tkUpload.excelFile && !_tkUpload.pdfFile){ alert('ExcelまたはPDFファイルを選択してください'); return; }
+  const btn=document.getElementById('tk-save-btn');
+  if(btn){ btn.disabled=true; btn.textContent='保存中...'; }
+  try{
+    const forms=load('todoke_forms',[]);
+    let form = _tkUpload.formId ? forms.find(f=>f.id===_tkUpload.formId) : null;
+    if(!form){
+      const maxOrder=Math.max(0,...forms.filter(f=>f.company===_tkCompany).map(f=>f.order||0));
+      form={ id:uid(), company:_tkCompany, name, order:maxOrder+1, revDate:'', excel:null, pdf:null, history:[] };
+      forms.push(form);
+    }
+    let changed=false;
+    if(_tkUpload.excelFile){ const m=await tkUploadFileToStore(_tkUpload.excelFile); form.excel={ref:m.ref,name:m.name,size:m.size}; changed=true; }
+    if(_tkUpload.pdfFile){   const m=await tkUploadFileToStore(_tkUpload.pdfFile);   form.pdf={ref:m.ref,name:m.name,size:m.size};     changed=true; }
+    if(changed){
+      const today=new Date().toLocaleDateString('sv',{timeZone:'Asia/Tokyo'});
+      form.revDate=today;
+      form.history=form.history||[];
+      form.history.unshift({ date:today, at:jstISO(), by:getS()?.name||'', excel:_tkUpload.excelFile?_tkUpload.excelFile.name:'', pdf:_tkUpload.pdfFile?_tkUpload.pdfFile.name:'' });
+    }
+    save('todoke_forms',forms);
+    showToast('✅ 保存しました');
+    renderTodokeApp();
+  }catch(e){
+    alert('保存に失敗しました: '+e.message);
+    if(btn){ btn.disabled=false; btn.textContent='💾 保存'; }
+  }
+}
+
+// 改訂履歴
+function tkHistory(formId){
+  const f=load('todoke_forms',[]).find(x=>x.id===formId); if(!f) return;
+  const old=document.getElementById('tkHistOverlay'); if(old) old.remove();
+  const hist=f.history||[];
+  const rows=hist.length?hist.map(h=>`<div style="padding:10px 14px;border-bottom:1px solid #eef2f7">
+      <div style="font-size:13px;font-weight:700;color:#1a2b4a">${esc(h.date||(h.at||'').slice(0,10))}</div>
+      <div style="font-size:12px;color:#6b7280;margin-top:2px">変更者：${esc(h.by||'-')}</div>
+      ${h.excel?`<div style="font-size:11px;color:#16a34a;margin-top:2px">📥 ${esc(h.excel)}</div>`:''}
+      ${h.pdf?`<div style="font-size:11px;color:#dc2626">📄 ${esc(h.pdf)}</div>`:''}
+    </div>`).join(''):'<div style="padding:24px;text-align:center;color:#9ca3af;font-size:13px">改訂履歴はまだありません</div>';
+  const ov=document.createElement('div');
+  ov.id='tkHistOverlay';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10300;display:flex;align-items:center;justify-content:center;padding:20px';
+  ov.onclick=e=>{ if(e.target===ov) ov.remove(); };
+  ov.innerHTML=`<div style="background:#fff;border-radius:12px;max-width:440px;width:100%;max-height:80vh;overflow:hidden;display:flex;flex-direction:column">
+    <div style="background:#1a3a6b;color:#fff;padding:14px 18px;display:flex;justify-content:space-between;align-items:center">
+      <span style="font-weight:700;font-size:14px">📜 改訂履歴 — ${esc(f.name)}</span>
+      <button onclick="document.getElementById('tkHistOverlay').remove()" style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer;line-height:1">×</button>
+    </div>
+    <div style="overflow-y:auto">${rows}</div>
+  </div>`;
+  document.body.appendChild(ov);
 }
 
 // =========================================================
@@ -7699,7 +7894,7 @@ const _BACKUP_DAILY_KEEP_DAYS = 60; // 日次は60日保持。毎月1日(月次)
 function _snapshotData(maxBytes){
   const entries = [];
   Object.keys(_cache).forEach(k=>{
-    if(k.startsWith('ci_file_')) return; // 添付ファイル本体は除外（サイズ大）
+    if(k.startsWith('ci_file_')||k.startsWith('tk_file_')) return; // 添付ファイル本体は除外（サイズ大）
     entries.push([k, JSON.stringify(_cache[k])]);
   });
   entries.sort((a,b)=>a[1].length - b[1].length); // 小さい順
