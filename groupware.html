@@ -1766,6 +1766,74 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
           </div>
         </div>
 
+        <!-- 請求書フォーム -->
+        <div style="margin-bottom:20px" data-help-new="2026-06-05">
+          <div class="help-section-title" style="font-size:15px;font-weight:700;color:#1a2b4a;border-bottom:2px solid #dde3ec;padding-bottom:6px;margin-bottom:10px">📄 請求書フォーム</div>
+          <div style="font-size:13px;color:#334;line-height:1.8">
+            <ul style="padding-left:18px;margin:0 0 12px 0">
+              <li>サイドバーの「経理・事務」→「📄 請求書フォーム」からアクセスします（<strong>総務経理・システム権限のみ</strong>表示）</li>
+              <li>請求書の <strong>作成 → 確認 → 承認（電子押印）→ PDF発行・印刷 → 発送</strong> までを一括で管理します</li>
+            </ul>
+
+            <!-- 進行ステータス -->
+            <div style="background:#eff6ff;border:1.5px solid #93c5fd;border-radius:6px;padding:12px;margin-bottom:12px">
+              <div style="font-weight:700;color:#1a3a6b;margin-bottom:8px">🔄 進行ステータスの流れ</div>
+              <div style="display:grid;grid-template-columns:90px 1fr;gap:5px 12px;font-size:12px;align-items:start">
+                <span style="font-weight:700;color:#6b7280">📝 下書き</span><span>作成途中。本人と総務経理が編集できます</span>
+                <span style="font-weight:700;color:#d97706">🔔 申請中</span><span>発行依頼を送信した状態。総務経理が内容を確認します</span>
+                <span style="font-weight:700;color:#7c3aed">📋 承認申請</span><span>確認が済み、承認（押印）待ちの状態です</span>
+                <span style="font-weight:700;color:#16a34a">✅ 承認済</span><span>電子押印が完了。PDF出力・印刷ができます</span>
+                <span style="font-weight:700;color:#7c3aed">📮 発送済</span><span>取引先へ送付済みとして記録した状態です</span>
+                <span style="font-weight:700;color:#dc2626">↩ 差し戻し</span><span>修正が必要なため作成者へ戻された状態です</span>
+              </div>
+            </div>
+
+            <!-- 作成手順 -->
+            <div style="background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:6px;padding:12px;margin-bottom:12px">
+              <div style="font-weight:700;color:#166534;margin-bottom:6px">✏️ 請求書の作成手順</div>
+              <ol style="margin:0;padding-left:18px;color:#334;line-height:2">
+                <li>右上の <strong>「＋ 新規」</strong> を押します</li>
+                <li><strong>請求先（取引先）</strong> を選びます。未登録の場合は新規入力できます</li>
+                <li><strong>発行部署・件名・お支払期限</strong> を設定します</li>
+                <li>明細（摘要・数量・単価）を入力すると <strong>金額・消費税・合計が自動計算</strong> されます</li>
+                <li><strong>「💾 下書き保存」</strong> で一時保存、<strong>「📤 発行依頼」</strong> で総務経理へ申請します</li>
+              </ol>
+            </div>
+
+            <!-- 確認・承認 -->
+            <div style="background:#fff1f2;border:1.5px solid #fecdd3;border-radius:6px;padding:12px;margin-bottom:12px">
+              <div style="font-weight:700;color:#be123c;margin-bottom:6px">✅ 確認・承認（総務経理・システムのみ）</div>
+              <ul style="margin:0;padding-left:18px;color:#334;line-height:2">
+                <li>申請中の請求書を開き、内容を確認して <strong>「📋 確認済み → 承認申請へ」</strong> を押します</li>
+                <li>続いて <strong>「✅ 承認する（電子押印）」</strong> で会社印が自動的に押されます</li>
+                <li>内容に不備があれば <strong>「↩ 差し戻し」</strong> で作成者へ戻せます</li>
+              </ul>
+            </div>
+
+            <!-- 印刷・発送 -->
+            <div style="background:#f5f3ff;border:1.5px solid #c4b5fd;border-radius:6px;padding:12px;margin-bottom:12px">
+              <div style="font-weight:700;color:#5b21b6;margin-bottom:6px">🖨 PDF出力・印刷・発送</div>
+              <ul style="margin:0;padding-left:18px;color:#334;line-height:2">
+                <li>承認済の請求書で <strong>「🖨 PDF出力・印刷」</strong> を押すとA4プレビューが開きます</li>
+                <li>プレビュー上部の <strong>「🖨 印刷 / PDF保存」</strong> から印刷、またはPDFとして保存できます</li>
+                <li><strong>「🏷 封筒ラベル」</strong> で宛名ラベル（A4・2列×6行）を印刷できます</li>
+                <li>送付したら <strong>「📮 発送済にする」</strong> で記録します</li>
+                <li style="color:#b45309"><strong>※印刷ダイアログが開かない場合</strong>は、いったんタブを閉じて新しいタブで開き直すと改善します（ブラウザのキャッシュが原因です）</li>
+              </ul>
+            </div>
+
+            <!-- 業者名簿 -->
+            <div style="background:#fff7ed;border:1.5px solid #fdba74;border-radius:6px;padding:12px">
+              <div style="font-weight:700;color:#c2410c;margin-bottom:6px">📋 業者名簿（取引先の登録）</div>
+              <ul style="margin:0;padding-left:18px;color:#334;line-height:2">
+                <li>一覧上部の <strong>「📋 業者名簿」</strong> から取引先の社名・住所・担当者などを登録できます</li>
+                <li>登録した取引先は新規作成時に選ぶだけで宛先に反映されます</li>
+                <li><strong>「📋 一括登録」</strong> で複数の取引先をまとめて登録することもできます</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
         <!-- 権限 -->
         <div style="margin-bottom:20px">
           <div style="font-size:15px;font-weight:700;color:#1a2b4a;border-bottom:2px solid #dde3ec;padding-bottom:6px;margin-bottom:10px">🔐 権限について</div>
