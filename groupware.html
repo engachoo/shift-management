@@ -733,6 +733,9 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
       <div class="side-group">経理・事務</div>
       <div class="side-item" id="m-pc" onclick="showMod('pettycash')"><span class="si-icon">💰</span>現金出納簿</div>
       <div class="side-item" id="m-inv" style="display:none" onclick="showInvoiceApp()"><span class="si-icon">📄</span>請求書フォーム</div>
+    </div>
+    <div id="hrMenu" style="display:none">
+      <div class="side-group">人事・勤怠・労務</div>
       <div class="side-item" id="m-tk" onclick="showMod('todoke')"><span class="si-icon">📋</span>届出書ダウンロード</div>
     </div>
     <div id="adminMenu" style="display:none">
@@ -3534,6 +3537,12 @@ function renderTodokeApp(){
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
       <h2 style="font-size:18px;font-weight:700;color:#1a2b4a;margin:0">📋 届出書ダウンロード</h2>
       <span style="font-size:12px;color:#6b7280">一覧から選んでダウンロード → 記入 → 承認申請（人事労務）で申請</span>
+      <span style="font-size:11px;background:#fef3c7;color:#92400e;border:1px solid #fde68a;border-radius:20px;padding:2px 10px;font-weight:700">テスト運用中</span>
+    </div>
+    <div style="background:#fff1f2;border:1.5px solid #fecdd3;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:#be123c;line-height:1.9">
+      <strong>⚠️ ご注意</strong><br>
+      各担当者は必要な様式を <strong>ダウンロードして記入</strong> してください。<br>
+      <strong>書式（フォーマット）の変更は禁止</strong> です。変更の必要がある場合は <strong>本社（総務経理）にご相談</strong> ください。
     </div>
     <div style="display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap">${tabs}</div>
     ${canManage?`<div style="display:flex;justify-content:flex-end;margin-bottom:8px"><button onclick="tkOpenUpload('')" style="background:#1a3a6b;color:#fff;border:none;border-radius:7px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer">＋ 届出書を追加</button></div>`:''}
@@ -3621,9 +3630,14 @@ function renderTkUpload(){
         <h2 style="font-size:17px;font-weight:700;color:#1a2b4a;margin:0">${isNew?'届出書を追加':'書式編集'}（${esc(comp.name)}）</h2>
       </div>
       <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:20px">
+        ${isNew?'':`<div style="background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:12px;color:#1e3a5f;line-height:1.9">
+          <strong>📝 書式の編集手順</strong><br>
+          <strong>①</strong> 下のボタンで <strong>現在のExcelをダウンロード</strong> → <strong>②</strong> Excelで書式を修正 → <strong>③</strong> 修正したExcel（必要ならPDFも）を下で選択 → <strong>④</strong> 「💾 保存」で登録（改訂年月日・改訂履歴・ダウンロードが更新されます）
+          <div style="margin-top:10px"><button onclick="tkDownload('${_tkUpload.formId}','excel')" style="background:#16a34a;color:#fff;border:none;border-radius:6px;padding:7px 16px;font-size:12px;font-weight:700;cursor:pointer">📥 現在のExcelをダウンロードして編集</button></div>
+        </div>`}
         <label style="display:block;font-size:13px;font-weight:700;color:#374151;margin-bottom:6px">届出書名</label>
         <input id="tk-name" value="${esc(_tkUpload.name)}" ${isNew?'':'readonly'} placeholder="例：稟議" style="width:100%;border:1.5px solid #d1d5db;border-radius:6px;padding:8px 10px;font-size:14px;box-sizing:border-box;margin-bottom:16px;${isNew?'':'background:#f3f4f6;color:#6b7280'}">
-        <label style="display:block;font-size:13px;font-weight:700;color:#374151;margin-bottom:6px">📥 Excelファイル（.xlsx / .xls）</label>
+        <label style="display:block;font-size:13px;font-weight:700;color:#374151;margin-bottom:6px">📥 ${isNew?'':'修正後の '}Excelファイル（.xlsx / .xls）</label>
         <input type="file" id="tk-excel" accept=".xlsx,.xls,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onchange="_tkUpload.excelFile=this.files[0]||null" style="margin-bottom:16px;font-size:13px;width:100%">
         <label style="display:block;font-size:13px;font-weight:700;color:#374151;margin-bottom:6px">📄 PDFファイル</label>
         <input type="file" id="tk-pdf" accept="application/pdf,.pdf" onchange="_tkUpload.pdfFile=this.files[0]||null" style="margin-bottom:16px;font-size:13px;width:100%">
@@ -8385,8 +8399,11 @@ function startApp(){
   }
   // 経理・事務メニューはログイン済み全ユーザーに表示
   document.getElementById('acctMenu').style.display='block';
-  // 請求書フォームは system・soumu のみ表示
-  if(s.role==='system'||s.role==='soumu') document.getElementById('m-inv').style.display='flex';
+  // 請求書フォーム・人事勤怠労務（届出書）は system・soumu のみ表示（届出書はテスト中）
+  if(s.role==='system'||s.role==='soumu'){
+    document.getElementById('m-inv').style.display='flex';
+    document.getElementById('hrMenu').style.display='block';
+  }
   // システム設定・開発中のアプリは system のみ表示
   if(isSystem()){
     document.getElementById('adminMenu').style.display='block';
