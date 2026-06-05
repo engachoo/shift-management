@@ -3490,6 +3490,13 @@ const TODOKE_COMPANIES = [
   {id:'amuse',    name:'AMUSE JAPAN', color:'#7c3aed'},
   {id:'welpia',   name:'ウェルピア',  color:'#16a34a'},
 ];
+// リポジトリ同梱の初期Excelファイル（書式編集でアップロードされた場合はそちらを優先）
+const TK_STATIC = {
+  dainichi: {"稟議":"forms/dainichi/f01.xlsx","勤務・休暇":"forms/dainichi/f02.xlsx","登録・休業関係":"forms/dainichi/f03.xlsx","営業交通費":"forms/dainichi/f04.xlsx","交通事故報告書":"forms/dainichi/f05.xlsx","妊産婦誓約書":"forms/dainichi/f06.xlsx","労災の件にて":"forms/dainichi/f07.xlsx","紛失届":"forms/dainichi/f08.xlsx","トラブル報告書":"forms/dainichi/f09.xlsx","物品借用書":"forms/dainichi/f10.xlsx","各種証明発行申請書":"forms/dainichi/f11.xlsx","メールアドレス申請書":"forms/dainichi/f12.xlsx","物品購入伺い兼発注依頼書":"forms/dainichi/f13.xlsx","人事推薦書":"forms/dainichi/f14.xlsx","退職願い":"forms/dainichi/f15.xlsx","誓約書":"forms/dainichi/f16.xlsx","給与明細　特別支給申請書":"forms/dainichi/f17.xlsx","鍵の保管・利用に関する誓約書（羽島）":"forms/dainichi/f18.xlsx","鍵の保管・利用に関する誓約書（桑名）":"forms/dainichi/f19.xlsx"},
+  amuse: {"稟議":"forms/amuse/f01.xlsx","勤務・休暇":"forms/amuse/f02.xlsx","登録・休業関係":"forms/amuse/f03.xlsx","営業交通費":"forms/amuse/f04.xlsx","交通事故報告書":"forms/amuse/f05.xlsx","妊産婦誓約書":"forms/amuse/f06.xlsx","労災の件にて":"forms/amuse/f07.xlsx","紛失届":"forms/amuse/f08.xlsx","トラブル報告書":"forms/amuse/f09.xlsx","物品借用書":"forms/amuse/f10.xlsx","各種証明発行申請書":"forms/amuse/f11.xlsx","メールアドレス申請書":"forms/amuse/f12.xlsx","物品購入伺い兼発注依頼書":"forms/amuse/f13.xlsx","人事推薦書":"forms/amuse/f14.xlsx","退職願い":"forms/amuse/f15.xlsx","誓約書":"forms/amuse/f16.xlsx","給与明細　特別支給申請書":"forms/amuse/f17.xlsx","鍵の保管・利用に関する誓約書（羽島）":"forms/amuse/f18.xlsx","鍵の保管・利用に関する誓約書（桑名）":"forms/amuse/f19.xlsx"},
+  welpia: {"勤務・休暇（山下）":"forms/welpia/f01.xlsx","稟議":"forms/welpia/f02.xlsx","勤務・休暇":"forms/welpia/f03.xlsx","登録・休業関係":"forms/welpia/f04.xlsx","営業交通費":"forms/welpia/f05.xlsx","交通事故報告書":"forms/welpia/f06.xlsx","妊産婦誓約書":"forms/welpia/f07.xlsx","労災の件にて":"forms/welpia/f08.xlsx","紛失届":"forms/welpia/f09.xlsx","トラブル報告書":"forms/welpia/f10.xlsx","物品借用書":"forms/welpia/f11.xlsx","各種証明発行申請書":"forms/welpia/f12.xlsx","メールアドレス申請書":"forms/welpia/f13.xlsx","物品購入伺い兼発注依頼書":"forms/welpia/f14.xlsx","人事推薦書":"forms/welpia/f15.xlsx","退職願い":"forms/welpia/f16.xlsx","退職願い (2)":"forms/welpia/f17.xlsx","退職願い（印無し）":"forms/welpia/f18.xlsx","退職願い（定年）":"forms/welpia/f19.xlsx","退職願い（契約満了）":"forms/welpia/f20.xlsx","退職願い（暫定）":"forms/welpia/f21.xlsx","誓約書":"forms/welpia/f22.xlsx","給与明細　特別支給申請書":"forms/welpia/f23.xlsx","鍵の保管・利用に関する誓約書":"forms/welpia/f24.xlsx"},
+};
+function tkStaticExcel(company,name){ return (TK_STATIC[company]||{})[name]||null; }
 let _tkCompany = 'dainichi';
 let _tkUpload = null; // { formId, name, excelFile, pdfFile }
 
@@ -3503,7 +3510,7 @@ function renderTodokeApp(){
   const canManage=tkCanManage();
   const tabs=TODOKE_COMPANIES.map(c=>`<button onclick="_tkCompany='${c.id}';renderTodokeApp()" style="background:${_tkCompany===c.id?c.color:'#f1f5f9'};color:${_tkCompany===c.id?'#fff':'#374151'};border:1.5px solid ${_tkCompany===c.id?c.color:'#d1d5db'};border-radius:8px;padding:9px 22px;font-size:14px;font-weight:700;cursor:pointer">${esc(c.name)}</button>`).join('');
   const rows=forms.map((f,idx)=>{
-    const hasExcel=!!(f.excel&&f.excel.ref), hasPdf=!!(f.pdf&&f.pdf.ref);
+    const hasExcel=!!(f.excel&&f.excel.ref)||!!tkStaticExcel(f.company,f.name), hasPdf=!!(f.pdf&&f.pdf.ref);
     const histCount=(f.history||[]).length;
     return `<tr style="border-bottom:1px solid #eef2f7;background:${idx%2?'#f8fafc':'#fff'}">
       <td style="padding:10px 12px;text-align:center;font-size:12px;color:#94a3b8;font-weight:700;width:36px">${idx+1}</td>
@@ -3559,18 +3566,40 @@ async function tkUploadFileToStore(file){
 async function tkDownload(formId, kind){
   const f=load('todoke_forms',[]).find(x=>x.id===formId); if(!f) return;
   const meta=kind==='excel'?f.excel:f.pdf;
-  if(!meta||!meta.ref){ alert('ファイルが未登録です'); return; }
-  try{
-    showToast('📄 ファイルを取得中...',3000);
-    const fileId=meta.ref.replace('fs://','');
-    const doc=await _db.collection(_COL).doc('tk_file_'+fileId).get();
-    if(!doc.exists){ alert('ファイルが見つかりません'); return; }
-    const data=JSON.parse(doc.data().v);
-    const a=document.createElement('a');
-    a.href=data.data; a.download=meta.name||(kind==='pdf'?'届出書.pdf':'届出書.xlsx');
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    showToast('✅ ダウンロードしました');
-  }catch(e){ alert('ダウンロードに失敗しました: '+e.message); }
+  // ① 書式編集でアップロード済み（Firestore fs://）を最優先
+  if(meta&&meta.ref){
+    try{
+      showToast('📄 ファイルを取得中...',3000);
+      const fileId=meta.ref.replace('fs://','');
+      const doc=await _db.collection(_COL).doc('tk_file_'+fileId).get();
+      if(!doc.exists){ alert('ファイルが見つかりません'); return; }
+      const data=JSON.parse(doc.data().v);
+      const a=document.createElement('a');
+      a.href=data.data; a.download=meta.name||(kind==='pdf'?'届出書.pdf':'届出書.xlsx');
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      showToast('✅ ダウンロードしました');
+    }catch(e){ alert('ダウンロードに失敗しました: '+e.message); }
+    return;
+  }
+  // ② 同梱の初期Excel（Excelのみ）
+  if(kind==='excel'){
+    const path=tkStaticExcel(f.company,f.name);
+    if(path){
+      try{
+        showToast('📄 ダウンロード中...',2000);
+        const res=await fetch(path);
+        if(!res.ok) throw new Error('HTTP '+res.status);
+        const blob=await res.blob();
+        const url=URL.createObjectURL(blob);
+        const a=document.createElement('a'); a.href=url; a.download=f.name+'.xlsx';
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        setTimeout(()=>URL.revokeObjectURL(url),30000);
+        showToast('✅ ダウンロードしました');
+      }catch(e){ alert('ダウンロードに失敗しました: '+e.message); }
+      return;
+    }
+  }
+  alert('ファイルが未登録です');
 }
 
 // アップロード画面を開く
