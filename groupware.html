@@ -3494,16 +3494,6 @@ let _tkUpload = null; // { formId, name, excelFile, pdfFile }
 // フォーマット変更（アップロード）はシステム・総務経理のみ
 function tkCanManage(){ const r=getS()?.role; return r==='system'||r==='soumu'; }
 
-// 記入後の届出を「承認申請 → 人事労務」で申請する画面へ
-function tkApplyHr(formName){
-  showMod('circular');
-  if(typeof openCiModal==='function') openCiModal();
-  if(typeof switchCiMode==='function') switchCiMode('hr');
-  const t=document.getElementById('ci-title');
-  if(t && formName){ t.value='【届出】'+formName; }
-  const b=document.getElementById('ci-body');
-  if(b && !b.value){ b.value='「'+formName+'」を提出します。記入済みのファイルを添付しています。'; }
-}
 
 function renderTodokeApp(){
   const el=document.getElementById('devAppsContent'); if(!el) return;
@@ -3513,49 +3503,45 @@ function renderTodokeApp(){
   const rows=forms.map((f,idx)=>{
     const hasExcel=!!(f.excel&&f.excel.ref), hasPdf=!!(f.pdf&&f.pdf.ref);
     const histCount=(f.history||[]).length;
-    const fname=esc(f.name).replace(/'/g,"\\'");
     return `<tr style="border-bottom:1px solid #eef2f7;background:${idx%2?'#f8fafc':'#fff'}">
-      <td style="padding:10px 14px;font-size:13px;color:#1a2b4a;white-space:nowrap"><span style="color:#1d4ed8;margin-right:6px">○</span><strong>${esc(f.name)}</strong></td>
-      <td style="padding:10px 12px;font-size:12px;color:#6b7280;white-space:nowrap;text-align:center">${esc(f.revDate||'-')}</td>
-      <td style="padding:10px 12px;white-space:nowrap">
-        ${hasExcel?`<a onclick="tkDownload('${f.id}','excel')" style="color:#15803d;font-size:12px;font-weight:700;cursor:pointer;text-decoration:underline;margin-right:14px;white-space:nowrap">📥 Excel形式</a>`:`<span style="font-size:11px;color:#cbd5e1;margin-right:14px">Excel未登録</span>`}
-        ${hasPdf?`<a onclick="tkDownload('${f.id}','pdf')" style="color:#b91c1c;font-size:12px;font-weight:700;cursor:pointer;text-decoration:underline;white-space:nowrap">📄 PDF形式</a>`:`<span style="font-size:11px;color:#cbd5e1">PDF未登録</span>`}
+      <td style="padding:10px 12px;text-align:center;font-size:12px;color:#94a3b8;font-weight:700;width:36px">${idx+1}</td>
+      <td style="padding:10px 14px;font-size:13px;color:#1a2b4a"><strong>${esc(f.name)}</strong><div style="font-size:11px;color:#9ca3af;margin-top:2px">改訂：${esc(f.revDate||'-')}</div></td>
+      <td style="padding:10px 10px;text-align:center;white-space:nowrap">
+        ${hasExcel?`<button onclick="tkDownload('${f.id}','excel')" style="background:#16a34a;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer">📥 Excel</button>`:`<span style="font-size:11px;color:#cbd5e1">未登録</span>`}
       </td>
-      <td style="padding:10px 12px;text-align:center;white-space:nowrap">
-        <button onclick="tkApplyHr('${fname}')" style="background:#166534;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer">📝 人事労務で申請</button>
+      <td style="padding:10px 10px;text-align:center;white-space:nowrap">
+        ${hasPdf?`<button onclick="tkDownload('${f.id}','pdf')" style="background:#dc2626;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer">📄 PDF</button>`:`<span style="font-size:11px;color:#cbd5e1">未登録</span>`}
       </td>
-      <td style="padding:10px 12px;text-align:center;white-space:nowrap">
+      <td style="padding:10px 10px;text-align:center;white-space:nowrap">
         <button onclick="tkHistory('${f.id}')" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;border-radius:6px;padding:6px 10px;font-size:12px;cursor:pointer">📜 改訂履歴${histCount?`(${histCount})`:''}</button>
-        ${canManage?`<button onclick="tkOpenUpload('${f.id}')" style="background:#fff7ed;border:1px solid #fdba74;color:#c2410c;border-radius:6px;padding:6px 10px;font-size:12px;cursor:pointer;margin-left:4px">⬆ フォーマット変更</button>`:''}
       </td>
+      ${canManage?`<td style="padding:10px 10px;text-align:center;white-space:nowrap">
+        <button onclick="tkOpenUpload('${f.id}')" style="background:#fff7ed;border:1px solid #fdba74;color:#c2410c;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer">✏️ 書式編集</button>
+      </td>`:''}
     </tr>`;
   }).join('');
+  const colCount=canManage?6:5;
   el.innerHTML=`
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
       <h2 style="font-size:18px;font-weight:700;color:#1a2b4a;margin:0">📋 届出書ダウンロード</h2>
-      <span style="font-size:12px;color:#6b7280">各社の届出書をダウンロードして記入後、人事労務で申請します</span>
-    </div>
-    <div style="background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:#166534;line-height:1.9">
-      <strong>📌 ご利用の流れ</strong><br>
-      <strong>①</strong> 必要な届出書を <strong>Excel形式 または PDF形式</strong> でダウンロード　→
-      <strong>②</strong> Excelに入力、または印刷して手書きで記入　→
-      <strong>③</strong> 右側の <strong>「📝 人事労務で申請」</strong> から、記入済みファイルを添付して申請
+      <span style="font-size:12px;color:#6b7280">一覧から選んでダウンロード → 記入 → 承認申請（人事労務）で申請</span>
     </div>
     <div style="display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap">${tabs}</div>
     ${canManage?`<div style="display:flex;justify-content:flex-end;margin-bottom:8px"><button onclick="tkOpenUpload('')" style="background:#1a3a6b;color:#fff;border:none;border-radius:7px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer">＋ 届出書を追加</button></div>`:''}
     <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;overflow-x:auto">
-      <table style="width:100%;border-collapse:collapse;min-width:680px">
+      <table style="width:100%;border-collapse:collapse;min-width:560px">
         <thead><tr style="background:#1e3a6b;color:#fff">
+          <th style="padding:10px 12px;text-align:center;font-size:12px;width:36px">No.</th>
           <th style="padding:10px 14px;text-align:left;font-size:12px">届出書名</th>
-          <th style="padding:10px 12px;text-align:center;font-size:12px;white-space:nowrap">改訂年月日</th>
-          <th style="padding:10px 12px;text-align:left;font-size:12px">ダウンロード</th>
-          <th style="padding:10px 12px;text-align:center;font-size:12px">申請</th>
-          <th style="padding:10px 12px;text-align:center;font-size:12px">操作</th>
+          <th style="padding:10px 10px;text-align:center;font-size:12px">Excel</th>
+          <th style="padding:10px 10px;text-align:center;font-size:12px">PDF</th>
+          <th style="padding:10px 10px;text-align:center;font-size:12px">改訂履歴</th>
+          ${canManage?'<th style="padding:10px 10px;text-align:center;font-size:12px">書式編集</th>':''}
         </tr></thead>
-        <tbody>${rows||`<tr><td colspan="5" style="padding:20px;text-align:center;color:#9ca3af">届出書がまだ登録されていません</td></tr>`}</tbody>
+        <tbody>${rows||`<tr><td colspan="${colCount}" style="padding:20px;text-align:center;color:#9ca3af">届出書がまだ登録されていません</td></tr>`}</tbody>
       </table>
     </div>
-    ${canManage?'':'<div style="font-size:11px;color:#9ca3af;margin-top:10px">※ 書式の変更（フォーマット変更）は総務経理・システム権限の担当者のみ可能です</div>'}`;
+    ${canManage?'':'<div style="font-size:11px;color:#9ca3af;margin-top:10px">※ 書式の変更（書式編集）は総務経理・システム権限の担当者のみ可能です</div>'}`;
 }
 
 // ファイルをFirestoreに保存（請求書添付と同じ fs:// 方式・無料）
@@ -3601,7 +3587,7 @@ function renderTkUpload(){
     <div style="max-width:560px;margin:0 auto">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
         <button onclick="renderTodokeApp()" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#475569;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:12px">← 一覧</button>
-        <h2 style="font-size:17px;font-weight:700;color:#1a2b4a;margin:0">${isNew?'届出書を追加':'フォーマット変更'}（${esc(comp.name)}）</h2>
+        <h2 style="font-size:17px;font-weight:700;color:#1a2b4a;margin:0">${isNew?'届出書を追加':'書式編集'}（${esc(comp.name)}）</h2>
       </div>
       <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:20px">
         <label style="display:block;font-size:13px;font-weight:700;color:#374151;margin-bottom:6px">届出書名</label>
