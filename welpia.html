@@ -305,6 +305,38 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
 .tc-cell-in{color:var(--green-dk);font-weight:600}
 .tc-cell-out{color:#6b7280}
 .tc-cell-none{color:#d1d5db}
+/* ===== タイムカード 50音グリッド（knowbe風） ===== */
+.tc-gyo-row{display:flex;align-items:flex-start;gap:14px;margin-bottom:14px}
+.tc-gyo-label{flex-shrink:0;width:34px;font-size:22px;font-weight:800;color:#b8c2cc;text-align:center;padding-top:18px}
+.tc-gyo-cards{flex:1;display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:13px}
+.tc-pcard{border:none;border-radius:10px;padding:22px 14px;font-size:19px;font-weight:700;cursor:pointer;font-family:inherit;text-align:center;transition:transform .1s,box-shadow .15s;box-shadow:0 2px 5px rgba(0,0,0,.08);line-height:1.35}
+.tc-pcard:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(0,0,0,.16)}
+.tc-pcard.s-none{background:#f0be2c;color:#fff}
+.tc-pcard.s-in{background:var(--green);color:#fff}
+.tc-pcard.s-out{background:#fff;color:#9aa3ad;border:1.5px solid #e4e9ee}
+.tc-pcard .tc-pc-sub{display:block;font-size:11px;font-weight:600;margin-top:7px;opacity:.92}
+.tc-legend{display:flex;gap:18px;align-items:center;font-size:12px;color:var(--text-lt);margin:4px 0 18px;flex-wrap:wrap}
+.tc-legend i{display:inline-block;width:14px;height:14px;border-radius:4px;margin-right:5px;vertical-align:-2px}
+/* ===== 打刻オーバーレイ ===== */
+#tcPunchView{display:none;position:fixed;inset:0;z-index:7000;background:#eef1f4;flex-direction:column}
+#tcPunchView.show{display:flex}
+.tcpv-head{background:var(--green);color:#fff;padding:18px 28px;font-size:17px;font-weight:600;cursor:pointer;flex-shrink:0;display:flex;align-items:center;gap:8px}
+.tcpv-head:hover{background:var(--green-dk)}
+.tcpv-body{flex:1;display:flex;align-items:center;justify-content:center;gap:56px;flex-wrap:wrap;padding:30px}
+.tcpv-left{text-align:center}
+.tcpv-date{font-size:26px;color:var(--navy);font-weight:600;margin-bottom:8px}
+.tcpv-clock{font-size:88px;font-weight:800;color:var(--navy);letter-spacing:1px;font-variant-numeric:tabular-nums;line-height:1}
+.tcpv-clock .sec{font-size:34px;margin-left:10px;color:#9aa3ad}
+.tcpv-mascot{font-size:88px;margin-top:18px;line-height:1}
+.tcpv-card{background:#fff;border-radius:16px;padding:44px 56px;box-shadow:0 14px 44px rgba(0,48,80,.12);text-align:center;min-width:340px;max-width:90vw}
+.tcpv-name{font-size:31px;font-weight:700;color:var(--navy)}
+.tcpv-greet{font-size:25px;color:var(--navy);margin:12px 0 20px}
+.tcpv-prev{font-size:13px;color:var(--text-lt);line-height:1.8;margin-bottom:28px}
+.tcpv-act{border:none;border-radius:12px;padding:20px 62px;font-size:24px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit;letter-spacing:1px;transition:background .15s}
+.tcpv-act.go{background:var(--green)} .tcpv-act.go:hover{background:var(--green-dk)}
+.tcpv-act.out{background:var(--navy)} .tcpv-act.out:hover{background:var(--navy-dk)}
+.tcpv-done{font-size:17px;color:var(--green-dk);font-weight:700;line-height:1.8}
+.tcpv-edit{margin-top:18px;background:#f3f4f6;color:#6b7280;border:none;border-radius:8px;padding:9px 18px;font-size:13px;cursor:pointer;font-family:inherit}
 /* ===== フォーム（設定） ===== */
 .form-section{background:#fff;border-radius:8px;padding:22px 24px;box-shadow:0 1px 4px rgba(0,0,0,.06);margin-bottom:16px}
 .form-section h3{font-size:15px;font-weight:700;color:var(--navy);margin-bottom:16px;padding-bottom:10px;border-bottom:2px solid var(--green-lt)}
@@ -673,13 +705,19 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
 
         <!-- 日ごと / 月次タブ -->
         <div class="tc-tabs">
-          <div class="tc-tab active" id="tc-tab-day" onclick="switchTcTab('day')">打刻（日ごと）</div>
+          <div class="tc-tab active" id="tc-tab-day" onclick="switchTcTab('day')">打刻（本人をタップ）</div>
           <div class="tc-tab" id="tc-tab-month" onclick="switchTcTab('month')">月次一覧</div>
         </div>
 
-        <!-- 打刻グリッド -->
+        <!-- 打刻グリッド（50音順・本人選択） -->
         <div id="tc-panel-day">
-          <div class="tc-grid" id="tcGrid"></div>
+          <div class="tc-legend">
+            <span><i style="background:#f0be2c"></i>未打刻</span>
+            <span><i style="background:var(--green)"></i>通所中</span>
+            <span><i style="background:#fff;border:1.5px solid #e4e9ee"></i>退勤済</span>
+            <span style="margin-left:auto">名前をタップすると打刻画面が開きます</span>
+          </div>
+          <div id="tcGrid"></div>
         </div>
 
         <!-- 月次テーブル -->
@@ -985,6 +1023,19 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
 
   </div><!-- /mainArea -->
 </div><!-- /app -->
+
+<!-- ===== タイムカード 打刻画面（全画面オーバーレイ） ===== -->
+<div id="tcPunchView">
+  <div class="tcpv-head" onclick="closeTcPunch()">‹ 閉じる</div>
+  <div class="tcpv-body">
+    <div class="tcpv-left">
+      <div class="tcpv-date" id="tcpvDate">―</div>
+      <div class="tcpv-clock" id="tcpvClock">--:--<span class="sec">00</span></div>
+      <div class="tcpv-mascot">🌿</div>
+    </div>
+    <div class="tcpv-card" id="tcpvCard"></div>
+  </div>
+</div>
 
 <!-- ===== モーダル ===== -->
 <div id="modalOverlay">
@@ -1760,7 +1811,14 @@ function _startTcClock(){
   tick();
   _tcClockTimer=setInterval(tick,1000);
 }
-function _stopTcClock(){ if(_tcClockTimer){clearInterval(_tcClockTimer);_tcClockTimer=null;} }
+function _stopTcClock(){
+  if(_tcClockTimer){clearInterval(_tcClockTimer);_tcClockTimer=null;}
+  // 打刻オーバーレイも閉じる
+  const pv=document.getElementById('tcPunchView');
+  if(pv&&pv.classList.contains('show')){ pv.classList.remove('show'); }
+  if(_tcpvTimer){clearInterval(_tcpvTimer);_tcpvTimer=null;}
+  _tcpvClientId=null;
+}
 
 function _updateTcDayLabel(){
   const y=_tcDate.getFullYear(),m=_tcDate.getMonth()+1,d=_tcDate.getDate();
@@ -1782,36 +1840,119 @@ function switchTcTab(tab){
   else renderTcMonth();
 }
 
+// 50音「行」判定
+const TC_GYO=[
+  {key:'あ',chars:'あいうえおぁぃぅぇぉアイウエオァィゥェォｱｲｳｴｵ'},
+  {key:'か',chars:'かきくけこがぎぐげごカキクケコガギグゲゴｶｷｸｹｺ'},
+  {key:'さ',chars:'さしすせそざじずぜぞサシスセソザジズゼゾｻｼｽｾｿ'},
+  {key:'た',chars:'たちつてとだぢづでどっタチツテトダヂヅデドッﾀﾁﾂﾃﾄ'},
+  {key:'な',chars:'なにぬねのナニヌネノﾅﾆﾇﾈﾉ'},
+  {key:'は',chars:'はひふへほばびぶべぼぱぴぷぺぽハヒフヘホバビブベボパピプペポﾊﾋﾌﾍﾎ'},
+  {key:'ま',chars:'まみむめもマミムメモﾏﾐﾑﾒﾓ'},
+  {key:'や',chars:'やゆよゃゅょヤユヨャュョﾔﾕﾖ'},
+  {key:'ら',chars:'らりるれろラリルレロﾗﾘﾙﾚﾛ'},
+  {key:'わ',chars:'わをんゎワヲンヮﾜｦﾝ'}
+];
+function _tcGyo(cl){
+  const k=((cl.kana||cl.name||'').trim())[0]||'';
+  for(const g of TC_GYO){ if(g.chars.indexOf(k)>=0) return g.key; }
+  return '他';
+}
+function _tcDayState(cl,tc,d){
+  const day=tc[cl.id]?.[d]||{};
+  if(day.in&&day.out) return {st:'out',sub:`出 ${day.in} / 退 ${day.out}`};
+  if(day.in) return {st:'in',sub:`出勤 ${day.in}〜`};
+  return {st:'none',sub:'未打刻'};
+}
+
 function renderTcGrid(){
   const fid=_tcFid();
   const y=_tcDate.getFullYear(),m=_tcDate.getMonth()+1,d=_tcDate.getDate();
   const clients=load('clients',[]).filter(c=>c.active!==false&&c.facilityId===fid)
-    .sort((a,b)=>(a.kana||a.name).localeCompare(b.kana||b.name));
+    .sort((a,b)=>(a.kana||a.name).localeCompare(b.kana||b.name,'ja'));
   const tc=load(_tcKey(fid,y,m),{});
   const grid=document.getElementById('tcGrid');
   if(!clients.length){grid.innerHTML='<div class="empty-state">この事業所の利用者が登録されていません</div>';return;}
-  grid.innerHTML=clients.map(cl=>{
-    const day=tc[cl.id]?.[d]||{};
-    const hasIn=!!day.in, hasOut=!!day.out;
-    const cardCls=hasOut?'st-out':hasIn?'st-in':'';
-    const badge=hasOut?'<span class="tc-status-badge tc-badge-out">退勤済</span>'
-      :hasIn?'<span class="tc-status-badge tc-badge-in">通所中</span>'
-      :'<span class="tc-status-badge tc-badge-none">未打刻</span>';
-    const timeHtml=hasIn
-      ?`<div class="tc-times"><span class="t-in">出 ${day.in}</span>${hasOut?`　<span class="t-out">退 ${day.out}</span>`:''}</div>`
-      :'<div class="tc-times" style="color:#e2e8f0">—</div>';
-    const btns=!hasIn
-      ?`<button class="btn-tc-in" onclick="tcPunch('${cl.id}','in')">出勤</button>`
-      :!hasOut
-      ?`<button class="btn-tc-out" onclick="tcPunch('${cl.id}','out')">退勤</button>
-        <button class="btn-tc-edit" onclick="tcEdit('${cl.id}')">修正</button>`
-      :`<button class="btn-tc-edit" onclick="tcEdit('${cl.id}')">修正</button>`;
-    return `<div class="tc-card ${cardCls}" id="tc-card-${cl.id}">
-      <div class="tc-name">${esc(cl.name)}</div>
-      ${badge}${timeHtml}
-      <div class="tc-btn-row">${btns}</div>
-    </div>`;
+  // 行ごとにグループ化
+  const groups={}; TC_GYO.forEach(g=>groups[g.key]=[]); groups['他']=[];
+  clients.forEach(cl=>groups[_tcGyo(cl)].push(cl));
+  const order=[...TC_GYO.map(g=>g.key),'他'];
+  grid.innerHTML=order.filter(k=>groups[k].length).map(k=>{
+    const cards=groups[k].map(cl=>{
+      const {st,sub}=_tcDayState(cl,tc,d);
+      return `<button class="tc-pcard s-${st}" onclick="openTcPunch('${cl.id}')">
+        ${esc(cl.name)}<span class="tc-pc-sub">${esc(sub)}</span>
+      </button>`;
+    }).join('');
+    return `<div class="tc-gyo-row"><div class="tc-gyo-label">${k}</div><div class="tc-gyo-cards">${cards}</div></div>`;
   }).join('');
+}
+
+// ─── 打刻画面（オーバーレイ） ──────────────────────────
+let _tcpvClientId=null, _tcpvTimer=null;
+function _tcPrevUsage(clientId){
+  const fid=_tcFid();
+  // _tcDate の前日から最大62日さかのぼって直近の実績を探す
+  for(let back=1;back<=62;back++){
+    const dt=new Date(_tcDate); dt.setDate(dt.getDate()-back);
+    const y=dt.getFullYear(),m=dt.getMonth()+1,d=dt.getDate();
+    const rec=load(getRecKey(fid,y,m),{})[clientId]?.[d];
+    const tc=load(_tcKey(fid,y,m),{})[clientId]?.[d];
+    const status=rec?.status;
+    if(status){
+      const st=tc?.in||rec?.startTime||''; const en=tc?.out||rec?.endTime||'';
+      const tstr=(st||en)?`${st} 〜 ${en}`:'';
+      return `前回の利用：${status}<br>${y}年${String(m).padStart(2,'0')}月${String(d).padStart(2,'0')}日 ${tstr}`;
+    }
+  }
+  return 'これまでの利用記録はありません';
+}
+function _tcGreet(){ const h=new Date().getHours(); if(h<11) return 'おはようございます'; if(h<17) return 'おつかれさまです'; return 'おつかれさまでした'; }
+
+function openTcPunch(clientId){
+  _tcpvClientId=clientId;
+  document.getElementById('tcPunchView').classList.add('show');
+  _renderTcpvClock();
+  if(!_tcpvTimer) _tcpvTimer=setInterval(_renderTcpvClock,1000);
+  _renderTcpvCard();
+}
+function closeTcPunch(){
+  document.getElementById('tcPunchView').classList.remove('show');
+  if(_tcpvTimer){clearInterval(_tcpvTimer);_tcpvTimer=null;}
+  _tcpvClientId=null;
+  renderTcGrid();
+}
+function _renderTcpvClock(){
+  const n=new Date();
+  const dt=document.getElementById('tcpvDate');
+  if(dt) dt.textContent=`${_tcDate.getFullYear()}年 ${_tcDate.getMonth()+1}月${_tcDate.getDate()}日 ${WD[_tcDate.getDay()]}曜日`;
+  const cl=document.getElementById('tcpvClock');
+  if(cl) cl.innerHTML=`${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}<span class="sec">${String(n.getSeconds()).padStart(2,'0')}</span>`;
+}
+function _renderTcpvCard(){
+  const cl=load('clients',[]).find(c=>c.id===_tcpvClientId); if(!cl) return;
+  const fid=_tcFid(),y=_tcDate.getFullYear(),m=_tcDate.getMonth()+1,d=_tcDate.getDate();
+  const day=load(_tcKey(fid,y,m),{})[cl.id]?.[d]||{};
+  const box=document.getElementById('tcpvCard');
+  let body;
+  if(!day.in){
+    body=`<div class="tcpv-greet">${_tcGreet()}</div>
+      <div class="tcpv-prev">${_tcPrevUsage(cl.id)}</div>
+      <button class="tcpv-act go" onclick="tcDoPunch('in')">通所する</button>`;
+  } else if(!day.out){
+    body=`<div class="tcpv-greet">通所中（出勤 ${day.in}）</div>
+      <div class="tcpv-prev">本日の出勤時刻：${day.in}</div>
+      <button class="tcpv-act out" onclick="tcDoPunch('out')">退勤する</button>`;
+  } else {
+    body=`<div class="tcpv-done">本日の利用は終了しました<br>出勤 ${day.in} ／ 退勤 ${day.out}</div>
+      ${getS()?.role==='admin'?`<button class="tcpv-edit" onclick="closeTcPunch();tcEdit('${cl.id}')">時刻を修正する（管理者）</button>`:''}`;
+  }
+  box.innerHTML=`<div class="tcpv-name">${esc(cl.name)} さん</div>${body}`;
+}
+function tcDoPunch(type){
+  if(!_tcpvClientId) return;
+  tcPunch(_tcpvClientId,type);
+  _renderTcpvCard();
 }
 
 function tcPunch(clientId, type){
