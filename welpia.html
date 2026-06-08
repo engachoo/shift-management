@@ -1604,31 +1604,51 @@ function renderDaily(){
   document.getElementById('ds-med').innerHTML=`${med}<span class="sc-unit">人</span>`;
 }
 
+// サービス提供状況の選択肢（knowbe準拠）
+const REC_STATUSES=['','通所','欠席時対応','訪問','体験利用支援','施設外就労','施設外支援','欠席（加算なし）'];
+// 利用状況の詳細マトリクスの列
+const REC_COLS=[
+  {key:'利用なし', match:s=>!s},
+  {key:'通所',     match:s=>s==='通所'},
+  {key:'欠席時対応', match:s=>s==='欠席時対応'},
+  {key:'訪問',     match:s=>s==='訪問'},
+  {key:'体験利用支援', match:s=>s==='体験利用支援'},
+  {key:'施設外就労', match:s=>s==='施設外就労'},
+  {key:'施設外支援', match:s=>s==='施設外支援'},
+  {key:'欠席',     match:s=>s==='欠席'||s==='欠席（加算なし）'}
+];
+
 function stClass(s){
-  if(s==='欠席'||s==='欠席時対応') return 'td-absence';
+  if(s==='欠席'||s==='欠席（加算なし）'||s==='欠席時対応') return 'td-absence';
   if(s==='施設外就労'||s==='施設外支援') return 'td-outside';
   return '';
 }
 
 function showDailyDetail(){
   const d=_dailyDate,y=d.getFullYear(),mo=d.getMonth()+1,day=d.getDate();
-  const clients=load('clients',[]).filter(c=>c.active!==false&&c.facilityId===_curFacId);
-  let rows='',att=0,abs=0;
-  clients.forEach(c=>{
-    const rec=getRecord(_curFacId,c.id,y,mo,day);
-    const st=rec?.status||'';
-    if(st==='通所'||st==='施設外就労'||st==='施設外支援')att++;
-    if(st==='欠席'||st==='欠席時対応')abs++;
-    rows+=`<tr><td style="padding:7px 10px;border-bottom:1px solid #eef3ec;font-size:13px">${esc(c.name)}</td><td style="padding:7px 10px;border-bottom:1px solid #eef3ec;font-size:13px">${st||'-'}</td><td style="padding:7px 10px;border-bottom:1px solid #eef3ec;font-size:13px">${rec?.start||'-'}</td><td style="padding:7px 10px;border-bottom:1px solid #eef3ec;font-size:13px">${rec?.end||'-'}</td></tr>`;
-  });
+  const clients=load('clients',[]).filter(c=>c.active!==false&&c.facilityId===_curFacId)
+    .sort((a,b)=>(a.kana||a.name).localeCompare(b.kana||b.name,'ja'));
+  const counts=REC_COLS.map(()=>0);
+  const rows=clients.map(c=>{
+    const st=getRecord(_curFacId,c.id,y,mo,day)?.status||'';
+    let cells='';
+    REC_COLS.forEach((col,i)=>{
+      const hit=col.match(st); if(hit) counts[i]++;
+      cells+=`<td style="text-align:center;border-bottom:1px solid #eef3ec;border-left:1px solid #eef3ec;padding:10px 4px">${hit?'<span style="color:var(--green-dk);font-weight:800;font-size:15px">✓</span>':''}</td>`;
+    });
+    return `<tr><td style="padding:9px 12px;border-bottom:1px solid #eef3ec;white-space:nowrap;position:sticky;left:0;background:#fff"><div style="font-size:13px;font-weight:600;color:var(--navy)">${esc(c.name)}</div><div style="font-size:11px;color:var(--text-lt)">${esc(c.receiptNo||'')}</div></td>${cells}</tr>`;
+  }).join('');
+  const head=REC_COLS.map(col=>`<th style="background:#7a93a3;color:#fff;padding:8px 6px;font-size:11px;text-align:center;white-space:nowrap;min-width:66px;border-left:1px solid rgba(255,255,255,.2)">${col.key}</th>`).join('');
+  const cntRow=REC_COLS.map((col,i)=>`<th style="background:#8ba0ad;color:#fff;padding:6px;text-align:center;border-left:1px solid rgba(255,255,255,.2)"><span style="background:rgba(255,255,255,.22);border-radius:11px;padding:3px 9px;font-size:12px;font-weight:700">${counts[i]}人</span></th>`).join('');
   openInfoModal(`利用状況の詳細 — ${fmtDate(d)}`,
-    `<div style="margin-bottom:10px;font-size:13px;color:#4a5568">通所: <strong>${att}人</strong>　欠席: <strong>${abs}人</strong></div>
-    <table style="width:100%;border-collapse:collapse"><thead><tr>
-      <th style="background:var(--green);color:#fff;padding:8px 10px;font-size:12px;text-align:left">氏名</th>
-      <th style="background:var(--green);color:#fff;padding:8px 10px;font-size:12px;text-align:left">状況</th>
-      <th style="background:var(--green);color:#fff;padding:8px 10px;font-size:12px;text-align:left">開始</th>
-      <th style="background:var(--green);color:#fff;padding:8px 10px;font-size:12px;text-align:left">終了</th>
-    </tr></thead><tbody>${rows||'<tr><td colspan="4" style="padding:12px;text-align:center;color:#a0b8a0">記録なし</td></tr>'}</tbody></table>`);
+    `<div style="overflow-x:auto;margin:-4px"><table style="width:100%;border-collapse:collapse">
+      <thead>
+        <tr><th style="background:#7a93a3;color:#fff;padding:8px 12px;font-size:12px;text-align:left;position:sticky;left:0;min-width:130px">利用者氏名/受給者証番号</th>${head}</tr>
+        <tr><th style="background:#8ba0ad;position:sticky;left:0"></th>${cntRow}</tr>
+      </thead>
+      <tbody>${rows||`<tr><td colspan="${REC_COLS.length+1}" style="padding:14px;text-align:center;color:#a0b8a0">記録なし</td></tr>`}</tbody>
+    </table></div>`);
+  const box=document.querySelector('.modal-box'); if(box) box.style.width='min(880px,96vw)';
 }
 
 // =========================================================
@@ -1725,7 +1745,7 @@ function openRecordModal(cid,y,mo,day){
   const dw=getDOW(y,mo,day);
   _mCtx={type:'record',cid,y,mo,day};
   document.getElementById('modalTitle').textContent=`実績を編集 — ${client.name} ${mo}/${day}（${WD[dw]}）`;
-  const opts=(client.serviceType==='A'?['','通所','施設外就労','欠席','欠席時対応']:['','通所','施設外支援','欠席','欠席時対応'])
+  const opts=REC_STATUSES
     .map(s=>`<option value="${s}" ${rec.status===s?'selected':''}>${s||'（未入力）'}</option>`).join('');
   document.getElementById('modalBody').innerHTML=`
     <div style="display:flex;flex-direction:column;gap:16px">
@@ -2350,8 +2370,9 @@ function _kokuhoAggregate(year,month){
       const r=recs[d]; if(!r||!r.status) continue;
       const st=r.status;
       const isAtt=(st==='通所'||st==='施設外就労'||st==='施設外支援');
-      const isAbs=(st==='欠席'||st==='欠席時対応');
-      if(!isAtt&&!isAbs) continue;
+      const isAbsBillable=(st==='欠席時対応');  // 欠席時対応のみ加算対象
+      // 欠席（加算なし）・訪問・体験利用支援 は基本報酬の請求対象外 → スキップ
+      if(!isAtt&&!isAbsBillable) continue;
       let tr=0;
       if(isAtt){
         attended++;
@@ -2359,8 +2380,8 @@ function _kokuhoAggregate(year,month){
         if(r.transport==='片道') tr=1; else if(r.transport==='往復') tr=2;
         transCnt+=tr;
       }
-      if(isAbs) absence++;
-      daily.push({day:d, att:isAtt, start:isAtt?(r.start||'').replace(':',''):'', end:isAtt?(r.end||'').replace(':',''):'', t1:tr>=1?1:0, t2:tr>=2?1:0, abs:isAbs});
+      if(isAbsBillable) absence++;
+      daily.push({day:d, att:isAtt, start:isAtt?(r.start||'').replace(':',''):'', end:isAtt?(r.end||'').replace(':',''):'', t1:tr>=1?1:0, t2:tr>=2?1:0, abs:isAbsBillable});
     }
     if(!daily.length) return; // 当月実績なしは除外
     // サービス明細
