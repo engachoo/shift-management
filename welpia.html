@@ -841,8 +841,8 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
               <input type="checkbox" id="btnToggleInactive" checked onchange="toggleShowInactive()" style="width:15px;height:15px;cursor:pointer;accent-color:var(--green)">
               退所者を非表示にする
             </label>
-            <button class="btn-add" onclick="openClientModal(null)">＋ 利用者を追加</button>
-            <button class="btn-add" onclick="openImportModal()" style="background:var(--navy);border-color:var(--navy)">📥 knowbeからインポート</button>
+            <button class="btn-add" id="btnAddClient" onclick="openClientModal(null)">＋ 利用者を追加</button>
+            <button class="btn-add" id="btnImportClient" onclick="openImportModal()" style="background:var(--navy);border-color:var(--navy)">📥 knowbeからインポート</button>
           </div>
         </div>
         <div class="form-section" style="padding:0;overflow:hidden">
@@ -1506,7 +1506,8 @@ function startApp(){
   _curFacId = facs[0]?.id||'';
   buildFacSelector();
   _syncFacDisplays();
-  showView('daily');
+  applyPermVisibility();
+  showView(firstAllowedView());
   initCrocoPanel();
   renderAlertBanner();
 }
@@ -1517,6 +1518,11 @@ function startApp(){
 let curView='daily';
 const viewIds=['daily','monthly','timecard','claim','facility','clients','init','sysusers','sysperms','croco'];
 function showView(v){
+  // 権限チェック：許可されていない画面は開けない
+  if(typeof canView==='function' && !canView(v)){
+    showToast('この機能を使う権限がありません');
+    v=firstAllowedView();
+  }
   curView=v;
   viewIds.forEach(id=>document.getElementById('view-'+id).style.display='none');
   document.getElementById('view-'+v).style.display='block';
@@ -1740,6 +1746,7 @@ function showMonthlyDetail(){
 // =========================================================
 let _mCtx=null;
 function openRecordModal(cid,y,mo,day){
+  if(!can('record_edit')){showToast('実績を編集する権限がありません');return;}
   const client=load('clients',[]).find(c=>c.id===cid);
   if(!client)return;
   const rec=getRecord(_curFacId,cid,y,mo,day)||{};
@@ -1966,7 +1973,7 @@ function _renderTcpvCard(){
       <button class="tcpv-act out" onclick="tcDoPunch('out')">退勤する</button>`;
   } else {
     body=`<div class="tcpv-done">本日の利用は終了しました<br>出勤 ${day.in} ／ 退勤 ${day.out}</div>
-      ${getS()?.role==='admin'?`<button class="tcpv-edit" onclick="closeTcPunch();tcEdit('${cl.id}')">時刻を修正する（管理者）</button>`:''}`;
+      ${can('timecard_edit')?`<button class="tcpv-edit" onclick="closeTcPunch();tcEdit('${cl.id}')">時刻を修正する</button>`:''}`;
   }
   box.innerHTML=`<div class="tcpv-name">${esc(cl.name)} さん</div>${body}`;
 }
@@ -2016,7 +2023,7 @@ function tcPunch(clientId, type){
 }
 
 function tcEdit(clientId){
-  if(getS()?.role!=='admin'){showToast('修正は管理者のみ可能です');return;}
+  if(!can('timecard_edit')){showToast('打刻修正の権限がありません');return;}
   const fid=_tcFid();
   const y=_tcDate.getFullYear(),m=_tcDate.getMonth()+1,d=_tcDate.getDate();
   const tcKey=_tcKey(fid,y,m);
@@ -3254,14 +3261,15 @@ function renderClients(){
       <td><span class="${c.active!==false?'badge-active':'badge-inactive'}">${c.active!==false?'利用中':'停止'}</span></td>
       <td>${expBadge}</td>
       <td style="display:flex;gap:6px;flex-wrap:wrap">
-        <button class="btn-edit2" onclick="openClientModal('${c.id}')">編集</button>
-        <button class="btn-danger" onclick="deleteClient('${c.id}')">削除</button>
+        ${can('client_edit')?`<button class="btn-edit2" onclick="openClientModal('${c.id}')">編集</button>
+        <button class="btn-danger" onclick="deleteClient('${c.id}')">削除</button>`:'<span style="color:#cbd5e0;font-size:12px">閲覧のみ</span>'}
       </td>
     </tr>`;
   }).join('');
   _checkServiceTypeMismatch();
 }
 function openClientModal(id){
+  if(!can('client_edit')){showToast('利用者情報を編集する権限がありません');return;}
   const facs=load('facilities',[]);
   const clients=load('clients',[]);
   const c=id?clients.find(x=>x.id===id):null;
@@ -4466,6 +4474,50 @@ function getWelbePerms(){
   return r;
 }
 
+// ===== 権限の実行制御 =====
+function _curRole(){ const r=getS()&&getS().role; return (r==='user')?'staff':(r||'staff'); }
+// 管理者は常に全権限。それ以外は権限マトリクスに従う
+function can(key){
+  if(_curRole()==='admin') return true;
+  const p=getWelbePerms()[key];
+  return p ? !!p[_curRole()] : false;
+}
+// 画面ごとの必要権限（__admin__=管理者専用、未定義=誰でも可）
+const VIEW_PERM = {
+  claim:'claim_access', clients:'client_view',
+  facility:'__admin__', init:'__admin__',
+  sysusers:'__admin__', sysperms:'__admin__', croco:'__admin__'
+};
+function canView(v){
+  const need=VIEW_PERM[v];
+  if(!need) return true;
+  if(need==='__admin__') return _curRole()==='admin';
+  return can(need);
+}
+function firstAllowedView(){
+  for(const v of ['daily','timecard','claim','clients']) if(canView(v)) return v;
+  return 'daily';
+}
+// サイドバーの表示/非表示を権限に合わせて適用
+function applyPermVisibility(){
+  const admin=_curRole()==='admin';
+  const set=(id,show)=>{ const el=document.getElementById(id); if(el) el.style.display=show?'':'none'; };
+  set('sm-claim',    can('claim_access'));
+  set('sm-clients',  can('client_view'));
+  set('sm-facility', admin);
+  set('sm-init',     admin);
+  // 設定グループ：子(事業所/利用者/初期設定)が1つでも見えるなら表示
+  const settingVisible = admin || can('client_view');
+  set('sm-setting', settingVisible);
+  if(!settingVisible) set('sub-setting', false);
+  // システム設定：管理者のみ
+  set('sm-sysset', admin);
+  if(!admin) set('sub-sysset', false);
+  // 利用者の追加・インポートボタン（client_edit 権限）
+  set('btnAddClient',    can('client_edit'));
+  set('btnImportClient', can('client_edit'));
+}
+
 // ---- ユーザー設定 ----
 function markSysUserDirty(uid){
   const row=document.getElementById('sysurow-'+uid);
@@ -4731,7 +4783,8 @@ function saveSysPerms(){
     };
   });
   save('welbe_perms', perms);
-  showToast('権限設定を保存しました');
+  applyPermVisibility();
+  showToast('権限設定を保存しました（次回ログインから全員に反映）');
 }
 
 // =========================================================
