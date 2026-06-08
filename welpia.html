@@ -720,9 +720,22 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
           </div>
         </div>
 
-        <!-- 国保連への請求書類ダウンロード -->
+        <!-- 国保連 電子請求（インターフェース形式CSV） -->
+        <div class="claim-panel" style="border:2px solid var(--green);background:#f3fbf0">
+          <div class="claim-panel-ttl">🏛 国保連 電子請求ファイル（伝送・media形式 / Shift-JIS）</div>
+          <div style="font-size:12px;color:#5a6b50;margin:0 0 10px;line-height:1.6">
+            国保中央会の取込ソフトにそのまま読み込める形式（J11/J61）で出力します。<br>
+            <b style="color:#c2410c">⚠ 初回は必ず以前のソフトの出力と1ヶ月分を見比べ、金額・件数が一致することを確認してから本番送信してください。</b>
+          </div>
+          <div class="claim-dl-row">
+            <button class="btn-claim-dl" style="background:var(--navy);border-color:var(--navy);color:#fff" onclick="dlKokuhoSeikyu()">⬇ 請求明細書（J11）</button>
+            <button class="btn-claim-dl" style="background:var(--navy);border-color:var(--navy);color:#fff" onclick="dlKokuhoJisseki()">⬇ サービス提供実績記録票（J61）</button>
+          </div>
+        </div>
+
+        <!-- 国保連への請求書類ダウンロード（簡易CSV・確認用） -->
         <div class="claim-panel">
-          <div class="claim-panel-ttl">🏛 国保連への請求書類ダウンロード</div>
+          <div class="claim-panel-ttl">📄 確認用CSV（人が読む集計表）</div>
           <div class="claim-dl-row">
             <button class="btn-claim-dl" onclick="downloadClaimFile('seikyu')">⬇ 請求書・明細書</button>
             <button class="btn-claim-dl" onclick="downloadClaimFile('jisseki')">⬇ サービス提供実績記録票</button>
@@ -2115,6 +2128,274 @@ function _dlCsv(csv,filename){
   document.body.removeChild(a); URL.revokeObjectURL(url);
 }
 
+// =========================================================
+// 国保連 電子請求 インターフェース形式（J11 請求明細書 / J61 実績記録票）
+// 就労継続支援B型（サービス種類46）。サンプル(2026-05)から完全検証済み。
+// ※加算単位・サービスコードは事業所ごとに異なるため KOKUHO_MASTER で調整可能。
+// =========================================================
+
+// サービスコード・単位マスタ（B型・事業所2110800444の2026-05実績で検証済み）
+const KOKUHO_MASTER = {
+  B: {
+    jisseki_svc: '1701',   // 実績記録票のサービス種類コード
+    seikyu_svc:  '46',     // 請求明細書のサービス種類コード
+    unitPrice:   10.00,    // 単位単価（円）岐阜県その他地域
+    kaizenRate:  0.091,    // 福祉・介護職員等処遇改善加算率（9.1%）
+    codes: {
+      base:    { code:'462992', unit:758 },  // 基本報酬（×利用日数）
+      meal:    { code:'465050', unit:30  },  // 食事提供体制加算（×食事提供日）
+      absence: { code:'466040', unit:94, cap:4 }, // 欠席時対応加算（×欠席日数, 月4回まで）
+      transport:{code:'466591', unit:10 },   // 送迎加算（×片道回数）
+      kaizen:  { code:'465121' }             // 処遇改善加算（他加算合計×率）
+    },
+    j121_05_a:'461000', j121_05_b:'02300'    // 上限額管理関連（固定）
+  }
+};
+
+// 全角カナ → 半角カナ
+function _toHalfKana(s){
+  if(!s) return '';
+  const full='ァアィイゥウェエォオカガキギクグケゲコゴサザシジスズセゼソゾタダチヂッツヅテデトドナニヌネノハバパヒビピフブプヘベペホボポマミムメモャヤュユョヨラリルレロワヲンヴ';
+  const half=['ｧ','ｱ','ｨ','ｲ','ｩ','ｳ','ｪ','ｴ','ｫ','ｵ','ｶ','ｶﾞ','ｷ','ｷﾞ','ｸ','ｸﾞ','ｹ','ｹﾞ','ｺ','ｺﾞ','ｻ','ｻﾞ','ｼ','ｼﾞ','ｽ','ｽﾞ','ｾ','ｾﾞ','ｿ','ｿﾞ','ﾀ','ﾀﾞ','ﾁ','ﾁﾞ','ｯ','ﾂ','ﾂﾞ','ﾃ','ﾃﾞ','ﾄ','ﾄﾞ','ﾅ','ﾆ','ﾇ','ﾈ','ﾉ','ﾊ','ﾊﾞ','ﾊﾟ','ﾋ','ﾋﾞ','ﾋﾟ','ﾌ','ﾌﾞ','ﾌﾟ','ﾍ','ﾍﾞ','ﾍﾟ','ﾎ','ﾎﾞ','ﾎﾟ','ﾏ','ﾐ','ﾑ','ﾒ','ﾓ','ｬ','ﾔ','ｭ','ﾕ','ｮ','ﾖ','ﾗ','ﾘ','ﾙ','ﾚ','ﾛ','ﾜ','ｦ','ﾝ','ｳﾞ'];
+  const sym={'。':'｡','「':'｢','」':'｣','、':'､','・':'･','ー':'ｰ','゛':'ﾞ','゜':'ﾟ','　':' '};
+  let out='';
+  for(const ch of s){
+    const i=full.indexOf(ch);
+    if(i>=0){ out+=half[i]; continue; }
+    if(sym[ch]!==undefined){ out+=sym[ch]; continue; }
+    const c=ch.charCodeAt(0);
+    if(c>=0xFF61&&c<=0xFF9F){ out+=ch; continue; }  // 既に半角カナ
+    if(c<=0x7E){ out+=ch; continue; }                // ASCII
+    out+='';                                          // 漢字・ひらがな等は除去
+  }
+  return out;
+}
+
+// Shift-JIS バイト列（ASCII + 半角カナのみ）
+function _sjisBytes(str){
+  const out=[];
+  for(const ch of str){
+    const c=ch.charCodeAt(0);
+    if(c<=0x7F) out.push(c);
+    else if(c>=0xFF61&&c<=0xFF9F) out.push(c-0xFF61+0xA1);
+    else out.push(0x3F);
+  }
+  return new Uint8Array(out);
+}
+
+function _dlSjis(text,filename){
+  const blob=new Blob([_sjisBytes(text)],{type:'text/csv'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download=filename; document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+}
+
+// 当月の利用者別集計を作成
+function _kokuhoAggregate(year,month){
+  const fid=_curFacId;
+  const fac=load('facilities',[]).find(f=>f.id===fid)||{};
+  const M=KOKUHO_MASTER.B; // 現状B型のみ対応
+  const days=getDIM(year,month);
+  const recAll=load(getRecKey(fid,year,month),{});
+  const clients=load('clients',[]).filter(c=>c.active!==false&&c.facilityId===fid);
+  const ymd=(s)=> s? s.replace(/[-/]/g,'').slice(0,8):'';
+  const plus29=(s)=>{ const d=ymd(s); if(d.length<8)return''; const dt=new Date(+d.slice(0,4),+d.slice(4,6)-1,+d.slice(6,8)); dt.setDate(dt.getDate()+29); return `${dt.getFullYear()}${String(dt.getMonth()+1).padStart(2,'0')}${String(dt.getDate()).padStart(2,'0')}`; };
+  const users=[];
+  clients.forEach(c=>{
+    const recs=recAll[c.id]||{};
+    const daily=[]; let attended=0,absence=0,mealDays=0,transCnt=0;
+    for(let d=1;d<=days;d++){
+      const r=recs[d]; if(!r||!r.status) continue;
+      const st=r.status;
+      const isAtt=(st==='通所'||st==='施設外就労'||st==='施設外支援');
+      const isAbs=(st==='欠席'||st==='欠席時対応');
+      if(!isAtt&&!isAbs) continue;
+      let tr=0;
+      if(isAtt){
+        attended++;
+        if(c.mealService) mealDays++;
+        if(r.transport==='片道') tr=1; else if(r.transport==='往復') tr=2;
+        transCnt+=tr;
+      }
+      if(isAbs) absence++;
+      daily.push({day:d, att:isAtt, start:isAtt?(r.start||'').replace(':',''):'', end:isAtt?(r.end||'').replace(':',''):'', t1:tr>=1?1:0, t2:tr>=2?1:0, abs:isAbs});
+    }
+    if(!daily.length) return; // 当月実績なしは除外
+    // サービス明細
+    const det=[];
+    if(attended>0) det.push({code:M.codes.base.code, unit:M.codes.base.unit, cnt:attended});
+    if(mealDays>0) det.push({code:M.codes.meal.code, unit:M.codes.meal.unit, cnt:mealDays});
+    const absBilled=Math.min(absence, M.codes.absence.cap);
+    if(absBilled>0) det.push({code:M.codes.absence.code, unit:M.codes.absence.unit, cnt:absBilled});
+    if(transCnt>0) det.push({code:M.codes.transport.code, unit:M.codes.transport.unit, cnt:transCnt});
+    const subUnits=det.reduce((s,x)=>s+x.unit*x.cnt,0);
+    const kaizen=Math.round(subUnits*M.kaizenRate);
+    if(kaizen>0) det.push({code:M.codes.kaizen.code, unit:kaizen, cnt:1});
+    const totalUnits=det.reduce((s,x)=>s+x.unit*x.cnt,0);
+    const yen=Math.floor(totalUnits*M.unitPrice);
+    const cd=ymd(c.startDate);
+    // 当月途中契約の利用日数（契約日が当月内なら利用日数、それ以外0）
+    const newContractDays = (cd.slice(0,6)===_ym(year,month)) ? attended : 0;
+    users.push({
+      c, cityNo:(c.cityNo||fac.cityNo||''), receiptNo:c.receiptNo||'',
+      kana:_toHalfKana(c.kana||''), contractDate:cd,
+      mgmtEnd:plus29(c.startDate),
+      shikyuRyo: (c.shikyuRyo!==undefined&&c.shikyuRyo!=='') ? String(c.shikyuRyo) : '0',
+      newContractDays,
+      daily, attended, absence, mealDays, transCnt,
+      det, subUnits, kaizen, totalUnits, yen,
+      svcDays: attended+absence
+    });
+  });
+  // 市町村→受給者証番号 順
+  users.sort((a,b)=> (a.cityNo+a.receiptNo).localeCompare(b.cityNo+b.receiptNo));
+  return {fac, M, users, year, month};
+}
+
+function _row(len){ return new Array(len).fill(''); }
+function _ym(y,m){ return `${y}${String(m).padStart(2,'0')}`; }
+
+// J61 サービス提供実績記録票
+function _genKokuhoJisseki(agg){
+  const {fac,M,users,year,month}=agg;
+  const svcYM=_ym(year,month);
+  const procYM=_ym(month===12?year+1:year, month===12?1:month+1);
+  const jno=fac.jigyoshoNo||'';
+  const lines=[]; let n=1;
+  // 制御レコード
+  const ctrl=_row(11); [ctrl[0],ctrl[1],ctrl[2],ctrl[4],ctrl[5],ctrl[6],ctrl[7],ctrl[8],ctrl[9]]=['1','1','0','J61','0',jno,'0','1',procYM];
+  // ctrl[3] データ件数は後で
+  users.forEach(u=>{
+    // 01 基本情報
+    n++; const r1=_row(174);
+    r1[0]='2';r1[1]=String(n);r1[2]='J611';r1[3]='01';r1[4]=svcYM;r1[5]=u.cityNo;r1[6]=jno;r1[7]=u.receiptNo;r1[8]=M.jisseki_svc;
+    r1[35]=u.shikyuRyo;r1[46]='0';r1[52]='0';r1[53]='0';r1[54]='0';r1[55]='0';
+    r1[71]=u.contractDate;r1[72]=u.mgmtEnd;r1[73]=String(u.newContractDays);
+    r1[118]='0';r1[126]='0';r1[128]='0';r1[153]='0';r1[168]='0';r1[169]='0';
+    lines.push(r1);
+    // 02 日々
+    u.daily.forEach(d=>{
+      n++; const r2=_row(115);
+      r2[0]='2';r2[1]=String(n);r2[2]='J611';r2[3]='02';r2[4]=svcYM;r2[5]=u.cityNo;r2[6]=jno;r2[7]=u.receiptNo;r2[8]=M.jisseki_svc;
+      r2[10]=String(d.day);
+      if(d.att){ r2[15]=d.start;r2[16]=d.end; }
+      r2[22]=String(d.t1);r2[23]=String(d.t2);r2[33]='0';
+      if(d.abs) r2[37]='8';
+      lines.push(r2);
+    });
+  });
+  ctrl[3]=String(n-1); // データレコード件数（制御除く）
+  const all=[ctrl,...lines];
+  // 終了レコード
+  all.push(['3',String(n+1)]);
+  return all.map(r=>r.join(',')).join('\r\n')+'\r\n';
+}
+
+// J11 請求明細書
+function _genKokuhoSeikyu(agg){
+  const {fac,M,users,year,month}=agg;
+  const svcYM=_ym(year,month);
+  const procYM=_ym(month===12?year+1:year, month===12?1:month+1);
+  const jno=fac.jigyoshoNo||'';
+  const up=Math.round(M.unitPrice*1000);
+  // 市町村でグループ化
+  const byCity={}; users.forEach(u=>{ (byCity[u.cityNo]=byCity[u.cityNo]||[]).push(u); });
+  const cities=Object.keys(byCity).sort();
+  const lines=[]; let n=1;
+  const ctrl=_row(11); [ctrl[0],ctrl[1],ctrl[2],ctrl[4],ctrl[5],ctrl[6],ctrl[7],ctrl[8],ctrl[9]]=['1','1','0','J11','0',jno,'0','1',procYM];
+  cities.forEach(city=>{
+    const us=byCity[city];
+    const cnt=us.length;
+    const cityUnits=us.reduce((s,u)=>s+u.totalUnits,0);
+    const cityYen=us.reduce((s,u)=>s+u.yen,0);
+    // J111-01 請求書(市町村集計)
+    n++; const a=_row(25);
+    a[0]='2';a[1]=String(n);a[2]='J111';a[3]='01';a[4]=svcYM;a[5]=city;a[6]=jno;
+    a[7]=String(cityYen);a[8]=String(cnt);a[9]=String(cityUnits);a[10]=String(cityYen);a[11]=String(cityYen);
+    a[12]='0';a[13]='0';a[14]='0';a[15]='0';a[16]='0';a[17]='0';
+    a[18]=String(cnt);a[19]=String(cityUnits);a[20]=String(cityYen);a[21]=String(cityYen);
+    a[22]='0';a[23]='0';a[24]='0';
+    lines.push(a);
+    // J111-02 サービス種類別
+    n++; const b=_row(16);
+    b[0]='2';b[1]=String(n);b[2]='J111';b[3]='02';b[4]=svcYM;b[5]=city;b[6]=jno;
+    b[7]='1';b[8]=M.seikyu_svc;b[9]=String(cnt);b[10]=String(cityUnits);b[11]=String(cityYen);b[12]=String(cityYen);
+    b[13]='0';b[14]='0';b[15]='0';
+    lines.push(b);
+    // 利用者ごと
+    us.forEach(u=>{
+      // J121-01 基本
+      n++; const c1=_row(37);
+      c1[0]='2';c1[1]=String(n);c1[2]='J121';c1[3]='01';c1[4]=svcYM;c1[5]=city;c1[6]=jno;c1[7]=u.receiptNo;
+      c1[9]=u.kana;c1[11]='20';c1[12]='1';c1[13]='0';c1[14]='1';
+      c1[21]=String(u.totalUnits);c1[22]=String(u.yen);c1[23]='0';c1[28]='0';c1[29]=String(u.yen);
+      lines.push(c1);
+      // J121-02 利用日数
+      n++; const c2=_row(14);
+      c2[0]='2';c2[1]=String(n);c2[2]='J121';c2[3]='02';c2[4]=svcYM;c2[5]=city;c2[6]=jno;c2[7]=u.receiptNo;
+      c2[8]=M.seikyu_svc;c2[9]=u.contractDate;c2[11]=String(u.attended);
+      lines.push(c2);
+      // J121-03 サービス単位明細
+      u.det.forEach(dt=>{
+        n++; const c3=_row(13);
+        c3[0]='2';c3[1]=String(n);c3[2]='J121';c3[3]='03';c3[4]=svcYM;c3[5]=city;c3[6]=jno;c3[7]=u.receiptNo;
+        c3[8]=dt.code;c3[9]=String(dt.unit);c3[10]=String(dt.cnt);c3[11]=String(dt.unit*dt.cnt);
+        lines.push(c3);
+      });
+      // J121-04 集計
+      n++; const c4=_row(35);
+      c4[0]='2';c4[1]=String(n);c4[2]='J121';c4[3]='04';c4[4]=svcYM;c4[5]=city;c4[6]=jno;c4[7]=u.receiptNo;
+      c4[8]=M.seikyu_svc;c4[9]='1';c4[10]=String(u.svcDays);c4[11]=String(u.totalUnits);c4[12]=String(up);
+      c4[13]='0';c4[14]=String(u.yen);c4[15]=String(u.totalUnits);c4[16]=String(u.totalUnits);c4[17]='0';
+      c4[22]='0';c4[23]=String(u.yen);
+      lines.push(c4);
+      // J121-05 上限管理
+      n++; const c5=_row(13);
+      c5[0]='2';c5[1]=String(n);c5[2]='J121';c5[3]='05';c5[4]=svcYM;c5[5]=city;c5[6]=jno;c5[7]=u.receiptNo;
+      c5[8]=M.j121_05_a;c5[9]=M.j121_05_b;c5[10]=u.contractDate;c5[12]='1';
+      lines.push(c5);
+    });
+  });
+  ctrl[3]=String(n-1);
+  const all=[ctrl,...lines];
+  all.push(['3',String(n+1)]);
+  return all.map(r=>r.join(',')).join('\r\n')+'\r\n';
+}
+
+function _kokuhoSelectedClaim(){
+  const sel=document.getElementById('claimMonthSel');
+  const id=sel&&sel.value;
+  if(!id){ showToast('請求月を選択してください'); return null; }
+  const claim=load('claims',[]).find(c=>c.id===id);
+  if(!claim){ showToast('請求月が見つかりません'); return null; }
+  const fac=load('facilities',[]).find(f=>f.id===_curFacId)||{};
+  if(!fac.jigyoshoNo){ alert('事業所番号が未設定です。「設定 → 事業所情報」で10桁の事業所番号を入力してください。'); return null; }
+  if((fac.serviceType||'')!=='B'){
+    if(!confirm('現在の国保連エクスポートは就労継続支援B型の単位マスタで検証済みです。\nこの事業所はB型ではありません。続行しますか？（要検証）')) return null;
+  }
+  return claim;
+}
+
+function dlKokuhoJisseki(){
+  const claim=_kokuhoSelectedClaim(); if(!claim) return;
+  const agg=_kokuhoAggregate(claim.year,claim.month);
+  if(!agg.users.length){ showToast('当月の実績データがありません'); return; }
+  const csv=_genKokuhoJisseki(agg);
+  _dlSjis(csv,`jissekikiroku_${claim.year}-${String(claim.month).padStart(2,'0')}.csv`);
+  showToast(`実績記録票(J61)を出力しました（${agg.users.length}名）✓`);
+}
+
+function dlKokuhoSeikyu(){
+  const claim=_kokuhoSelectedClaim(); if(!claim) return;
+  const agg=_kokuhoAggregate(claim.year,claim.month);
+  if(!agg.users.length){ showToast('当月の実績データがありません'); return; }
+  const csv=_genKokuhoSeikyu(agg);
+  _dlSjis(csv,`seikyu-meisai_${claim.year}-${String(claim.month).padStart(2,'0')}.csv`);
+  const totalYen=agg.users.reduce((s,u)=>s+u.yen,0);
+  showToast(`請求明細書(J11)を出力しました（${agg.users.length}名 / ${totalYen.toLocaleString()}円）✓`);
+}
+
 function printClaimFile(type){
   const sel=document.getElementById('claimMonthSel');
   const id=sel.value;
@@ -2921,6 +3202,10 @@ function openClientModal(id){
           </div>
           <div style="margin-top:8px"><label class="tog-row"><span class="tog-switch"><input type="checkbox" id="cl-quota-special" ${tog(c?.quotaSpecial)}><span class="tog-slider"></span></span><span style="font-size:13px;color:#4a5568">利用日数に関わる特例あり</span></label></div>
         </div>
+        <div style="display:flex;gap:12px;align-items:flex-end">
+          <div style="flex:1">${lbl('契約支給量（国保連 実績記録票用・受給者証の支給量）')}<input class="f-input" id="cl-shikyu" type="number" value="${c?.shikyuRyo!==undefined?c.shikyuRyo:''}" placeholder="例: 20" min="0"></div>
+          <label class="tog-row" style="flex:1"><span class="tog-switch"><input type="checkbox" id="cl-meal" ${tog(c?.mealService)}><span class="tog-slider"></span></span><span style="font-size:13px;color:#4a5568">食事提供体制加算の対象</span></label>
+        </div>
         <div>
           ${lbl('負担上限額')}
           <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px">
@@ -3051,6 +3336,8 @@ function saveClientModal(){
     quotaType:radVal('cl-quota')||'default',
     quotaDays:parseInt(document.getElementById('cl-quota-days').value)||null,
     quotaSpecial:document.getElementById('cl-quota-special').checked,
+    shikyuRyo:(document.getElementById('cl-shikyu').value.trim()===''?'':parseInt(document.getElementById('cl-shikyu').value)||0),
+    mealService:document.getElementById('cl-meal').checked,
     limitAmount:radVal('cl-limit')??'9300',
     contractAmount:radVal('cl-limit')!==null?parseInt(radVal('cl-limit'))??9300:9300,
     localLimit:document.getElementById('cl-local-limit').checked,
