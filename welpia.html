@@ -311,9 +311,9 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
 .tc-gyo-cards{flex:1;display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:13px}
 .tc-pcard{border:none;border-radius:10px;padding:22px 14px;font-size:19px;font-weight:700;cursor:pointer;font-family:inherit;text-align:center;transition:transform .1s,box-shadow .15s;box-shadow:0 2px 5px rgba(0,0,0,.08);line-height:1.35}
 .tc-pcard:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(0,0,0,.16)}
-.tc-pcard.s-none{background:#f0be2c;color:#fff}
-.tc-pcard.s-in{background:var(--green);color:#fff}
-.tc-pcard.s-out{background:#fff;color:#9aa3ad;border:1.5px solid #e4e9ee}
+.tc-pcard.s-none{background:#fff;color:#475569;border:1.5px solid #e4e9ee}
+.tc-pcard.s-in{background:#10b981;color:#fff}
+.tc-pcard.s-out{background:#f97316;color:#fff}
 .tc-pcard .tc-pc-sub{display:block;font-size:11px;font-weight:600;margin-top:7px;opacity:.92}
 .tc-legend{display:flex;gap:18px;align-items:center;font-size:12px;color:var(--text-lt);margin:4px 0 18px;flex-wrap:wrap}
 .tc-legend i{display:inline-block;width:14px;height:14px;border-radius:4px;margin-right:5px;vertical-align:-2px}
@@ -712,9 +712,9 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
         <!-- 打刻グリッド（50音順・本人選択） -->
         <div id="tc-panel-day">
           <div class="tc-legend">
-            <span><i style="background:#f0be2c"></i>未打刻</span>
-            <span><i style="background:var(--green)"></i>通所中</span>
-            <span><i style="background:#fff;border:1.5px solid #e4e9ee"></i>退勤済</span>
+            <span><i style="background:#fff;border:1.5px solid #e4e9ee"></i>未出勤</span>
+            <span><i style="background:#10b981"></i>出勤済み</span>
+            <span><i style="background:#f97316"></i>退勤済</span>
             <span style="margin-left:auto">名前をタップすると打刻画面が開きます</span>
           </div>
           <div id="tcGrid"></div>
