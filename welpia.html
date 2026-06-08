@@ -1541,6 +1541,7 @@ function showView(v){
   else if(v==='init') renderInit();
   else if(v==='sysusers') renderSysUsers();
   else if(v==='sysperms') renderSysPerms();
+  if(typeof renderAlertBanner==='function') renderAlertBanner();
 }
 function setTab(t){ showView(t==='daily'?'daily':'monthly'); }
 let _sSet=false,_sHelp=false,_sSys=false;
@@ -2009,6 +2010,7 @@ function tcPunch(clientId, type){
     }
   }
   renderTcGrid();
+  if(typeof renderAlertBanner==='function') renderAlertBanner();
   const cl=load('clients',[]).find(c=>c.id===clientId);
   showToast(`${esc(cl?.name||'')} ${type==='in'?'出勤':'退勤'} ${t} ✓`);
 }
@@ -4808,12 +4810,49 @@ function getReceiptAlerts(){
   return alerts;
 }
 
+// 退勤の押し忘れ（出勤済だが過去日に退勤打刻なし）を検出
+function getPunchAlerts(){
+  const fid=_curFacId; if(!fid) return [];
+  const today=new Date(); today.setHours(0,0,0,0);
+  const clients=load('clients',[]);
+  const out=[];
+  for(let mb=0;mb<=1;mb++){
+    const dt=new Date(today.getFullYear(),today.getMonth()-mb,1);
+    const y=dt.getFullYear(),m=dt.getMonth()+1;
+    const tc=load(_tcKey(fid,y,m),{});
+    const dim=getDIM(y,m);
+    Object.keys(tc).forEach(cid=>{
+      for(let d=1;d<=dim;d++){
+        const rec=tc[cid]&&tc[cid][d];
+        if(rec&&rec.in&&!rec.out){
+          const dd=new Date(y,m-1,d); dd.setHours(0,0,0,0);
+          if(dd<today){
+            const c=clients.find(x=>x.id===cid);
+            if(c&&c.active!==false&&c.facilityId===fid)
+              out.push({name:c.name,clientId:cid,y,m,day:d,in:rec.in});
+          }
+        }
+      }
+    });
+  }
+  out.sort((a,b)=>(a.y*1e4+a.m*100+a.day)-(b.y*1e4+b.m*100+b.day));
+  return out;
+}
+
+// 退勤押し忘れの修正：該当日のタイムカードを開く
+function fixPunchAlert(clientId,y,m,day){
+  _tcDate=new Date(y,m-1,day);
+  showView('timecard');
+  setTimeout(()=>openTcPunch(clientId),120);
+}
+
 // バナーHTMLを生成してmainAreaの上部に表示
 function renderAlertBanner(){
   const wrap=document.getElementById('alertBannerWrap');
   if(!wrap) return;
   const al=getReceiptAlerts();
-  const total=al.expired.length+al.soon30.length+al.soon60.length;
+  const punch=getPunchAlerts();
+  const total=al.expired.length+al.soon30.length+al.soon60.length+punch.length;
   if(!total){wrap.style.display='none';wrap.innerHTML='';return;}
 
   function makeList(arr){
@@ -4847,6 +4886,16 @@ function renderAlertBanner(){
       <span class="alr-ico">🟡</span>
       <div class="alr-body"><div class="alr-title">受給者証期限まで60日以内（${al.soon60.length}件）</div>
         <ul class="alr-list">${makeList(al.soon60)}</ul></div>
+      <button class="alr-close" onclick="this.closest('.alert-banner').remove()">✕</button>
+    </div>`;
+  }
+  if(punch.length){
+    const items=punch.map(p=>`<li><b>${esc(p.name)}</b>　${p.y}/${p.m}/${p.day}　出勤 ${p.in} → <b>退勤の打刻なし</b>`
+      +`<button class="alr-upd" onclick="fixPunchAlert('${p.clientId}',${p.y},${p.m},${p.day})" style="color:inherit;border-color:currentColor">退勤を入力</button></li>`).join('');
+    html+=`<div class="alert-banner alr-orange">
+      <span class="alr-ico">🕐</span>
+      <div class="alr-body"><div class="alr-title">退勤の押し忘れがあります（${punch.length}件）</div>
+        <ul class="alr-list">${items}</ul></div>
       <button class="alr-close" onclick="this.closest('.alert-banner').remove()">✕</button>
     </div>`;
   }
