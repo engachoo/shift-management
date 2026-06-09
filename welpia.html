@@ -803,12 +803,14 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
           </div>
         </div>
 
-        <!-- 請求書類の印刷 -->
+        <!-- 請求書類の発行（利用者ごと） -->
         <div class="claim-panel">
-          <div class="claim-panel-ttl">🖨 請求書類の印刷</div>
+          <div class="claim-panel-ttl">🖨 請求書類の発行（利用者ごと・印刷／PDF保存）</div>
+          <div style="font-size:12px;color:#5a6b50;margin:0 0 10px;line-height:1.6">選択中の請求月の全利用者分を1枚ずつ発行します。開いた画面で「印刷 → PDFに保存」できます。</div>
           <div class="claim-dl-row">
-            <button class="btn-claim-dl btn-claim-prt" onclick="printClaimFile('seikyu')">🖨 請求書・明細書</button>
-            <button class="btn-claim-dl btn-claim-prt" onclick="printClaimFile('jisseki')">🖨 サービス提供実績記録票</button>
+            <button class="btn-claim-dl btn-claim-prt" onclick="genWelbeDocs('invoice')">🖨 請求書</button>
+            <button class="btn-claim-dl btn-claim-prt" onclick="genWelbeDocs('receipt')">🖨 領収書</button>
+            <button class="btn-claim-dl btn-claim-prt" onclick="genWelbeDocs('proxy')">🖨 代理受領書</button>
           </div>
         </div>
 
@@ -2440,12 +2442,12 @@ const KOKUHO_MASTER = {
     unitPrice:10.00, kaizenRate:0.094,
     j121_kubun:'2', copayDetail:true,
     components:[
-      { code:'452013', unit:733, per:'attended' },  // 就継ＡⅠ
-      { code:'456040', unit:94,  per:'absence', cap:4 }, // 欠席時対応加算
-      { code:'455290', unit:70,  per:'attended' },  // 賃金向上達成指導員配置加算
-      { code:'456594', unit:174, per:'attended' }   // 就労移行支援体制加算
+      { code:'452013', unit:733, per:'attended', name:'就継ＡⅠ１２' },
+      { code:'456040', unit:94,  per:'absence', cap:4, name:'欠席時対応加算' },
+      { code:'455290', unit:70,  per:'attended', name:'就継Ａ賃金向上達成指導員配置加算１' },
+      { code:'456594', unit:174, per:'attended', name:'就継Ａ就労移行支援体制加算Ⅰ１２' }
     ],
-    kaizen:{ code:'455121' },
+    kaizen:{ code:'455121', name:'就継Ａ福祉・介護職員等処遇改善加算Ⅱ' },
     j121_05_a:'451000', j121_05_b:'02300'
   },
   B: {  // 就労継続支援B型
@@ -2453,12 +2455,12 @@ const KOKUHO_MASTER = {
     unitPrice:10.00, kaizenRate:0.091,
     j121_kubun:'1', copayDetail:false,
     components:[
-      { code:'462992', unit:758, per:'attended' },  // 基本報酬
-      { code:'465050', unit:30,  per:'meal' },      // 食事提供体制加算
-      { code:'466040', unit:94,  per:'absence', cap:4 }, // 欠席時対応加算
-      { code:'466591', unit:10,  per:'transport' }  // 送迎加算
+      { code:'462992', unit:758, per:'attended', name:'就継ＢⅠ１２' },
+      { code:'465050', unit:30,  per:'meal', name:'食事提供体制加算' },
+      { code:'466040', unit:94,  per:'absence', cap:4, name:'欠席時対応加算' },
+      { code:'466591', unit:10,  per:'transport', name:'送迎加算' }
     ],
-    kaizen:{ code:'465121' },
+    kaizen:{ code:'465121', name:'福祉・介護職員等処遇改善加算Ⅱ' },
     j121_05_a:'461000', j121_05_b:'02300'
   }
 };
@@ -2542,11 +2544,11 @@ function _kokuhoAggregate(year,month){
       else if(comp.per==='meal')     cnt=mealDays;
       else if(comp.per==='transport')cnt=transCnt;
       else if(comp.per==='absence')  cnt=Math.min(absence, comp.cap||9999);
-      if(cnt>0) det.push({code:comp.code, unit:comp.unit, cnt});
+      if(cnt>0) det.push({code:comp.code, unit:comp.unit, cnt, name:comp.name||comp.code});
     });
     const subUnits=det.reduce((s,x)=>s+x.unit*x.cnt,0);
     const kaizen=Math.round(subUnits*M.kaizenRate);
-    if(kaizen>0) det.push({code:M.kaizen.code, unit:kaizen, cnt:1});
+    if(kaizen>0) det.push({code:M.kaizen.code, unit:kaizen, cnt:1, name:(M.kaizen.name||'処遇改善加算')});
     const totalUnits=det.reduce((s,x)=>s+x.unit*x.cnt,0);
     const yen=Math.floor(totalUnits*M.unitPrice);
     // 利用者負担額 = min(総費用×10%, 負担上限月額)。上限0/未設定は0
@@ -2718,6 +2720,65 @@ function dlKokuhoSeikyu(){
   _dlSjis(csv,`seikyu-meisai_${claim.year}-${String(claim.month).padStart(2,'0')}.csv`);
   const totalYen=agg.users.reduce((s,u)=>s+u.yen,0);
   showToast(`請求明細書(J11)を出力しました（${agg.users.length}名 / ${totalYen.toLocaleString()}円）✓`);
+}
+
+// 請求書・領収書・代理受領書（利用者ごと1枚）を生成して印刷ビューを開く
+function genWelbeDocs(type){
+  const claim=_kokuhoSelectedClaim(); if(!claim) return;
+  const agg=_kokuhoAggregate(claim.year,claim.month);
+  if(!agg.users.length){ showToast('当月の実績データがありません'); return; }
+  const fac=agg.fac;
+  const svcLabel = fac.serviceType==='A'?'就労継続支援A型':fac.serviceType==='B'?'就労継続支援B型':'';
+  const y=claim.year, m=claim.month, mm=String(m).padStart(2,'0');
+  const lastDay=getDIM(y,m);
+  const period=`${y}-${mm}-01 〜 ${y}-${mm}-${String(lastDay).padStart(2,'0')}`;
+  const t=new Date(); const issue=`${t.getFullYear()}年${t.getMonth()+1}月${t.getDate()}日`;
+  const titleMap={invoice:'請求書',receipt:'領収書',proxy:'代理受領通知書'};
+  const yen=n=>'¥'+Number(n||0).toLocaleString();
+  const nm=u=>esc(u.c&&u.c.name?u.c.name:u.kana||'');
+  const pages=agg.users.map(u=>{
+    if(type==='invoice'){
+      const rows=u.det.map(d=>`<tr><td>${esc(d.name)}</td><td class="r">${d.unit.toLocaleString()}</td><td class="r">${d.cnt}</td><td class="r">${(d.unit*d.cnt).toLocaleString()}</td></tr>`).join('');
+      return `<div class="doc"><h1>請求書</h1>
+        <div class="to">${nm(u)} 様</div>
+        <div class="meta">受給者番号：${u.receiptNo}　／　${svcLabel}<br>${esc(fac.corp||'')}　${esc(fac.name||'')}<br>利用期間：${period}　　請求日：${issue}</div>
+        <table class="detail"><thead><tr><th>サービス内容</th><th>単位数</th><th>利用回数</th><th>ｻｰﾋﾞｽ単位数</th></tr></thead><tbody>${rows}</tbody></table>
+        <div class="sum"><div>サービス費用算定合計金額　<b>${yen(u.yen)}</b></div>
+        <div>給付費　<b>-${yen(u.kyufu)}</b></div>
+        <div>利用者負担合計金額　<b>${yen(u.copay)}</b></div></div>
+        <div class="note">※ 10円／単位（1円未満切り捨て）</div></div>`;
+    } else if(type==='receipt'){
+      return `<div class="doc"><h1>領収書</h1>
+        <div class="to">${nm(u)} 様</div>
+        <div class="amt">領収金額　${yen(u.copay)}</div>
+        <div class="tadashi">但し ${y}年${m}月分 ${svcLabel} 利用者負担金として<br>上記正に領収いたしました。</div>
+        <div class="meta2">発行日：${issue}<br>${esc(fac.corp||'')}　${esc(fac.name||'')}　㊞</div></div>`;
+    }
+    return `<div class="doc"><h1>介護給付費等 代理受領通知書</h1>
+      <div class="to">${nm(u)} 様</div>
+      <div class="meta">受給者番号：${u.receiptNo}　／　${svcLabel}<br>利用期間：${period}</div>
+      <div class="amt">代理受領した介護給付費等の額　${yen(u.kyufu)}</div>
+      <div class="tadashi">上記のとおり、市町村から介護給付費等を代理受領しましたので通知します。</div>
+      <div class="meta2">発行日：${issue}<br>${esc(fac.corp||'')}　${esc(fac.name||'')}</div></div>`;
+  }).join('');
+  const html=`<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>${titleMap[type]} ${y}年${m}月 ${esc(fac.name||'')}</title>
+  <style>body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;color:#222;margin:0}
+  .doc{width:190mm;min-height:130mm;margin:0 auto;padding:14mm 15mm;box-sizing:border-box;page-break-after:always;border-bottom:1px dashed #ccc}
+  h1{text-align:center;font-size:22px;letter-spacing:6px;margin:0 0 16px;border-bottom:2px solid #333;padding-bottom:8px}
+  .to{font-size:18px;font-weight:700;margin-bottom:10px}
+  .meta{font-size:12px;color:#444;line-height:1.7;margin-bottom:12px}
+  .detail{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:12px}
+  .detail th,.detail td{border:1px solid #999;padding:5px 8px}.detail th{background:#eee}.detail td.r{text-align:right}
+  .sum{font-size:14px;line-height:1.9;text-align:right;border-top:2px solid #333;padding-top:8px}
+  .amt{font-size:22px;font-weight:800;text-align:center;border:2px solid #333;padding:14px;margin:16px 0}
+  .tadashi{font-size:13px;line-height:1.8;margin:10px 0}
+  .meta2{font-size:12px;color:#444;text-align:right;margin-top:22px;line-height:1.8}
+  .note{font-size:11px;color:#666}@media print{.doc{border-bottom:none}}</style></head>
+  <body>${pages}<script>window.onload=function(){setTimeout(function(){window.print();},300);}<\/script></body></html>`;
+  const w=window.open('','_blank');
+  if(!w){ showToast('ポップアップがブロックされました。許可してください'); return; }
+  w.document.write(html); w.document.close();
+  showToast(`${titleMap[type]}（${agg.users.length}名）を表示しました ✓`);
 }
 
 function printClaimFile(type){
