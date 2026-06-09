@@ -2304,21 +2304,35 @@ function _dlCsv(csv,filename){
 // ※加算単位・サービスコードは事業所ごとに異なるため KOKUHO_MASTER で調整可能。
 // =========================================================
 
-// サービスコード・単位マスタ（B型・事業所2110800444の2026-05実績で検証済み）
+// サービスコード・単位マスタ（2026-05実績で完全検証済み）
+// A型=羽島(2110400534) / B型=山県(2110800444)
+// components は J121-03 の出力順。per: attended=出勤日 / absence=欠席時対応(cap上限) / meal=食事提供日 / transport=送迎回数
 const KOKUHO_MASTER = {
-  B: {
-    jisseki_svc: '1701',   // 実績記録票のサービス種類コード
-    seikyu_svc:  '46',     // 請求明細書のサービス種類コード
-    unitPrice:   10.00,    // 単位単価（円）岐阜県その他地域
-    kaizenRate:  0.091,    // 福祉・介護職員等処遇改善加算率（9.1%）
-    codes: {
-      base:    { code:'462992', unit:758 },  // 基本報酬（×利用日数）
-      meal:    { code:'465050', unit:30  },  // 食事提供体制加算（×食事提供日）
-      absence: { code:'466040', unit:94, cap:4 }, // 欠席時対応加算（×欠席日数, 月4回まで）
-      transport:{code:'466591', unit:10 },   // 送迎加算（×片道回数）
-      kaizen:  { code:'465121' }             // 処遇改善加算（他加算合計×率）
-    },
-    j121_05_a:'461000', j121_05_b:'02300'    // 上限額管理関連（固定）
+  A: {  // 就労継続支援A型
+    jisseki_svc:'1701', seikyu_svc:'45',
+    unitPrice:10.00, kaizenRate:0.094,
+    j121_kubun:'2', copayDetail:true,
+    components:[
+      { code:'452013', unit:733, per:'attended' },  // 就継ＡⅠ
+      { code:'456040', unit:94,  per:'absence', cap:4 }, // 欠席時対応加算
+      { code:'455290', unit:70,  per:'attended' },  // 賃金向上達成指導員配置加算
+      { code:'456594', unit:174, per:'attended' }   // 就労移行支援体制加算
+    ],
+    kaizen:{ code:'455121' },
+    j121_05_a:'451000', j121_05_b:'02300'
+  },
+  B: {  // 就労継続支援B型
+    jisseki_svc:'1701', seikyu_svc:'46',
+    unitPrice:10.00, kaizenRate:0.091,
+    j121_kubun:'1', copayDetail:false,
+    components:[
+      { code:'462992', unit:758, per:'attended' },  // 基本報酬
+      { code:'465050', unit:30,  per:'meal' },      // 食事提供体制加算
+      { code:'466040', unit:94,  per:'absence', cap:4 }, // 欠席時対応加算
+      { code:'466591', unit:10,  per:'transport' }  // 送迎加算
+    ],
+    kaizen:{ code:'465121' },
+    j121_05_a:'461000', j121_05_b:'02300'
   }
 };
 
@@ -2365,7 +2379,7 @@ function _dlSjis(text,filename){
 function _kokuhoAggregate(year,month){
   const fid=_curFacId;
   const fac=load('facilities',[]).find(f=>f.id===fid)||{};
-  const M=KOKUHO_MASTER.B; // 現状B型のみ対応
+  const M=KOKUHO_MASTER[fac.serviceType] || KOKUHO_MASTER.B; // 施設のサービス種別でA/B選択
   const days=getDIM(year,month);
   const recAll=load(getRecKey(fid,year,month),{});
   const clients=load('clients',[]).filter(c=>c.active!==false&&c.facilityId===fid);
@@ -2393,18 +2407,25 @@ function _kokuhoAggregate(year,month){
       daily.push({day:d, att:isAtt, start:isAtt?(r.start||'').replace(':',''):'', end:isAtt?(r.end||'').replace(':',''):'', t1:tr>=1?1:0, t2:tr>=2?1:0, abs:isAbsBillable});
     }
     if(!daily.length) return; // 当月実績なしは除外
-    // サービス明細
+    // サービス明細（マスタの components 順）
     const det=[];
-    if(attended>0) det.push({code:M.codes.base.code, unit:M.codes.base.unit, cnt:attended});
-    if(mealDays>0) det.push({code:M.codes.meal.code, unit:M.codes.meal.unit, cnt:mealDays});
-    const absBilled=Math.min(absence, M.codes.absence.cap);
-    if(absBilled>0) det.push({code:M.codes.absence.code, unit:M.codes.absence.unit, cnt:absBilled});
-    if(transCnt>0) det.push({code:M.codes.transport.code, unit:M.codes.transport.unit, cnt:transCnt});
+    M.components.forEach(comp=>{
+      let cnt=0;
+      if(comp.per==='attended')      cnt=attended;
+      else if(comp.per==='meal')     cnt=mealDays;
+      else if(comp.per==='transport')cnt=transCnt;
+      else if(comp.per==='absence')  cnt=Math.min(absence, comp.cap||9999);
+      if(cnt>0) det.push({code:comp.code, unit:comp.unit, cnt});
+    });
     const subUnits=det.reduce((s,x)=>s+x.unit*x.cnt,0);
     const kaizen=Math.round(subUnits*M.kaizenRate);
-    if(kaizen>0) det.push({code:M.codes.kaizen.code, unit:kaizen, cnt:1});
+    if(kaizen>0) det.push({code:M.kaizen.code, unit:kaizen, cnt:1});
     const totalUnits=det.reduce((s,x)=>s+x.unit*x.cnt,0);
     const yen=Math.floor(totalUnits*M.unitPrice);
+    // 利用者負担額 = min(総費用×10%, 負担上限月額)。上限0/未設定は0
+    const limit=parseInt(c.limitAmount!==undefined&&c.limitAmount!==''?c.limitAmount:(c.contractAmount||0))||0;
+    const copay=limit>0 ? Math.min(Math.floor(yen*0.1), limit) : 0;
+    const kyufu=yen-copay;
     const cd=ymd(c.startDate);
     // 当月途中契約の利用日数（契約日が当月内なら利用日数、それ以外0）
     const newContractDays = (cd.slice(0,6)===_ym(year,month)) ? attended : 0;
@@ -2416,6 +2437,7 @@ function _kokuhoAggregate(year,month){
       newContractDays,
       daily, attended, absence, mealDays, transCnt,
       det, subUnits, kaizen, totalUnits, yen,
+      limit, copay, kyufu,
       svcDays: attended+absence
     });
   });
@@ -2479,19 +2501,20 @@ function _genKokuhoSeikyu(agg){
     const us=byCity[city];
     const cnt=us.length;
     const cityUnits=us.reduce((s,u)=>s+u.totalUnits,0);
-    const cityYen=us.reduce((s,u)=>s+u.yen,0);
+    const cityTotal=us.reduce((s,u)=>s+u.yen,0);    // 総費用額
+    const cityKyufu=us.reduce((s,u)=>s+u.kyufu,0);  // 給付費請求額（負担控除後）
     // J111-01 請求書(市町村集計)
     n++; const a=_row(25);
     a[0]='2';a[1]=String(n);a[2]='J111';a[3]='01';a[4]=svcYM;a[5]=city;a[6]=jno;
-    a[7]=String(cityYen);a[8]=String(cnt);a[9]=String(cityUnits);a[10]=String(cityYen);a[11]=String(cityYen);
+    a[7]=String(cityKyufu);a[8]=String(cnt);a[9]=String(cityUnits);a[10]=String(cityTotal);a[11]=String(cityKyufu);
     a[12]='0';a[13]='0';a[14]='0';a[15]='0';a[16]='0';a[17]='0';
-    a[18]=String(cnt);a[19]=String(cityUnits);a[20]=String(cityYen);a[21]=String(cityYen);
+    a[18]=String(cnt);a[19]=String(cityUnits);a[20]=String(cityTotal);a[21]=String(cityKyufu);
     a[22]='0';a[23]='0';a[24]='0';
     lines.push(a);
     // J111-02 サービス種類別
     n++; const b=_row(16);
     b[0]='2';b[1]=String(n);b[2]='J111';b[3]='02';b[4]=svcYM;b[5]=city;b[6]=jno;
-    b[7]='1';b[8]=M.seikyu_svc;b[9]=String(cnt);b[10]=String(cityUnits);b[11]=String(cityYen);b[12]=String(cityYen);
+    b[7]='1';b[8]=M.seikyu_svc;b[9]=String(cnt);b[10]=String(cityUnits);b[11]=String(cityTotal);b[12]=String(cityKyufu);
     b[13]='0';b[14]='0';b[15]='0';
     lines.push(b);
     // 利用者ごと
@@ -2499,8 +2522,10 @@ function _genKokuhoSeikyu(agg){
       // J121-01 基本
       n++; const c1=_row(37);
       c1[0]='2';c1[1]=String(n);c1[2]='J121';c1[3]='01';c1[4]=svcYM;c1[5]=city;c1[6]=jno;c1[7]=u.receiptNo;
-      c1[9]=u.kana;c1[11]='20';c1[12]='1';c1[13]='0';c1[14]='1';
-      c1[21]=String(u.totalUnits);c1[22]=String(u.yen);c1[23]='0';c1[28]='0';c1[29]=String(u.yen);
+      c1[9]=u.kana;c1[11]='20';c1[12]=M.j121_kubun;c1[13]=String(u.limit);c1[14]=M.j121_kubun;
+      c1[21]=String(u.totalUnits);c1[22]=String(u.yen);c1[23]=String(u.copay);
+      if(M.copayDetail){ c1[24]=String(u.copay); c1[25]='0'; }
+      c1[28]='0';c1[29]=String(u.kyufu);
       lines.push(c1);
       // J121-02 利用日数
       n++; const c2=_row(14);
@@ -2518,8 +2543,9 @@ function _genKokuhoSeikyu(agg){
       n++; const c4=_row(35);
       c4[0]='2';c4[1]=String(n);c4[2]='J121';c4[3]='04';c4[4]=svcYM;c4[5]=city;c4[6]=jno;c4[7]=u.receiptNo;
       c4[8]=M.seikyu_svc;c4[9]='1';c4[10]=String(u.svcDays);c4[11]=String(u.totalUnits);c4[12]=String(up);
-      c4[13]='0';c4[14]=String(u.yen);c4[15]=String(u.totalUnits);c4[16]=String(u.totalUnits);c4[17]='0';
-      c4[22]='0';c4[23]=String(u.yen);
+      c4[13]='0';c4[14]=String(u.yen);c4[15]=String(u.totalUnits);c4[16]=String(u.totalUnits);c4[17]=String(u.copay);
+      if(M.copayDetail){ c4[18]=String(u.copay); c4[19]='0'; }
+      c4[22]='0';c4[23]=String(u.kyufu);
       lines.push(c4);
       // J121-05 上限管理
       n++; const c5=_row(13);
@@ -2542,8 +2568,8 @@ function _kokuhoSelectedClaim(){
   if(!claim){ showToast('請求月が見つかりません'); return null; }
   const fac=load('facilities',[]).find(f=>f.id===_curFacId)||{};
   if(!fac.jigyoshoNo){ alert('事業所番号が未設定です。「設定 → 事業所情報」で10桁の事業所番号を入力してください。'); return null; }
-  if((fac.serviceType||'')!=='B'){
-    if(!confirm('現在の国保連エクスポートは就労継続支援B型の単位マスタで検証済みです。\nこの事業所はB型ではありません。続行しますか？（要検証）')) return null;
+  if(!KOKUHO_MASTER[fac.serviceType]){
+    if(!confirm('この事業所のサービス種別（'+(fac.serviceType||'未設定')+'）は国保連マスタに未登録です。\n現在対応しているのはA型・B型です。続行しますか？（要検証）')) return null;
   }
   return claim;
 }
