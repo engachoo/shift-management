@@ -4420,6 +4420,15 @@ function impExecute(){
         id: ex.id,
         facilityId: ex.facilityId || data.facilityId,
         // 新データが空の場合は既存値を保持（詳細情報を消さない）
+        name:    data.name    || ex.name    || '',
+        sei:     data.sei     || ex.sei     || '',
+        mei:     data.mei     || ex.mei     || '',
+        kana:    data.kana    || ex.kana    || '',
+        kanaSei: data.kanaSei || ex.kanaSei || '',
+        kanaMei: data.kanaMei || ex.kanaMei || '',
+        receiptNo: data.receiptNo || ex.receiptNo || '',
+        cityNo:    data.cityNo    || ex.cityNo    || '',
+        startDate: data.startDate || ex.startDate || '',
         birthDate:       data.birthDate       || ex.birthDate       || '',
         grantStart:      data.grantStart      || ex.grantStart      || '',
         grantEnd:        data.grantEnd        || ex.grantEnd        || '',
@@ -4431,6 +4440,17 @@ function impExecute(){
         tel:  data.tel  || ex.tel  || '',
         email:data.email|| ex.email|| '',
         serviceType: data.serviceType || ex.serviceType || _facServiceType,
+        // 障害種別・予定日・各種期間：新データが空（既定）なら既存を保持
+        disabilityTypes: (data.disabilityTypes&&data.disabilityTypes.length)?data.disabilityTypes:(ex.disabilityTypes&&ex.disabilityTypes.length?ex.disabilityTypes:(data.disabilityTypes||[])),
+        gender:          data.gender || ex.gender || '',
+        defaultDays:     ex.defaultDays || data.defaultDays,
+        serviceDefaults: ex.serviceDefaults || data.serviceDefaults,
+        limitPeriod:      (data.limitPeriod&&data.limitPeriod.enabled)?data.limitPeriod:(ex.limitPeriod||data.limitPeriod),
+        mealPeriod:       (data.mealPeriod&&data.mealPeriod.enabled)?data.mealPeriod:(ex.mealPeriod||data.mealPeriod),
+        disabilityPeriod: (data.disabilityPeriod&&data.disabilityPeriod.enabled)?data.disabilityPeriod:(ex.disabilityPeriod||data.disabilityPeriod),
+        nursingPeriod:    (data.nursingPeriod&&data.nursingPeriod.enabled)?data.nursingPeriod:(ex.nursingPeriod||data.nursingPeriod),
+        planPeriod:       (data.planPeriod&&data.planPeriod.enabled)?data.planPeriod:(ex.planPeriod||data.planPeriod),
+        planMonitor:      (data.planMonitor&&data.planMonitor.enabled)?data.planMonitor:(ex.planMonitor||data.planMonitor),
       });
       updated++;
     } else {
