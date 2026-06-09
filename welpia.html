@@ -264,6 +264,25 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
 .btn-claim-reset{background:#f3f4f6;color:#374151;border:none;border-radius:5px;padding:7px 14px;cursor:pointer;font-size:12px;font-weight:600;transition:background .2s}
 .btn-claim-reset:hover{background:#e2e8f0}
 
+/* ===== 操作マニュアル ===== */
+.man-intro{background:#fff;border-radius:10px;padding:18px 22px;box-shadow:0 1px 4px rgba(0,0,0,.06);margin-bottom:16px;font-size:14px;line-height:1.8;color:var(--text)}
+.man-sec{background:#fff;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,.06);margin-bottom:12px;overflow:hidden}
+.man-q{display:flex;align-items:center;gap:12px;padding:15px 20px;cursor:pointer;font-size:15px;font-weight:700;color:var(--navy);user-select:none;transition:background .15s}
+.man-q:hover{background:var(--green-lt)}
+.man-q .man-ico{font-size:20px}
+.man-q .man-arrow{margin-left:auto;font-size:13px;color:var(--text-lt);transition:transform .2s}
+.man-q.open .man-arrow{transform:rotate(180deg)}
+.man-a{display:none;padding:4px 22px 20px;font-size:13.5px;line-height:1.9;color:var(--text);border-top:1px solid var(--green-lt)}
+.man-a.open{display:block}
+.man-a h4{font-size:14px;color:var(--green-dk);margin:14px 0 6px;font-weight:700}
+.man-a ol,.man-a ul{margin:6px 0 10px 22px}
+.man-a li{margin-bottom:5px}
+.man-a .man-tip{background:#fefce8;border-left:3px solid #f59e0b;padding:8px 12px;border-radius:5px;font-size:12.5px;color:#92400e;margin:10px 0}
+.man-a .man-warn{background:#fef2f2;border-left:3px solid #dc2626;padding:8px 12px;border-radius:5px;font-size:12.5px;color:#b91c1c;margin:10px 0}
+.man-a code{background:#f3f4f6;padding:1px 6px;border-radius:4px;font-size:12px;color:var(--navy)}
+.man-a table{width:100%;border-collapse:collapse;margin:8px 0;font-size:12.5px}
+.man-a th{background:var(--navy);color:#fff;padding:6px 10px;text-align:left}
+.man-a td{padding:6px 10px;border-bottom:1px solid #eef3ec}
 /* ===== タイムカード端末（キオスク）モード ===== */
 .kiosk-mode .sb-fac-wrap{display:none}
 .kiosk-mode #croco-wrap{display:none!important}
@@ -550,7 +569,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
         <span class="si-arrow" id="si-arrow-help">▾</span>
       </div>
       <div class="sb-sub" id="sub-help" style="display:none">
-        <div class="sb-sub-item" onclick="alert('準備中です')">操作マニュアル ↗</div>
+        <div class="sb-sub-item" id="sm-manual" onclick="showView('manual')">📖 操作マニュアル</div>
         <div class="sb-sub-item" onclick="alert('準備中です')">お問い合わせ ↗</div>
       </div>
       <!-- システム設定（最下段） -->
@@ -1023,6 +1042,12 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
           <button class="btn-save" onclick="saveSysPerms()">💾 保存</button>
         </div>
       </div>
+    </div>
+
+    <!-- ===== 操作マニュアル ===== -->
+    <div id="view-manual" style="display:none">
+      <div class="page-hdr">📖 操作マニュアル <span class="ph-sub">welbe の使い方</span></div>
+      <div class="content-area" id="manualBody"></div>
     </div>
 
   </div><!-- /mainArea -->
@@ -1528,7 +1553,7 @@ function startApp(){
 // ナビゲーション
 // =========================================================
 let curView='daily';
-const viewIds=['daily','monthly','timecard','claim','facility','clients','init','sysusers','sysperms','croco'];
+const viewIds=['daily','monthly','timecard','claim','facility','clients','init','sysusers','sysperms','croco','manual'];
 function showView(v){
   // 権限チェック：許可されていない画面は開けない
   if(typeof canView==='function' && !canView(v)){
@@ -1538,7 +1563,7 @@ function showView(v){
   curView=v;
   viewIds.forEach(id=>document.getElementById('view-'+id).style.display='none');
   document.getElementById('view-'+v).style.display='block';
-  ['sm-record','sm-timecard','sm-claim','sm-facility','sm-clients','sm-init'].forEach(id=>document.getElementById(id).classList.remove('active'));
+  ['sm-record','sm-timecard','sm-claim','sm-facility','sm-clients','sm-init','sm-manual'].forEach(id=>document.getElementById(id)?.classList.remove('active'));
   if(v==='daily'||v==='monthly') document.getElementById('sm-record').classList.add('active');
   else if(v==='timecard') document.getElementById('sm-timecard').classList.add('active');
   else if(v==='claim') document.getElementById('sm-claim').classList.add('active');
@@ -1559,7 +1584,97 @@ function showView(v){
   else if(v==='init') renderInit();
   else if(v==='sysusers') renderSysUsers();
   else if(v==='sysperms') renderSysPerms();
+  else if(v==='manual'){ document.getElementById('sm-manual')?.classList.add('active'); renderManual(); }
   if(typeof renderAlertBanner==='function') renderAlertBanner();
+}
+
+// ===== 操作マニュアル =====
+const MANUAL_SECTIONS = [
+  { ico:'🕐', q:'タイムカード（出退勤の打刻）', a:`
+    <p>利用者の出勤・退勤を打刻します。タブレットでの利用にも対応しています。</p>
+    <h4>打刻のしかた</h4>
+    <ol>
+      <li>左メニュー「タイムカード」を開く</li>
+      <li>50音順に並んだ利用者カードから、本人をタップ</li>
+      <li>大きな打刻画面で「<b>通所する</b>」（出勤）／「<b>退勤する</b>」（退勤）を押す</li>
+    </ol>
+    <h4>カードの色</h4>
+    <table><tr><th>色</th><th>状態</th></tr>
+      <tr><td>⬜ 白</td><td>未出勤</td></tr><tr><td>🟢 緑</td><td>出勤済み（通所中）</td></tr><tr><td>🟧 オレンジ</td><td>退勤済</td></tr></table>
+    <div class="man-tip">💡 タブレット用の「タイムカード端末」アカウントを使うと、ログイン後すぐ打刻画面に入り、他の画面には入れません（各事業所に固定）。</div>` },
+  { ico:'📊', q:'利用実績（日ごと・月ごと）', a:`
+    <p>利用者ごとの通所状況（サービス提供の状況）を記録します。タイムカードの打刻と自動連動します。</p>
+    <h4>日ごとの確認・編集</h4>
+    <ol>
+      <li>「利用実績」→「日ごと」タブ</li>
+      <li>日付を選び、各利用者の鉛筆✏ボタンで編集</li>
+      <li>サービス提供の状況（通所／欠席時対応／施設外就労 など）を選ぶ</li>
+    </ol>
+    <h4>利用状況の詳細</h4>
+    <p>「利用状況の詳細」ボタンで、その日の状況をマトリクス表（状況別の人数・✓）で確認できます。</p>
+    <div class="man-tip">💡 「欠席時対応」は加算対象、「欠席（加算なし）」は請求対象外として正しく区別されます。</div>` },
+  { ico:'📋', q:'請求（国保連への電子請求）', a:`
+    <p>国保連へ提出する電子請求ファイル（J11・J61）を出力します。<b>主に責任者が行う業務です。</b></p>
+    <h4>出力手順</h4>
+    <ol>
+      <li>welbe右上で対象の事業所を選ぶ</li>
+      <li>「請求」→「対象請求月」を選択（なければ「＋月を追加」）</li>
+      <li>「<b>国保連 電子請求ファイル</b>」から<br>・請求明細書（J11）<br>・サービス提供実績記録票（J61）<br>をダウンロード</li>
+    </ol>
+    <div class="man-warn">⚠ 初回は必ず、以前のソフト（ノービー）の出力と1ヶ月分を見比べ、金額・件数が一致することを確認してから本番送信してください。</div>
+    <div class="man-tip">💡 「確認用CSV」は人が読む集計表です。金額チェックに使えます。</div>` },
+  { ico:'👥', q:'利用者情報（登録・受給者証期限）', a:`
+    <p>利用者の受給者証番号・障害支援区分・負担上限・受給者証期限などを管理します。</p>
+    <h4>編集</h4>
+    <ol><li>「設定」→「利用者情報」</li><li>各利用者の「編集」ボタンで開いて入力 → 保存</li></ol>
+    <h4>受給者証期限の入力（重要）</h4>
+    <p>「支給決定終了日」を入れると、期限が近い／切れた利用者を画面上部に<b>アラート表示</b>します。国保連で期限切れは返戻の原因になるため、必ず入れておきましょう。</p>
+    <h4>knowbeからの取込</h4>
+    <p>「📥 knowbeからインポート」で、knowbe形式のデータを貼り付けて一括登録できます。受給者証番号で重複を判定するので、二重登録になりません。重複が出た場合は上部の「⚠ 重複を削除」で整理できます。</p>` },
+  { ico:'⚙️', q:'設定（事業所情報・初期設定）', a:`
+    <p><b>管理者のみ</b>が編集できます。</p>
+    <h4>事業所情報</h4>
+    <ul><li>「設定」→「事業所情報」で編集</li>
+    <li><b>事業所番号</b>（10桁）と<b>市区町村番号</b>は国保連CSV出力に必須です</li></ul>
+    <table><tr><th>事業所</th><th>事業所番号</th><th>市区町村番号</th></tr>
+      <tr><td>羽島（A型）</td><td>2110400534</td><td>212019</td></tr>
+      <tr><td>山県（B型）</td><td>2110800444</td><td>212159</td></tr></table>
+    <div class="man-tip">💡 職員配置・処遇改善区分・平均工賃などの加算設定は、welbeの計算ロジックに組み込み済みです。個別入力は不要です。</div>` },
+  { ico:'🔔', q:'アラート（期限・退勤忘れ）', a:`
+    <p>画面上部に注意が必要な項目をバナーで表示します。</p>
+    <ul>
+      <li>🔴 <b>受給者証期限</b>：支給決定終了日が切れ／30日／60日以内</li>
+      <li>🟠 <b>負担上限月額の適用期間</b>：終了が近い／切れ</li>
+      <li>🕐 <b>退勤の押し忘れ</b>：出勤済みなのに退勤打刻がない過去日</li>
+    </ul>
+    <p>各アラートの「更新」「退勤を入力」ボタンから、その場で対応できます。</p>` },
+  { ico:'🔐', q:'権限（管理者・責任者・スタッフ・端末）', a:`
+    <p>役割ごとに使える機能を分けられます。</p>
+    <table><tr><th>機能</th><th>管理者</th><th>責任者</th><th>スタッフ</th></tr>
+      <tr><td>打刻・実績入力</td><td>✅</td><td>✅</td><td>✅</td></tr>
+      <tr><td>請求（申請）</td><td>✅</td><td>✅</td><td>❌</td></tr>
+      <tr><td>利用者情報 編集</td><td>✅</td><td>✅</td><td>❌</td></tr>
+      <tr><td>事業所・システム設定</td><td>✅</td><td>❌</td><td>❌</td></tr></table>
+    <h4>割り当て方</h4>
+    <ol><li>「システム設定」→「ユーザー設定」</li><li>権限プルダウンで 管理者／責任者／スタッフ／タイムカード端末 を選ぶ → 更新</li></ol>
+    <div class="man-tip">💡 細かい調整は「システム設定」→「権限設定」で。チェックを変えて保存すれば即反映されます。</div>` },
+  { ico:'🤖', q:'Welbeの提案', a:`
+    <p>国保連・厚労省の最新情報に基づく改善提案を表示します（管理者向け）。報酬改定や期限管理の注意点を、通達日時・対応内容・対応期限つきで確認できます。</p>` },
+];
+function renderManual(){
+  const body=document.getElementById('manualBody'); if(!body) return;
+  body.innerHTML=`<div class="man-intro">welbe（国保連請求サポート）の使い方をまとめています。見たい項目をタップすると開きます。<br>
+    ご不明な点は、各画面の操作を試しながら確認してください。</div>`+
+    MANUAL_SECTIONS.map((s,i)=>`<div class="man-sec">
+      <div class="man-q" onclick="_toggleMan(${i})"><span class="man-ico">${s.ico}</span>${s.q}<span class="man-arrow">▾</span></div>
+      <div class="man-a" id="man-a-${i}">${s.a}</div>
+    </div>`).join('');
+}
+function _toggleMan(i){
+  const a=document.getElementById('man-a-'+i); if(!a) return;
+  const q=a.previousElementSibling;
+  const open=a.classList.contains('open');
+  a.classList.toggle('open',!open); if(q) q.classList.toggle('open',!open);
 }
 function setTab(t){ showView(t==='daily'?'daily':'monthly'); }
 let _sSet=false,_sHelp=false,_sSys=false;
