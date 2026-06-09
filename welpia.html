@@ -4185,14 +4185,21 @@ function impNext(){
       const _dArr = Array.isArray(c.disabilityTypes)?c.disabilityTypes:[];
       const dtypes = _dArr.length ? _dArr.join('・') : (c.disabilityTypes||'');
       const limit  = c.limitAmount || c.limit_amount || c.income_kind_yen||'';
-      // 重複チェック（氏名 + 生年月日）
-      const dup = existing.find(e=>e.name===name && e.birthDate===birth);
+      const receiptNo = c.receiptNo || c.recipient_number || '';
+      const kid = c.knowbeId || c.id || c.uif_id || '';
+      // 重複チェック（受給者証番号 → knowbeId → 氏名+生年月日）
+      const dup = existing.find(e=>
+        (receiptNo && e.receiptNo && String(e.receiptNo)===String(receiptNo)) ||
+        (kid && e.knowbeId && String(e.knowbeId)===String(kid)) ||
+        (name && e.name===name && e.birthDate===birth)
+      );
+      const dispName = name || (dup && dup.name) || (receiptNo?'（受給'+receiptNo+'）':'');
       const dupMark = dup
         ? '<span style="color:#f59e0b;font-size:10px">上書き更新</span>'
         : '<span style="color:var(--green-dk);font-size:10px">新規</span>';
       rows += `<tr style="border-bottom:1px solid #eef3ec">
         <td style="padding:7px 10px"><input type="checkbox" data-idx="${idx}" class="imp-chk" checked></td>
-        <td style="padding:7px 10px;font-weight:600">${esc(name)}</td>
+        <td style="padding:7px 10px;font-weight:600">${esc(dispName)}</td>
         <td style="padding:7px 10px;color:var(--text-lt)">${birth}</td>
         <td style="padding:7px 10px;color:var(--text-lt)">${esc(dtypes)}</td>
         <td style="padding:7px 10px;color:var(--text-lt)">${limit?limit+'円':''}</td>
