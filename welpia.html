@@ -781,6 +781,17 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
           </div>
         </div>
 
+        <!-- 過去実績の取込（J61） -->
+        <div class="claim-panel" style="border:1px solid #93c5fd;background:#eff6ff">
+          <div class="claim-panel-ttl">📥 過去の利用実績を取り込む（ノービーのJ61 CSV）</div>
+          <div style="font-size:12px;color:#3b5a78;margin:0 0 10px;line-height:1.6">
+            ノービーの「サービス提供実績記録票（J61）」CSVを取り込むと、その月の出勤・欠席・送迎がwelbeに反映され、請求書・国保連CSVを発行できます。
+          </div>
+          <div class="claim-dl-row">
+            <button class="btn-claim-dl" style="background:#2563eb;border-color:#2563eb;color:#fff" onclick="openJissekiImport()">📥 実績記録票(J61)を取込</button>
+          </div>
+        </div>
+
         <!-- 国保連 電子請求（インターフェース形式CSV） -->
         <div class="claim-panel" style="border:2px solid var(--green);background:#f3fbf0">
           <div class="claim-panel-ttl">🏛 国保連 電子請求ファイル（伝送・media形式 / Shift-JIS）</div>
@@ -1054,6 +1065,28 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
 
   </div><!-- /mainArea -->
 </div><!-- /app -->
+
+<!-- ===== 実績記録票(J61)取込 オーバーレイ ===== -->
+<div id="jissekiImpOverlay" style="display:none;position:fixed;inset:0;z-index:8200;background:rgba(0,0,0,.55);align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:14px;width:min(680px,96vw);max-height:90vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.35)">
+    <div style="background:#2563eb;color:#fff;border-radius:14px 14px 0 0;padding:16px 22px;display:flex;align-items:center;justify-content:space-between">
+      <div><div style="font-size:16px;font-weight:700">📥 実績記録票(J61)を取込</div>
+      <div style="font-size:12px;opacity:.85;margin-top:2px">ノービーのJ61 CSVの中身を貼り付けてください</div></div>
+      <button onclick="document.getElementById('jissekiImpOverlay').style.display='none'" style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer">✕</button>
+    </div>
+    <div style="padding:18px 22px;overflow-y:auto">
+      <div style="font-size:12px;color:var(--text-lt);margin-bottom:8px;line-height:1.6">
+        ファイルをテキストエディタで開き、全選択(Cmd+A)→コピー(Cmd+C)→下の欄に貼り付け。受給者証番号で利用者に紐づけます。
+      </div>
+      <textarea id="jisseki-csv" placeholder="1,1,0,...,J61,...&#10;2,2,J611,01,202605,..." style="width:100%;height:160px;border:2px solid var(--border);border-radius:8px;padding:12px;font-family:monospace;font-size:11px;resize:vertical" oninput="document.getElementById('jisseki-imp-btn').disabled=!this.value.trim()"></textarea>
+      <div id="jisseki-imp-msg" style="font-size:13px;margin-top:10px;line-height:1.7"></div>
+    </div>
+    <div style="padding:0 22px 18px;display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn-cancel" onclick="document.getElementById('jissekiImpOverlay').style.display='none'">閉じる</button>
+      <button id="jisseki-imp-btn" class="btn-primary" onclick="execJissekiImport()" disabled style="background:#2563eb;color:#fff;border:none;border-radius:6px;padding:8px 20px;font-weight:700;cursor:pointer">取込実行</button>
+    </div>
+  </div>
+</div>
 
 <!-- ===== タイムカード 打刻画面（全画面オーバーレイ） ===== -->
 <div id="tcPunchView">
@@ -2720,6 +2753,63 @@ function dlKokuhoSeikyu(){
   _dlSjis(csv,`seikyu-meisai_${claim.year}-${String(claim.month).padStart(2,'0')}.csv`);
   const totalYen=agg.users.reduce((s,u)=>s+u.yen,0);
   showToast(`請求明細書(J11)を出力しました（${agg.users.length}名 / ${totalYen.toLocaleString()}円）✓`);
+}
+
+// ===== サービス提供実績記録票(J61) 取込 =====
+function openJissekiImport(){
+  document.getElementById('jisseki-csv').value='';
+  document.getElementById('jisseki-imp-msg').textContent='';
+  document.getElementById('jisseki-imp-btn').disabled=true;
+  document.getElementById('jissekiImpOverlay').style.display='flex';
+}
+function execJissekiImport(){
+  const text=document.getElementById('jisseki-csv').value.trim();
+  const msg=document.getElementById('jisseki-imp-msg');
+  if(!text){ return; }
+  let lines;
+  try{ lines=text.split(/\r?\n/).filter(x=>x).map(l=>l.split(',')); }
+  catch(e){ msg.style.color='#dc2626'; msg.textContent='読み取りに失敗しました'; return; }
+  const clients=load('clients',[]).filter(c=>c.facilityId===_curFacId);
+  const byReceipt={}; clients.forEach(c=>{ if(c.receiptNo) byReceipt[String(c.receiptNo)]=c; });
+  const fmt=s=>(s&&s.length===4)?s.slice(0,2)+':'+s.slice(2):'';
+  const recByMonth={}; let matched=0; const unmatched=new Set(); const monthsSet=new Set();
+  lines.forEach(r=>{
+    if(r[2]==='J611' && r[3]==='02'){
+      const svcYM=r[4]; const receiptNo=String(r[7]||''); const day=parseInt(r[10]);
+      if(!svcYM||!receiptNo||!day) return;
+      const c=byReceipt[receiptNo];
+      if(!c){ unmatched.add(receiptNo); return; }
+      monthsSet.add(svcYM);
+      const isAbs = r[37]==='8';
+      const t1=parseInt(r[22]||0)||0, t2=parseInt(r[23]||0)||0;
+      const transport=(t1&&t2)?'往復':(t1||t2)?'片道':'';
+      if(!recByMonth[svcYM]) recByMonth[svcYM]={};
+      if(!recByMonth[svcYM][c.id]) recByMonth[svcYM][c.id]={};
+      recByMonth[svcYM][c.id][day] = isAbs
+        ? {status:'欠席時対応'}
+        : {status:'通所', start:fmt(r[15]), end:fmt(r[16]), transport};
+      matched++;
+    }
+  });
+  if(!matched){ msg.style.color='#dc2626'; msg.textContent='⚠️ 実績データ（J611-02）が見つかりませんでした。J61のCSVか確認してください。'; return; }
+  // 月ごとに保存（既存とマージ）＋ claims に請求月を追加
+  const claims=load('claims',[]);
+  Object.keys(recByMonth).forEach(ym=>{
+    const y=+ym.slice(0,4), m=+ym.slice(4);
+    const k=getRecKey(_curFacId,y,m);
+    const ex=load(k,{}); const imp=recByMonth[ym];
+    Object.keys(imp).forEach(cid=>{ ex[cid]=Object.assign(ex[cid]||{}, imp[cid]); });
+    save(k, ex);
+    const cid=`${_curFacId}_${ym}`;
+    if(!claims.find(c=>c.id===cid)) claims.push({id:cid,facilityId:_curFacId,year:y,month:m,status:'submitted',memo:'J61取込'});
+  });
+  save('claims', claims);
+  const mList=[...monthsSet].sort().map(s=>`${s.slice(0,4)}年${+s.slice(4)}月`).join('・');
+  msg.style.color='var(--green-dk)';
+  msg.innerHTML=`✅ ${matched}件の実績を取込みました（${mList}）`+
+    (unmatched.size?`<br><span style="color:#c2410c">⚠ welbe未登録の受給者証 ${unmatched.size}件はスキップ：${[...unmatched].join(', ')}</span>`:'');
+  if(typeof renderClaim==='function') renderClaim();
+  showToast(`実績を取込みました（${matched}件）✓`);
 }
 
 // 請求書・領収書・代理受領書（利用者ごと1枚）を生成して印刷ビューを開く
