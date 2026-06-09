@@ -2723,8 +2723,8 @@ function dlKokuhoSeikyu(){
 }
 
 // 請求書・領収書・代理受領書（利用者ごと1枚）を生成して印刷ビューを開く
-function genWelbeDocs(type){
-  const claim=_kokuhoSelectedClaim(); if(!claim) return;
+function genWelbeDocs(type, claimArg){
+  const claim = claimArg || _kokuhoSelectedClaim(); if(!claim) return;
   const agg=_kokuhoAggregate(claim.year,claim.month);
   if(!agg.users.length){ showToast('当月の実績データがありません'); return; }
   const fac=agg.fac;
@@ -2793,11 +2793,9 @@ function printClaimFile(type){
 }
 
 function printDoc(claimId,docType){
-  const ymPart=claimId.slice(claimId.lastIndexOf('_')+1);
-  const yr=+ymPart.slice(0,4), mo=+ymPart.slice(4);
-  const labels={invoice:'請求書',receipt:'領収書',proxy:'代理受領書'};
-  showToast(`${yr}年${mo}月 ${labels[docType]||docType}を印刷プレビューします`);
-  setTimeout(()=>window.print(),400);
+  const claim=load('claims',[]).find(c=>c.id===claimId);
+  if(!claim){ showToast('請求月が見つかりません'); return; }
+  genWelbeDocs(docType, claim);
 }
 
 function openClaimUserSel(){
