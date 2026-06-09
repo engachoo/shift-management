@@ -2816,7 +2816,10 @@ function execJissekiImport(){
 function genWelbeDocs(type, claimArg){
   const claim = claimArg || _kokuhoSelectedClaim(); if(!claim) return;
   const agg=_kokuhoAggregate(claim.year,claim.month);
-  if(!agg.users.length){ showToast('当月の実績データがありません'); return; }
+  if(!agg.users.length){
+    alert(`${claim.year}年${claim.month}月の利用実績がwelbeにありません。\n\n・過去（〜2025年）の控えは、PCの「請求書類ビューア」で確認してください。\n・2026年以降は、上部の「実績記録票(J61)を取込」でこの月のCSVを取り込むと発行できます。`);
+    return;
+  }
   const fac=agg.fac;
   const svcLabel = fac.serviceType==='A'?'就労継続支援A型':fac.serviceType==='B'?'就労継続支援B型':'';
   const y=claim.year, m=claim.month, mm=String(m).padStart(2,'0');
