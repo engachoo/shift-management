@@ -3227,10 +3227,11 @@ function dedupClients(){
   const others  = load('clients',[]).filter(c=>c.facilityId!==_curFacId);
   const seen = new Map();
   const result = [];
-  // データ量スコア（フィールドが多い方を優先）
-  const score = c => [c.birthDate,c.grantEnd,c.grantStart,c.disabilityClass,c.limitAmount,c.kana].filter(Boolean).length;
+  // 漢字氏名（フリガナと異なる＝漢字あり）を優先しつつ、データが多い方を残す
+  const hasKanji = c => !!(c.name && c.name.replace(/[\s　]/g,'') !== (c.kana||'').replace(/[\s　]/g,''));
+  const score = c => (hasKanji(c)?100:0) + [c.birthDate,c.grantEnd,c.grantStart,c.disabilityClass,c.limitAmount,c.kana].filter(Boolean).length;
   clients.forEach(c=>{
-    const key = c.knowbeId ? String(c.knowbeId) : (c.name+'|'+(c.birthDate||''));
+    const key = c.receiptNo ? 'R'+String(c.receiptNo) : (c.knowbeId ? 'K'+String(c.knowbeId) : 'N'+c.name+'|'+(c.birthDate||''));
     if(!seen.has(key)){
       seen.set(key, c);
     } else {
@@ -3266,7 +3267,7 @@ function renderClients(){
   // 重複チェック → ボタン表示
   const keys=new Set(); let hasDup=false;
   clients.forEach(c=>{
-    const k=c.knowbeId?String(c.knowbeId):(c.name+'|'+(c.birthDate||''));
+    const k=c.receiptNo?'R'+String(c.receiptNo):(c.knowbeId?'K'+String(c.knowbeId):'N'+c.name+'|'+(c.birthDate||''));
     if(keys.has(k)) hasDup=true; else keys.add(k);
   });
   const dedupBtn=document.getElementById('btnDedupClients');
@@ -4191,7 +4192,7 @@ function impExecute(){
       employLink:      gb('employLink','employ_link'),
       intensiveSupport:gb('intensiveSupport','intensive_support','intensive_support_flg'),
       active: _active,
-      knowbeId: src.id || src.uif_id || src._sourceId || undefined,
+      knowbeId: src.id || src.uif_id || src._sourceId || src.knowbeId || undefined,
       defaultDays: _defaultDays,
       serviceDefaults: _serviceDefaults,
       eSignRecord: gb('eSignRecord','e_sign_record','electronic_signature_flg'),
@@ -4224,6 +4225,7 @@ function impExecute(){
     // 重複は上書き更新、新規は追加
     // knowbeId(uif_id) 一致を優先、なければ 氏名+生年月日 でマッチ
     const dupIdx = clients.findIndex(e=>
+      (data.receiptNo && e.receiptNo && String(e.receiptNo)===String(data.receiptNo)) ||
       (data.knowbeId && e.knowbeId && String(e.knowbeId)===String(data.knowbeId)) ||
       (e.name===data.name && (e.birthDate||'')===(data.birthDate||''))
     );
