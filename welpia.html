@@ -1523,6 +1523,7 @@ function onFacChange(){
   const f = curFac();
   if(f) document.getElementById('sbCorpName').textContent = f.corp||'';
   _syncFacDisplays();
+  if(typeof renderAlertBanner==='function') renderAlertBanner(); // アラートも事業所切替で更新
   // 現在のビューを再描画
   if(curView==='daily') renderDaily();
   else if(curView==='monthly'){buildMonthlyClientSel();renderMonthly();}
@@ -5194,7 +5195,7 @@ function _getExpiryBadge(c){
 
 // 全利用者の期限チェク → {expired:[], soon30:[], soon60:[]} を返す
 function getReceiptAlerts(){
-  const clients=load('clients',[]).filter(c=>c.active!==false);
+  const clients=load('clients',[]).filter(c=>c.active!==false && c.facilityId===_curFacId);
   const alerts={expired:[],soon30:[],soon60:[]};
   clients.forEach(c=>{
     const checks=[
