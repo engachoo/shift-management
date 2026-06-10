@@ -264,6 +264,29 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
 .btn-claim-reset{background:#f3f4f6;color:#374151;border:none;border-radius:5px;padding:7px 14px;cursor:pointer;font-size:12px;font-weight:600;transition:background .2s}
 .btn-claim-reset:hover{background:#e2e8f0}
 
+/* ===== 操作マニュアル ===== */
+.man-intro{background:#fff;border-radius:10px;padding:18px 22px;box-shadow:0 1px 4px rgba(0,0,0,.06);margin-bottom:16px;font-size:14px;line-height:1.8;color:var(--text)}
+.man-sec{background:#fff;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,.06);margin-bottom:12px;overflow:hidden}
+.man-q{display:flex;align-items:center;gap:12px;padding:15px 20px;cursor:pointer;font-size:15px;font-weight:700;color:var(--navy);user-select:none;transition:background .15s}
+.man-q:hover{background:var(--green-lt)}
+.man-q .man-ico{font-size:20px}
+.man-q .man-arrow{margin-left:auto;font-size:13px;color:var(--text-lt);transition:transform .2s}
+.man-q.open .man-arrow{transform:rotate(180deg)}
+.man-a{display:none;padding:4px 22px 20px;font-size:13.5px;line-height:1.9;color:var(--text);border-top:1px solid var(--green-lt)}
+.man-a.open{display:block}
+.man-a h4{font-size:14px;color:var(--green-dk);margin:14px 0 6px;font-weight:700}
+.man-a ol,.man-a ul{margin:6px 0 10px 22px}
+.man-a li{margin-bottom:5px}
+.man-a .man-tip{background:#fefce8;border-left:3px solid #f59e0b;padding:8px 12px;border-radius:5px;font-size:12.5px;color:#92400e;margin:10px 0}
+.man-a .man-warn{background:#fef2f2;border-left:3px solid #dc2626;padding:8px 12px;border-radius:5px;font-size:12.5px;color:#b91c1c;margin:10px 0}
+.man-a code{background:#f3f4f6;padding:1px 6px;border-radius:4px;font-size:12px;color:var(--navy)}
+.man-a table{width:100%;border-collapse:collapse;margin:8px 0;font-size:12.5px}
+.man-a th{background:var(--navy);color:#fff;padding:6px 10px;text-align:left}
+.man-a td{padding:6px 10px;border-bottom:1px solid #eef3ec}
+/* ===== タイムカード端末（キオスク）モード ===== */
+.kiosk-mode .sb-fac-wrap{display:none}
+.kiosk-mode #croco-wrap{display:none!important}
+.kiosk-mode .sb-corp{display:none}
 /* ===== タイムカード ===== */
 .tc-clock-wrap{text-align:center;padding:18px 0 8px;user-select:none}
 .tc-clock{font-size:52px;font-weight:700;color:var(--navy);letter-spacing:3px;font-variant-numeric:tabular-nums;line-height:1}
@@ -305,6 +328,38 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
 .tc-cell-in{color:var(--green-dk);font-weight:600}
 .tc-cell-out{color:#6b7280}
 .tc-cell-none{color:#d1d5db}
+/* ===== タイムカード 50音グリッド（knowbe風） ===== */
+.tc-gyo-row{display:flex;align-items:flex-start;gap:14px;margin-bottom:14px}
+.tc-gyo-label{flex-shrink:0;width:34px;font-size:22px;font-weight:800;color:#b8c2cc;text-align:center;padding-top:18px}
+.tc-gyo-cards{flex:1;display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:13px}
+.tc-pcard{border:none;border-radius:10px;padding:22px 14px;font-size:19px;font-weight:700;cursor:pointer;font-family:inherit;text-align:center;transition:transform .1s,box-shadow .15s;box-shadow:0 2px 5px rgba(0,0,0,.08);line-height:1.35}
+.tc-pcard:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(0,0,0,.16)}
+.tc-pcard.s-none{background:#fff;color:#475569;border:1.5px solid #e4e9ee}
+.tc-pcard.s-in{background:#10b981;color:#fff}
+.tc-pcard.s-out{background:#f97316;color:#fff}
+.tc-pcard .tc-pc-sub{display:block;font-size:11px;font-weight:600;margin-top:7px;opacity:.92}
+.tc-legend{display:flex;gap:18px;align-items:center;font-size:12px;color:var(--text-lt);margin:4px 0 18px;flex-wrap:wrap}
+.tc-legend i{display:inline-block;width:14px;height:14px;border-radius:4px;margin-right:5px;vertical-align:-2px}
+/* ===== 打刻オーバーレイ ===== */
+#tcPunchView{display:none;position:fixed;inset:0;z-index:7000;background:#eef1f4;flex-direction:column}
+#tcPunchView.show{display:flex}
+.tcpv-head{background:var(--green);color:#fff;padding:18px 28px;font-size:17px;font-weight:600;cursor:pointer;flex-shrink:0;display:flex;align-items:center;gap:8px}
+.tcpv-head:hover{background:var(--green-dk)}
+.tcpv-body{flex:1;display:flex;align-items:center;justify-content:center;gap:56px;flex-wrap:wrap;padding:30px}
+.tcpv-left{text-align:center}
+.tcpv-date{font-size:26px;color:var(--navy);font-weight:600;margin-bottom:8px}
+.tcpv-clock{font-size:88px;font-weight:800;color:var(--navy);letter-spacing:1px;font-variant-numeric:tabular-nums;line-height:1}
+.tcpv-clock .sec{font-size:34px;margin-left:10px;color:#9aa3ad}
+.tcpv-mascot{font-size:88px;margin-top:18px;line-height:1}
+.tcpv-card{background:#fff;border-radius:16px;padding:44px 56px;box-shadow:0 14px 44px rgba(0,48,80,.12);text-align:center;min-width:340px;max-width:90vw}
+.tcpv-name{font-size:31px;font-weight:700;color:var(--navy)}
+.tcpv-greet{font-size:25px;color:var(--navy);margin:12px 0 20px}
+.tcpv-prev{font-size:13px;color:var(--text-lt);line-height:1.8;margin-bottom:28px}
+.tcpv-act{border:none;border-radius:12px;padding:20px 62px;font-size:24px;font-weight:800;color:#fff;cursor:pointer;font-family:inherit;letter-spacing:1px;transition:background .15s}
+.tcpv-act.go{background:var(--green)} .tcpv-act.go:hover{background:var(--green-dk)}
+.tcpv-act.out{background:var(--navy)} .tcpv-act.out:hover{background:var(--navy-dk)}
+.tcpv-done{font-size:17px;color:var(--green-dk);font-weight:700;line-height:1.8}
+.tcpv-edit{margin-top:18px;background:#f3f4f6;color:#6b7280;border:none;border-radius:8px;padding:9px 18px;font-size:13px;cursor:pointer;font-family:inherit}
 /* ===== フォーム（設定） ===== */
 .form-section{background:#fff;border-radius:8px;padding:22px 24px;box-shadow:0 1px 4px rgba(0,0,0,.06);margin-bottom:16px}
 .form-section h3{font-size:15px;font-weight:700;color:var(--navy);margin-bottom:16px;padding-bottom:10px;border-bottom:2px solid var(--green-lt)}
@@ -514,7 +569,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
         <span class="si-arrow" id="si-arrow-help">▾</span>
       </div>
       <div class="sb-sub" id="sub-help" style="display:none">
-        <div class="sb-sub-item" onclick="alert('準備中です')">操作マニュアル ↗</div>
+        <div class="sb-sub-item" id="sm-manual" onclick="showView('manual')">📖 操作マニュアル</div>
         <div class="sb-sub-item" onclick="alert('準備中です')">お問い合わせ ↗</div>
       </div>
       <!-- システム設定（最下段） -->
@@ -673,13 +728,19 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
 
         <!-- 日ごと / 月次タブ -->
         <div class="tc-tabs">
-          <div class="tc-tab active" id="tc-tab-day" onclick="switchTcTab('day')">打刻（日ごと）</div>
+          <div class="tc-tab active" id="tc-tab-day" onclick="switchTcTab('day')">打刻（本人をタップ）</div>
           <div class="tc-tab" id="tc-tab-month" onclick="switchTcTab('month')">月次一覧</div>
         </div>
 
-        <!-- 打刻グリッド -->
+        <!-- 打刻グリッド（50音順・本人選択） -->
         <div id="tc-panel-day">
-          <div class="tc-grid" id="tcGrid"></div>
+          <div class="tc-legend">
+            <span><i style="background:#fff;border:1.5px solid #e4e9ee"></i>未出勤</span>
+            <span><i style="background:#10b981"></i>出勤済み</span>
+            <span><i style="background:#f97316"></i>退勤済</span>
+            <span style="margin-left:auto">名前をタップすると打刻画面が開きます</span>
+          </div>
+          <div id="tcGrid"></div>
         </div>
 
         <!-- 月次テーブル -->
@@ -720,21 +781,47 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
           </div>
         </div>
 
-        <!-- 国保連への請求書類ダウンロード -->
+        <!-- 過去実績の取込（J61） -->
+        <div class="claim-panel" style="border:1px solid #93c5fd;background:#eff6ff">
+          <div class="claim-panel-ttl">📥 過去の利用実績を取り込む（ノービーのJ61 CSV）</div>
+          <div style="font-size:12px;color:#3b5a78;margin:0 0 10px;line-height:1.6">
+            ノービーの「サービス提供実績記録票（J61）」CSVを取り込むと、その月の出勤・欠席・送迎がwelbeに反映され、請求書・国保連CSVを発行できます。
+          </div>
+          <div class="claim-dl-row">
+            <button class="btn-claim-dl" style="background:#2563eb;border-color:#2563eb;color:#fff" onclick="openJissekiImport()">📥 実績記録票(J61)を取込</button>
+          </div>
+        </div>
+
+        <!-- 国保連 電子請求（インターフェース形式CSV） -->
+        <div class="claim-panel" style="border:2px solid var(--green);background:#f3fbf0">
+          <div class="claim-panel-ttl">🏛 国保連 電子請求ファイル（伝送・media形式 / Shift-JIS）</div>
+          <div style="font-size:12px;color:#5a6b50;margin:0 0 10px;line-height:1.6">
+            国保中央会の取込ソフトにそのまま読み込める形式（J11/J61）で出力します。<br>
+            <b style="color:#c2410c">⚠ 初回は必ず以前のソフトの出力と1ヶ月分を見比べ、金額・件数が一致することを確認してから本番送信してください。</b>
+          </div>
+          <div class="claim-dl-row">
+            <button class="btn-claim-dl" style="background:var(--navy);border-color:var(--navy);color:#fff" onclick="dlKokuhoSeikyu()">⬇ 請求明細書（J11）</button>
+            <button class="btn-claim-dl" style="background:var(--navy);border-color:var(--navy);color:#fff" onclick="dlKokuhoJisseki()">⬇ サービス提供実績記録票（J61）</button>
+          </div>
+        </div>
+
+        <!-- 国保連への請求書類ダウンロード（簡易CSV・確認用） -->
         <div class="claim-panel">
-          <div class="claim-panel-ttl">🏛 国保連への請求書類ダウンロード</div>
+          <div class="claim-panel-ttl">📄 確認用CSV（人が読む集計表）</div>
           <div class="claim-dl-row">
             <button class="btn-claim-dl" onclick="downloadClaimFile('seikyu')">⬇ 請求書・明細書</button>
             <button class="btn-claim-dl" onclick="downloadClaimFile('jisseki')">⬇ サービス提供実績記録票</button>
           </div>
         </div>
 
-        <!-- 請求書類の印刷 -->
+        <!-- 請求書類の発行（利用者ごと） -->
         <div class="claim-panel">
-          <div class="claim-panel-ttl">🖨 請求書類の印刷</div>
+          <div class="claim-panel-ttl">🖨 請求書類の発行（利用者ごと・印刷／PDF保存）</div>
+          <div style="font-size:12px;color:#5a6b50;margin:0 0 10px;line-height:1.6">選択中の請求月の全利用者分を1枚ずつ発行します。開いた画面で「印刷 → PDFに保存」できます。</div>
           <div class="claim-dl-row">
-            <button class="btn-claim-dl btn-claim-prt" onclick="printClaimFile('seikyu')">🖨 請求書・明細書</button>
-            <button class="btn-claim-dl btn-claim-prt" onclick="printClaimFile('jisseki')">🖨 サービス提供実績記録票</button>
+            <button class="btn-claim-dl btn-claim-prt" onclick="genWelbeDocs('invoice')">🖨 請求書</button>
+            <button class="btn-claim-dl btn-claim-prt" onclick="genWelbeDocs('receipt')">🖨 領収書</button>
+            <button class="btn-claim-dl btn-claim-prt" onclick="genWelbeDocs('proxy')">🖨 代理受領書</button>
           </div>
         </div>
 
@@ -790,8 +877,8 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
               <input type="checkbox" id="btnToggleInactive" checked onchange="toggleShowInactive()" style="width:15px;height:15px;cursor:pointer;accent-color:var(--green)">
               退所者を非表示にする
             </label>
-            <button class="btn-add" onclick="openClientModal(null)">＋ 利用者を追加</button>
-            <button class="btn-add" onclick="openImportModal()" style="background:var(--navy);border-color:var(--navy)">📥 knowbeからインポート</button>
+            <button class="btn-add" id="btnAddClient" onclick="openClientModal(null)">＋ 利用者を追加</button>
+            <button class="btn-add" id="btnImportClient" onclick="openImportModal()" style="background:var(--navy);border-color:var(--navy)">📥 knowbeからインポート</button>
           </div>
         </div>
         <div class="form-section" style="padding:0;overflow:hidden">
@@ -970,8 +1057,49 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
       </div>
     </div>
 
+    <!-- ===== 操作マニュアル ===== -->
+    <div id="view-manual" style="display:none">
+      <div class="page-hdr">📖 操作マニュアル <span class="ph-sub">welbe の使い方</span></div>
+      <div class="content-area" id="manualBody"></div>
+    </div>
+
   </div><!-- /mainArea -->
 </div><!-- /app -->
+
+<!-- ===== 実績記録票(J61)取込 オーバーレイ ===== -->
+<div id="jissekiImpOverlay" style="display:none;position:fixed;inset:0;z-index:8200;background:rgba(0,0,0,.55);align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:14px;width:min(680px,96vw);max-height:90vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.35)">
+    <div style="background:#2563eb;color:#fff;border-radius:14px 14px 0 0;padding:16px 22px;display:flex;align-items:center;justify-content:space-between">
+      <div><div style="font-size:16px;font-weight:700">📥 実績記録票(J61)を取込</div>
+      <div style="font-size:12px;opacity:.85;margin-top:2px">ノービーのJ61 CSVの中身を貼り付けてください</div></div>
+      <button onclick="document.getElementById('jissekiImpOverlay').style.display='none'" style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer">✕</button>
+    </div>
+    <div style="padding:18px 22px;overflow-y:auto">
+      <div style="font-size:12px;color:var(--text-lt);margin-bottom:8px;line-height:1.6">
+        ファイルをテキストエディタで開き、全選択(Cmd+A)→コピー(Cmd+C)→下の欄に貼り付け。受給者証番号で利用者に紐づけます。
+      </div>
+      <textarea id="jisseki-csv" placeholder="1,1,0,...,J61,...&#10;2,2,J611,01,202605,..." style="width:100%;height:160px;border:2px solid var(--border);border-radius:8px;padding:12px;font-family:monospace;font-size:11px;resize:vertical" oninput="document.getElementById('jisseki-imp-btn').disabled=!this.value.trim()"></textarea>
+      <div id="jisseki-imp-msg" style="font-size:13px;margin-top:10px;line-height:1.7"></div>
+    </div>
+    <div style="padding:0 22px 18px;display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn-cancel" onclick="document.getElementById('jissekiImpOverlay').style.display='none'">閉じる</button>
+      <button id="jisseki-imp-btn" class="btn-primary" onclick="execJissekiImport()" disabled style="background:#2563eb;color:#fff;border:none;border-radius:6px;padding:8px 20px;font-weight:700;cursor:pointer">取込実行</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== タイムカード 打刻画面（全画面オーバーレイ） ===== -->
+<div id="tcPunchView">
+  <div class="tcpv-head" onclick="closeTcPunch()">‹ 閉じる</div>
+  <div class="tcpv-body">
+    <div class="tcpv-left">
+      <div class="tcpv-date" id="tcpvDate">―</div>
+      <div class="tcpv-clock" id="tcpvClock">--:--<span class="sec">00</span></div>
+      <div class="tcpv-mascot">🌿</div>
+    </div>
+    <div class="tcpv-card" id="tcpvCard"></div>
+  </div>
+</div>
 
 <!-- ===== モーダル ===== -->
 <div id="modalOverlay">
@@ -1199,7 +1327,8 @@ const DEFAULT_FACILITIES = [
     id:'fac_hashima',
     corp:'株式会社ウェルピア羽島',
     name:'ウェルピア羽島',
-    jigyoshoNo:'',
+    jigyoshoNo:'2110400534',
+    cityNo:'212019',
     serviceType:'A',
     zip:'501-6256',
     pref:'岐阜県',
@@ -1212,12 +1341,15 @@ const DEFAULT_FACILITIES = [
     id:'fac_yamagata',
     corp:'株式会社ウェルピア羽島',
     name:'ウェルピア山県',
-    jigyoshoNo:'',
+    jigyoshoNo:'2110800444',
+    cityNo:'212159',
     serviceType:'B',
+    rep:'林 幹根',
+    capacity:20,
     zip:'501-2115',
     pref:'岐阜県',
     city:'山県市',
-    addr:'梅原2660-1',
+    addr:'梅原2660番地1',
     tel:'0581-32-9199',
     fax:'0581-32-9699'
   }
@@ -1315,7 +1447,7 @@ function doLogin(){
     err.textContent='IDまたはパスワードが正しくありません';
     return;
   }
-  setS({userId:u.id, name:u.name, loginId:u.loginId, role:u.role});
+  setS({userId:u.id, name:u.name, loginId:u.loginId, role:u.role, facilityId:u.facilityId||''});
   startApp();
 }
 
@@ -1391,6 +1523,7 @@ function onFacChange(){
   const f = curFac();
   if(f) document.getElementById('sbCorpName').textContent = f.corp||'';
   _syncFacDisplays();
+  if(typeof renderAlertBanner==='function') renderAlertBanner(); // アラートも事業所切替で更新
   // 現在のビューを再描画
   if(curView==='daily') renderDaily();
   else if(curView==='monthly'){buildMonthlyClientSel();renderMonthly();}
@@ -1430,7 +1563,7 @@ function startApp(){
   const s=getS();
   if(s){
     const displayName=s.name||s.loginId||'ユーザー';
-    const roleLabel={admin:'管理者',manager:'責任者',staff:'スタッフ',user:'スタッフ'}[s.role]||'';
+    const roleLabel={admin:'管理者',manager:'責任者',staff:'スタッフ',user:'スタッフ',kiosk:'タイムカード端末'}[s.role]||'';
     const elN=document.getElementById('topbar-name');
     const elR=document.getElementById('topbar-role');
     const elA=document.getElementById('topbar-avatar');
@@ -1439,10 +1572,15 @@ function startApp(){
     if(elA) elA.textContent=(displayName[0]||'?').toUpperCase();
   }
   const facs=load('facilities',[]);
-  _curFacId = facs[0]?.id||'';
+  const _isKiosk = (s&&s.role==='kiosk');
+  // タイムカード端末：割り当て事業所に固定
+  if(_isKiosk && s.facilityId && facs.find(f=>f.id===s.facilityId)) _curFacId = s.facilityId;
+  else _curFacId = facs[0]?.id||'';
+  document.body.classList.toggle('kiosk-mode', !!_isKiosk);
   buildFacSelector();
   _syncFacDisplays();
-  showView('daily');
+  applyPermVisibility();
+  showView(firstAllowedView());
   initCrocoPanel();
   renderAlertBanner();
 }
@@ -1451,12 +1589,17 @@ function startApp(){
 // ナビゲーション
 // =========================================================
 let curView='daily';
-const viewIds=['daily','monthly','timecard','claim','facility','clients','init','sysusers','sysperms','croco'];
+const viewIds=['daily','monthly','timecard','claim','facility','clients','init','sysusers','sysperms','croco','manual'];
 function showView(v){
+  // 権限チェック：許可されていない画面は開けない
+  if(typeof canView==='function' && !canView(v)){
+    showToast('この機能を使う権限がありません');
+    v=firstAllowedView();
+  }
   curView=v;
   viewIds.forEach(id=>document.getElementById('view-'+id).style.display='none');
   document.getElementById('view-'+v).style.display='block';
-  ['sm-record','sm-timecard','sm-claim','sm-facility','sm-clients','sm-init'].forEach(id=>document.getElementById(id).classList.remove('active'));
+  ['sm-record','sm-timecard','sm-claim','sm-facility','sm-clients','sm-init','sm-manual'].forEach(id=>document.getElementById(id)?.classList.remove('active'));
   if(v==='daily'||v==='monthly') document.getElementById('sm-record').classList.add('active');
   else if(v==='timecard') document.getElementById('sm-timecard').classList.add('active');
   else if(v==='claim') document.getElementById('sm-claim').classList.add('active');
@@ -1477,6 +1620,97 @@ function showView(v){
   else if(v==='init') renderInit();
   else if(v==='sysusers') renderSysUsers();
   else if(v==='sysperms') renderSysPerms();
+  else if(v==='manual'){ document.getElementById('sm-manual')?.classList.add('active'); renderManual(); }
+  if(typeof renderAlertBanner==='function') renderAlertBanner();
+}
+
+// ===== 操作マニュアル =====
+const MANUAL_SECTIONS = [
+  { ico:'🕐', q:'タイムカード（出退勤の打刻）', a:`
+    <p>利用者の出勤・退勤を打刻します。タブレットでの利用にも対応しています。</p>
+    <h4>打刻のしかた</h4>
+    <ol>
+      <li>左メニュー「タイムカード」を開く</li>
+      <li>50音順に並んだ利用者カードから、本人をタップ</li>
+      <li>大きな打刻画面で「<b>通所する</b>」（出勤）／「<b>退勤する</b>」（退勤）を押す</li>
+    </ol>
+    <h4>カードの色</h4>
+    <table><tr><th>色</th><th>状態</th></tr>
+      <tr><td>⬜ 白</td><td>未出勤</td></tr><tr><td>🟢 緑</td><td>出勤済み（通所中）</td></tr><tr><td>🟧 オレンジ</td><td>退勤済</td></tr></table>
+    <div class="man-tip">💡 タブレット用の「タイムカード端末」アカウントを使うと、ログイン後すぐ打刻画面に入り、他の画面には入れません（各事業所に固定）。</div>` },
+  { ico:'📊', q:'利用実績（日ごと・月ごと）', a:`
+    <p>利用者ごとの通所状況（サービス提供の状況）を記録します。タイムカードの打刻と自動連動します。</p>
+    <h4>日ごとの確認・編集</h4>
+    <ol>
+      <li>「利用実績」→「日ごと」タブ</li>
+      <li>日付を選び、各利用者の鉛筆✏ボタンで編集</li>
+      <li>サービス提供の状況（通所／欠席時対応／施設外就労 など）を選ぶ</li>
+    </ol>
+    <h4>利用状況の詳細</h4>
+    <p>「利用状況の詳細」ボタンで、その日の状況をマトリクス表（状況別の人数・✓）で確認できます。</p>
+    <div class="man-tip">💡 「欠席時対応」は加算対象、「欠席（加算なし）」は請求対象外として正しく区別されます。</div>` },
+  { ico:'📋', q:'請求（国保連への電子請求）', a:`
+    <p>国保連へ提出する電子請求ファイル（J11・J61）を出力します。<b>主に責任者が行う業務です。</b></p>
+    <h4>出力手順</h4>
+    <ol>
+      <li>welbe右上で対象の事業所を選ぶ</li>
+      <li>「請求」→「対象請求月」を選択（なければ「＋月を追加」）</li>
+      <li>「<b>国保連 電子請求ファイル</b>」から<br>・請求明細書（J11）<br>・サービス提供実績記録票（J61）<br>をダウンロード</li>
+    </ol>
+    <div class="man-warn">⚠ 初回は必ず、以前のソフト（ノービー）の出力と1ヶ月分を見比べ、金額・件数が一致することを確認してから本番送信してください。</div>
+    <div class="man-tip">💡 「確認用CSV」は人が読む集計表です。金額チェックに使えます。</div>` },
+  { ico:'👥', q:'利用者情報（登録・受給者証期限）', a:`
+    <p>利用者の受給者証番号・障害支援区分・負担上限・受給者証期限などを管理します。</p>
+    <h4>編集</h4>
+    <ol><li>「設定」→「利用者情報」</li><li>各利用者の「編集」ボタンで開いて入力 → 保存</li></ol>
+    <h4>受給者証期限の入力（重要）</h4>
+    <p>「支給決定終了日」を入れると、期限が近い／切れた利用者を画面上部に<b>アラート表示</b>します。国保連で期限切れは返戻の原因になるため、必ず入れておきましょう。</p>
+    <h4>knowbeからの取込</h4>
+    <p>「📥 knowbeからインポート」で、knowbe形式のデータを貼り付けて一括登録できます。受給者証番号で重複を判定するので、二重登録になりません。重複が出た場合は上部の「⚠ 重複を削除」で整理できます。</p>` },
+  { ico:'⚙️', q:'設定（事業所情報・初期設定）', a:`
+    <p><b>管理者のみ</b>が編集できます。</p>
+    <h4>事業所情報</h4>
+    <ul><li>「設定」→「事業所情報」で編集</li>
+    <li><b>事業所番号</b>（10桁）と<b>市区町村番号</b>は国保連CSV出力に必須です</li></ul>
+    <table><tr><th>事業所</th><th>事業所番号</th><th>市区町村番号</th></tr>
+      <tr><td>羽島（A型）</td><td>2110400534</td><td>212019</td></tr>
+      <tr><td>山県（B型）</td><td>2110800444</td><td>212159</td></tr></table>
+    <div class="man-tip">💡 職員配置・処遇改善区分・平均工賃などの加算設定は、welbeの計算ロジックに組み込み済みです。個別入力は不要です。</div>` },
+  { ico:'🔔', q:'アラート（期限・退勤忘れ）', a:`
+    <p>画面上部に注意が必要な項目をバナーで表示します。</p>
+    <ul>
+      <li>🔴 <b>受給者証期限</b>：支給決定終了日が切れ／30日／60日以内</li>
+      <li>🟠 <b>負担上限月額の適用期間</b>：終了が近い／切れ</li>
+      <li>🕐 <b>退勤の押し忘れ</b>：出勤済みなのに退勤打刻がない過去日</li>
+    </ul>
+    <p>各アラートの「更新」「退勤を入力」ボタンから、その場で対応できます。</p>` },
+  { ico:'🔐', q:'権限（管理者・責任者・スタッフ・端末）', a:`
+    <p>役割ごとに使える機能を分けられます。</p>
+    <table><tr><th>機能</th><th>管理者</th><th>責任者</th><th>スタッフ</th></tr>
+      <tr><td>打刻・実績入力</td><td>✅</td><td>✅</td><td>✅</td></tr>
+      <tr><td>請求（申請）</td><td>✅</td><td>✅</td><td>❌</td></tr>
+      <tr><td>利用者情報 編集</td><td>✅</td><td>✅</td><td>❌</td></tr>
+      <tr><td>事業所・システム設定</td><td>✅</td><td>❌</td><td>❌</td></tr></table>
+    <h4>割り当て方</h4>
+    <ol><li>「システム設定」→「ユーザー設定」</li><li>権限プルダウンで 管理者／責任者／スタッフ／タイムカード端末 を選ぶ → 更新</li></ol>
+    <div class="man-tip">💡 細かい調整は「システム設定」→「権限設定」で。チェックを変えて保存すれば即反映されます。</div>` },
+  { ico:'🤖', q:'Welbeの提案', a:`
+    <p>国保連・厚労省の最新情報に基づく改善提案を表示します（管理者向け）。報酬改定や期限管理の注意点を、通達日時・対応内容・対応期限つきで確認できます。</p>` },
+];
+function renderManual(){
+  const body=document.getElementById('manualBody'); if(!body) return;
+  body.innerHTML=`<div class="man-intro">welbe（国保連請求サポート）の使い方をまとめています。見たい項目をタップすると開きます。<br>
+    ご不明な点は、各画面の操作を試しながら確認してください。</div>`+
+    MANUAL_SECTIONS.map((s,i)=>`<div class="man-sec">
+      <div class="man-q" onclick="_toggleMan(${i})"><span class="man-ico">${s.ico}</span>${s.q}<span class="man-arrow">▾</span></div>
+      <div class="man-a" id="man-a-${i}">${s.a}</div>
+    </div>`).join('');
+}
+function _toggleMan(i){
+  const a=document.getElementById('man-a-'+i); if(!a) return;
+  const q=a.previousElementSibling;
+  const open=a.classList.contains('open');
+  a.classList.toggle('open',!open); if(q) q.classList.toggle('open',!open);
 }
 function setTab(t){ showView(t==='daily'?'daily':'monthly'); }
 let _sSet=false,_sHelp=false,_sSys=false;
@@ -1540,31 +1774,51 @@ function renderDaily(){
   document.getElementById('ds-med').innerHTML=`${med}<span class="sc-unit">人</span>`;
 }
 
+// サービス提供状況の選択肢（knowbe準拠）
+const REC_STATUSES=['','通所','欠席時対応','訪問','体験利用支援','施設外就労','施設外支援','欠席（加算なし）'];
+// 利用状況の詳細マトリクスの列
+const REC_COLS=[
+  {key:'利用なし', match:s=>!s},
+  {key:'通所',     match:s=>s==='通所'},
+  {key:'欠席時対応', match:s=>s==='欠席時対応'},
+  {key:'訪問',     match:s=>s==='訪問'},
+  {key:'体験利用支援', match:s=>s==='体験利用支援'},
+  {key:'施設外就労', match:s=>s==='施設外就労'},
+  {key:'施設外支援', match:s=>s==='施設外支援'},
+  {key:'欠席',     match:s=>s==='欠席'||s==='欠席（加算なし）'}
+];
+
 function stClass(s){
-  if(s==='欠席'||s==='欠席時対応') return 'td-absence';
+  if(s==='欠席'||s==='欠席（加算なし）'||s==='欠席時対応') return 'td-absence';
   if(s==='施設外就労'||s==='施設外支援') return 'td-outside';
   return '';
 }
 
 function showDailyDetail(){
   const d=_dailyDate,y=d.getFullYear(),mo=d.getMonth()+1,day=d.getDate();
-  const clients=load('clients',[]).filter(c=>c.active!==false&&c.facilityId===_curFacId);
-  let rows='',att=0,abs=0;
-  clients.forEach(c=>{
-    const rec=getRecord(_curFacId,c.id,y,mo,day);
-    const st=rec?.status||'';
-    if(st==='通所'||st==='施設外就労'||st==='施設外支援')att++;
-    if(st==='欠席'||st==='欠席時対応')abs++;
-    rows+=`<tr><td style="padding:7px 10px;border-bottom:1px solid #eef3ec;font-size:13px">${esc(c.name)}</td><td style="padding:7px 10px;border-bottom:1px solid #eef3ec;font-size:13px">${st||'-'}</td><td style="padding:7px 10px;border-bottom:1px solid #eef3ec;font-size:13px">${rec?.start||'-'}</td><td style="padding:7px 10px;border-bottom:1px solid #eef3ec;font-size:13px">${rec?.end||'-'}</td></tr>`;
-  });
+  const clients=load('clients',[]).filter(c=>c.active!==false&&c.facilityId===_curFacId)
+    .sort((a,b)=>(a.kana||a.name).localeCompare(b.kana||b.name,'ja'));
+  const counts=REC_COLS.map(()=>0);
+  const rows=clients.map(c=>{
+    const st=getRecord(_curFacId,c.id,y,mo,day)?.status||'';
+    let cells='';
+    REC_COLS.forEach((col,i)=>{
+      const hit=col.match(st); if(hit) counts[i]++;
+      cells+=`<td style="text-align:center;border-bottom:1px solid #eef3ec;border-left:1px solid #eef3ec;padding:10px 4px">${hit?'<span style="color:var(--green-dk);font-weight:800;font-size:15px">✓</span>':''}</td>`;
+    });
+    return `<tr><td style="padding:9px 12px;border-bottom:1px solid #eef3ec;white-space:nowrap;position:sticky;left:0;background:#fff"><div style="font-size:13px;font-weight:600;color:var(--navy)">${esc(c.name)}</div><div style="font-size:11px;color:var(--text-lt)">${esc(c.receiptNo||'')}</div></td>${cells}</tr>`;
+  }).join('');
+  const head=REC_COLS.map(col=>`<th style="background:#7a93a3;color:#fff;padding:8px 6px;font-size:11px;text-align:center;white-space:nowrap;min-width:66px;border-left:1px solid rgba(255,255,255,.2)">${col.key}</th>`).join('');
+  const cntRow=REC_COLS.map((col,i)=>`<th style="background:#8ba0ad;color:#fff;padding:6px;text-align:center;border-left:1px solid rgba(255,255,255,.2)"><span style="background:rgba(255,255,255,.22);border-radius:11px;padding:3px 9px;font-size:12px;font-weight:700">${counts[i]}人</span></th>`).join('');
   openInfoModal(`利用状況の詳細 — ${fmtDate(d)}`,
-    `<div style="margin-bottom:10px;font-size:13px;color:#4a5568">通所: <strong>${att}人</strong>　欠席: <strong>${abs}人</strong></div>
-    <table style="width:100%;border-collapse:collapse"><thead><tr>
-      <th style="background:var(--green);color:#fff;padding:8px 10px;font-size:12px;text-align:left">氏名</th>
-      <th style="background:var(--green);color:#fff;padding:8px 10px;font-size:12px;text-align:left">状況</th>
-      <th style="background:var(--green);color:#fff;padding:8px 10px;font-size:12px;text-align:left">開始</th>
-      <th style="background:var(--green);color:#fff;padding:8px 10px;font-size:12px;text-align:left">終了</th>
-    </tr></thead><tbody>${rows||'<tr><td colspan="4" style="padding:12px;text-align:center;color:#a0b8a0">記録なし</td></tr>'}</tbody></table>`);
+    `<div style="overflow-x:auto;margin:-4px"><table style="width:100%;border-collapse:collapse">
+      <thead>
+        <tr><th style="background:#7a93a3;color:#fff;padding:8px 12px;font-size:12px;text-align:left;position:sticky;left:0;min-width:130px">利用者氏名/受給者証番号</th>${head}</tr>
+        <tr><th style="background:#8ba0ad;position:sticky;left:0"></th>${cntRow}</tr>
+      </thead>
+      <tbody>${rows||`<tr><td colspan="${REC_COLS.length+1}" style="padding:14px;text-align:center;color:#a0b8a0">記録なし</td></tr>`}</tbody>
+    </table></div>`);
+  const box=document.querySelector('.modal-box'); if(box) box.style.width='min(880px,96vw)';
 }
 
 // =========================================================
@@ -1655,13 +1909,14 @@ function showMonthlyDetail(){
 // =========================================================
 let _mCtx=null;
 function openRecordModal(cid,y,mo,day){
+  if(!can('record_edit')){showToast('実績を編集する権限がありません');return;}
   const client=load('clients',[]).find(c=>c.id===cid);
   if(!client)return;
   const rec=getRecord(_curFacId,cid,y,mo,day)||{};
   const dw=getDOW(y,mo,day);
   _mCtx={type:'record',cid,y,mo,day};
   document.getElementById('modalTitle').textContent=`実績を編集 — ${client.name} ${mo}/${day}（${WD[dw]}）`;
-  const opts=(client.serviceType==='A'?['','通所','施設外就労','欠席','欠席時対応']:['','通所','施設外支援','欠席','欠席時対応'])
+  const opts=REC_STATUSES
     .map(s=>`<option value="${s}" ${rec.status===s?'selected':''}>${s||'（未入力）'}</option>`).join('');
   document.getElementById('modalBody').innerHTML=`
     <div style="display:flex;flex-direction:column;gap:16px">
@@ -1747,7 +2002,14 @@ function _startTcClock(){
   tick();
   _tcClockTimer=setInterval(tick,1000);
 }
-function _stopTcClock(){ if(_tcClockTimer){clearInterval(_tcClockTimer);_tcClockTimer=null;} }
+function _stopTcClock(){
+  if(_tcClockTimer){clearInterval(_tcClockTimer);_tcClockTimer=null;}
+  // 打刻オーバーレイも閉じる
+  const pv=document.getElementById('tcPunchView');
+  if(pv&&pv.classList.contains('show')){ pv.classList.remove('show'); }
+  if(_tcpvTimer){clearInterval(_tcpvTimer);_tcpvTimer=null;}
+  _tcpvClientId=null;
+}
 
 function _updateTcDayLabel(){
   const y=_tcDate.getFullYear(),m=_tcDate.getMonth()+1,d=_tcDate.getDate();
@@ -1769,36 +2031,119 @@ function switchTcTab(tab){
   else renderTcMonth();
 }
 
+// 50音「行」判定
+const TC_GYO=[
+  {key:'あ',chars:'あいうえおぁぃぅぇぉアイウエオァィゥェォｱｲｳｴｵ'},
+  {key:'か',chars:'かきくけこがぎぐげごカキクケコガギグゲゴｶｷｸｹｺ'},
+  {key:'さ',chars:'さしすせそざじずぜぞサシスセソザジズゼゾｻｼｽｾｿ'},
+  {key:'た',chars:'たちつてとだぢづでどっタチツテトダヂヅデドッﾀﾁﾂﾃﾄ'},
+  {key:'な',chars:'なにぬねのナニヌネノﾅﾆﾇﾈﾉ'},
+  {key:'は',chars:'はひふへほばびぶべぼぱぴぷぺぽハヒフヘホバビブベボパピプペポﾊﾋﾌﾍﾎ'},
+  {key:'ま',chars:'まみむめもマミムメモﾏﾐﾑﾒﾓ'},
+  {key:'や',chars:'やゆよゃゅょヤユヨャュョﾔﾕﾖ'},
+  {key:'ら',chars:'らりるれろラリルレロﾗﾘﾙﾚﾛ'},
+  {key:'わ',chars:'わをんゎワヲンヮﾜｦﾝ'}
+];
+function _tcGyo(cl){
+  const k=((cl.kana||cl.name||'').trim())[0]||'';
+  for(const g of TC_GYO){ if(g.chars.indexOf(k)>=0) return g.key; }
+  return '他';
+}
+function _tcDayState(cl,tc,d){
+  const day=tc[cl.id]?.[d]||{};
+  if(day.in&&day.out) return {st:'out',sub:`出 ${day.in} / 退 ${day.out}`};
+  if(day.in) return {st:'in',sub:`出勤 ${day.in}〜`};
+  return {st:'none',sub:'未打刻'};
+}
+
 function renderTcGrid(){
   const fid=_tcFid();
   const y=_tcDate.getFullYear(),m=_tcDate.getMonth()+1,d=_tcDate.getDate();
   const clients=load('clients',[]).filter(c=>c.active!==false&&c.facilityId===fid)
-    .sort((a,b)=>(a.kana||a.name).localeCompare(b.kana||b.name));
+    .sort((a,b)=>(a.kana||a.name).localeCompare(b.kana||b.name,'ja'));
   const tc=load(_tcKey(fid,y,m),{});
   const grid=document.getElementById('tcGrid');
   if(!clients.length){grid.innerHTML='<div class="empty-state">この事業所の利用者が登録されていません</div>';return;}
-  grid.innerHTML=clients.map(cl=>{
-    const day=tc[cl.id]?.[d]||{};
-    const hasIn=!!day.in, hasOut=!!day.out;
-    const cardCls=hasOut?'st-out':hasIn?'st-in':'';
-    const badge=hasOut?'<span class="tc-status-badge tc-badge-out">退勤済</span>'
-      :hasIn?'<span class="tc-status-badge tc-badge-in">通所中</span>'
-      :'<span class="tc-status-badge tc-badge-none">未打刻</span>';
-    const timeHtml=hasIn
-      ?`<div class="tc-times"><span class="t-in">出 ${day.in}</span>${hasOut?`　<span class="t-out">退 ${day.out}</span>`:''}</div>`
-      :'<div class="tc-times" style="color:#e2e8f0">—</div>';
-    const btns=!hasIn
-      ?`<button class="btn-tc-in" onclick="tcPunch('${cl.id}','in')">出勤</button>`
-      :!hasOut
-      ?`<button class="btn-tc-out" onclick="tcPunch('${cl.id}','out')">退勤</button>
-        <button class="btn-tc-edit" onclick="tcEdit('${cl.id}')">修正</button>`
-      :`<button class="btn-tc-edit" onclick="tcEdit('${cl.id}')">修正</button>`;
-    return `<div class="tc-card ${cardCls}" id="tc-card-${cl.id}">
-      <div class="tc-name">${esc(cl.name)}</div>
-      ${badge}${timeHtml}
-      <div class="tc-btn-row">${btns}</div>
-    </div>`;
+  // 行ごとにグループ化
+  const groups={}; TC_GYO.forEach(g=>groups[g.key]=[]); groups['他']=[];
+  clients.forEach(cl=>groups[_tcGyo(cl)].push(cl));
+  const order=[...TC_GYO.map(g=>g.key),'他'];
+  grid.innerHTML=order.filter(k=>groups[k].length).map(k=>{
+    const cards=groups[k].map(cl=>{
+      const {st,sub}=_tcDayState(cl,tc,d);
+      return `<button class="tc-pcard s-${st}" onclick="openTcPunch('${cl.id}')">
+        ${esc(cl.name)}<span class="tc-pc-sub">${esc(sub)}</span>
+      </button>`;
+    }).join('');
+    return `<div class="tc-gyo-row"><div class="tc-gyo-label">${k}</div><div class="tc-gyo-cards">${cards}</div></div>`;
   }).join('');
+}
+
+// ─── 打刻画面（オーバーレイ） ──────────────────────────
+let _tcpvClientId=null, _tcpvTimer=null;
+function _tcPrevUsage(clientId){
+  const fid=_tcFid();
+  // _tcDate の前日から最大62日さかのぼって直近の実績を探す
+  for(let back=1;back<=62;back++){
+    const dt=new Date(_tcDate); dt.setDate(dt.getDate()-back);
+    const y=dt.getFullYear(),m=dt.getMonth()+1,d=dt.getDate();
+    const rec=load(getRecKey(fid,y,m),{})[clientId]?.[d];
+    const tc=load(_tcKey(fid,y,m),{})[clientId]?.[d];
+    const status=rec?.status;
+    if(status){
+      const st=tc?.in||rec?.startTime||''; const en=tc?.out||rec?.endTime||'';
+      const tstr=(st||en)?`${st} 〜 ${en}`:'';
+      return `前回の利用：${status}<br>${y}年${String(m).padStart(2,'0')}月${String(d).padStart(2,'0')}日 ${tstr}`;
+    }
+  }
+  return 'これまでの利用記録はありません';
+}
+function _tcGreet(){ const h=new Date().getHours(); if(h<11) return 'おはようございます'; if(h<17) return 'おつかれさまです'; return 'おつかれさまでした'; }
+
+function openTcPunch(clientId){
+  _tcpvClientId=clientId;
+  document.getElementById('tcPunchView').classList.add('show');
+  _renderTcpvClock();
+  if(!_tcpvTimer) _tcpvTimer=setInterval(_renderTcpvClock,1000);
+  _renderTcpvCard();
+}
+function closeTcPunch(){
+  document.getElementById('tcPunchView').classList.remove('show');
+  if(_tcpvTimer){clearInterval(_tcpvTimer);_tcpvTimer=null;}
+  _tcpvClientId=null;
+  renderTcGrid();
+}
+function _renderTcpvClock(){
+  const n=new Date();
+  const dt=document.getElementById('tcpvDate');
+  if(dt) dt.textContent=`${_tcDate.getFullYear()}年 ${_tcDate.getMonth()+1}月${_tcDate.getDate()}日 ${WD[_tcDate.getDay()]}曜日`;
+  const cl=document.getElementById('tcpvClock');
+  if(cl) cl.innerHTML=`${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}<span class="sec">${String(n.getSeconds()).padStart(2,'0')}</span>`;
+}
+function _renderTcpvCard(){
+  const cl=load('clients',[]).find(c=>c.id===_tcpvClientId); if(!cl) return;
+  const fid=_tcFid(),y=_tcDate.getFullYear(),m=_tcDate.getMonth()+1,d=_tcDate.getDate();
+  const day=load(_tcKey(fid,y,m),{})[cl.id]?.[d]||{};
+  const box=document.getElementById('tcpvCard');
+  let body;
+  if(!day.in){
+    body=`<div class="tcpv-greet">${_tcGreet()}</div>
+      <div class="tcpv-prev">${_tcPrevUsage(cl.id)}</div>
+      <button class="tcpv-act go" onclick="tcDoPunch('in')">通所する</button>`;
+  } else if(!day.out){
+    body=`<div class="tcpv-greet">通所中（出勤 ${day.in}）</div>
+      <div class="tcpv-prev">本日の出勤時刻：${day.in}</div>
+      <button class="tcpv-act out" onclick="tcDoPunch('out')">退勤する</button>`;
+  } else {
+    body=`<div class="tcpv-done">本日の利用は終了しました<br>出勤 ${day.in} ／ 退勤 ${day.out}</div>
+      ${can('timecard_edit')?`<button class="tcpv-edit" onclick="closeTcPunch();tcEdit('${cl.id}')">時刻を修正する</button>`:''}`;
+  }
+  box.innerHTML=`<div class="tcpv-name">${esc(cl.name)} さん</div>${body}`;
+}
+function tcDoPunch(type){
+  if(!_tcpvClientId) return;
+  tcPunch(_tcpvClientId,type);
+  _renderTcpvCard();
 }
 
 function tcPunch(clientId, type){
@@ -1835,12 +2180,13 @@ function tcPunch(clientId, type){
     }
   }
   renderTcGrid();
+  if(typeof renderAlertBanner==='function') renderAlertBanner();
   const cl=load('clients',[]).find(c=>c.id===clientId);
   showToast(`${esc(cl?.name||'')} ${type==='in'?'出勤':'退勤'} ${t} ✓`);
 }
 
 function tcEdit(clientId){
-  if(getS()?.role!=='admin'){showToast('修正は管理者のみ可能です');return;}
+  if(!can('timecard_edit')){showToast('打刻修正の権限がありません');return;}
   const fid=_tcFid();
   const y=_tcDate.getFullYear(),m=_tcDate.getMonth()+1,d=_tcDate.getDate();
   const tcKey=_tcKey(fid,y,m);
@@ -2115,6 +2461,420 @@ function _dlCsv(csv,filename){
   document.body.removeChild(a); URL.revokeObjectURL(url);
 }
 
+// =========================================================
+// 国保連 電子請求 インターフェース形式（J11 請求明細書 / J61 実績記録票）
+// 就労継続支援B型（サービス種類46）。サンプル(2026-05)から完全検証済み。
+// ※加算単位・サービスコードは事業所ごとに異なるため KOKUHO_MASTER で調整可能。
+// =========================================================
+
+// サービスコード・単位マスタ（2026-05実績で完全検証済み）
+// A型=羽島(2110400534) / B型=山県(2110800444)
+// components は J121-03 の出力順。per: attended=出勤日 / absence=欠席時対応(cap上限) / meal=食事提供日 / transport=送迎回数
+const KOKUHO_MASTER = {
+  A: {  // 就労継続支援A型
+    jisseki_svc:'1701', seikyu_svc:'45',
+    unitPrice:10.00, kaizenRate:0.094,
+    j121_kubun:'2', copayDetail:true,
+    components:[
+      { code:'452013', unit:733, per:'attended', name:'就継ＡⅠ１２' },
+      { code:'456040', unit:94,  per:'absence', cap:4, name:'欠席時対応加算' },
+      { code:'455290', unit:70,  per:'attended', name:'就継Ａ賃金向上達成指導員配置加算１' },
+      { code:'456594', unit:174, per:'attended', name:'就継Ａ就労移行支援体制加算Ⅰ１２' }
+    ],
+    kaizen:{ code:'455121', name:'就継Ａ福祉・介護職員等処遇改善加算Ⅱ' },
+    j121_05_a:'451000', j121_05_b:'02300'
+  },
+  B: {  // 就労継続支援B型
+    jisseki_svc:'1701', seikyu_svc:'46',
+    unitPrice:10.00, kaizenRate:0.091,
+    j121_kubun:'1', copayDetail:false,
+    components:[
+      { code:'462992', unit:758, per:'attended', name:'就継ＢⅠ１２' },
+      { code:'465050', unit:30,  per:'meal', name:'食事提供体制加算' },
+      { code:'466040', unit:94,  per:'absence', cap:4, name:'欠席時対応加算' },
+      { code:'466591', unit:10,  per:'transport', name:'送迎加算' }
+    ],
+    kaizen:{ code:'465121', name:'福祉・介護職員等処遇改善加算Ⅱ' },
+    j121_05_a:'461000', j121_05_b:'02300'
+  }
+};
+
+// 全角カナ → 半角カナ
+function _toHalfKana(s){
+  if(!s) return '';
+  const full='ァアィイゥウェエォオカガキギクグケゲコゴサザシジスズセゼソゾタダチヂッツヅテデトドナニヌネノハバパヒビピフブプヘベペホボポマミムメモャヤュユョヨラリルレロワヲンヴ';
+  const half=['ｧ','ｱ','ｨ','ｲ','ｩ','ｳ','ｪ','ｴ','ｫ','ｵ','ｶ','ｶﾞ','ｷ','ｷﾞ','ｸ','ｸﾞ','ｹ','ｹﾞ','ｺ','ｺﾞ','ｻ','ｻﾞ','ｼ','ｼﾞ','ｽ','ｽﾞ','ｾ','ｾﾞ','ｿ','ｿﾞ','ﾀ','ﾀﾞ','ﾁ','ﾁﾞ','ｯ','ﾂ','ﾂﾞ','ﾃ','ﾃﾞ','ﾄ','ﾄﾞ','ﾅ','ﾆ','ﾇ','ﾈ','ﾉ','ﾊ','ﾊﾞ','ﾊﾟ','ﾋ','ﾋﾞ','ﾋﾟ','ﾌ','ﾌﾞ','ﾌﾟ','ﾍ','ﾍﾞ','ﾍﾟ','ﾎ','ﾎﾞ','ﾎﾟ','ﾏ','ﾐ','ﾑ','ﾒ','ﾓ','ｬ','ﾔ','ｭ','ﾕ','ｮ','ﾖ','ﾗ','ﾘ','ﾙ','ﾚ','ﾛ','ﾜ','ｦ','ﾝ','ｳﾞ'];
+  const sym={'。':'｡','「':'｢','」':'｣','、':'､','・':'･','ー':'ｰ','゛':'ﾞ','゜':'ﾟ','　':' '};
+  let out='';
+  for(const ch of s){
+    const i=full.indexOf(ch);
+    if(i>=0){ out+=half[i]; continue; }
+    if(sym[ch]!==undefined){ out+=sym[ch]; continue; }
+    const c=ch.charCodeAt(0);
+    if(c>=0xFF61&&c<=0xFF9F){ out+=ch; continue; }  // 既に半角カナ
+    if(c<=0x7E){ out+=ch; continue; }                // ASCII
+    out+='';                                          // 漢字・ひらがな等は除去
+  }
+  return out;
+}
+
+// Shift-JIS バイト列（ASCII + 半角カナのみ）
+function _sjisBytes(str){
+  const out=[];
+  for(const ch of str){
+    const c=ch.charCodeAt(0);
+    if(c<=0x7F) out.push(c);
+    else if(c>=0xFF61&&c<=0xFF9F) out.push(c-0xFF61+0xA1);
+    else out.push(0x3F);
+  }
+  return new Uint8Array(out);
+}
+
+function _dlSjis(text,filename){
+  const blob=new Blob([_sjisBytes(text)],{type:'text/csv'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download=filename; document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+}
+
+// 当月の利用者別集計を作成
+function _kokuhoAggregate(year,month){
+  const fid=_curFacId;
+  const fac=load('facilities',[]).find(f=>f.id===fid)||{};
+  const M=KOKUHO_MASTER[fac.serviceType] || KOKUHO_MASTER.B; // 施設のサービス種別でA/B選択
+  const days=getDIM(year,month);
+  const recAll=load(getRecKey(fid,year,month),{});
+  const clients=load('clients',[]).filter(c=>c.active!==false&&c.facilityId===fid);
+  const ymd=(s)=> s? s.replace(/[-/]/g,'').slice(0,8):'';
+  const plus29=(s)=>{ const d=ymd(s); if(d.length<8)return''; const dt=new Date(+d.slice(0,4),+d.slice(4,6)-1,+d.slice(6,8)); dt.setDate(dt.getDate()+29); return `${dt.getFullYear()}${String(dt.getMonth()+1).padStart(2,'0')}${String(dt.getDate()).padStart(2,'0')}`; };
+  const users=[];
+  clients.forEach(c=>{
+    const recs=recAll[c.id]||{};
+    const daily=[]; let attended=0,absence=0,mealDays=0,transCnt=0;
+    for(let d=1;d<=days;d++){
+      const r=recs[d]; if(!r||!r.status) continue;
+      const st=r.status;
+      const isAtt=(st==='通所'||st==='施設外就労'||st==='施設外支援');
+      const isAbsBillable=(st==='欠席時対応');  // 欠席時対応のみ加算対象
+      // 欠席（加算なし）・訪問・体験利用支援 は基本報酬の請求対象外 → スキップ
+      if(!isAtt&&!isAbsBillable) continue;
+      let tr=0;
+      if(isAtt){
+        attended++;
+        if(c.mealService) mealDays++;
+        if(r.transport==='片道') tr=1; else if(r.transport==='往復') tr=2;
+        transCnt+=tr;
+      }
+      if(isAbsBillable) absence++;
+      daily.push({day:d, att:isAtt, start:isAtt?(r.start||'').replace(':',''):'', end:isAtt?(r.end||'').replace(':',''):'', t1:tr>=1?1:0, t2:tr>=2?1:0, abs:isAbsBillable});
+    }
+    if(!daily.length) return; // 当月実績なしは除外
+    // サービス明細（マスタの components 順）
+    const det=[];
+    M.components.forEach(comp=>{
+      let cnt=0;
+      if(comp.per==='attended')      cnt=attended;
+      else if(comp.per==='meal')     cnt=mealDays;
+      else if(comp.per==='transport')cnt=transCnt;
+      else if(comp.per==='absence')  cnt=Math.min(absence, comp.cap||9999);
+      if(cnt>0) det.push({code:comp.code, unit:comp.unit, cnt, name:comp.name||comp.code});
+    });
+    const subUnits=det.reduce((s,x)=>s+x.unit*x.cnt,0);
+    const kaizen=Math.round(subUnits*M.kaizenRate);
+    if(kaizen>0) det.push({code:M.kaizen.code, unit:kaizen, cnt:1, name:(M.kaizen.name||'処遇改善加算')});
+    const totalUnits=det.reduce((s,x)=>s+x.unit*x.cnt,0);
+    const yen=Math.floor(totalUnits*M.unitPrice);
+    // 利用者負担額 = min(総費用×10%, 負担上限月額)。上限0/未設定は0
+    const limit=parseInt(c.limitAmount!==undefined&&c.limitAmount!==''?c.limitAmount:(c.contractAmount||0))||0;
+    const copay=limit>0 ? Math.min(Math.floor(yen*0.1), limit) : 0;
+    const kyufu=yen-copay;
+    const cd=ymd(c.startDate);
+    // 当月途中契約の利用日数（契約日が当月内なら利用日数、それ以外0）
+    const newContractDays = (cd.slice(0,6)===_ym(year,month)) ? attended : 0;
+    users.push({
+      c, cityNo:(c.cityNo||fac.cityNo||''), receiptNo:c.receiptNo||'',
+      kana:_toHalfKana(c.kana||''), contractDate:cd,
+      mgmtEnd:plus29(c.startDate),
+      shikyuRyo: (c.shikyuRyo!==undefined&&c.shikyuRyo!=='') ? String(c.shikyuRyo) : '0',
+      newContractDays,
+      daily, attended, absence, mealDays, transCnt,
+      det, subUnits, kaizen, totalUnits, yen,
+      limit, copay, kyufu,
+      svcDays: attended+absence
+    });
+  });
+  // 市町村→受給者証番号 順
+  users.sort((a,b)=> (a.cityNo+a.receiptNo).localeCompare(b.cityNo+b.receiptNo));
+  return {fac, M, users, year, month};
+}
+
+function _row(len){ return new Array(len).fill(''); }
+function _ym(y,m){ return `${y}${String(m).padStart(2,'0')}`; }
+
+// J61 サービス提供実績記録票
+function _genKokuhoJisseki(agg){
+  const {fac,M,users,year,month}=agg;
+  const svcYM=_ym(year,month);
+  const procYM=_ym(month===12?year+1:year, month===12?1:month+1);
+  const jno=fac.jigyoshoNo||'';
+  const lines=[]; let n=1;
+  // 制御レコード
+  const ctrl=_row(11); [ctrl[0],ctrl[1],ctrl[2],ctrl[4],ctrl[5],ctrl[6],ctrl[7],ctrl[8],ctrl[9]]=['1','1','0','J61','0',jno,'0','1',procYM];
+  // ctrl[3] データ件数は後で
+  users.forEach(u=>{
+    // 01 基本情報
+    n++; const r1=_row(174);
+    r1[0]='2';r1[1]=String(n);r1[2]='J611';r1[3]='01';r1[4]=svcYM;r1[5]=u.cityNo;r1[6]=jno;r1[7]=u.receiptNo;r1[8]=M.jisseki_svc;
+    r1[35]=u.shikyuRyo;r1[46]='0';r1[52]='0';r1[53]='0';r1[54]='0';r1[55]='0';
+    r1[71]=u.contractDate;r1[72]=u.mgmtEnd;r1[73]=String(u.newContractDays);
+    r1[118]='0';r1[126]='0';r1[128]='0';r1[153]='0';r1[168]='0';r1[169]='0';
+    lines.push(r1);
+    // 02 日々
+    u.daily.forEach(d=>{
+      n++; const r2=_row(115);
+      r2[0]='2';r2[1]=String(n);r2[2]='J611';r2[3]='02';r2[4]=svcYM;r2[5]=u.cityNo;r2[6]=jno;r2[7]=u.receiptNo;r2[8]=M.jisseki_svc;
+      r2[10]=String(d.day);
+      if(d.att){ r2[15]=d.start;r2[16]=d.end; }
+      r2[22]=String(d.t1);r2[23]=String(d.t2);r2[33]='0';
+      if(d.abs) r2[37]='8';
+      lines.push(r2);
+    });
+  });
+  ctrl[3]=String(n-1); // データレコード件数（制御除く）
+  const all=[ctrl,...lines];
+  // 終了レコード
+  all.push(['3',String(n+1)]);
+  return all.map(r=>r.join(',')).join('\r\n')+'\r\n';
+}
+
+// J11 請求明細書
+function _genKokuhoSeikyu(agg){
+  const {fac,M,users,year,month}=agg;
+  const svcYM=_ym(year,month);
+  const procYM=_ym(month===12?year+1:year, month===12?1:month+1);
+  const jno=fac.jigyoshoNo||'';
+  const up=Math.round(M.unitPrice*1000);
+  // 市町村でグループ化
+  const byCity={}; users.forEach(u=>{ (byCity[u.cityNo]=byCity[u.cityNo]||[]).push(u); });
+  const cities=Object.keys(byCity).sort();
+  const lines=[]; let n=1;
+  const ctrl=_row(11); [ctrl[0],ctrl[1],ctrl[2],ctrl[4],ctrl[5],ctrl[6],ctrl[7],ctrl[8],ctrl[9]]=['1','1','0','J11','0',jno,'0','1',procYM];
+  cities.forEach(city=>{
+    const us=byCity[city];
+    const cnt=us.length;
+    const cityUnits=us.reduce((s,u)=>s+u.totalUnits,0);
+    const cityTotal=us.reduce((s,u)=>s+u.yen,0);    // 総費用額
+    const cityKyufu=us.reduce((s,u)=>s+u.kyufu,0);  // 給付費請求額（負担控除後）
+    // J111-01 請求書(市町村集計)
+    n++; const a=_row(25);
+    a[0]='2';a[1]=String(n);a[2]='J111';a[3]='01';a[4]=svcYM;a[5]=city;a[6]=jno;
+    a[7]=String(cityKyufu);a[8]=String(cnt);a[9]=String(cityUnits);a[10]=String(cityTotal);a[11]=String(cityKyufu);
+    a[12]='0';a[13]='0';a[14]='0';a[15]='0';a[16]='0';a[17]='0';
+    a[18]=String(cnt);a[19]=String(cityUnits);a[20]=String(cityTotal);a[21]=String(cityKyufu);
+    a[22]='0';a[23]='0';a[24]='0';
+    lines.push(a);
+    // J111-02 サービス種類別
+    n++; const b=_row(16);
+    b[0]='2';b[1]=String(n);b[2]='J111';b[3]='02';b[4]=svcYM;b[5]=city;b[6]=jno;
+    b[7]='1';b[8]=M.seikyu_svc;b[9]=String(cnt);b[10]=String(cityUnits);b[11]=String(cityTotal);b[12]=String(cityKyufu);
+    b[13]='0';b[14]='0';b[15]='0';
+    lines.push(b);
+    // 利用者ごと
+    us.forEach(u=>{
+      // J121-01 基本
+      n++; const c1=_row(37);
+      c1[0]='2';c1[1]=String(n);c1[2]='J121';c1[3]='01';c1[4]=svcYM;c1[5]=city;c1[6]=jno;c1[7]=u.receiptNo;
+      c1[9]=u.kana;c1[11]='20';c1[12]=M.j121_kubun;c1[13]=String(u.limit);c1[14]=M.j121_kubun;
+      c1[21]=String(u.totalUnits);c1[22]=String(u.yen);c1[23]=String(u.copay);
+      if(M.copayDetail){ c1[24]=String(u.copay); c1[25]='0'; }
+      c1[28]='0';c1[29]=String(u.kyufu);
+      lines.push(c1);
+      // J121-02 利用日数
+      n++; const c2=_row(14);
+      c2[0]='2';c2[1]=String(n);c2[2]='J121';c2[3]='02';c2[4]=svcYM;c2[5]=city;c2[6]=jno;c2[7]=u.receiptNo;
+      c2[8]=M.seikyu_svc;c2[9]=u.contractDate;c2[11]=String(u.attended);
+      lines.push(c2);
+      // J121-03 サービス単位明細
+      u.det.forEach(dt=>{
+        n++; const c3=_row(13);
+        c3[0]='2';c3[1]=String(n);c3[2]='J121';c3[3]='03';c3[4]=svcYM;c3[5]=city;c3[6]=jno;c3[7]=u.receiptNo;
+        c3[8]=dt.code;c3[9]=String(dt.unit);c3[10]=String(dt.cnt);c3[11]=String(dt.unit*dt.cnt);
+        lines.push(c3);
+      });
+      // J121-04 集計
+      n++; const c4=_row(35);
+      c4[0]='2';c4[1]=String(n);c4[2]='J121';c4[3]='04';c4[4]=svcYM;c4[5]=city;c4[6]=jno;c4[7]=u.receiptNo;
+      c4[8]=M.seikyu_svc;c4[9]='1';c4[10]=String(u.svcDays);c4[11]=String(u.totalUnits);c4[12]=String(up);
+      c4[13]='0';c4[14]=String(u.yen);c4[15]=String(u.totalUnits);c4[16]=String(u.totalUnits);c4[17]=String(u.copay);
+      if(M.copayDetail){ c4[18]=String(u.copay); c4[19]='0'; }
+      c4[22]='0';c4[23]=String(u.kyufu);
+      lines.push(c4);
+      // J121-05 上限管理
+      n++; const c5=_row(13);
+      c5[0]='2';c5[1]=String(n);c5[2]='J121';c5[3]='05';c5[4]=svcYM;c5[5]=city;c5[6]=jno;c5[7]=u.receiptNo;
+      c5[8]=M.j121_05_a;c5[9]=M.j121_05_b;c5[10]=u.contractDate;c5[12]='1';
+      lines.push(c5);
+    });
+  });
+  ctrl[3]=String(n-1);
+  const all=[ctrl,...lines];
+  all.push(['3',String(n+1)]);
+  return all.map(r=>r.join(',')).join('\r\n')+'\r\n';
+}
+
+function _kokuhoSelectedClaim(){
+  const sel=document.getElementById('claimMonthSel');
+  const id=sel&&sel.value;
+  if(!id){ showToast('請求月を選択してください'); return null; }
+  const claim=load('claims',[]).find(c=>c.id===id);
+  if(!claim){ showToast('請求月が見つかりません'); return null; }
+  const fac=load('facilities',[]).find(f=>f.id===_curFacId)||{};
+  if(!fac.jigyoshoNo){ alert('事業所番号が未設定です。「設定 → 事業所情報」で10桁の事業所番号を入力してください。'); return null; }
+  if(!KOKUHO_MASTER[fac.serviceType]){
+    if(!confirm('この事業所のサービス種別（'+(fac.serviceType||'未設定')+'）は国保連マスタに未登録です。\n現在対応しているのはA型・B型です。続行しますか？（要検証）')) return null;
+  }
+  return claim;
+}
+
+function dlKokuhoJisseki(){
+  const claim=_kokuhoSelectedClaim(); if(!claim) return;
+  const agg=_kokuhoAggregate(claim.year,claim.month);
+  if(!agg.users.length){ showToast('当月の実績データがありません'); return; }
+  const csv=_genKokuhoJisseki(agg);
+  _dlSjis(csv,`jissekikiroku_${claim.year}-${String(claim.month).padStart(2,'0')}.csv`);
+  showToast(`実績記録票(J61)を出力しました（${agg.users.length}名）✓`);
+}
+
+function dlKokuhoSeikyu(){
+  const claim=_kokuhoSelectedClaim(); if(!claim) return;
+  const agg=_kokuhoAggregate(claim.year,claim.month);
+  if(!agg.users.length){ showToast('当月の実績データがありません'); return; }
+  const csv=_genKokuhoSeikyu(agg);
+  _dlSjis(csv,`seikyu-meisai_${claim.year}-${String(claim.month).padStart(2,'0')}.csv`);
+  const totalYen=agg.users.reduce((s,u)=>s+u.yen,0);
+  showToast(`請求明細書(J11)を出力しました（${agg.users.length}名 / ${totalYen.toLocaleString()}円）✓`);
+}
+
+// ===== サービス提供実績記録票(J61) 取込 =====
+function openJissekiImport(){
+  document.getElementById('jisseki-csv').value='';
+  document.getElementById('jisseki-imp-msg').textContent='';
+  document.getElementById('jisseki-imp-btn').disabled=true;
+  document.getElementById('jissekiImpOverlay').style.display='flex';
+}
+function execJissekiImport(){
+  const text=document.getElementById('jisseki-csv').value.trim();
+  const msg=document.getElementById('jisseki-imp-msg');
+  if(!text){ return; }
+  let lines;
+  try{ lines=text.split(/\r?\n/).filter(x=>x).map(l=>l.split(',')); }
+  catch(e){ msg.style.color='#dc2626'; msg.textContent='読み取りに失敗しました'; return; }
+  const clients=load('clients',[]).filter(c=>c.facilityId===_curFacId);
+  const byReceipt={}; clients.forEach(c=>{ if(c.receiptNo) byReceipt[String(c.receiptNo)]=c; });
+  const fmt=s=>(s&&s.length===4)?s.slice(0,2)+':'+s.slice(2):'';
+  const recByMonth={}; let matched=0; const unmatched=new Set(); const monthsSet=new Set();
+  lines.forEach(r=>{
+    if(r[2]==='J611' && r[3]==='02'){
+      const svcYM=r[4]; const receiptNo=String(r[7]||''); const day=parseInt(r[10]);
+      if(!svcYM||!receiptNo||!day) return;
+      const c=byReceipt[receiptNo];
+      if(!c){ unmatched.add(receiptNo); return; }
+      monthsSet.add(svcYM);
+      const isAbs = r[37]==='8';
+      const t1=parseInt(r[22]||0)||0, t2=parseInt(r[23]||0)||0;
+      const transport=(t1&&t2)?'往復':(t1||t2)?'片道':'';
+      if(!recByMonth[svcYM]) recByMonth[svcYM]={};
+      if(!recByMonth[svcYM][c.id]) recByMonth[svcYM][c.id]={};
+      recByMonth[svcYM][c.id][day] = isAbs
+        ? {status:'欠席時対応'}
+        : {status:'通所', start:fmt(r[15]), end:fmt(r[16]), transport};
+      matched++;
+    }
+  });
+  if(!matched){ msg.style.color='#dc2626'; msg.textContent='⚠️ 実績データ（J611-02）が見つかりませんでした。J61のCSVか確認してください。'; return; }
+  // 月ごとに保存（既存とマージ）＋ claims に請求月を追加
+  const claims=load('claims',[]);
+  Object.keys(recByMonth).forEach(ym=>{
+    const y=+ym.slice(0,4), m=+ym.slice(4);
+    const k=getRecKey(_curFacId,y,m);
+    const ex=load(k,{}); const imp=recByMonth[ym];
+    Object.keys(imp).forEach(cid=>{ ex[cid]=Object.assign(ex[cid]||{}, imp[cid]); });
+    save(k, ex);
+    const cid=`${_curFacId}_${ym}`;
+    if(!claims.find(c=>c.id===cid)) claims.push({id:cid,facilityId:_curFacId,year:y,month:m,status:'submitted',memo:'J61取込'});
+  });
+  save('claims', claims);
+  const mList=[...monthsSet].sort().map(s=>`${s.slice(0,4)}年${+s.slice(4)}月`).join('・');
+  msg.style.color='var(--green-dk)';
+  msg.innerHTML=`✅ ${matched}件の実績を取込みました（${mList}）`+
+    (unmatched.size?`<br><span style="color:#c2410c">⚠ welbe未登録の受給者証 ${unmatched.size}件はスキップ：${[...unmatched].join(', ')}</span>`:'');
+  if(typeof renderClaim==='function') renderClaim();
+  showToast(`実績を取込みました（${matched}件）✓`);
+}
+
+// 請求書・領収書・代理受領書（利用者ごと1枚）を生成して印刷ビューを開く
+function genWelbeDocs(type, claimArg){
+  const claim = claimArg || _kokuhoSelectedClaim(); if(!claim) return;
+  const agg=_kokuhoAggregate(claim.year,claim.month);
+  if(!agg.users.length){
+    alert(`${claim.year}年${claim.month}月の利用実績がwelbeにありません。\n\n・過去（〜2025年）の控えは、PCの「請求書類ビューア」で確認してください。\n・2026年以降は、上部の「実績記録票(J61)を取込」でこの月のCSVを取り込むと発行できます。`);
+    return;
+  }
+  const fac=agg.fac;
+  const svcLabel = fac.serviceType==='A'?'就労継続支援A型':fac.serviceType==='B'?'就労継続支援B型':'';
+  const y=claim.year, m=claim.month, mm=String(m).padStart(2,'0');
+  const lastDay=getDIM(y,m);
+  const period=`${y}-${mm}-01 〜 ${y}-${mm}-${String(lastDay).padStart(2,'0')}`;
+  const t=new Date(); const issue=`${t.getFullYear()}年${t.getMonth()+1}月${t.getDate()}日`;
+  const titleMap={invoice:'請求書',receipt:'領収書',proxy:'代理受領通知書'};
+  const yen=n=>'¥'+Number(n||0).toLocaleString();
+  const nm=u=>esc(u.c&&u.c.name?u.c.name:u.kana||'');
+  const pages=agg.users.map(u=>{
+    if(type==='invoice'){
+      const rows=u.det.map(d=>`<tr><td>${esc(d.name)}</td><td class="r">${d.unit.toLocaleString()}</td><td class="r">${d.cnt}</td><td class="r">${(d.unit*d.cnt).toLocaleString()}</td></tr>`).join('');
+      return `<div class="doc"><h1>請求書</h1>
+        <div class="to">${nm(u)} 様</div>
+        <div class="meta">受給者番号：${u.receiptNo}　／　${svcLabel}<br>${esc(fac.corp||'')}　${esc(fac.name||'')}<br>利用期間：${period}　　請求日：${issue}</div>
+        <table class="detail"><thead><tr><th>サービス内容</th><th>単位数</th><th>利用回数</th><th>ｻｰﾋﾞｽ単位数</th></tr></thead><tbody>${rows}</tbody></table>
+        <div class="sum"><div>サービス費用算定合計金額　<b>${yen(u.yen)}</b></div>
+        <div>給付費　<b>-${yen(u.kyufu)}</b></div>
+        <div>利用者負担合計金額　<b>${yen(u.copay)}</b></div></div>
+        <div class="note">※ 10円／単位（1円未満切り捨て）</div></div>`;
+    } else if(type==='receipt'){
+      return `<div class="doc"><h1>領収書</h1>
+        <div class="to">${nm(u)} 様</div>
+        <div class="amt">領収金額　${yen(u.copay)}</div>
+        <div class="tadashi">但し ${y}年${m}月分 ${svcLabel} 利用者負担金として<br>上記正に領収いたしました。</div>
+        <div class="meta2">発行日：${issue}<br>${esc(fac.corp||'')}　${esc(fac.name||'')}　㊞</div></div>`;
+    }
+    return `<div class="doc"><h1>介護給付費等 代理受領通知書</h1>
+      <div class="to">${nm(u)} 様</div>
+      <div class="meta">受給者番号：${u.receiptNo}　／　${svcLabel}<br>利用期間：${period}</div>
+      <div class="amt">代理受領した介護給付費等の額　${yen(u.kyufu)}</div>
+      <div class="tadashi">上記のとおり、市町村から介護給付費等を代理受領しましたので通知します。</div>
+      <div class="meta2">発行日：${issue}<br>${esc(fac.corp||'')}　${esc(fac.name||'')}</div></div>`;
+  }).join('');
+  const html=`<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>${titleMap[type]} ${y}年${m}月 ${esc(fac.name||'')}</title>
+  <style>body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;color:#222;margin:0}
+  .doc{width:190mm;min-height:130mm;margin:0 auto;padding:14mm 15mm;box-sizing:border-box;page-break-after:always;border-bottom:1px dashed #ccc}
+  h1{text-align:center;font-size:22px;letter-spacing:6px;margin:0 0 16px;border-bottom:2px solid #333;padding-bottom:8px}
+  .to{font-size:18px;font-weight:700;margin-bottom:10px}
+  .meta{font-size:12px;color:#444;line-height:1.7;margin-bottom:12px}
+  .detail{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:12px}
+  .detail th,.detail td{border:1px solid #999;padding:5px 8px}.detail th{background:#eee}.detail td.r{text-align:right}
+  .sum{font-size:14px;line-height:1.9;text-align:right;border-top:2px solid #333;padding-top:8px}
+  .amt{font-size:22px;font-weight:800;text-align:center;border:2px solid #333;padding:14px;margin:16px 0}
+  .tadashi{font-size:13px;line-height:1.8;margin:10px 0}
+  .meta2{font-size:12px;color:#444;text-align:right;margin-top:22px;line-height:1.8}
+  .note{font-size:11px;color:#666}@media print{.doc{border-bottom:none}}</style></head>
+  <body>${pages}<script>window.onload=function(){setTimeout(function(){window.print();},300);}<\/script></body></html>`;
+  const w=window.open('','_blank');
+  if(!w){ showToast('ポップアップがブロックされました。許可してください'); return; }
+  w.document.write(html); w.document.close();
+  showToast(`${titleMap[type]}（${agg.users.length}名）を表示しました ✓`);
+}
+
 function printClaimFile(type){
   const sel=document.getElementById('claimMonthSel');
   const id=sel.value;
@@ -2127,11 +2887,9 @@ function printClaimFile(type){
 }
 
 function printDoc(claimId,docType){
-  const ymPart=claimId.slice(claimId.lastIndexOf('_')+1);
-  const yr=+ymPart.slice(0,4), mo=+ymPart.slice(4);
-  const labels={invoice:'請求書',receipt:'領収書',proxy:'代理受領書'};
-  showToast(`${yr}年${mo}月 ${labels[docType]||docType}を印刷プレビューします`);
-  setTimeout(()=>window.print(),400);
+  const claim=load('claims',[]).find(c=>c.id===claimId);
+  if(!claim){ showToast('請求月が見つかりません'); return; }
+  genWelbeDocs(docType, claim);
 }
 
 function openClaimUserSel(){
@@ -2745,10 +3503,11 @@ function dedupClients(){
   const others  = load('clients',[]).filter(c=>c.facilityId!==_curFacId);
   const seen = new Map();
   const result = [];
-  // データ量スコア（フィールドが多い方を優先）
-  const score = c => [c.birthDate,c.grantEnd,c.grantStart,c.disabilityClass,c.limitAmount,c.kana].filter(Boolean).length;
+  // 漢字氏名（フリガナと異なる＝漢字あり）を優先しつつ、データが多い方を残す
+  const hasKanji = c => !!(c.name && c.name.replace(/[\s　]/g,'') !== (c.kana||'').replace(/[\s　]/g,''));
+  const score = c => (hasKanji(c)?100:0) + [c.birthDate,c.grantEnd,c.grantStart,c.disabilityClass,c.limitAmount,c.kana].filter(Boolean).length;
   clients.forEach(c=>{
-    const key = c.knowbeId ? String(c.knowbeId) : (c.name+'|'+(c.birthDate||''));
+    const key = c.receiptNo ? 'R'+String(c.receiptNo) : (c.knowbeId ? 'K'+String(c.knowbeId) : 'N'+c.name+'|'+(c.birthDate||''));
     if(!seen.has(key)){
       seen.set(key, c);
     } else {
@@ -2784,7 +3543,7 @@ function renderClients(){
   // 重複チェック → ボタン表示
   const keys=new Set(); let hasDup=false;
   clients.forEach(c=>{
-    const k=c.knowbeId?String(c.knowbeId):(c.name+'|'+(c.birthDate||''));
+    const k=c.receiptNo?'R'+String(c.receiptNo):(c.knowbeId?'K'+String(c.knowbeId):'N'+c.name+'|'+(c.birthDate||''));
     if(keys.has(k)) hasDup=true; else keys.add(k);
   });
   const dedupBtn=document.getElementById('btnDedupClients');
@@ -2809,14 +3568,15 @@ function renderClients(){
       <td><span class="${c.active!==false?'badge-active':'badge-inactive'}">${c.active!==false?'利用中':'停止'}</span></td>
       <td>${expBadge}</td>
       <td style="display:flex;gap:6px;flex-wrap:wrap">
-        <button class="btn-edit2" onclick="openClientModal('${c.id}')">編集</button>
-        <button class="btn-danger" onclick="deleteClient('${c.id}')">削除</button>
+        ${can('client_edit')?`<button class="btn-edit2" onclick="openClientModal('${c.id}')">編集</button>
+        <button class="btn-danger" onclick="deleteClient('${c.id}')">削除</button>`:'<span style="color:#cbd5e0;font-size:12px">閲覧のみ</span>'}
       </td>
     </tr>`;
   }).join('');
   _checkServiceTypeMismatch();
 }
 function openClientModal(id){
+  if(!can('client_edit')){showToast('利用者情報を編集する権限がありません');return;}
   const facs=load('facilities',[]);
   const clients=load('clients',[]);
   const c=id?clients.find(x=>x.id===id):null;
@@ -2920,6 +3680,10 @@ function openClientModal(id){
             <div style="flex:1">${lbl('支給量（日数）')}<input class="f-input" id="cl-quota-days" type="number" value="${c?.quotaDays||''}" min="1" max="31"></div>
           </div>
           <div style="margin-top:8px"><label class="tog-row"><span class="tog-switch"><input type="checkbox" id="cl-quota-special" ${tog(c?.quotaSpecial)}><span class="tog-slider"></span></span><span style="font-size:13px;color:#4a5568">利用日数に関わる特例あり</span></label></div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:flex-end">
+          <div style="flex:1">${lbl('契約支給量（国保連 実績記録票用・受給者証の支給量）')}<input class="f-input" id="cl-shikyu" type="number" value="${c?.shikyuRyo!==undefined?c.shikyuRyo:''}" placeholder="例: 20" min="0"></div>
+          <label class="tog-row" style="flex:1"><span class="tog-switch"><input type="checkbox" id="cl-meal" ${tog(c?.mealService)}><span class="tog-slider"></span></span><span style="font-size:13px;color:#4a5568">食事提供体制加算の対象</span></label>
         </div>
         <div>
           ${lbl('負担上限額')}
@@ -3051,6 +3815,8 @@ function saveClientModal(){
     quotaType:radVal('cl-quota')||'default',
     quotaDays:parseInt(document.getElementById('cl-quota-days').value)||null,
     quotaSpecial:document.getElementById('cl-quota-special').checked,
+    shikyuRyo:(document.getElementById('cl-shikyu').value.trim()===''?'':parseInt(document.getElementById('cl-shikyu').value)||0),
+    mealService:document.getElementById('cl-meal').checked,
     limitAmount:radVal('cl-limit')??'9300',
     contractAmount:radVal('cl-limit')!==null?parseInt(radVal('cl-limit'))??9300:9300,
     localLimit:document.getElementById('cl-local-limit').checked,
@@ -3513,14 +4279,21 @@ function impNext(){
       const _dArr = Array.isArray(c.disabilityTypes)?c.disabilityTypes:[];
       const dtypes = _dArr.length ? _dArr.join('・') : (c.disabilityTypes||'');
       const limit  = c.limitAmount || c.limit_amount || c.income_kind_yen||'';
-      // 重複チェック（氏名 + 生年月日）
-      const dup = existing.find(e=>e.name===name && e.birthDate===birth);
+      const receiptNo = c.receiptNo || c.recipient_number || '';
+      const kid = c.knowbeId || c.id || c.uif_id || '';
+      // 重複チェック（受給者証番号 → knowbeId → 氏名+生年月日）
+      const dup = existing.find(e=>
+        (receiptNo && e.receiptNo && String(e.receiptNo)===String(receiptNo)) ||
+        (kid && e.knowbeId && String(e.knowbeId)===String(kid)) ||
+        (name && e.name===name && e.birthDate===birth)
+      );
+      const dispName = name || (dup && dup.name) || (receiptNo?'（受給'+receiptNo+'）':'');
       const dupMark = dup
         ? '<span style="color:#f59e0b;font-size:10px">上書き更新</span>'
         : '<span style="color:var(--green-dk);font-size:10px">新規</span>';
       rows += `<tr style="border-bottom:1px solid #eef3ec">
         <td style="padding:7px 10px"><input type="checkbox" data-idx="${idx}" class="imp-chk" checked></td>
-        <td style="padding:7px 10px;font-weight:600">${esc(name)}</td>
+        <td style="padding:7px 10px;font-weight:600">${esc(dispName)}</td>
         <td style="padding:7px 10px;color:var(--text-lt)">${birth}</td>
         <td style="padding:7px 10px;color:var(--text-lt)">${esc(dtypes)}</td>
         <td style="padding:7px 10px;color:var(--text-lt)">${limit?limit+'円':''}</td>
@@ -3702,7 +4475,7 @@ function impExecute(){
       employLink:      gb('employLink','employ_link'),
       intensiveSupport:gb('intensiveSupport','intensive_support','intensive_support_flg'),
       active: _active,
-      knowbeId: src.id || src.uif_id || src._sourceId || undefined,
+      knowbeId: src.id || src.uif_id || src._sourceId || src.knowbeId || undefined,
       defaultDays: _defaultDays,
       serviceDefaults: _serviceDefaults,
       eSignRecord: gb('eSignRecord','e_sign_record','electronic_signature_flg'),
@@ -3735,6 +4508,7 @@ function impExecute(){
     // 重複は上書き更新、新規は追加
     // knowbeId(uif_id) 一致を優先、なければ 氏名+生年月日 でマッチ
     const dupIdx = clients.findIndex(e=>
+      (data.receiptNo && e.receiptNo && String(e.receiptNo)===String(data.receiptNo)) ||
       (data.knowbeId && e.knowbeId && String(e.knowbeId)===String(data.knowbeId)) ||
       (e.name===data.name && (e.birthDate||'')===(data.birthDate||''))
     );
@@ -3745,6 +4519,15 @@ function impExecute(){
         id: ex.id,
         facilityId: ex.facilityId || data.facilityId,
         // 新データが空の場合は既存値を保持（詳細情報を消さない）
+        name:    data.name    || ex.name    || '',
+        sei:     data.sei     || ex.sei     || '',
+        mei:     data.mei     || ex.mei     || '',
+        kana:    data.kana    || ex.kana    || '',
+        kanaSei: data.kanaSei || ex.kanaSei || '',
+        kanaMei: data.kanaMei || ex.kanaMei || '',
+        receiptNo: data.receiptNo || ex.receiptNo || '',
+        cityNo:    data.cityNo    || ex.cityNo    || '',
+        startDate: data.startDate || ex.startDate || '',
         birthDate:       data.birthDate       || ex.birthDate       || '',
         grantStart:      data.grantStart      || ex.grantStart      || '',
         grantEnd:        data.grantEnd        || ex.grantEnd        || '',
@@ -3756,6 +4539,17 @@ function impExecute(){
         tel:  data.tel  || ex.tel  || '',
         email:data.email|| ex.email|| '',
         serviceType: data.serviceType || ex.serviceType || _facServiceType,
+        // 障害種別・予定日・各種期間：新データが空（既定）なら既存を保持
+        disabilityTypes: (data.disabilityTypes&&data.disabilityTypes.length)?data.disabilityTypes:(ex.disabilityTypes&&ex.disabilityTypes.length?ex.disabilityTypes:(data.disabilityTypes||[])),
+        gender:          data.gender || ex.gender || '',
+        defaultDays:     ex.defaultDays || data.defaultDays,
+        serviceDefaults: ex.serviceDefaults || data.serviceDefaults,
+        limitPeriod:      (data.limitPeriod&&data.limitPeriod.enabled)?data.limitPeriod:(ex.limitPeriod||data.limitPeriod),
+        mealPeriod:       (data.mealPeriod&&data.mealPeriod.enabled)?data.mealPeriod:(ex.mealPeriod||data.mealPeriod),
+        disabilityPeriod: (data.disabilityPeriod&&data.disabilityPeriod.enabled)?data.disabilityPeriod:(ex.disabilityPeriod||data.disabilityPeriod),
+        nursingPeriod:    (data.nursingPeriod&&data.nursingPeriod.enabled)?data.nursingPeriod:(ex.nursingPeriod||data.nursingPeriod),
+        planPeriod:       (data.planPeriod&&data.planPeriod.enabled)?data.planPeriod:(ex.planPeriod||data.planPeriod),
+        planMonitor:      (data.planMonitor&&data.planMonitor.enabled)?data.planMonitor:(ex.planMonitor||data.planMonitor),
       });
       updated++;
     } else {
@@ -3887,7 +4681,7 @@ function renderUsers(){
     <tr>
       <td>${esc(u.name)}</td>
       <td style="font-family:monospace">${esc(u.loginId)}</td>
-      <td><span class="${u.role==='admin'?'role-admin':u.role==='manager'?'role-user':'role-user'}">${{admin:'管理者',manager:'責任者',staff:'スタッフ',user:'スタッフ'}[u.role]||'スタッフ'}</span></td>
+      <td><span class="${u.role==='admin'?'role-admin':u.role==='manager'?'role-user':'role-user'}">${{admin:'管理者',manager:'責任者',staff:'スタッフ',user:'スタッフ',kiosk:'タイムカード端末'}[u.role]||'スタッフ'}</span></td>
       <td><span class="${u.active!==false?'badge-active':'badge-inactive'}">${u.active!==false?'有効':'無効'}</span></td>
       <td style="display:flex;gap:6px">
         <button class="btn-edit2" onclick="openUserModal('${u.id}')">編集</button>
@@ -4015,6 +4809,58 @@ function getWelbePerms(){
   return r;
 }
 
+// ===== 権限の実行制御 =====
+function _curRole(){ const r=getS()&&getS().role; return (r==='user')?'staff':(r||'staff'); }
+// 管理者は常に全権限。それ以外は権限マトリクスに従う
+function can(key){
+  if(_curRole()==='admin') return true;
+  const p=getWelbePerms()[key];
+  return p ? !!p[_curRole()] : false;
+}
+// 画面ごとの必要権限（__admin__=管理者専用、未定義=誰でも可）
+const VIEW_PERM = {
+  claim:'claim_access', clients:'client_view',
+  facility:'__admin__', init:'__admin__',
+  sysusers:'__admin__', sysperms:'__admin__', croco:'__admin__'
+};
+function canView(v){
+  if(_curRole()==='kiosk') return v==='timecard';  // タイムカード端末は打刻のみ
+  const need=VIEW_PERM[v];
+  if(!need) return true;
+  if(need==='__admin__') return _curRole()==='admin';
+  return can(need);
+}
+function firstAllowedView(){
+  if(_curRole()==='kiosk') return 'timecard';
+  for(const v of ['daily','timecard','claim','clients']) if(canView(v)) return v;
+  return 'daily';
+}
+// サイドバーの表示/非表示を権限に合わせて適用
+function applyPermVisibility(){
+  const set=(id,show)=>{ const el=document.getElementById(id); if(el) el.style.display=show?'':'none'; };
+  // タイムカード端末：タイムカード以外すべて非表示
+  if(_curRole()==='kiosk'){
+    ['sm-record','sm-claim','sm-setting','sub-setting','sm-help','sub-help','sm-sysset','sub-sysset'].forEach(id=>set(id,false));
+    set('sm-timecard', true);
+    return;
+  }
+  const admin=_curRole()==='admin';
+  set('sm-claim',    can('claim_access'));
+  set('sm-clients',  can('client_view'));
+  set('sm-facility', admin);
+  set('sm-init',     admin);
+  // 設定グループ：子(事業所/利用者/初期設定)が1つでも見えるなら表示
+  const settingVisible = admin || can('client_view');
+  set('sm-setting', settingVisible);
+  if(!settingVisible) set('sub-setting', false);
+  // システム設定：管理者のみ
+  set('sm-sysset', admin);
+  if(!admin) set('sub-sysset', false);
+  // 利用者の追加・インポートボタン（client_edit 権限）
+  set('btnAddClient',    can('client_edit'));
+  set('btnImportClient', can('client_edit'));
+}
+
 // ---- ユーザー設定 ----
 function markSysUserDirty(uid){
   const row=document.getElementById('sysurow-'+uid);
@@ -4039,6 +4885,7 @@ function renderSysUsers(){
       <option value="admin"   ${u.role==='admin'  ?'selected':''}>管理者</option>
       <option value="manager" ${u.role==='manager'?'selected':''}>責任者</option>
       <option value="staff"   ${(u.role==='staff'||u.role==='user'||!u.role)?'selected':''}>スタッフ</option>
+      <option value="kiosk"   ${u.role==='kiosk' ?'selected':''}>タイムカード端末</option>
     </select>`;
     const activeSel=`<select class="inline-input" id="act-su-${uid}" oninput="markSysUserDirty('${uid}')">
       <option value="1" ${u.active!==false?'selected':''}>有効</option>
@@ -4198,11 +5045,19 @@ function openAddSysUserModal(){
       </div>
       <div>
         <label style="font-size:12px;font-weight:600;color:var(--navy);display:block;margin-bottom:5px">権限</label>
-        <select id="adduser-role" class="f-input" style="width:100%;padding:8px 10px;cursor:pointer;border:1.5px solid #cbd5e0;border-radius:5px;font-size:13px">
+        <select id="adduser-role" class="f-input" style="width:100%;padding:8px 10px;cursor:pointer;border:1.5px solid #cbd5e0;border-radius:5px;font-size:13px" onchange="document.getElementById('adduser-fac-wrap').style.display=this.value==='kiosk'?'block':'none'">
           <option value="staff">スタッフ</option>
           <option value="manager">責任者</option>
           <option value="admin">管理者</option>
+          <option value="kiosk">タイムカード端末（タブレット用）</option>
         </select>
+      </div>
+      <div id="adduser-fac-wrap" style="display:none">
+        <label style="font-size:12px;font-weight:600;color:var(--navy);display:block;margin-bottom:5px">固定する事業所（タイムカード端末用）</label>
+        <select id="adduser-fac" class="f-input" style="width:100%;padding:8px 10px;cursor:pointer;border:1.5px solid #cbd5e0;border-radius:5px;font-size:13px">
+          ${load('facilities',[]).map(f=>`<option value="${f.id}">${esc(f.name)}</option>`).join('')}
+        </select>
+        <div style="font-size:11px;color:var(--text-lt);margin-top:4px">この端末はログイン後、打刻画面に直行し、選んだ事業所に固定されます。</div>
       </div>
     </div>`;
   const saveBtn=document.getElementById('modalSaveBtn');
@@ -4222,12 +5077,13 @@ function _doAddSysUser(){
   const lid =(document.getElementById('adduser-lid')?.value||'').trim();
   const pw  =(document.getElementById('adduser-pw')?.value||'').trim();
   const role=document.getElementById('adduser-role')?.value||'staff';
+  const facilityId=(role==='kiosk')?(document.getElementById('adduser-fac')?.value||''):'';
   if(!name){ showToast('名前を入力してください'); return; }
   if(!lid){ showToast('ログインIDを入力してください'); return; }
   if(!pw){ showToast('パスワードを入力してください'); return; }
   const users=load('users',[]);
   if(users.find(u=>u.loginId===lid)){ showToast('このログインIDはすでに使用されています'); return; }
-  users.push({id:'u'+Date.now(), name, loginId:lid, password:pw, role, active:true});
+  users.push({id:'u'+Date.now(), name, loginId:lid, password:pw, role, active:true, facilityId});
   save('users',users);
   showToast(`${name}（${lid}）を追加しました`);
   closeModal();
@@ -4280,7 +5136,8 @@ function saveSysPerms(){
     };
   });
   save('welbe_perms', perms);
-  showToast('権限設定を保存しました');
+  applyPermVisibility();
+  showToast('権限設定を保存しました（次回ログインから全員に反映）');
 }
 
 // =========================================================
@@ -4338,7 +5195,7 @@ function _getExpiryBadge(c){
 
 // 全利用者の期限チェク → {expired:[], soon30:[], soon60:[]} を返す
 function getReceiptAlerts(){
-  const clients=load('clients',[]).filter(c=>c.active!==false);
+  const clients=load('clients',[]).filter(c=>c.active!==false && c.facilityId===_curFacId);
   const alerts={expired:[],soon30:[],soon60:[]};
   clients.forEach(c=>{
     const checks=[
@@ -4359,12 +5216,49 @@ function getReceiptAlerts(){
   return alerts;
 }
 
+// 退勤の押し忘れ（出勤済だが過去日に退勤打刻なし）を検出
+function getPunchAlerts(){
+  const fid=_curFacId; if(!fid) return [];
+  const today=new Date(); today.setHours(0,0,0,0);
+  const clients=load('clients',[]);
+  const out=[];
+  for(let mb=0;mb<=1;mb++){
+    const dt=new Date(today.getFullYear(),today.getMonth()-mb,1);
+    const y=dt.getFullYear(),m=dt.getMonth()+1;
+    const tc=load(_tcKey(fid,y,m),{});
+    const dim=getDIM(y,m);
+    Object.keys(tc).forEach(cid=>{
+      for(let d=1;d<=dim;d++){
+        const rec=tc[cid]&&tc[cid][d];
+        if(rec&&rec.in&&!rec.out){
+          const dd=new Date(y,m-1,d); dd.setHours(0,0,0,0);
+          if(dd<today){
+            const c=clients.find(x=>x.id===cid);
+            if(c&&c.active!==false&&c.facilityId===fid)
+              out.push({name:c.name,clientId:cid,y,m,day:d,in:rec.in});
+          }
+        }
+      }
+    });
+  }
+  out.sort((a,b)=>(a.y*1e4+a.m*100+a.day)-(b.y*1e4+b.m*100+b.day));
+  return out;
+}
+
+// 退勤押し忘れの修正：該当日のタイムカードを開く
+function fixPunchAlert(clientId,y,m,day){
+  _tcDate=new Date(y,m-1,day);
+  showView('timecard');
+  setTimeout(()=>openTcPunch(clientId),120);
+}
+
 // バナーHTMLを生成してmainAreaの上部に表示
 function renderAlertBanner(){
   const wrap=document.getElementById('alertBannerWrap');
   if(!wrap) return;
   const al=getReceiptAlerts();
-  const total=al.expired.length+al.soon30.length+al.soon60.length;
+  const punch=getPunchAlerts();
+  const total=al.expired.length+al.soon30.length+al.soon60.length+punch.length;
   if(!total){wrap.style.display='none';wrap.innerHTML='';return;}
 
   function makeList(arr){
@@ -4398,6 +5292,16 @@ function renderAlertBanner(){
       <span class="alr-ico">🟡</span>
       <div class="alr-body"><div class="alr-title">受給者証期限まで60日以内（${al.soon60.length}件）</div>
         <ul class="alr-list">${makeList(al.soon60)}</ul></div>
+      <button class="alr-close" onclick="this.closest('.alert-banner').remove()">✕</button>
+    </div>`;
+  }
+  if(punch.length){
+    const items=punch.map(p=>`<li><b>${esc(p.name)}</b>　${p.y}/${p.m}/${p.day}　出勤 ${p.in} → <b>退勤の打刻なし</b>`
+      +`<button class="alr-upd" onclick="fixPunchAlert('${p.clientId}',${p.y},${p.m},${p.day})" style="color:inherit;border-color:currentColor">退勤を入力</button></li>`).join('');
+    html+=`<div class="alert-banner alr-orange">
+      <span class="alr-ico">🕐</span>
+      <div class="alr-body"><div class="alr-title">退勤の押し忘れがあります（${punch.length}件）</div>
+        <ul class="alr-list">${items}</ul></div>
       <button class="alr-close" onclick="this.closest('.alert-banner').remove()">✕</button>
     </div>`;
   }
