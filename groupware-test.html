@@ -19,6 +19,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -1993,6 +1994,10 @@ const _fbConfig = {
 firebase.initializeApp(_fbConfig);
 const _db = firebase.firestore();
 const _storage = firebase.storage();
+const _auth = firebase.auth();
+// テスト環境：ログインIDを Firebase Auth 用のメール形式に変換（架空ドメイン・実在不要）
+const _AUTH_DOMAIN = 'dainichi-test.local';
+function _authEmail(loginId){ return String(loginId).toLowerCase()+'@'+_AUTH_DOMAIN; }
 const _COL = 'gw2data_test'; // 【テスト環境】本番(gw2data)とは別領域
 const _IS_TEST = true; // テスト環境フラグ
 
@@ -2284,25 +2289,41 @@ function canSeeAllSchedules(userId){
 }
 const ROLE_LABEL = {system:'システム', soumu:'総務経理', admin:'管理者', manager:'責任者', user:'一般'};
 
-function doLogin(){
+async function doLogin(){
   const lid = document.getElementById('loginId').value.trim();
   const lp  = document.getElementById('loginPass').value;
   const errEl = document.getElementById('loginError');
   errEl.textContent='';
   if(!lid||!lp){ errEl.textContent='IDとパスワードを入力してください'; return; }
+  if(!load('users',[]).length) initData();
   const users = load('users',[]);
-  if(!users.length){
-    // メモリにもなければ再初期化して再試行
-    initData();
-    return doLoginRetry(lid, lp, errEl);
-  }
   const u = users.find(x=>x.loginId===lid && x.active);
+
+  // ① まず Firebase Auth で照合（パスワードはGoogle側で安全に検証）
+  try{
+    await _auth.signInWithEmailAndPassword(_authEmail(lid), lp);
+    if(!u){ errEl.textContent='ユーザー情報が見つかりません（管理者にご連絡ください）'; return; }
+    setS({userId:u.id, name:u.name, role:u.role, deptId:u.deptId});
+    startApp();
+    return;
+  }catch(e){
+    // Auth未登録/不一致 → ② 従来方式で照合（誰も締め出さないためのフォールバック）
+  }
+
+  // ② 従来方式（平文）で照合
   if(!u || !chkPass(u.password, lp)){
     errEl.textContent='IDまたはパスワードが正しくありません';
     return;
   }
+  // ログイン成功 → 先に画面へ進める
   setS({userId:u.id, name:u.name, role:u.role, deptId:u.deptId});
   startApp();
+  // ③ 遅延移行：まだAuth未登録なら、この機会にAuthアカウントを作成（6文字以上のみ）
+  if(lp.length>=6){
+    _auth.createUserWithEmailAndPassword(_authEmail(lid), lp)
+      .then(()=>console.log('[auth] Authへ移行:', lid))
+      .catch(err=>console.log('[auth] 移行スキップ:', lid, err.code));
+  }
 }
 function doLoginRetry(lid, lp, errEl){
   const users = load('users',[]);
