@@ -6,7 +6,7 @@
 <title>Welbe — 国保連請求サポート</title>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-<!-- firebase-auth は不使用（ID/PASS方式に変更） -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <style>
 /* ===== ウェルピアカラー変数 ===== */
 :root{
@@ -1287,7 +1287,21 @@ const _fbConfig = {
 };
 firebase.initializeApp(_fbConfig);
 const _db = firebase.firestore();
+const _auth = firebase.auth();
 const _COL = 'kokuhoren_data';
+
+// ===== Firebase Auth（グループウェアと共通方式・welbe専用ドメイン） =====
+const _AUTH_DOMAIN = 'welbe.dainichi.local';
+function _authEmail(loginId){ return String(loginId).toLowerCase()+'@'+_AUTH_DOMAIN; }
+// 永続化された認証状態の復元を待つ（ルール厳格化後の再読込で必要）
+function _authReady(){
+  return new Promise(res=>{
+    let done=false; const fin=u=>{ if(!done){done=true;res(u);} };
+    try{ const unsub=_auth.onAuthStateChanged(u=>{ if(unsub)unsub(); fin(u); }); }
+    catch(e){ fin(null); }
+    setTimeout(()=>fin(null), 3000); // 保険
+  });
+}
 
 // =========================================================
 // データ層
@@ -1435,20 +1449,42 @@ function genStrongPassword(len){
   return pw.slice(0,len).join('');
 }
 
-function doLogin(){
+async function doLogin(){
   const lid = document.getElementById('loginId').value.trim();
   const pass = document.getElementById('loginPass').value;
   const err  = document.getElementById('loginErr');
   err.textContent='';
   if(!lid||!pass){ err.textContent='IDとパスワードを入力してください'; return; }
-  const users=load('users',[]);
-  const u=users.find(x=>x.loginId===lid && x.active!==false);
-  if(!u||!chkPass(u.password,pass)){
+  const findU=()=>load('users',[]).find(x=>x.loginId===lid && x.active!==false);
+
+  // ① Firebase Auth で照合（パスワードはGoogle側で安全に検証）
+  try{
+    await _auth.signInWithEmailAndPassword(_authEmail(lid), pass);
+    await ensureData();   // 認証済みになったのでデータ読込（ルール厳格化後もここで成功）
+    const u=findU();
+    if(!u){ err.textContent='ユーザー情報が見つかりません（管理者にご連絡ください）'; return; }
+    setS({userId:u.id, name:u.name, loginId:u.loginId, role:u.role, facilityId:u.facilityId||''});
+    startApp();
+    return;
+  }catch(e){
+    // Auth未登録/不一致 → ② 従来方式でフォールバック（誰も締め出さない）
+  }
+
+  // ② 従来方式（平文）で照合
+  await ensureData();
+  const u=findU();
+  if(!u || !chkPass(u.password, pass)){
     err.textContent='IDまたはパスワードが正しくありません';
     return;
   }
   setS({userId:u.id, name:u.name, loginId:u.loginId, role:u.role, facilityId:u.facilityId||''});
   startApp();
+  // ③ 遅延移行：未登録ならこの機会にAuthへ登録（6文字以上のみ）
+  if(pass.length>=6){
+    _auth.createUserWithEmailAndPassword(_authEmail(lid), pass)
+      .then(()=>console.log('[auth] Authへ移行:', lid))
+      .catch(e2=>console.log('[auth] 移行スキップ:', lid, e2.code));
+  }
 }
 
 function doLogout(){
@@ -1536,23 +1572,28 @@ function onFacChange(){
 // =========================================================
 // 起動
 // =========================================================
+// データ読込は一度だけ。認証が必要なルールでも、認証後に呼べば成功する
+let _dataReady=false;
+async function ensureData(){
+  if(_dataReady) return true;
+  const ok = await loadAllFromFirestore();
+  if(ok){ initDefaultData(); startRealtimeSync(); _dataReady=true; }
+  return ok;
+}
+
 async function boot(){
   document.getElementById('loadingScreen').style.display='flex';
   document.getElementById('loginScreen').style.display='none';
   document.getElementById('app').style.display='none';
 
-  const ok = await loadAllFromFirestore();
-  if(!ok){
-    document.getElementById('loadingScreen').innerHTML=
-      '<div style="color:#f87171;font-size:14px;text-align:center;padding:20px">⚠️ データベースへの接続に失敗しました。<br>ネットワーク接続を確認してください。</div>';
-    return;
-  }
-  initDefaultData();
-  startRealtimeSync();
+  await _authReady();          // 永続ログインの復元を待つ
+  await ensureData();          // ルール開放中or認証済みなら成功。未認証で弾かれた場合はログインへ
+
   document.getElementById('loadingScreen').style.display='none';
-  if(getS()){
+  if(_dataReady && getS()){
     startApp();
   }else{
+    // データ未取得（＝未認証で弾かれた可能性）またはセッションなし → ログイン画面
     document.getElementById('loginScreen').style.display='flex';
   }
 }
