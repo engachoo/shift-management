@@ -580,6 +580,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
       <div class="sb-sub" id="sub-sysset" style="display:none">
         <div class="sb-sub-item" id="sm-sysusers" onclick="showView('sysusers')">👤 ユーザー設定</div>
         <div class="sb-sub-item" id="sm-sysperms" onclick="showView('sysperms')">🔐 権限設定</div>
+        <div class="sb-sub-item" id="sm-sysbackup" onclick="showView('sysbackup')">🛡️ バックアップ</div>
         <!-- クロコの提案（メインエリアビューに遷移） -->
         <div id="croco-wrap" style="display:none;border-top:1px solid rgba(255,255,255,.1)">
           <div class="sb-sub-item" id="sm-croco" onclick="showView('croco')" style="gap:7px">
@@ -1053,6 +1054,31 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
         <div style="margin-top:14px;display:flex;gap:10px;justify-content:flex-end">
           <button class="btn-cancel" onclick="renderSysPerms()">リセット</button>
           <button class="btn-save" onclick="saveSysPerms()">💾 保存</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== システム設定 > バックアップ ===== -->
+    <div id="view-sysbackup" style="display:none">
+      <div class="page-hdr">システム設定 <span class="ph-sub">› バックアップ</span></div>
+      <div class="content-area">
+        <div style="font-size:13px;color:var(--text-lt);margin-bottom:16px;line-height:1.7">welbeの全データ（利用者・実績・請求・設定など）をファイルに書き出し／読み込みできます。定期的なバックアップや、データの移行に使います。</div>
+
+        <div class="form-section" style="margin-bottom:16px">
+          <div class="msec-hdr">💾 エクスポート（書き出し）</div>
+          <div style="font-size:13px;color:#4a5568;line-height:1.7;margin-bottom:12px">現在の全データを1つのJSONファイルに保存します。外付けやクラウドに保管してください。</div>
+          <button class="btn-save" onclick="exportAllData()">💾 全データをダウンロード</button>
+        </div>
+
+        <div class="form-section">
+          <div class="msec-hdr" style="color:#c2410c">📥 インポート（読み込み）</div>
+          <div style="font-size:13px;color:#4a5568;line-height:1.7;margin-bottom:12px">
+            バックアップファイルを読み込み、現在のデータベースに復元します。<br>
+            <b style="color:#c2410c">⚠ 同じキーのデータは上書きされます。</b>通常は移行・復旧のときだけ使用してください。
+          </div>
+          <input type="file" id="importFileInput" accept="application/json,.json" style="display:none" onchange="importAllData(this.files[0])">
+          <button class="btn-cancel" style="border-color:#c2410c;color:#c2410c" onclick="document.getElementById('importFileInput').click()">📥 バックアップから復元</button>
+          <div id="importMsg" style="font-size:13px;margin-top:12px;line-height:1.7"></div>
         </div>
       </div>
     </div>
@@ -1630,7 +1656,7 @@ function startApp(){
 // ナビゲーション
 // =========================================================
 let curView='daily';
-const viewIds=['daily','monthly','timecard','claim','facility','clients','init','sysusers','sysperms','croco','manual'];
+const viewIds=['daily','monthly','timecard','claim','facility','clients','init','sysusers','sysperms','sysbackup','croco','manual'];
 function showView(v){
   // 権限チェック：許可されていない画面は開けない
   if(typeof canView==='function' && !canView(v)){
@@ -1640,7 +1666,7 @@ function showView(v){
   curView=v;
   viewIds.forEach(id=>document.getElementById('view-'+id).style.display='none');
   document.getElementById('view-'+v).style.display='block';
-  ['sm-record','sm-timecard','sm-claim','sm-facility','sm-clients','sm-init','sm-manual'].forEach(id=>document.getElementById(id)?.classList.remove('active'));
+  ['sm-record','sm-timecard','sm-claim','sm-facility','sm-clients','sm-init','sm-manual','sm-sysusers','sm-sysperms','sm-sysbackup'].forEach(id=>document.getElementById(id)?.classList.remove('active'));
   if(v==='daily'||v==='monthly') document.getElementById('sm-record').classList.add('active');
   else if(v==='timecard') document.getElementById('sm-timecard').classList.add('active');
   else if(v==='claim') document.getElementById('sm-claim').classList.add('active');
@@ -1649,6 +1675,7 @@ function showView(v){
   else if(v==='init'){document.getElementById('sm-init').classList.add('active');openSettingSub();}
   else if(v==='sysusers'){document.getElementById('sm-sysusers').classList.add('active');openSysSetSub();}
   else if(v==='sysperms'){document.getElementById('sm-sysperms').classList.add('active');openSysSetSub();}
+  else if(v==='sysbackup'){document.getElementById('sm-sysbackup').classList.add('active');openSysSetSub();}
   else if(v==='croco'){document.getElementById('sm-croco')?.classList.add('active');openSysSetSub();renderCrocoView();}
   // タイムカードを離れるときは時計タイマー停止
   if(v!=='timecard') _stopTcClock();
@@ -2795,6 +2822,46 @@ function dlKokuhoSeikyu(){
   _dlSjis(csv,`seikyu-meisai_${claim.year}-${String(claim.month).padStart(2,'0')}.csv`);
   const totalYen=agg.users.reduce((s,u)=>s+u.yen,0);
   showToast(`請求明細書(J11)を出力しました（${agg.users.length}名 / ${totalYen.toLocaleString()}円）✓`);
+}
+
+// ===== 全データ エクスポート / インポート（バックアップ・移行用） =====
+function exportAllData(){
+  const data={};
+  Object.keys(_cache).forEach(k=>{ data[k]=_cache[k]; });
+  const n=new Date(); const ymd=`${n.getFullYear()}${String(n.getMonth()+1).padStart(2,'0')}${String(n.getDate()).padStart(2,'0')}`;
+  const payload={ _welbe_backup:true, project:_fbConfig.projectId, exportedAt:n.toISOString(), keys:Object.keys(data).length, data };
+  const blob=new Blob([JSON.stringify(payload,null,1)], {type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`welbe_全データ_${ymd}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+  showToast(`全データ（${payload.keys}件）をエクスポートしました ✓`);
+}
+
+function importAllData(file){
+  const msg=document.getElementById('importMsg');
+  if(!file){ return; }
+  const r=new FileReader();
+  r.onload=()=>{
+    let payload;
+    try{ payload=JSON.parse(r.result); }
+    catch(e){ msg.style.color='#dc2626'; msg.textContent='⚠️ ファイルを読み取れませんでした（JSON形式ではありません）'; return; }
+    const data = payload && payload.data ? payload.data : payload;
+    if(!data || typeof data!=='object'){ msg.style.color='#dc2626'; msg.textContent='⚠️ バックアップデータが見つかりません'; return; }
+    const keys=Object.keys(data);
+    const from = payload.project ? `（書出元プロジェクト：${payload.project}）` : '';
+    if(!confirm(`${keys.length}件のデータを現在のデータベース（${_fbConfig.projectId}）に復元します。\n${from}\n\n同じキーは上書きされます。よろしいですか？`)){
+      document.getElementById('importFileInput').value=''; return;
+    }
+    let ok=0;
+    keys.forEach(k=>{ try{ save(k, data[k]); ok++; }catch(e){} });
+    msg.style.color='var(--green-dk)';
+    msg.innerHTML=`✅ ${ok}件を復元しました。画面を再読み込みすると反映されます。`;
+    showToast(`${ok}件を復元しました ✓`);
+    document.getElementById('importFileInput').value='';
+  };
+  r.readAsText(file);
 }
 
 // ===== サービス提供実績記録票(J61) 取込 =====
