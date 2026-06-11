@@ -3011,7 +3011,8 @@ function genWelbeDocs(type, claimArg){
   const yen=n=>'¥'+Number(n||0).toLocaleString();
   const nm=u=>esc(u.c&&u.c.name?u.c.name:u.kana||'');
   const head=u=>`<div class="dochead"><div><div class="corp">${esc(fac.corp||'')}</div><div>${esc(fac.name||'')}（${svcLabel}）</div></div><div class="rno">受給者番号<br><b>${u.receiptNo}</b></div></div>`;
-  const issuer=`<div class="issuer"><div>発行日：${issue}</div><div class="iname">${esc(fac.corp||'')}　${esc(fac.name||'')}<span class="seal">印</span></div><div>${fac.jigyoshoNo?'事業所番号 '+fac.jigyoshoNo:''}${fac.tel?'　TEL '+esc(fac.tel):''}</div>${fac.addr?'<div>'+esc((fac.zip?'〒'+fac.zip+' ':'')+fac.addr)+'</div>':''}</div>`;
+  const issuer=`<div class="issuer"><div>発行日：${issue}</div><div class="iname">${esc(fac.corp||'')}　${esc(fac.name||'')}</div><div>${fac.jigyoshoNo?'事業所番号 '+fac.jigyoshoNo:''}${fac.tel?'　TEL '+esc(fac.tel):''}</div>${fac.addr?'<div>'+esc((fac.zip?'〒'+fac.zip+' ':'')+fac.addr)+'</div>':''}</div>`;
+  const WELBE_CITY={"212019":"岐阜市","212027":"大垣市","212092":"羽島市","212142":"可児市","212159":"山県市","212217":"海津市","213819":"神戸町","213827":"輪之内町","213835":"安八町"};
   let docCount=0;
   const pages=agg.users.map(u=>{
     if(type==='invoice'){
@@ -3023,25 +3024,30 @@ function genWelbeDocs(type, claimArg){
         <table class="detail"><thead><tr><th>サービス内容</th><th class="r">単位数</th><th class="r">利用回数</th><th class="r">ｻｰﾋﾞｽ単位数</th></tr></thead><tbody>${rows}</tbody></table>
         <div class="sumbox"><div class="sumrow"><span>サービス費用算定合計</span><b>${yen(u.yen)}</b></div>
         <div class="sumrow"><span>給付費</span><b>-${yen(u.kyufu)}</b></div>
-        <div class="sumrow total"><span>利用者負担合計</span><span>${yen(u.copay)}</span></div></div>
+        <div class="sumrow total"><span>請求合計金額（利用者負担）</span><span>${yen(u.copay)}</span></div></div>
         ${issuer}<div class="note">※ 単位単価 10円／単位（1円未満切り捨て）</div></div>`;
     }
     if(type==='receipt'){
       docCount++;
-      return `<div class="doc">${head(u)}<h1>領収書</h1><div class="h1rule"></div>
-        <div class="addressee">${nm(u)}<span class="sama">様</span></div>
-        <div class="amtbox">領収金額　${yen(u.copay)}</div>
-        <div class="tadashi">但し、${y}年${m}月分 ${svcLabel} の利用者負担金として上記正に領収いたしました。</div>
-        ${issuer}</div>`;
+      const rcptHalf=(label,cls)=>`<div class="half"><div class="copybadge ${cls}">${label}</div>
+        <div class="dochead2"><span class="corp">${esc(fac.corp||'')}　${esc(fac.name||'')}（${svcLabel}）</span><span>受給者番号 ${u.receiptNo}</span></div>
+        <h2>領収書</h2>
+        <div class="addressee2">${nm(u)} <span class="sama">様</span></div>
+        <div class="amtbox2">領収金額　${yen(u.copay)}</div>
+        <div class="tadashi2">但し、${y}年${m}月分のサービス利用代として上記正に領収いたしました。<br><span class="sub">${svcLabel}</span></div>
+        <div class="issuer2"><span>発行日 ${issue}</span><span class="iname2">${esc(fac.corp||'')}　${esc(fac.name||'')}</span></div></div>`;
+      return `<div class="doc proxy">${rcptHalf('本人控え','self')}<div class="cutline"><span>✂ ― ― ― ― ― ― キリトリ ― ― ― ― ― ―</span></div>${rcptHalf('事業所控え','')}</div>`;
     }
-    // proxy：A4 1枚に「本人控え（上）＋事業所控え（下）」＋切り取り線
+    // proxy：代理受領額通知書（A4 1枚に本人控え＋事業所控え＋切り取り線）
+    const cityName=WELBE_CITY[u.cityNo]||'';
     const proxyHalf=(label,cls)=>`<div class="half"><div class="copybadge ${cls}">${label}</div>
       <div class="dochead2"><span class="corp">${esc(fac.corp||'')}　${esc(fac.name||'')}（${svcLabel}）</span><span>受給者番号 ${u.receiptNo}</span></div>
-      <h2>代理受領通知書</h2>
+      <h2>代理受領額通知書</h2>
       <div class="addressee2">${nm(u)} <span class="sama">様</span></div>
-      <div class="amtbox2">代理受領した介護給付費等の額　${yen(u.kyufu)}</div>
-      <div class="tadashi2">上記のとおり、${y}年${m}月分の介護給付費等を市町村から代理受領しましたので通知します。<br><span class="sub">${svcLabel}　利用期間 ${period}</span></div>
-      <div class="issuer2"><span>発行日 ${issue}</span><span class="iname2">${esc(fac.corp||'')}　${esc(fac.name||'')}<span class="seal">印</span></span></div></div>`;
+      <div class="metarow2">支給元市区町村：<b>${esc(cityName)}</b>　／　受領日：${issue}　／　通知日：${issue}</div>
+      <div class="amtbox2">代理受領金額　${yen(u.kyufu)}</div>
+      <div class="tadashi2">但し、${y}年${m}月分のサービス利用代として上記正に受領いたしました。<br><span class="sub">${svcLabel}</span></div>
+      <div class="issuer2"><span></span><span class="iname2">${esc(fac.corp||'')}　${esc(fac.name||'')}</span></div></div>`;
     docCount++;
     return `<div class="doc proxy">${proxyHalf('本人控え','self')}<div class="cutline"><span>✂ ― ― ― ― ― ― キリトリ ― ― ― ― ― ―</span></div>${proxyHalf('事業所控え','')}</div>`;
   }).join('');
@@ -3082,6 +3088,7 @@ function genWelbeDocs(type, claimArg){
   .addressee2{font-size:17px;font-weight:700;margin-bottom:8px}
   .addressee2 .sama{font-size:12px;font-weight:400;color:#475569;margin-left:4px}
   .amtbox2{text-align:center;font-size:18px;font-weight:800;color:#004063;background:#eff6ff;border:2px solid #004063;border-radius:6px;padding:13px;margin:6px 0 10px;letter-spacing:1px}
+  .metarow2{font-size:11.5px;color:#475569;margin-bottom:9px}.metarow2 b{color:#1f2937}
   .tadashi2{font-size:12.5px;line-height:1.8;color:#374151}.tadashi2 .sub{font-size:11px;color:#64748b}
   .issuer2{margin-top:auto;display:flex;justify-content:space-between;align-items:center;font-size:11px;color:#475569;padding-top:10px}
   .issuer2 .iname2{font-size:13px;font-weight:700;color:#1f2937;display:inline-flex;align-items:center;gap:8px}
@@ -3090,7 +3097,7 @@ function genWelbeDocs(type, claimArg){
   const w=window.open('','_blank');
   if(!w){ showToast('ポップアップがブロックされました。許可してください'); return; }
   w.document.write(html); w.document.close();
-  const extra = type==='proxy' ? `（${agg.users.length}名・各A4 1枚に本人控え＋事業所控え）` : `（${agg.users.length}名）`;
+  const extra = (type==='proxy'||type==='receipt') ? `（${agg.users.length}名・各A4 1枚に本人控え＋事業所控え）` : `（${agg.users.length}名）`;
   showToast(`${titleMap[type]}${extra}を表示しました ✓`);
 }
 
