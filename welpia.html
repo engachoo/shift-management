@@ -6,7 +6,7 @@
 <title>Welbe — 国保連請求サポート</title>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-<!-- firebase-auth は不使用（ID/PASS方式に変更） -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <style>
 /* ===== ウェルピアカラー変数 ===== */
 :root{
@@ -580,6 +580,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
       <div class="sb-sub" id="sub-sysset" style="display:none">
         <div class="sb-sub-item" id="sm-sysusers" onclick="showView('sysusers')">👤 ユーザー設定</div>
         <div class="sb-sub-item" id="sm-sysperms" onclick="showView('sysperms')">🔐 権限設定</div>
+        <div class="sb-sub-item" id="sm-sysbackup" onclick="showView('sysbackup')">🛡️ バックアップ</div>
         <!-- クロコの提案（メインエリアビューに遷移） -->
         <div id="croco-wrap" style="display:none;border-top:1px solid rgba(255,255,255,.1)">
           <div class="sb-sub-item" id="sm-croco" onclick="showView('croco')" style="gap:7px">
@@ -1009,6 +1010,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
           <div style="font-size:13px;color:var(--text-lt)">welbeにアクセスできるユーザーと権限を管理します。</div>
           <div style="display:flex;gap:8px;align-items:center">
+            <button onclick="bulkProvisionAuth()" title="既存メンバーをまとめてログイン認証に登録します" style="font-weight:700;background:#eef2ff;border:1px solid #6366f1;color:#3730a3;padding:5px 14px;border-radius:5px;cursor:pointer;font-size:12px">🔐 全員をAuthに登録</button>
             <button id="bulkUpdBtn" onclick="saveAllSysUsers()" style="font-weight:700;background:#fef9c3;border:1px solid #ca8a04;color:#78350f;padding:5px 14px;border-radius:5px;cursor:pointer;font-size:12px">⬆ 一括更新</button>
             <button class="btn-new" onclick="openAddSysUserModal()">＋ 新規ユーザー</button>
           </div>
@@ -1053,6 +1055,31 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
         <div style="margin-top:14px;display:flex;gap:10px;justify-content:flex-end">
           <button class="btn-cancel" onclick="renderSysPerms()">リセット</button>
           <button class="btn-save" onclick="saveSysPerms()">💾 保存</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== システム設定 > バックアップ ===== -->
+    <div id="view-sysbackup" style="display:none">
+      <div class="page-hdr">システム設定 <span class="ph-sub">› バックアップ</span></div>
+      <div class="content-area">
+        <div style="font-size:13px;color:var(--text-lt);margin-bottom:16px;line-height:1.7">welbeの全データ（利用者・実績・請求・設定など）をファイルに書き出し／読み込みできます。定期的なバックアップや、データの移行に使います。</div>
+
+        <div class="form-section" style="margin-bottom:16px">
+          <div class="msec-hdr">💾 エクスポート（書き出し）</div>
+          <div style="font-size:13px;color:#4a5568;line-height:1.7;margin-bottom:12px">現在の全データを1つのJSONファイルに保存します。外付けやクラウドに保管してください。</div>
+          <button class="btn-save" onclick="exportAllData()">💾 全データをダウンロード</button>
+        </div>
+
+        <div class="form-section">
+          <div class="msec-hdr" style="color:#c2410c">📥 インポート（読み込み）</div>
+          <div style="font-size:13px;color:#4a5568;line-height:1.7;margin-bottom:12px">
+            バックアップファイルを読み込み、現在のデータベースに復元します。<br>
+            <b style="color:#c2410c">⚠ 同じキーのデータは上書きされます。</b>通常は移行・復旧のときだけ使用してください。
+          </div>
+          <input type="file" id="importFileInput" accept="application/json,.json" style="display:none" onchange="importAllData(this.files[0])">
+          <button class="btn-cancel" style="border-color:#c2410c;color:#c2410c" onclick="document.getElementById('importFileInput').click()">📥 バックアップから復元</button>
+          <div id="importMsg" style="font-size:13px;margin-top:12px;line-height:1.7"></div>
         </div>
       </div>
     </div>
@@ -1278,16 +1305,62 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
 // Firebase
 // =========================================================
 const _fbConfig = {
-  apiKey: "AIzaSyBCnMxxITE3rqp2x9r3hJ6Av_H3AIsyMng",
-  authDomain: "dainichi-001.firebaseapp.com",
-  projectId: "dainichi-001",
-  storageBucket: "dainichi-001.firebasestorage.app",
-  messagingSenderId: "442645577881",
-  appId: "1:442645577881:web:d03af912e3aa1953c9b808"
+  apiKey: "AIzaSyAC2UBSoh3tohi3Ibt3FbXt2C6mjKppEFc",
+  authDomain: "welpia-001.firebaseapp.com",
+  projectId: "welpia-001",
+  storageBucket: "welpia-001.firebasestorage.app",
+  messagingSenderId: "248992951161",
+  appId: "1:248992951161:web:de44bd7b71337c2b6a1da8"
 };
 firebase.initializeApp(_fbConfig);
 const _db = firebase.firestore();
+const _auth = firebase.auth();
 const _COL = 'kokuhoren_data';
+
+// ===== Firebase Auth（グループウェアと共通方式・welbe専用ドメイン） =====
+const _AUTH_DOMAIN = 'welbe.dainichi.local';
+function _authEmail(loginId){ return String(loginId).toLowerCase()+'@'+_AUTH_DOMAIN; }
+// サブ接続でAuthアカウントを作成（管理者のログインを保ったまま新ユーザーを登録）
+let _secApp=null;
+function _secAuth(){
+  if(!_secApp){ try{ _secApp=firebase.initializeApp(_fbConfig,'provision'); }catch(e){ _secApp=firebase.app('provision'); } }
+  return _secApp.auth();
+}
+async function _provisionAuth(loginId, password){
+  if(!loginId || !password) return {ok:false, reason:'空'};
+  if(password.length<6) return {ok:false, reason:'6文字未満'};
+  try{
+    await _secAuth().createUserWithEmailAndPassword(_authEmail(loginId), password);
+    try{ await _secAuth().signOut(); }catch(e){}
+    return {ok:true};
+  }catch(e){
+    try{ await _secAuth().signOut(); }catch(_){}
+    if(e.code==='auth/email-already-in-use') return {ok:true, existed:true};
+    return {ok:false, reason:e.code||'失敗'};
+  }
+}
+// 既存ユーザーを一括でAuthに登録
+async function bulkProvisionAuth(){
+  if(!confirm('現在の全ユーザーをログイン認証(Auth)に登録します。\n（パスワード6文字以上が対象。既に登録済みの人はそのまま）\nよろしいですか？')) return;
+  const users=load('users',[]).filter(u=>u.active!==false && u.loginId && u.password);
+  let ok=0, existed=0, skip=0; const fail=[];
+  for(const u of users){
+    if(u.password.length<6){ skip++; continue; }
+    const r=await _provisionAuth(u.loginId, u.password);
+    if(r.ok){ r.existed?existed++:ok++; } else fail.push(`${u.loginId}(${r.reason})`);
+  }
+  alert(`Auth登録 完了\n・新規登録：${ok}名\n・登録済み：${existed}名\n・スキップ(6文字未満)：${skip}名`+(fail.length?`\n・失敗：${fail.join(', ')}`:'')+`\n\n※6文字未満の人は、パスワードを6文字以上に変更してから再実行してください。`);
+}
+
+// 永続化された認証状態の復元を待つ（ルール厳格化後の再読込で必要）
+function _authReady(){
+  return new Promise(res=>{
+    let done=false; const fin=u=>{ if(!done){done=true;res(u);} };
+    try{ const unsub=_auth.onAuthStateChanged(u=>{ if(unsub)unsub(); fin(u); }); }
+    catch(e){ fin(null); }
+    setTimeout(()=>fin(null), 3000); // 保険
+  });
+}
 
 // =========================================================
 // データ層
@@ -1376,11 +1449,9 @@ function initDefaultData(){
     });
     if(facChanged) save('facilities', facs);
   }
+  // 初期メンバーは岩清水（管理者）のみ。他は今後「＋新規ユーザー」で追加（Auth自動作成）
   const DEFAULT_USERS=[
-    {id:'kh_u1',name:'岩清水',loginId:'iwashimizu',password:'welpia1',role:'admin',  active:true},
-    {id:'kh_u2',name:'山下',  loginId:'yamashita', password:'welpia2',role:'manager',active:true},
-    {id:'kh_u3',name:'笹木原',loginId:'sasagihara',password:'welpia3',role:'staff',  active:true},
-    {id:'kh_u4',name:'三浦',  loginId:'miura',     password:'welpia4',role:'staff',  active:true}
+    {id:'kh_u1',name:'岩清水',loginId:'iwashimizu',password:'welpia1',role:'admin',  active:true}
   ];
   const existUsers=load('users',null);
   // loginId がないユーザーのみのデータ（旧形式）またはデータなし → デフォルトを保存
@@ -1435,20 +1506,42 @@ function genStrongPassword(len){
   return pw.slice(0,len).join('');
 }
 
-function doLogin(){
+async function doLogin(){
   const lid = document.getElementById('loginId').value.trim();
   const pass = document.getElementById('loginPass').value;
   const err  = document.getElementById('loginErr');
   err.textContent='';
   if(!lid||!pass){ err.textContent='IDとパスワードを入力してください'; return; }
-  const users=load('users',[]);
-  const u=users.find(x=>x.loginId===lid && x.active!==false);
-  if(!u||!chkPass(u.password,pass)){
+  const findU=()=>load('users',[]).find(x=>x.loginId===lid && x.active!==false);
+
+  // ① Firebase Auth で照合（パスワードはGoogle側で安全に検証）
+  try{
+    await _auth.signInWithEmailAndPassword(_authEmail(lid), pass);
+    await ensureData();   // 認証済みになったのでデータ読込（ルール厳格化後もここで成功）
+    const u=findU();
+    if(!u){ err.textContent='ユーザー情報が見つかりません（管理者にご連絡ください）'; return; }
+    setS({userId:u.id, name:u.name, loginId:u.loginId, role:u.role, facilityId:u.facilityId||''});
+    startApp();
+    return;
+  }catch(e){
+    // Auth未登録/不一致 → ② 従来方式でフォールバック（誰も締め出さない）
+  }
+
+  // ② 従来方式（平文）で照合
+  await ensureData();
+  const u=findU();
+  if(!u || !chkPass(u.password, pass)){
     err.textContent='IDまたはパスワードが正しくありません';
     return;
   }
   setS({userId:u.id, name:u.name, loginId:u.loginId, role:u.role, facilityId:u.facilityId||''});
   startApp();
+  // ③ 遅延移行：未登録ならこの機会にAuthへ登録（6文字以上のみ）
+  if(pass.length>=6){
+    _auth.createUserWithEmailAndPassword(_authEmail(lid), pass)
+      .then(()=>console.log('[auth] Authへ移行:', lid))
+      .catch(e2=>console.log('[auth] 移行スキップ:', lid, e2.code));
+  }
 }
 
 function doLogout(){
@@ -1536,23 +1629,28 @@ function onFacChange(){
 // =========================================================
 // 起動
 // =========================================================
+// データ読込は一度だけ。認証が必要なルールでも、認証後に呼べば成功する
+let _dataReady=false;
+async function ensureData(){
+  if(_dataReady) return true;
+  const ok = await loadAllFromFirestore();
+  if(ok){ initDefaultData(); startRealtimeSync(); _dataReady=true; }
+  return ok;
+}
+
 async function boot(){
   document.getElementById('loadingScreen').style.display='flex';
   document.getElementById('loginScreen').style.display='none';
   document.getElementById('app').style.display='none';
 
-  const ok = await loadAllFromFirestore();
-  if(!ok){
-    document.getElementById('loadingScreen').innerHTML=
-      '<div style="color:#f87171;font-size:14px;text-align:center;padding:20px">⚠️ データベースへの接続に失敗しました。<br>ネットワーク接続を確認してください。</div>';
-    return;
-  }
-  initDefaultData();
-  startRealtimeSync();
+  await _authReady();          // 永続ログインの復元を待つ
+  await ensureData();          // ルール開放中or認証済みなら成功。未認証で弾かれた場合はログインへ
+
   document.getElementById('loadingScreen').style.display='none';
-  if(getS()){
+  if(_dataReady && getS()){
     startApp();
   }else{
+    // データ未取得（＝未認証で弾かれた可能性）またはセッションなし → ログイン画面
     document.getElementById('loginScreen').style.display='flex';
   }
 }
@@ -1583,23 +1681,47 @@ function startApp(){
   showView(firstAllowedView());
   initCrocoPanel();
   renderAlertBanner();
+  initBackButton();
+}
+
+// 戻るボタンで「サイト離脱」せず、アプリ内の前の画面へ戻す
+let _backInit=false;
+function initBackButton(){
+  if(_backInit) return; _backInit=true;
+  try{ history.replaceState({welbeView:curView}, '', '#'+curView); }catch(e){}
+  window.addEventListener('popstate', function(ev){
+    // 未ログイン時は何もしない
+    if(document.getElementById('app').style.display==='none') return;
+    const v = ev.state && ev.state.welbeView;
+    if(v){ showView(v, true); }
+    else {
+      // 履歴の起点を超えた → ホーム画面に留める（サイトから離脱させない）
+      const home=firstAllowedView();
+      try{ history.pushState({welbeView:home}, '', '#'+home); }catch(e){}
+      showView(home, true);
+    }
+  });
 }
 
 // =========================================================
 // ナビゲーション
 // =========================================================
 let curView='daily';
-const viewIds=['daily','monthly','timecard','claim','facility','clients','init','sysusers','sysperms','croco','manual'];
-function showView(v){
+const viewIds=['daily','monthly','timecard','claim','facility','clients','init','sysusers','sysperms','sysbackup','croco','manual'];
+function showView(v, _fromPop){
   // 権限チェック：許可されていない画面は開けない
   if(typeof canView==='function' && !canView(v)){
     showToast('この機能を使う権限がありません');
     v=firstAllowedView();
   }
   curView=v;
+  // ブラウザ履歴に記録（戻るボタンで前の画面へ戻れるように）
+  if(!_fromPop){
+    try{ history.pushState({welbeView:v}, '', '#'+v); }catch(e){}
+  }
   viewIds.forEach(id=>document.getElementById('view-'+id).style.display='none');
   document.getElementById('view-'+v).style.display='block';
-  ['sm-record','sm-timecard','sm-claim','sm-facility','sm-clients','sm-init','sm-manual'].forEach(id=>document.getElementById(id)?.classList.remove('active'));
+  ['sm-record','sm-timecard','sm-claim','sm-facility','sm-clients','sm-init','sm-manual','sm-sysusers','sm-sysperms','sm-sysbackup'].forEach(id=>document.getElementById(id)?.classList.remove('active'));
   if(v==='daily'||v==='monthly') document.getElementById('sm-record').classList.add('active');
   else if(v==='timecard') document.getElementById('sm-timecard').classList.add('active');
   else if(v==='claim') document.getElementById('sm-claim').classList.add('active');
@@ -1608,6 +1730,7 @@ function showView(v){
   else if(v==='init'){document.getElementById('sm-init').classList.add('active');openSettingSub();}
   else if(v==='sysusers'){document.getElementById('sm-sysusers').classList.add('active');openSysSetSub();}
   else if(v==='sysperms'){document.getElementById('sm-sysperms').classList.add('active');openSysSetSub();}
+  else if(v==='sysbackup'){document.getElementById('sm-sysbackup').classList.add('active');openSysSetSub();}
   else if(v==='croco'){document.getElementById('sm-croco')?.classList.add('active');openSysSetSub();renderCrocoView();}
   // タイムカードを離れるときは時計タイマー停止
   if(v!=='timecard') _stopTcClock();
@@ -2754,6 +2877,46 @@ function dlKokuhoSeikyu(){
   _dlSjis(csv,`seikyu-meisai_${claim.year}-${String(claim.month).padStart(2,'0')}.csv`);
   const totalYen=agg.users.reduce((s,u)=>s+u.yen,0);
   showToast(`請求明細書(J11)を出力しました（${agg.users.length}名 / ${totalYen.toLocaleString()}円）✓`);
+}
+
+// ===== 全データ エクスポート / インポート（バックアップ・移行用） =====
+function exportAllData(){
+  const data={};
+  Object.keys(_cache).forEach(k=>{ data[k]=_cache[k]; });
+  const n=new Date(); const ymd=`${n.getFullYear()}${String(n.getMonth()+1).padStart(2,'0')}${String(n.getDate()).padStart(2,'0')}`;
+  const payload={ _welbe_backup:true, project:_fbConfig.projectId, exportedAt:n.toISOString(), keys:Object.keys(data).length, data };
+  const blob=new Blob([JSON.stringify(payload,null,1)], {type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`welbe_全データ_${ymd}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+  showToast(`全データ（${payload.keys}件）をエクスポートしました ✓`);
+}
+
+function importAllData(file){
+  const msg=document.getElementById('importMsg');
+  if(!file){ return; }
+  const r=new FileReader();
+  r.onload=()=>{
+    let payload;
+    try{ payload=JSON.parse(r.result); }
+    catch(e){ msg.style.color='#dc2626'; msg.textContent='⚠️ ファイルを読み取れませんでした（JSON形式ではありません）'; return; }
+    const data = payload && payload.data ? payload.data : payload;
+    if(!data || typeof data!=='object'){ msg.style.color='#dc2626'; msg.textContent='⚠️ バックアップデータが見つかりません'; return; }
+    const keys=Object.keys(data);
+    const from = payload.project ? `（書出元プロジェクト：${payload.project}）` : '';
+    if(!confirm(`${keys.length}件のデータを現在のデータベース（${_fbConfig.projectId}）に復元します。\n${from}\n\n同じキーは上書きされます。よろしいですか？`)){
+      document.getElementById('importFileInput').value=''; return;
+    }
+    let ok=0;
+    keys.forEach(k=>{ try{ save(k, data[k]); ok++; }catch(e){} });
+    msg.style.color='var(--green-dk)';
+    msg.innerHTML=`✅ ${ok}件を復元しました。画面を再読み込みすると反映されます。`;
+    showToast(`${ok}件を復元しました ✓`);
+    document.getElementById('importFileInput').value='';
+  };
+  r.readAsText(file);
 }
 
 // ===== サービス提供実績記録票(J61) 取込 =====
@@ -4741,6 +4904,13 @@ function saveUserModal(){
   }
   save('users',users); closeModal(); renderUsers();
   showToast(id?'ユーザーを更新しました ✓':'ユーザーを追加しました ✓');
+  // 新規追加 or パスワード設定時：Authアカウントも自動作成（コンソール不要）
+  if(pass){
+    _provisionAuth(lid, pass).then(r=>{
+      if(r.ok && !r.existed) showToast(`「${name}」がログインできるようになりました ✓`);
+      else if(!r.ok && r.reason==='6文字未満') showToast('⚠ パスワードが6文字未満のため、この人はまだログインできません');
+    });
+  }
 }
 function deleteUser(id){
   const u=load('users',[]).find(x=>x.id===id);
@@ -4963,6 +5133,8 @@ function saveSysUser(uid){
   if(!r) return;
   if(r.err){alert(r.err);return;}
   r.u.name=r.newName;r.u.loginId=r.newLid;r.u.password=r.newPw;r.u.role=r.newRole;r.u.active=r.newActive;
+  // パスワードがあればAuthにも登録（未登録なら作成・登録済みなら無変更）
+  if(r.newPw){ _provisionAuth(r.newLid, r.newPw); }
   // パスワード入力を再ロック
   const pwInp=document.getElementById('pw-su-'+uid);
   const lockBtn=document.getElementById('pwlock-su-'+uid);
