@@ -4055,6 +4055,8 @@ function renderInvForm(editId){
     <button onclick="_invView='list';renderInvApp()" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#475569;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:12px">← 一覧</button>
     <h2 style="font-size:17px;font-weight:700;color:#1a2b4a;margin:0">${editId?'📄 請求書を編集':'📄 請求書を作成'}</h2>
   </div>
+  <div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap">
+   <div style="flex:1 1 560px;min-width:320px">
   ${myInvs.length&&!editId?(()=>{
     const vmap=Object.fromEntries(load('inv_vendors',[]).map(v=>[v.id,v.name]));
     const opts=myInvs.map(i=>`<option value="${i.id}" data-vendor="${esc(vmap[i.vendorId]||'')}" data-subject="${esc((i.subject||i.description||''))}">【${esc(vmap[i.vendorId]||'業者未設定')}】${esc((i.subject||i.description||'').slice(0,20))} (${i.invoiceNo||''})</option>`).join('');
@@ -4074,13 +4076,13 @@ function renderInvForm(editId){
     <div class="inv-form-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:14px">
       <div class="inv-field"><label class="req">＊ 締め日</label><input type="date" id="inv-closing" value="${inv.closingDate||''}"></div>
       <div class="inv-field"><label class="req">＊ 発行部署</label>
-        <select id="inv-dept" onchange="invOnDeptChange()"><option value="">選択してください</option>${depts.map(d=>`<option value="${d.id}" ${inv.deptId===d.id?'selected':''}>${esc(d.name)}</option>`).join('')}</select>
+        <select id="inv-dept" onchange="invOnDeptChange();invRecalcAll()"><option value="">選択してください</option>${depts.map(d=>`<option value="${d.id}" ${inv.deptId===d.id?'selected':''}>${esc(d.name)}</option>`).join('')}</select>
       </div>
     </div>
     <div id="inv-dept-info" style="display:none;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#166534;line-height:1.8"></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:14px">
-      <div class="inv-field"><label class="req">＊ 件名</label><input id="inv-subject" value="${esc(inv.subject||inv.description||'')}" placeholder="例：○月分 ○○業務委託費"></div>
-      <div class="inv-field"><label>宛先業者</label><div style="display:flex;gap:6px;align-items:center"><select id="inv-vendor" style="flex:1"><option value="">選択してください</option>${vendors.map(v=>`<option value="${v.id}" ${inv.vendorId===v.id?'selected':''}>${esc(v.name)}</option>`).join('')}</select><button type="button" onclick="invNewVendorFromForm()" style="white-space:nowrap;background:#f0fdf4;border:1px solid #86efac;color:#16a34a;border-radius:6px;padding:5px 10px;font-size:12px;font-weight:600;cursor:pointer">＋ 新規登録</button></div></div>
+      <div class="inv-field"><label class="req">＊ 件名</label><input id="inv-subject" oninput="invRecalcAll()" value="${esc(inv.subject||inv.description||'')}" placeholder="例：○月分 ○○業務委託費"></div>
+      <div class="inv-field"><label>宛先業者</label><div style="display:flex;gap:6px;align-items:center"><select id="inv-vendor" onchange="invRecalcAll()" style="flex:1"><option value="">選択してください</option>${vendors.map(v=>`<option value="${v.id}" ${inv.vendorId===v.id?'selected':''}>${esc(v.name)}</option>`).join('')}</select><button type="button" onclick="invNewVendorFromForm()" style="white-space:nowrap;background:#f0fdf4;border:1px solid #86efac;color:#16a34a;border-radius:6px;padding:5px 10px;font-size:12px;font-weight:600;cursor:pointer">＋ 新規登録</button></div></div>
     </div>
     <div style="margin-bottom:16px">
       <div style="font-size:12px;font-weight:600;color:#dc2626;margin-bottom:8px">＊ 明細</div>
@@ -4100,15 +4102,21 @@ function renderInvForm(editId){
     </div>
     <hr style="border:none;border-top:1px solid #f1f5f9;margin:0 0 16px">
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
-      <div class="inv-field"><label>お支払期限</label><input type="date" id="inv-deadline" value="${inv.paymentDeadline||''}"></div>
+      <div class="inv-field"><label>お支払期限</label><input type="date" id="inv-deadline" onchange="invRecalcAll()" value="${inv.paymentDeadline||''}"></div>
     </div>
-    <div class="inv-field" style="margin-bottom:24px"><label>備考</label><textarea id="inv-notes" rows="2" placeholder="自由記述">${esc(inv.notes||'')}</textarea></div>
+    <div class="inv-field" style="margin-bottom:24px"><label>備考</label><textarea id="inv-notes" oninput="invRecalcAll()" rows="2" placeholder="自由記述">${esc(inv.notes||'')}</textarea></div>
     <div style="display:flex;gap:10px;justify-content:flex-end">
       <button onclick="_invView='list';renderInvApp()" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#374151;border-radius:6px;padding:9px 20px;font-size:13px;cursor:pointer">キャンセル</button>
       <button onclick="saveInvDraft()" style="background:#6b7280;color:#fff;border:none;border-radius:6px;padding:9px 20px;font-size:13px;font-weight:700;cursor:pointer">💾 下書き保存</button>
       <button onclick="submitInvRequest()" style="background:#1a3a6b;color:#fff;border:none;border-radius:8px;padding:9px 22px;font-size:13px;font-weight:700;cursor:pointer">📤 発行依頼</button>
     </div>
-  </div>`;
+  </div>
+   </div><!-- /left -->
+   <div style="flex:1 1 400px;min-width:300px;position:sticky;top:10px">
+     <div style="font-size:12px;font-weight:700;color:#475569;margin-bottom:6px">📄 出来上がりプレビュー <span style="font-weight:400;color:#9ca3af">（押印・印刷前の確認用。入力に合わせて自動更新）</span></div>
+     <div id="inv-live-preview" style="border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;background:#f1f5f9;min-height:200px"></div>
+   </div>
+  </div><!-- /flex -->`;
   invOnDeptChange(); invRecalcAll();
 }
 function invAddRow(){
@@ -4138,6 +4146,31 @@ function invRecalcAll(){
   if(s('inv-s-tax8')) s('inv-s-tax8').textContent='¥'+tax8.toLocaleString();
   if(s('inv-s-tax10')) s('inv-s-tax10').textContent='¥'+tax10.toLocaleString();
   if(s('inv-s-total')) s('inv-s-total').textContent='¥'+total.toLocaleString();
+  invRenderPreview();
+}
+// 編集フォームの現在の入力内容を inv 風オブジェクトにまとめる
+function invFormData(){
+  return {
+    status:'draft',
+    deptId: document.getElementById('inv-dept')?.value||'',
+    vendorId: document.getElementById('inv-vendor')?.value||'',
+    subject: document.getElementById('inv-subject')?.value||'',
+    paymentDeadline: document.getElementById('inv-deadline')?.value||'',
+    notes: document.getElementById('inv-notes')?.value||'',
+    items: invCollectItems()
+  };
+}
+// 右側に出来上がりプレビューを描画（押印なし・自動縮小）
+function invRenderPreview(){
+  const pane=document.getElementById('inv-live-preview'); if(!pane) return;
+  const PXW=794; // 210mm @96dpi
+  const scale=Math.min(1, (pane.clientWidth||360)/PXW);
+  pane.innerHTML=`<div id="inv-live-inner" style="transform-origin:top left;transform:scale(${scale});width:${PXW}px">`
+    +`<div style="width:210mm;background:#fff;font-family:'MS Mincho','Hiragino Mincho Pro','Yu Mincho',serif;font-size:10.5pt;padding:14mm 17mm;box-sizing:border-box">`
+    +invPrintBodyHTML(invFormData(),{seal:false})
+    +`</div></div>`;
+  const inner=pane.querySelector('#inv-live-inner');
+  if(inner) pane.style.height=(inner.scrollHeight*scale)+'px';
 }
 function invOnDeptChange(){
   const deptId=document.getElementById('inv-dept')?.value;
@@ -4419,44 +4452,30 @@ function invDrawSeal(ctx, companyName, approvedAt){
   const mid=Math.ceil(name.length/2);
   drawLines([name.slice(0,mid),name.slice(mid)]);
 }
-function renderInvPrint(invId){
-  const el=document.getElementById('devAppsContent'); if(!el)return;
-  const inv=load('invoices',[]).find(i=>i.id===invId); if(!inv){_invView='list';renderInvApp();return;}
+// 請求書A4本体の中身を生成（印刷・ライブプレビュー共通）。opts.seal=trueで電子印鑑欄を出す
+function invPrintBodyHTML(inv, opts){
+  opts=opts||{};
   const dept=invDeptInfo(inv.deptId)||{}; const vendor=load('inv_vendors',[]).find(v=>v.id===inv.vendorId)||null;
   const t=invCalcTotals(inv.items||[]); const today=new Date().toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric'});
   const rows10=Array.from({length:10},(_,i)=>(inv.items||[])[i]||null);
-  el.innerHTML=`
-  <!-- 操作バー（印刷非表示） -->
-  <div class="inv-no-print" style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
-    <button onclick="_invEditId='${invId}';_invView='detail';renderInvApp()" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#475569;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:12px">← 詳細</button>
-    <button onclick="invPrint()" style="background:#7c3aed;color:#fff;border:none;border-radius:7px;padding:8px 20px;font-size:13px;font-weight:700;cursor:pointer">🖨 印刷 / PDF保存</button>
-  </div>
-  <!-- A4プレビュー背景 -->
-  <div id="inv-print-wrap" style="background:#888;padding:20px;display:flex;justify-content:center;min-height:600px">
-  <!-- A4用紙（210mm × 297mm） -->
-  <div id="inv-print-body" style="background:#fff;width:210mm;min-height:257mm;padding:14mm 17mm;font-family:'MS Mincho','Hiragino Mincho Pro','Yu Mincho',serif;font-size:10.5pt;box-shadow:0 4px 20px rgba(0,0,0,.3);box-sizing:border-box;position:relative">
-
+  const showSeal=opts.seal && ['approved','sent'].includes(inv.status);
+  return `
     <div style="text-align:right;font-size:9pt;margin-bottom:5mm;color:#1e3a6b">発行日：${today}</div>
     <div style="text-align:center;font-size:22pt;font-weight:700;letter-spacing:10px;margin-bottom:8mm;color:#1e3a6b">請　求　書</div>
-
-    <!-- 宛先 / 発行元 -->
     <div style="display:flex;justify-content:space-between;margin-bottom:7mm;align-items:flex-start">
       <div style="flex:1;padding-right:10mm">
         <div style="font-size:14pt;font-weight:700;border-bottom:2.5px solid #1e3a6b;padding-bottom:2mm;margin-bottom:3mm;color:#000">${vendor?esc(vendor.name)+'　御中':'　　　　　　　　御中'}</div>
         ${vendor?`<div style="font-size:9pt;color:#444;line-height:1.8">${esc(vendor.address||vendor.addr1||'')}</div>${vendor.contact?`<div style="font-size:9pt;margin-top:1mm">担当：${esc(vendor.contact)}</div>`:''}`:'' }
       </div>
       <div style="text-align:right;font-size:9pt;min-width:72mm;position:relative;line-height:1.8">
-        ${['approved','sent'].includes(inv.status)?`<canvas id="inv-print-seal" width="72" height="72" style="position:absolute;top:0;right:-2mm;opacity:.80"></canvas>`:''}
-        <div style="font-size:11pt;font-weight:700;margin-bottom:1mm;padding-right:${['approved','sent'].includes(inv.status)?'16mm':'0'}">${esc(dept.company||dept.name||'')}</div>
+        ${showSeal?`<canvas id="inv-print-seal" width="72" height="72" style="position:absolute;top:0;right:-2mm;opacity:.80"></canvas>`:''}
+        <div style="font-size:11pt;font-weight:700;margin-bottom:1mm;padding-right:${showSeal?'16mm':'0'}">${esc(dept.company||dept.name||'')}</div>
         <div>${esc(dept.companyZip||'')} ${esc(dept.companyAddr||'')}</div>
         <div>TEL：${esc(dept.companyTel||'-')}　FAX：${esc(dept.companyFax||'-')}</div>
         ${dept.regNo?`<div style="font-size:8pt;margin-top:3mm;padding-top:2mm;border-top:0.3mm solid #ccc">登録番号 ${esc(dept.regNo)}</div>`:''}
       </div>
     </div>
-
     <div style="font-size:9pt;margin-bottom:5mm;line-height:1.8">下記の通り、ご請求申し上げます。</div>
-
-    <!-- 合計金額 -->
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5mm;flex-wrap:wrap;gap:3mm">
       <div style="display:flex;align-items:center;gap:4mm">
         <span style="font-size:9pt;color:#1e3a6b;font-weight:600">合計金額</span>
@@ -4465,10 +4484,7 @@ function renderInvPrint(invId){
       </div>
       ${inv.paymentDeadline?`<div style="text-align:right;font-size:13pt;font-weight:700;letter-spacing:.04em">お支払期限：<span style="font-size:15pt">${inv.paymentDeadline}</span></div>`:''}
     </div>
-
     <div style="font-size:9pt;margin-bottom:4mm;line-height:1.8">件名：${esc(inv.subject||inv.description||'')}</div>
-
-    <!-- 明細表 -->
     <table style="width:100%;border-collapse:collapse;font-size:9pt;margin-bottom:4mm">
       <thead>
         <tr style="background:#1e3a6b;color:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact">
@@ -4489,8 +4505,6 @@ function renderInvPrint(invId){
         </tr>`).join('')}
       </tbody>
     </table>
-
-    <!-- 小計・税 -->
     <div style="display:flex;justify-content:flex-end;margin-bottom:4mm">
       <table style="border-collapse:collapse;font-size:9pt">
         ${t.sub0>0?`<tr><td style="padding:1.5mm 3mm;text-align:right;color:#4a6090">非課税対象</td><td style="padding:1.5mm 3mm;text-align:right;width:24mm">¥${t.sub0.toLocaleString()}</td><td colspan="4"></td></tr>`:''}
@@ -4506,19 +4520,25 @@ function renderInvPrint(invId){
         </tr>
       </table>
     </div>
-
-    <!-- 振込先 -->
     <div style="font-size:9pt;margin-bottom:1mm">【お振込先】</div>
     <div style="font-size:9pt;margin-bottom:1mm;padding-left:4mm">${esc(dept.bankName||'')}　${esc(dept.bankBranch||'')}　${esc(dept.bankType||'')}　${esc(dept.bankNo||'')}　${esc(dept.bankHolder||'')}</div>
     <div style="font-size:8pt;color:#555;margin-bottom:4mm;padding-left:4mm">※恐れ入りますが、お振込み手数料は貴社にてご負担お願い致します。</div>
-
-    <!-- 備考 -->
     <div style="font-size:9pt;border:0.5mm solid #1e3a6b;border-radius:1mm;padding:2.5mm 3mm;min-height:12mm">
       <span style="font-weight:700;color:#1e3a6b">備　考</span>${inv.notes?`<br><span style="white-space:pre-wrap">${esc(inv.notes)}</span>`:''}
-    </div>
-
-  </div><!-- /inv-print-body -->
-  </div><!-- /inv-print-wrap -->`;
+    </div>`;
+}
+function renderInvPrint(invId){
+  const el=document.getElementById('devAppsContent'); if(!el)return;
+  const inv=load('invoices',[]).find(i=>i.id===invId); if(!inv){_invView='list';renderInvApp();return;}
+  const dept=invDeptInfo(inv.deptId)||{};
+  el.innerHTML=`
+  <div class="inv-no-print" style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+    <button onclick="_invEditId='${invId}';_invView='detail';renderInvApp()" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#475569;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:12px">← 詳細</button>
+    <button onclick="invPrint()" style="background:#7c3aed;color:#fff;border:none;border-radius:7px;padding:8px 20px;font-size:13px;font-weight:700;cursor:pointer">🖨 印刷 / PDF保存</button>
+  </div>
+  <div id="inv-print-wrap" style="background:#888;padding:20px;display:flex;justify-content:center;min-height:600px">
+  <div id="inv-print-body" style="background:#fff;width:210mm;min-height:257mm;padding:14mm 17mm;font-family:'MS Mincho','Hiragino Mincho Pro','Yu Mincho',serif;font-size:10.5pt;box-shadow:0 4px 20px rgba(0,0,0,.3);box-sizing:border-box;position:relative">${invPrintBodyHTML(inv,{seal:true})}</div>
+  </div>`;
   if(['approved','sent'].includes(inv.status)){
     setTimeout(()=>{const c=document.getElementById('inv-print-seal');if(c){const ctx=c.getContext('2d');invDrawSeal(ctx,dept.company||'大日産業㈱',inv.approvedAt);}},100);
   }
