@@ -3034,47 +3034,63 @@ function genWelbeDocs(type, claimArg){
         <div class="tadashi">但し、${y}年${m}月分 ${svcLabel} の利用者負担金として上記正に領収いたしました。</div>
         ${issuer}</div>`;
     }
-    // proxy：本人控え＋事業所控えの2枚
-    const proxyDoc=(label,cls)=>`<div class="doc"><div class="copybadge ${cls}">${label}</div>${head(u)}<h1>代理受領通知書</h1><div class="h1rule"></div>
-      <div class="addressee">${nm(u)}<span class="sama">様</span></div>
-      <div class="meta"><b>${svcLabel}</b>　利用期間：${period}</div>
-      <div class="amtbox">代理受領した介護給付費等の額　${yen(u.kyufu)}</div>
-      <div class="tadashi">上記のとおり、${y}年${m}月分の介護給付費等を市町村から代理受領しましたので通知します。</div>
-      ${issuer}</div>`;
-    docCount+=2;
-    return proxyDoc('本人控え','self')+proxyDoc('事業所控え','');
+    // proxy：A4 1枚に「本人控え（上）＋事業所控え（下）」＋切り取り線
+    const proxyHalf=(label,cls)=>`<div class="half"><div class="copybadge ${cls}">${label}</div>
+      <div class="dochead2"><span class="corp">${esc(fac.corp||'')}　${esc(fac.name||'')}（${svcLabel}）</span><span>受給者番号 ${u.receiptNo}</span></div>
+      <h2>代理受領通知書</h2>
+      <div class="addressee2">${nm(u)} <span class="sama">様</span></div>
+      <div class="amtbox2">代理受領した介護給付費等の額　${yen(u.kyufu)}</div>
+      <div class="tadashi2">上記のとおり、${y}年${m}月分の介護給付費等を市町村から代理受領しましたので通知します。<br><span class="sub">${svcLabel}　利用期間 ${period}</span></div>
+      <div class="issuer2"><span>発行日 ${issue}</span><span class="iname2">${esc(fac.corp||'')}　${esc(fac.name||'')}<span class="seal">印</span></span></div></div>`;
+    docCount++;
+    return `<div class="doc proxy">${proxyHalf('本人控え','self')}<div class="cutline"><span>✂ ― ― ― ― ― ― キリトリ ― ― ― ― ― ―</span></div>${proxyHalf('事業所控え','')}</div>`;
   }).join('');
   const html=`<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>${titleMap[type]} ${y}年${m}月 ${esc(fac.name||'')}</title>
-  <style>*{box-sizing:border-box}body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;color:#1f2937;margin:0;background:#eef2f6}
-  .doc{position:relative;width:190mm;min-height:135mm;margin:8mm auto;padding:15mm 16mm 13mm;background:#fff;box-shadow:0 1px 6px rgba(0,0,0,.12);page-break-after:always}
-  .dochead{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:1px solid #cbd5e0;padding-bottom:7px;margin-bottom:18px;font-size:12px;color:#475569}
+  <style>*{box-sizing:border-box}@page{size:A4;margin:0}
+  body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;color:#1f2937;margin:0;background:#eef2f6}
+  .doc{position:relative;width:210mm;min-height:297mm;margin:8mm auto;padding:20mm 20mm 18mm;background:#fff;box-shadow:0 1px 6px rgba(0,0,0,.12);page-break-after:always;display:flex;flex-direction:column}
+  .doc.proxy{padding:0;height:297mm;min-height:297mm}
+  .dochead{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:1px solid #cbd5e0;padding-bottom:7px;margin-bottom:20px;font-size:12px;color:#475569}
   .dochead .corp{font-weight:700;color:#004063;font-size:13px}.dochead .rno{text-align:right;font-size:11px}.dochead .rno b{font-size:13px;color:#1f2937}
-  h1{text-align:center;font-size:27px;letter-spacing:10px;color:#004063;margin:6px 0 4px;font-weight:800}
-  .h1rule{width:110px;height:3px;background:#004063;margin:0 auto 22px;border-radius:2px}
-  .addressee{font-size:20px;font-weight:700;border-bottom:1px solid #94a3b8;padding-bottom:7px;margin-bottom:14px}
+  h1{text-align:center;font-size:28px;letter-spacing:12px;color:#004063;margin:8px 0 4px;font-weight:800}
+  .h1rule{width:120px;height:3px;background:#004063;margin:0 auto 26px;border-radius:2px}
+  .addressee{font-size:21px;font-weight:700;border-bottom:1px solid #94a3b8;padding-bottom:8px;margin-bottom:16px}
   .addressee .sama{font-size:14px;font-weight:400;margin-left:8px;color:#475569}
-  .meta{font-size:12px;color:#475569;line-height:1.9;margin-bottom:12px}.meta b{color:#1f2937}
-  .detail{width:100%;border-collapse:collapse;font-size:12px;margin:6px 0 14px}
-  .detail th{background:#004063;color:#fff;padding:8px 10px;font-weight:600;text-align:left}
-  .detail td{border-bottom:1px solid #e2e8f0;padding:7px 10px}.detail td.r,.detail th.r{text-align:right}
+  .meta{font-size:12.5px;color:#475569;line-height:1.9;margin-bottom:14px}.meta b{color:#1f2937}
+  .detail{width:100%;border-collapse:collapse;font-size:12.5px;margin:8px 0 16px}
+  .detail th{background:#004063;color:#fff;padding:9px 11px;font-weight:600;text-align:left}
+  .detail td{border-bottom:1px solid #e2e8f0;padding:8px 11px}.detail td.r,.detail th.r{text-align:right}
   .detail tr:nth-child(even) td{background:#f8fafc}
-  .sumbox{margin-left:auto;width:62%;border-top:2px solid #004063;padding-top:9px;font-size:13px;line-height:2}
+  .sumbox{margin-left:auto;width:60%;border-top:2px solid #004063;padding-top:10px;font-size:13.5px;line-height:2.1}
   .sumrow{display:flex;justify-content:space-between}
-  .sumrow.total{font-size:17px;font-weight:800;color:#004063;border-top:1px dashed #94a3b8;margin-top:5px;padding-top:6px}
-  .amtbox{text-align:center;font-size:25px;font-weight:800;color:#004063;background:#eff6ff;border:2px solid #004063;border-radius:8px;padding:17px;margin:20px 0;letter-spacing:2px}
-  .tadashi{font-size:13px;line-height:1.9;margin:14px 0;padding:11px 15px;background:#f8fafc;border-left:3px solid #004063}
-  .issuer{margin-top:28px;text-align:right;font-size:12px;color:#475569;line-height:1.85}
-  .issuer .iname{font-size:14px;font-weight:700;color:#1f2937;display:inline-flex;align-items:center;gap:9px}
+  .sumrow.total{font-size:18px;font-weight:800;color:#004063;border-top:1px dashed #94a3b8;margin-top:6px;padding-top:7px}
+  .amtbox{text-align:center;font-size:26px;font-weight:800;color:#004063;background:#eff6ff;border:2px solid #004063;border-radius:8px;padding:20px;margin:22px 0;letter-spacing:2px}
+  .tadashi{font-size:13.5px;line-height:2;margin:16px 0;padding:13px 16px;background:#f8fafc;border-left:3px solid #004063}
+  .issuer{margin-top:auto;text-align:right;font-size:12.5px;color:#475569;line-height:1.9;padding-top:20px}
+  .issuer .iname{font-size:14.5px;font-weight:700;color:#1f2937;display:inline-flex;align-items:center;gap:9px}
   .seal{display:inline-block;width:30px;height:30px;border:1.5px solid #dc2626;border-radius:50%;color:#dc2626;font-size:10px;text-align:center;line-height:30px}
-  .note{font-size:11px;color:#94a3b8;margin-top:12px}
-  .copybadge{position:absolute;top:9mm;right:14mm;font-size:11px;font-weight:700;color:#fff;background:#64748b;padding:3px 13px;border-radius:4px}
+  .note{font-size:11px;color:#94a3b8;margin-top:12px;text-align:right}
+  .copybadge{position:absolute;top:8mm;right:16mm;font-size:11px;font-weight:700;color:#fff;background:#64748b;padding:3px 13px;border-radius:4px;z-index:2}
   .copybadge.self{background:#5a9e48}
+  /* 代理受領書：A4を上下2分割 */
+  .half{position:relative;flex:1;padding:14mm 18mm;display:flex;flex-direction:column}
+  .cutline{border-top:2px dashed #94a3b8;position:relative;height:0}
+  .cutline span{position:absolute;top:-8px;left:50%;transform:translateX(-50%);background:#fff;padding:0 14px;font-size:10px;color:#94a3b8;letter-spacing:2px;white-space:nowrap}
+  .dochead2{display:flex;justify-content:space-between;font-size:11px;color:#475569;border-bottom:1px solid #cbd5e0;padding-bottom:5px;margin-bottom:8px}
+  .dochead2 .corp{font-weight:700;color:#004063}
+  h2{text-align:center;font-size:21px;letter-spacing:8px;color:#004063;margin:6px 0 12px;font-weight:800}
+  .addressee2{font-size:17px;font-weight:700;margin-bottom:8px}
+  .addressee2 .sama{font-size:12px;font-weight:400;color:#475569;margin-left:4px}
+  .amtbox2{text-align:center;font-size:18px;font-weight:800;color:#004063;background:#eff6ff;border:2px solid #004063;border-radius:6px;padding:13px;margin:6px 0 10px;letter-spacing:1px}
+  .tadashi2{font-size:12.5px;line-height:1.8;color:#374151}.tadashi2 .sub{font-size:11px;color:#64748b}
+  .issuer2{margin-top:auto;display:flex;justify-content:space-between;align-items:center;font-size:11px;color:#475569;padding-top:10px}
+  .issuer2 .iname2{font-size:13px;font-weight:700;color:#1f2937;display:inline-flex;align-items:center;gap:8px}
   @media print{body{background:#fff}.doc{margin:0;box-shadow:none}}</style></head>
   <body>${pages}<script>window.onload=function(){setTimeout(function(){window.print();},350);}<\/script></body></html>`;
   const w=window.open('','_blank');
   if(!w){ showToast('ポップアップがブロックされました。許可してください'); return; }
   w.document.write(html); w.document.close();
-  const extra = type==='proxy' ? `（本人控え＋事業所控え 計${docCount}枚）` : `（${agg.users.length}名）`;
+  const extra = type==='proxy' ? `（${agg.users.length}名・各A4 1枚に本人控え＋事業所控え）` : `（${agg.users.length}名）`;
   showToast(`${titleMap[type]}${extra}を表示しました ✓`);
 }
 
