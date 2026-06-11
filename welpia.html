@@ -1650,6 +1650,26 @@ function startApp(){
   showView(firstAllowedView());
   initCrocoPanel();
   renderAlertBanner();
+  initBackButton();
+}
+
+// 戻るボタンで「サイト離脱」せず、アプリ内の前の画面へ戻す
+let _backInit=false;
+function initBackButton(){
+  if(_backInit) return; _backInit=true;
+  try{ history.replaceState({welbeView:curView}, '', '#'+curView); }catch(e){}
+  window.addEventListener('popstate', function(ev){
+    // 未ログイン時は何もしない
+    if(document.getElementById('app').style.display==='none') return;
+    const v = ev.state && ev.state.welbeView;
+    if(v){ showView(v, true); }
+    else {
+      // 履歴の起点を超えた → ホーム画面に留める（サイトから離脱させない）
+      const home=firstAllowedView();
+      try{ history.pushState({welbeView:home}, '', '#'+home); }catch(e){}
+      showView(home, true);
+    }
+  });
 }
 
 // =========================================================
@@ -1657,13 +1677,17 @@ function startApp(){
 // =========================================================
 let curView='daily';
 const viewIds=['daily','monthly','timecard','claim','facility','clients','init','sysusers','sysperms','sysbackup','croco','manual'];
-function showView(v){
+function showView(v, _fromPop){
   // 権限チェック：許可されていない画面は開けない
   if(typeof canView==='function' && !canView(v)){
     showToast('この機能を使う権限がありません');
     v=firstAllowedView();
   }
   curView=v;
+  // ブラウザ履歴に記録（戻るボタンで前の画面へ戻れるように）
+  if(!_fromPop){
+    try{ history.pushState({welbeView:v}, '', '#'+v); }catch(e){}
+  }
   viewIds.forEach(id=>document.getElementById('view-'+id).style.display='none');
   document.getElementById('view-'+v).style.display='block';
   ['sm-record','sm-timecard','sm-claim','sm-facility','sm-clients','sm-init','sm-manual','sm-sysusers','sm-sysperms','sm-sysbackup'].forEach(id=>document.getElementById(id)?.classList.remove('active'));
