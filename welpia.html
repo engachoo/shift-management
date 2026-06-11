@@ -1003,16 +1003,6 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
           </table>
         </div>
 
-        <div class="form-section">
-          <h3>ユーザー管理</h3>
-          <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
-            <button class="btn-add" onclick="openUserModal(null)">＋ ユーザーを追加</button>
-          </div>
-          <table class="user-tbl">
-            <thead><tr><th>氏名</th><th>ログインID</th><th>権限</th><th>状態</th><th>操作</th></tr></thead>
-            <tbody id="userTbody"></tbody>
-          </table>
-        </div>
       </div>
     </div>
 
@@ -4763,7 +4753,6 @@ function renderInit(){
   const facNameEl=document.getElementById('initFacNameLabel');
   if(facNameEl) facNameEl.textContent=curFac()?.name||'';
   renderOutsideDays();
-  renderUsers();
 }
 function _updateAvg(){
   const u1=+document.getElementById('cfg-u1').value||0;
@@ -5270,9 +5259,14 @@ function _doAddSysUser(){
   if(users.find(u=>u.loginId===lid)){ showToast('このログインIDはすでに使用されています'); return; }
   users.push({id:'u'+Date.now(), name, loginId:lid, password:pw, role, active:true, facilityId});
   save('users',users);
-  showToast(`${name}（${lid}）を追加しました`);
   closeModal();
   renderSysUsers();
+  // Authアカウントも自動作成（コンソール不要・管理者のログインは維持）
+  _provisionAuth(lid, pw).then(r=>{
+    if(r.ok && !r.existed) showToast(`「${name}」を追加。ログインできるようになりました ✓`);
+    else if(!r.ok && r.reason==='6文字未満') showToast(`「${name}」を追加。⚠ パスワードが6文字未満のためログイン不可（6文字以上に変更を）`);
+    else showToast(`${name}（${lid}）を追加しました`);
+  });
 }
 
 // ---- 権限設定 ----
