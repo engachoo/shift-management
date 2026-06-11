@@ -1010,6 +1010,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
           <div style="font-size:13px;color:var(--text-lt)">welbeにアクセスできるユーザーと権限を管理します。</div>
           <div style="display:flex;gap:8px;align-items:center">
+            <button onclick="bulkProvisionAuth()" title="既存メンバーをまとめてログイン認証に登録します" style="font-weight:700;background:#eef2ff;border:1px solid #6366f1;color:#3730a3;padding:5px 14px;border-radius:5px;cursor:pointer;font-size:12px">🔐 全員をAuthに登録</button>
             <button id="bulkUpdBtn" onclick="saveAllSysUsers()" style="font-weight:700;background:#fef9c3;border:1px solid #ca8a04;color:#78350f;padding:5px 14px;border-radius:5px;cursor:pointer;font-size:12px">⬆ 一括更新</button>
             <button class="btn-new" onclick="openAddSysUserModal()">＋ 新規ユーザー</button>
           </div>
@@ -1319,6 +1320,38 @@ const _COL = 'kokuhoren_data';
 // ===== Firebase Auth（グループウェアと共通方式・welbe専用ドメイン） =====
 const _AUTH_DOMAIN = 'welbe.dainichi.local';
 function _authEmail(loginId){ return String(loginId).toLowerCase()+'@'+_AUTH_DOMAIN; }
+// サブ接続でAuthアカウントを作成（管理者のログインを保ったまま新ユーザーを登録）
+let _secApp=null;
+function _secAuth(){
+  if(!_secApp){ try{ _secApp=firebase.initializeApp(_fbConfig,'provision'); }catch(e){ _secApp=firebase.app('provision'); } }
+  return _secApp.auth();
+}
+async function _provisionAuth(loginId, password){
+  if(!loginId || !password) return {ok:false, reason:'空'};
+  if(password.length<6) return {ok:false, reason:'6文字未満'};
+  try{
+    await _secAuth().createUserWithEmailAndPassword(_authEmail(loginId), password);
+    try{ await _secAuth().signOut(); }catch(e){}
+    return {ok:true};
+  }catch(e){
+    try{ await _secAuth().signOut(); }catch(_){}
+    if(e.code==='auth/email-already-in-use') return {ok:true, existed:true};
+    return {ok:false, reason:e.code||'失敗'};
+  }
+}
+// 既存ユーザーを一括でAuthに登録
+async function bulkProvisionAuth(){
+  if(!confirm('現在の全ユーザーをログイン認証(Auth)に登録します。\n（パスワード6文字以上が対象。既に登録済みの人はそのまま）\nよろしいですか？')) return;
+  const users=load('users',[]).filter(u=>u.active!==false && u.loginId && u.password);
+  let ok=0, existed=0, skip=0; const fail=[];
+  for(const u of users){
+    if(u.password.length<6){ skip++; continue; }
+    const r=await _provisionAuth(u.loginId, u.password);
+    if(r.ok){ r.existed?existed++:ok++; } else fail.push(`${u.loginId}(${r.reason})`);
+  }
+  alert(`Auth登録 完了\n・新規登録：${ok}名\n・登録済み：${existed}名\n・スキップ(6文字未満)：${skip}名`+(fail.length?`\n・失敗：${fail.join(', ')}`:'')+`\n\n※6文字未満の人は、パスワードを6文字以上に変更してから再実行してください。`);
+}
+
 // 永続化された認証状態の復元を待つ（ルール厳格化後の再読込で必要）
 function _authReady(){
   return new Promise(res=>{
@@ -4873,6 +4906,13 @@ function saveUserModal(){
   }
   save('users',users); closeModal(); renderUsers();
   showToast(id?'ユーザーを更新しました ✓':'ユーザーを追加しました ✓');
+  // 新規追加 or パスワード設定時：Authアカウントも自動作成（コンソール不要）
+  if(pass){
+    _provisionAuth(lid, pass).then(r=>{
+      if(r.ok && !r.existed) showToast(`「${name}」がログインできるようになりました ✓`);
+      else if(!r.ok && r.reason==='6文字未満') showToast('⚠ パスワードが6文字未満のため、この人はまだログインできません');
+    });
+  }
 }
 function deleteUser(id){
   const u=load('users',[]).find(x=>x.id===id);
@@ -5095,6 +5135,8 @@ function saveSysUser(uid){
   if(!r) return;
   if(r.err){alert(r.err);return;}
   r.u.name=r.newName;r.u.loginId=r.newLid;r.u.password=r.newPw;r.u.role=r.newRole;r.u.active=r.newActive;
+  // パスワードがあればAuthにも登録（未登録なら作成・登録済みなら無変更）
+  if(r.newPw){ _provisionAuth(r.newLid, r.newPw); }
   // パスワード入力を再ロック
   const pwInp=document.getElementById('pw-su-'+uid);
   const lockBtn=document.getElementById('pwlock-su-'+uid);
