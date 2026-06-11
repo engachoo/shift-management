@@ -3010,49 +3010,72 @@ function genWelbeDocs(type, claimArg){
   const titleMap={invoice:'請求書',receipt:'領収書',proxy:'代理受領通知書'};
   const yen=n=>'¥'+Number(n||0).toLocaleString();
   const nm=u=>esc(u.c&&u.c.name?u.c.name:u.kana||'');
+  const head=u=>`<div class="dochead"><div><div class="corp">${esc(fac.corp||'')}</div><div>${esc(fac.name||'')}（${svcLabel}）</div></div><div class="rno">受給者番号<br><b>${u.receiptNo}</b></div></div>`;
+  const issuer=`<div class="issuer"><div>発行日：${issue}</div><div class="iname">${esc(fac.corp||'')}　${esc(fac.name||'')}<span class="seal">印</span></div><div>${fac.jigyoshoNo?'事業所番号 '+fac.jigyoshoNo:''}${fac.tel?'　TEL '+esc(fac.tel):''}</div>${fac.addr?'<div>'+esc((fac.zip?'〒'+fac.zip+' ':'')+fac.addr)+'</div>':''}</div>`;
+  let docCount=0;
   const pages=agg.users.map(u=>{
     if(type==='invoice'){
+      docCount++;
       const rows=u.det.map(d=>`<tr><td>${esc(d.name)}</td><td class="r">${d.unit.toLocaleString()}</td><td class="r">${d.cnt}</td><td class="r">${(d.unit*d.cnt).toLocaleString()}</td></tr>`).join('');
-      return `<div class="doc"><h1>請求書</h1>
-        <div class="to">${nm(u)} 様</div>
-        <div class="meta">受給者番号：${u.receiptNo}　／　${svcLabel}<br>${esc(fac.corp||'')}　${esc(fac.name||'')}<br>利用期間：${period}　　請求日：${issue}</div>
-        <table class="detail"><thead><tr><th>サービス内容</th><th>単位数</th><th>利用回数</th><th>ｻｰﾋﾞｽ単位数</th></tr></thead><tbody>${rows}</tbody></table>
-        <div class="sum"><div>サービス費用算定合計金額　<b>${yen(u.yen)}</b></div>
-        <div>給付費　<b>-${yen(u.kyufu)}</b></div>
-        <div>利用者負担合計金額　<b>${yen(u.copay)}</b></div></div>
-        <div class="note">※ 10円／単位（1円未満切り捨て）</div></div>`;
-    } else if(type==='receipt'){
-      return `<div class="doc"><h1>領収書</h1>
-        <div class="to">${nm(u)} 様</div>
-        <div class="amt">領収金額　${yen(u.copay)}</div>
-        <div class="tadashi">但し ${y}年${m}月分 ${svcLabel} 利用者負担金として<br>上記正に領収いたしました。</div>
-        <div class="meta2">発行日：${issue}<br>${esc(fac.corp||'')}　${esc(fac.name||'')}　㊞</div></div>`;
+      return `<div class="doc">${head(u)}<h1>請求書</h1><div class="h1rule"></div>
+        <div class="addressee">${nm(u)}<span class="sama">様</span></div>
+        <div class="meta"><b>${svcLabel}</b>　利用期間：${period}</div>
+        <table class="detail"><thead><tr><th>サービス内容</th><th class="r">単位数</th><th class="r">利用回数</th><th class="r">ｻｰﾋﾞｽ単位数</th></tr></thead><tbody>${rows}</tbody></table>
+        <div class="sumbox"><div class="sumrow"><span>サービス費用算定合計</span><b>${yen(u.yen)}</b></div>
+        <div class="sumrow"><span>給付費</span><b>-${yen(u.kyufu)}</b></div>
+        <div class="sumrow total"><span>利用者負担合計</span><span>${yen(u.copay)}</span></div></div>
+        ${issuer}<div class="note">※ 単位単価 10円／単位（1円未満切り捨て）</div></div>`;
     }
-    return `<div class="doc"><h1>介護給付費等 代理受領通知書</h1>
-      <div class="to">${nm(u)} 様</div>
-      <div class="meta">受給者番号：${u.receiptNo}　／　${svcLabel}<br>利用期間：${period}</div>
-      <div class="amt">代理受領した介護給付費等の額　${yen(u.kyufu)}</div>
-      <div class="tadashi">上記のとおり、市町村から介護給付費等を代理受領しましたので通知します。</div>
-      <div class="meta2">発行日：${issue}<br>${esc(fac.corp||'')}　${esc(fac.name||'')}</div></div>`;
+    if(type==='receipt'){
+      docCount++;
+      return `<div class="doc">${head(u)}<h1>領収書</h1><div class="h1rule"></div>
+        <div class="addressee">${nm(u)}<span class="sama">様</span></div>
+        <div class="amtbox">領収金額　${yen(u.copay)}</div>
+        <div class="tadashi">但し、${y}年${m}月分 ${svcLabel} の利用者負担金として上記正に領収いたしました。</div>
+        ${issuer}</div>`;
+    }
+    // proxy：本人控え＋事業所控えの2枚
+    const proxyDoc=(label,cls)=>`<div class="doc"><div class="copybadge ${cls}">${label}</div>${head(u)}<h1>代理受領通知書</h1><div class="h1rule"></div>
+      <div class="addressee">${nm(u)}<span class="sama">様</span></div>
+      <div class="meta"><b>${svcLabel}</b>　利用期間：${period}</div>
+      <div class="amtbox">代理受領した介護給付費等の額　${yen(u.kyufu)}</div>
+      <div class="tadashi">上記のとおり、${y}年${m}月分の介護給付費等を市町村から代理受領しましたので通知します。</div>
+      ${issuer}</div>`;
+    docCount+=2;
+    return proxyDoc('本人控え','self')+proxyDoc('事業所控え','');
   }).join('');
   const html=`<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>${titleMap[type]} ${y}年${m}月 ${esc(fac.name||'')}</title>
-  <style>body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;color:#222;margin:0}
-  .doc{width:190mm;min-height:130mm;margin:0 auto;padding:14mm 15mm;box-sizing:border-box;page-break-after:always;border-bottom:1px dashed #ccc}
-  h1{text-align:center;font-size:22px;letter-spacing:6px;margin:0 0 16px;border-bottom:2px solid #333;padding-bottom:8px}
-  .to{font-size:18px;font-weight:700;margin-bottom:10px}
-  .meta{font-size:12px;color:#444;line-height:1.7;margin-bottom:12px}
-  .detail{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:12px}
-  .detail th,.detail td{border:1px solid #999;padding:5px 8px}.detail th{background:#eee}.detail td.r{text-align:right}
-  .sum{font-size:14px;line-height:1.9;text-align:right;border-top:2px solid #333;padding-top:8px}
-  .amt{font-size:22px;font-weight:800;text-align:center;border:2px solid #333;padding:14px;margin:16px 0}
-  .tadashi{font-size:13px;line-height:1.8;margin:10px 0}
-  .meta2{font-size:12px;color:#444;text-align:right;margin-top:22px;line-height:1.8}
-  .note{font-size:11px;color:#666}@media print{.doc{border-bottom:none}}</style></head>
-  <body>${pages}<script>window.onload=function(){setTimeout(function(){window.print();},300);}<\/script></body></html>`;
+  <style>*{box-sizing:border-box}body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;color:#1f2937;margin:0;background:#eef2f6}
+  .doc{position:relative;width:190mm;min-height:135mm;margin:8mm auto;padding:15mm 16mm 13mm;background:#fff;box-shadow:0 1px 6px rgba(0,0,0,.12);page-break-after:always}
+  .dochead{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:1px solid #cbd5e0;padding-bottom:7px;margin-bottom:18px;font-size:12px;color:#475569}
+  .dochead .corp{font-weight:700;color:#004063;font-size:13px}.dochead .rno{text-align:right;font-size:11px}.dochead .rno b{font-size:13px;color:#1f2937}
+  h1{text-align:center;font-size:27px;letter-spacing:10px;color:#004063;margin:6px 0 4px;font-weight:800}
+  .h1rule{width:110px;height:3px;background:#004063;margin:0 auto 22px;border-radius:2px}
+  .addressee{font-size:20px;font-weight:700;border-bottom:1px solid #94a3b8;padding-bottom:7px;margin-bottom:14px}
+  .addressee .sama{font-size:14px;font-weight:400;margin-left:8px;color:#475569}
+  .meta{font-size:12px;color:#475569;line-height:1.9;margin-bottom:12px}.meta b{color:#1f2937}
+  .detail{width:100%;border-collapse:collapse;font-size:12px;margin:6px 0 14px}
+  .detail th{background:#004063;color:#fff;padding:8px 10px;font-weight:600;text-align:left}
+  .detail td{border-bottom:1px solid #e2e8f0;padding:7px 10px}.detail td.r,.detail th.r{text-align:right}
+  .detail tr:nth-child(even) td{background:#f8fafc}
+  .sumbox{margin-left:auto;width:62%;border-top:2px solid #004063;padding-top:9px;font-size:13px;line-height:2}
+  .sumrow{display:flex;justify-content:space-between}
+  .sumrow.total{font-size:17px;font-weight:800;color:#004063;border-top:1px dashed #94a3b8;margin-top:5px;padding-top:6px}
+  .amtbox{text-align:center;font-size:25px;font-weight:800;color:#004063;background:#eff6ff;border:2px solid #004063;border-radius:8px;padding:17px;margin:20px 0;letter-spacing:2px}
+  .tadashi{font-size:13px;line-height:1.9;margin:14px 0;padding:11px 15px;background:#f8fafc;border-left:3px solid #004063}
+  .issuer{margin-top:28px;text-align:right;font-size:12px;color:#475569;line-height:1.85}
+  .issuer .iname{font-size:14px;font-weight:700;color:#1f2937;display:inline-flex;align-items:center;gap:9px}
+  .seal{display:inline-block;width:30px;height:30px;border:1.5px solid #dc2626;border-radius:50%;color:#dc2626;font-size:10px;text-align:center;line-height:30px}
+  .note{font-size:11px;color:#94a3b8;margin-top:12px}
+  .copybadge{position:absolute;top:9mm;right:14mm;font-size:11px;font-weight:700;color:#fff;background:#64748b;padding:3px 13px;border-radius:4px}
+  .copybadge.self{background:#5a9e48}
+  @media print{body{background:#fff}.doc{margin:0;box-shadow:none}}</style></head>
+  <body>${pages}<script>window.onload=function(){setTimeout(function(){window.print();},350);}<\/script></body></html>`;
   const w=window.open('','_blank');
   if(!w){ showToast('ポップアップがブロックされました。許可してください'); return; }
   w.document.write(html); w.document.close();
-  showToast(`${titleMap[type]}（${agg.users.length}名）を表示しました ✓`);
+  const extra = type==='proxy' ? `（本人控え＋事業所控え 計${docCount}枚）` : `（${agg.users.length}名）`;
+  showToast(`${titleMap[type]}${extra}を表示しました ✓`);
 }
 
 function printClaimFile(type){
