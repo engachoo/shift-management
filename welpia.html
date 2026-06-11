@@ -843,7 +843,10 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
         <div class="claim-panel">
           <div class="claim-panel-ttl" style="justify-content:space-between">
             <span>📋 請求書類CSVファイルのダウンロード履歴</span>
-            <button class="btn-add" style="padding:6px 13px;font-size:12px;margin:0;background:var(--navy);border-color:var(--navy)" onclick="openClaimHistImport()">📥 knowbeからインポート</button>
+            <span style="display:flex;gap:8px">
+              <button class="btn-add" style="padding:6px 13px;font-size:12px;margin:0;background:#fff;border:1px solid #dc2626;color:#dc2626" onclick="clearClaimHistory()">🗑 履歴を全削除</button>
+              <button class="btn-add" style="padding:6px 13px;font-size:12px;margin:0;background:var(--navy);border-color:var(--navy)" onclick="openClaimHistImport()">📥 knowbeからインポート</button>
+            </span>
           </div>
           <table class="claim-hist-tbl">
             <thead>
@@ -2497,6 +2500,17 @@ function renderClaimHistory(fid, claims){
     </tr>`;
   }
   tbody.innerHTML=html;
+}
+
+function clearClaimHistory(){
+  const claims=load('claims',[]).filter(c=>c.facilityId===_curFacId);
+  if(!claims.length){ showToast('削除する履歴がありません'); return; }
+  if(!confirm(`${curFac()?.name||'この事業所'}のダウンロード履歴（${claims.length}件）をすべて削除します。\n（過去の控えPDFは社内サーバーに保管済みなので消えません）\nよろしいですか？`)) return;
+  save('claims', load('claims',[]).filter(c=>c.facilityId!==_curFacId));
+  const ids=new Set(claims.map(c=>c.id));
+  save('claim_history', load('claim_history',[]).filter(h=>!ids.has(h.claimId)));
+  renderClaim();
+  showToast('履歴を削除しました ✓');
 }
 
 function addClaimMonth(){
