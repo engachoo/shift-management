@@ -1449,11 +1449,9 @@ function initDefaultData(){
     });
     if(facChanged) save('facilities', facs);
   }
+  // 初期メンバーは岩清水（管理者）のみ。他は今後「＋新規ユーザー」で追加（Auth自動作成）
   const DEFAULT_USERS=[
-    {id:'kh_u1',name:'岩清水',loginId:'iwashimizu',password:'welpia1',role:'admin',  active:true},
-    {id:'kh_u2',name:'山下',  loginId:'yamashita', password:'welpia2',role:'manager',active:true},
-    {id:'kh_u3',name:'笹木原',loginId:'sasakibara',password:'welpia3',role:'staff',  active:true},
-    {id:'kh_u4',name:'三浦',  loginId:'miura',     password:'welpia4',role:'staff',  active:true}
+    {id:'kh_u1',name:'岩清水',loginId:'iwashimizu',password:'welpia1',role:'admin',  active:true}
   ];
   const existUsers=load('users',null);
   // loginId がないユーザーのみのデータ（旧形式）またはデータなし → デフォルトを保存
