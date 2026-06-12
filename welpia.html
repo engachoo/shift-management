@@ -823,6 +823,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
             <button class="btn-claim-dl btn-claim-prt" onclick="genWelbeDocs('invoice')">🖨 請求書</button>
             <button class="btn-claim-dl btn-claim-prt" onclick="genWelbeDocs('receipt')">🖨 領収書</button>
             <button class="btn-claim-dl btn-claim-prt" onclick="genWelbeDocs('proxy')">🖨 代理受領書</button>
+            <button class="btn-claim-dl btn-claim-prt" onclick="genJissekiForm()">🖨 実績記録票（様式）</button>
           </div>
         </div>
 
@@ -2746,7 +2747,7 @@ function _kokuhoAggregate(year,month){
       kana:_toHalfKana((c.kana||'').replace(/[\s　]/g,'')), kanaSort:(c.kana||'').replace(/[\s　]/g,''), contractDate:cd,
       mgmtEnd:plus29(c.startDate),
       shikyuRyo: (c.shikyuRyo!==undefined&&c.shikyuRyo!=='') ? String(c.shikyuRyo) : '0',
-      newContractDays,
+      newContractDays, initialDays,
       daily, attended, absence, mealDays, transCnt,
       det, subUnits, kaizen, totalUnits, yen,
       limit, copay, kyufu,
@@ -3014,6 +3015,74 @@ function execJissekiImport(){
     (unmatched.size?`<br><span style="color:#c2410c">⚠ welbe未登録の受給者証 ${unmatched.size}件はスキップ：${[...unmatched].join(', ')}</span>`:'');
   if(typeof renderClaim==='function') renderClaim();
   showToast(`実績を取込みました（${matched}件）✓`);
+}
+
+// サービス提供実績記録票（月間グリッド・利用者ごと1枚）— ノービー様式
+function genJissekiForm(claimArg){
+  const claim = claimArg || _kokuhoSelectedClaim(); if(!claim) return;
+  const agg=_kokuhoAggregate(claim.year,claim.month);
+  if(!agg.users.length){ alert(`${claim.year}年${claim.month}月の利用実績がwelbeにありません。`); return; }
+  const fac=agg.fac;
+  const svcLabel = fac.serviceType==='A'?'就労継続支援A型':fac.serviceType==='B'?'就労継続支援B型':'';
+  const y=claim.year, m=claim.month;
+  const t=new Date(); const stamp=`${t.getFullYear()}/${String(t.getMonth()+1).padStart(2,'0')}/${String(t.getDate()).padStart(2,'0')} ${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`;
+  const wd=['日','月','火','水','木','金','土'];
+  const fmt=s=>{ s=(s||'').replace(':',''); return s.length===4?s.slice(0,2)+':'+s.slice(2):''; };
+  const nm=u=>esc(u.c&&u.c.name?u.c.name:u.kana||'');
+  const jdate=s=>{ const d=ymd(s); return d.length>=8?`${+d.slice(0,4)}年${+d.slice(4,6)}月${+d.slice(6,8)}日`:''; };
+  const EMPTY8='<td></td>'.repeat(8); // 訪問〜施設外支援の8列
+  const pages = agg.users.map(u=>{
+    const rows = u.daily.map(x=>{
+      const dt=new Date(y,m-1,x.day);
+      return `<tr><td class="c">${x.day}</td><td class="c">${wd[dt.getDay()]}</td>`+
+        `<td class="c st">${x.abs?'欠席':''}</td>`+
+        `<td class="c">${x.att?fmt(x.start):''}</td><td class="c">${x.att?fmt(x.end):''}</td>`+
+        `<td class="c">${x.t1?'1':''}</td><td class="c">${x.t2?'1':''}</td>`+
+        `${EMPTY8}<td></td><td></td></tr>`;
+    }).join('');
+    let blanks=''; const need=Math.max(0, 26-u.daily.length);
+    for(let i=0;i<need;i++) blanks+=`<tr class="bl"><td class="c">　</td>${'<td></td>'.repeat(16)}</tr>`;
+    const startJ=jdate(u.c.startDate), day30=jdate(u.mgmtEnd);
+    return `<div class="doc">
+      <div class="tb"><span>${stamp}</span><span class="lg">Welbe</span></div>
+      <div class="ttl">${y}年${String(m).padStart(2,'0')}月分　就労継続支援提供実績記録票</div>
+      <table class="hd"><tbody>
+        <tr><th>受給者証番号</th><td>${u.receiptNo}</td><th>支給決定障害者氏名</th><td>${nm(u)}</td><th>事業所番号</th><td>${fac.jigyoshoNo||''}</td></tr>
+        <tr><th>契約支給量</th><td colspan="3">${svcLabel}　原則の日数</td><th>事業者及び<br>その事業所</th><td>${esc(fac.corp||'')}</td></tr>
+      </tbody></table>
+      <table class="gr"><thead>
+        <tr><th rowspan="3">日<br>付</th><th rowspan="3">曜<br>日</th><th colspan="13">サービス提供実績</th><th rowspan="3">利用者<br>確認欄</th><th rowspan="3">備考</th></tr>
+        <tr><th rowspan="2">サービス<br>提供の状況</th><th rowspan="2">開始<br>時間</th><th rowspan="2">終了<br>時間</th><th colspan="2">送迎加算</th><th rowspan="2">訪問支援<br>特別加算<br>時間数</th><th rowspan="2">食事<br>提供<br>加算</th><th rowspan="2">医療<br>連携</th><th rowspan="2">体験<br>利用</th><th rowspan="2">地域<br>協働</th><th rowspan="2">緊急時<br>受入</th><th rowspan="2">集中的<br>支援</th><th rowspan="2">施設外<br>支援</th></tr>
+        <tr><th>往</th><th>復</th></tr>
+      </thead><tbody>${rows}${blanks}</tbody>
+      <tfoot><tr class="ft"><td colspan="5" class="c">合計</td><td class="c" colspan="2">${u.transCnt}回</td><td class="c">0</td><td class="c">${u.mealDays||0}</td><td class="c">0</td><td class="c">0</td><td class="c">0</td><td class="c">0</td><td class="c">0</td><td class="c">0</td><td class="c" colspan="2">当月 ${u.attended}日／累計 ${u.attended}日</td></tr></tfoot>
+      </table>
+      <table class="fn"><tbody>
+        <tr><th>初期加算</th><td>利用開始日</td><td>${startJ}</td><td>30日目</td><td>${day30}</td><td>当月算定日数</td><td><b>${u.initialDays||0}日</b></td></tr>
+      </tbody></table>
+    </div>`;
+  }).join('');
+  const html=`<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>実績記録票 ${y}年${m}月 ${esc(fac.name||'')}</title>
+  <style>*{box-sizing:border-box}@page{size:A4 portrait;margin:8mm}
+  body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;color:#000;margin:0;background:#e9edf1;font-size:9px}
+  .doc{width:210mm;min-height:297mm;margin:6mm auto;padding:8mm 7mm;background:#fff;box-shadow:0 1px 5px rgba(0,0,0,.15);page-break-after:always}
+  .tb{display:flex;justify-content:space-between;font-size:9px;color:#333}.tb .lg{font-weight:800;color:#004063;font-size:12px}
+  .ttl{text-align:center;font-size:17px;font-weight:700;margin:2px 0 8px}
+  table{border-collapse:collapse;width:100%}
+  .hd th,.hd td{border:1px solid #000;padding:3px 5px;font-size:9px}
+  .hd th{background:#f0f0f0;font-weight:600;white-space:nowrap;width:1%}
+  .gr th,.gr td{border:1px solid #000;font-size:8px;padding:1px;text-align:center;line-height:1.2}
+  .gr th{background:#f5f5f5;font-weight:600}
+  .gr td.c{text-align:center}.gr td.st{font-size:8px}
+  .gr tbody tr{height:15px}.gr tr.bl{height:15px}
+  .gr tfoot td{font-weight:600;background:#fafafa}
+  .fn th,.fn td{border:1px solid #000;padding:3px 6px;font-size:9px;text-align:center}.fn th{background:#f0f0f0}
+  @media print{body{background:#fff}.doc{margin:0;box-shadow:none}}</style></head>
+  <body>${pages}<script>window.onload=function(){setTimeout(function(){window.print();},350);}<\/script></body></html>`;
+  const w=window.open('','_blank');
+  if(!w){ showToast('ポップアップがブロックされました。許可してください'); return; }
+  w.document.write(html); w.document.close();
+  showToast(`実績記録票（${agg.users.length}名）を表示しました ✓`);
 }
 
 // 請求書・領収書・代理受領書（利用者ごと1枚）を生成して印刷ビューを開く
