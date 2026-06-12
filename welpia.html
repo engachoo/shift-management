@@ -2630,7 +2630,7 @@ const KOKUHO_MASTER = {
     j121_kubun:'1', copayDetail:false,
     components:[
       { code:'462992', unit:758, per:'attended', name:'就継ＢⅠ１２' },
-      { code:'465050', unit:30,  per:'meal', name:'食事提供体制加算' },
+      { code:'465050', unit:30,  per:'initial', name:'初期加算' },
       { code:'466040', unit:94,  per:'absence', cap:4, name:'欠席時対応加算' },
       { code:'466591', unit:10,  per:'transport', name:'送迎加算' }
     ],
@@ -2710,11 +2710,20 @@ function _kokuhoAggregate(year,month){
       daily.push({day:d, att:isAtt, start:isAtt?(r.start||'').replace(':',''):'', end:isAtt?(r.end||'').replace(':',''):'', t1:tr>=1?1:0, t2:tr>=2?1:0, abs:isAbsBillable});
     }
     if(!daily.length) return; // 当月実績なしは除外
+    // 初期加算：利用開始日から30日以内の通所日数（利用開始が直近の人だけ該当）
+    let initialDays=0;
+    { const sd=ymd(c.startDate);
+      if(sd.length>=8){
+        const sdt=new Date(+sd.slice(0,4),+sd.slice(4,6)-1,+sd.slice(6,8));
+        const lim=new Date(sdt); lim.setDate(lim.getDate()+29); // 利用開始日から30日間
+        daily.forEach(x=>{ if(!x.att) return; const dd=new Date(year,month-1,x.day); if(dd>=sdt&&dd<=lim) initialDays++; });
+      } }
     // サービス明細（マスタの components 順）
     const det=[];
     M.components.forEach(comp=>{
       let cnt=0;
       if(comp.per==='attended')      cnt=attended;
+      else if(comp.per==='initial')  cnt=initialDays;
       else if(comp.per==='meal')     cnt=mealDays;
       else if(comp.per==='transport')cnt=transCnt;
       else if(comp.per==='absence')  cnt=Math.min(absence, comp.cap||9999);
