@@ -3363,7 +3363,7 @@ function renderInvBulk(){
         <select style="${selSt}flex:1;min-width:120px" onchange="_bulkRows[${ri}].deptId=this.value">${deptOpts.replace(`value="${r.deptId}"`,`value="${r.deptId}" selected`)}</select>
         <select style="${selSt}flex:2;min-width:150px" onchange="_bulkRows[${ri}].vendorId=this.value">${vendorOpts.replace(`value="${r.vendorId}"`,`value="${r.vendorId}" selected`)}</select>
         <input style="${inSt}flex:2;min-width:120px" value="${esc(r.subject)}" placeholder="件名＊" oninput="_bulkRows[${ri}].subject=this.value">
-        <label style="display:flex;align-items:center;gap:4px;flex-shrink:0"><span style="font-size:11px;font-weight:600;color:#64748b;white-space:nowrap">締日</span><input type="date" style="${inSt}width:120px" value="${r.closing}" oninput="_bulkRows[${ri}].closing=this.value"></label>
+        <label style="display:flex;align-items:center;gap:4px;flex-shrink:0"><span style="font-size:11px;font-weight:600;color:#64748b;white-space:nowrap">発行日</span><input type="date" style="${inSt}width:120px" value="${r.closing}" oninput="_bulkRows[${ri}].closing=this.value"></label>
         <label style="display:flex;align-items:center;gap:4px;flex-shrink:0"><span style="font-size:11px;font-weight:600;color:#64748b;white-space:nowrap">支払日</span><input type="date" style="${inSt}width:120px" value="${r.deadline}" oninput="_bulkRows[${ri}].deadline=this.value"></label>
         <button onclick="_bulkRows.splice(${ri},1);renderInvBulk()" style="background:#fee2e2;border:1px solid #fca5a5;color:#dc2626;border-radius:5px;padding:3px 8px;font-size:11px;cursor:pointer;flex-shrink:0">削除</button>
       </div>
@@ -3963,7 +3963,7 @@ function renderInvList(){
         </select>
       </div>
       <div style="display:flex;flex-direction:column;gap:4px">
-        <label style="font-size:11px;font-weight:600;color:#64748b">締め日</label>
+        <label style="font-size:11px;font-weight:600;color:#64748b">発行日</label>
         <select id="invFClosing" onchange="invApplyFilter()" style="border:1.5px solid #d1d5db;border-radius:6px;padding:6px 8px;font-size:13px;width:100%;background:#fff;box-sizing:border-box">
           <option value="">すべて</option>${optClosing}
         </select>
@@ -3985,7 +3985,7 @@ function renderInvList(){
       ${sh('相手先','vendor')}
       ${fixedHdr('件名・摘要')}
       ${fixedHdr('税込金額')}
-      ${sh('締め日','closing')}
+      ${sh('発行日','closing')}
       ${fixedHdr('状態')}
       ${fixedHdr('操作')}
     </tr></thead>
@@ -4027,7 +4027,7 @@ function renderInvList(){
           <span class="inv-badge" style="background:${def.bg};color:${def.color};border-color:${def.border};flex-shrink:0">${def.icon} ${def.label}</span>
         </div>
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-          <div style="font-size:11px;color:#6b7280">${esc(dept?.name||'-')}　締め日 ${inv.closingDate||'-'}</div>
+          <div style="font-size:11px;color:#6b7280">${esc(dept?.name||'-')}　発行日 ${inv.closingDate||'-'}</div>
           <div style="font-size:16px;font-weight:700;color:#1a2b4a">¥${(t.total||inv.totalAmount||0).toLocaleString()}</div>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -4077,7 +4077,7 @@ function renderInvForm(editId){
   <div style="background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;padding:24px;max-width:800px">
     <div style="font-size:12px;color:#dc2626;margin-bottom:16px">＊ は必須項目です</div>
     <div class="inv-form-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:14px">
-      <div class="inv-field"><label class="req">＊ 締め日</label><input type="date" id="inv-closing" value="${inv.closingDate||''}"></div>
+      <div class="inv-field"><label class="req">＊ 発行日</label><input type="date" id="inv-closing" onchange="invRecalcAll()" value="${inv.closingDate||''}"></div>
       <div class="inv-field"><label class="req">＊ 発行部署</label>
         <select id="inv-dept" onchange="invOnDeptChange();invRecalcAll()"><option value="">選択してください</option>${depts.map(d=>`<option value="${d.id}" ${inv.deptId===d.id?'selected':''}>${esc(d.name)}</option>`).join('')}</select>
       </div>
@@ -4158,6 +4158,7 @@ function invFormData(){
     deptId: document.getElementById('inv-dept')?.value||'',
     vendorId: document.getElementById('inv-vendor')?.value||'',
     subject: document.getElementById('inv-subject')?.value||'',
+    closingDate: document.getElementById('inv-closing')?.value||'',
     paymentDeadline: document.getElementById('inv-deadline')?.value||'',
     notes: document.getElementById('inv-notes')?.value||'',
     items: invCollectItems()
@@ -4236,7 +4237,7 @@ function submitInvRequest(){
   const deptId=document.getElementById('inv-dept')?.value;
   const subject=document.getElementById('inv-subject')?.value?.trim();
   const items=invCollectItems();
-  const errs=[]; if(!closing)errs.push('締め日'); if(!deptId)errs.push('発行部署'); if(!subject)errs.push('件名'); if(!items.length)errs.push('明細（1行以上）');
+  const errs=[]; if(!closing)errs.push('発行日'); if(!deptId)errs.push('発行部署'); if(!subject)errs.push('件名'); if(!items.length)errs.push('明細（1行以上）');
   if(errs.length){alert('以下の必須項目を入力してください：\n・'+errs.join('\n・'));return;}
   if(!confirm('発行依頼を送信しますか？'))return;
   const deadline=document.getElementById('inv-deadline')?.value;
@@ -4273,7 +4274,7 @@ function renderInvDetail(invId){
     <div>
       <div style="background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;padding:20px;margin-bottom:14px">
         <table style="width:100%;font-size:13px;border-collapse:collapse">
-          ${[['件名',inv.subject||inv.description||'-'],['発行部署',dept.name||'-'],['発行元',dept.company||'-'],['締め日',inv.closingDate||'-'],['お支払期限',inv.paymentDeadline||'-'],['宛先',vendor?vendor.name:'-']].map(([k,v])=>`<tr style="border-bottom:1px solid #f1f5f9"><td style="padding:7px 0;color:#6b7280;width:100px">${k}</td><td style="padding:7px 0;color:#1a2b4a">${esc(String(v))}</td></tr>`).join('')}
+          ${[['件名',inv.subject||inv.description||'-'],['発行部署',dept.name||'-'],['発行元',dept.company||'-'],['発行日',inv.closingDate||'-'],['お支払期限',inv.paymentDeadline||'-'],['宛先',vendor?vendor.name:'-']].map(([k,v])=>`<tr style="border-bottom:1px solid #f1f5f9"><td style="padding:7px 0;color:#6b7280;width:100px">${k}</td><td style="padding:7px 0;color:#1a2b4a">${esc(String(v))}</td></tr>`).join('')}
         </table>
       </div>
       <div style="background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;padding:20px;margin-bottom:14px">
@@ -4460,10 +4461,11 @@ function invPrintBodyHTML(inv, opts){
   opts=opts||{};
   const dept=invDeptInfo(inv.deptId)||{}; const vendor=load('inv_vendors',[]).find(v=>v.id===inv.vendorId)||null;
   const t=invCalcTotals(inv.items||[]); const today=new Date().toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric'});
+  const issued=inv.closingDate?new Date(inv.closingDate+'T00:00:00').toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric'}):today;
   const rows10=Array.from({length:10},(_,i)=>(inv.items||[])[i]||null);
   const showSeal=opts.seal && ['approved','sent'].includes(inv.status);
   return `
-    <div style="text-align:right;font-size:9pt;margin-bottom:5mm;color:#1e3a6b">発行日：${today}</div>
+    <div style="text-align:right;font-size:9pt;margin-bottom:5mm;color:#1e3a6b">発行日：${issued}</div>
     <div style="text-align:center;font-size:22pt;font-weight:700;letter-spacing:10px;margin-bottom:8mm;color:#1e3a6b">請　求　書</div>
     <div style="display:flex;justify-content:space-between;margin-bottom:7mm;align-items:flex-start">
       <div style="flex:1;padding-right:10mm">
