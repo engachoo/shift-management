@@ -2743,7 +2743,7 @@ function _kokuhoAggregate(year,month){
     const newContractDays = (cd.slice(0,6)===_ym(year,month)) ? attended : 0;
     users.push({
       c, cityNo:(c.cityNo||fac.cityNo||''), receiptNo:c.receiptNo||'',
-      kana:_toHalfKana(c.kana||''), contractDate:cd,
+      kana:_toHalfKana((c.kana||'').replace(/[\s　]/g,'')), kanaSort:(c.kana||'').replace(/[\s　]/g,''), contractDate:cd,
       mgmtEnd:plus29(c.startDate),
       shikyuRyo: (c.shikyuRyo!==undefined&&c.shikyuRyo!=='') ? String(c.shikyuRyo) : '0',
       newContractDays,
@@ -2753,8 +2753,8 @@ function _kokuhoAggregate(year,month){
       svcDays: attended+absence
     });
   });
-  // 市町村→受給者証番号 順
-  users.sort((a,b)=> (a.cityNo+a.receiptNo).localeCompare(b.cityNo+b.receiptNo));
+  // 市町村→フリガナ 順（ノービーと同じ並び）
+  users.sort((a,b)=> a.cityNo!==b.cityNo ? a.cityNo.localeCompare(b.cityNo) : (a.kanaSort||'').localeCompare(b.kanaSort||'','ja'));
   return {fac, M, users, year, month};
 }
 
