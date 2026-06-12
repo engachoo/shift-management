@@ -820,10 +820,11 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
           <div class="claim-panel-ttl">🖨 請求書類の発行（利用者ごと・印刷／PDF保存）</div>
           <div style="font-size:12px;color:#5a6b50;margin:0 0 10px;line-height:1.6">選択中の請求月の全利用者分を1枚ずつ発行します。開いた画面で「印刷 → PDFに保存」できます。</div>
           <div class="claim-dl-row">
-            <button class="btn-claim-dl btn-claim-prt" onclick="genWelbeDocs('invoice')">🖨 請求書</button>
+            <button class="btn-claim-dl btn-claim-prt" onclick="genSeikyuForm()">🖨 請求書・明細書</button>
+            <button class="btn-claim-dl btn-claim-prt" onclick="genJissekiForm()">🖨 実績記録票（様式）</button>
+            <button class="btn-claim-dl btn-claim-prt" onclick="genWelbeDocs('invoice')">🖨 請求書（利用者用）</button>
             <button class="btn-claim-dl btn-claim-prt" onclick="genWelbeDocs('receipt')">🖨 領収書</button>
             <button class="btn-claim-dl btn-claim-prt" onclick="genWelbeDocs('proxy')">🖨 代理受領書</button>
-            <button class="btn-claim-dl btn-claim-prt" onclick="genJissekiForm()">🖨 実績記録票（様式）</button>
           </div>
         </div>
 
@@ -3084,6 +3085,99 @@ function genJissekiForm(claimArg){
   if(!w){ showToast('ポップアップがブロックされました。許可してください'); return; }
   w.document.write(html); w.document.close();
   showToast(`実績記録票（${agg.users.length}名）を表示しました ✓`);
+}
+
+// 給付費請求サマリ＋介護給付費・訓練等給付費等請求書（請求先＝市町村ごと）— ノービー様式
+function genSeikyuForm(claimArg){
+  const claim=claimArg||_kokuhoSelectedClaim(); if(!claim) return;
+  const agg=_kokuhoAggregate(claim.year,claim.month);
+  if(!agg.users.length){ alert(`${claim.year}年${claim.month}月の利用実績がwelbeにありません。`); return; }
+  const fac=agg.fac;
+  const svcLabel=fac.serviceType==='A'?'就労継続支援A型':'就労継続支援B型';
+  const y=claim.year,m=claim.month, mm=String(m).padStart(2,'0');
+  const reiwa=y-2018;
+  const t=new Date(); const issueJ=`令和${t.getFullYear()-2018}年${String(t.getMonth()+1).padStart(2,'0')}月${String(t.getDate()).padStart(2,'0')}日`;
+  const WELBE_CITY={"212019":"岐阜市","212027":"大垣市","212092":"羽島市","212142":"可児市","212159":"山県市","212217":"海津市","213819":"神戸町","213827":"輪之内町","213835":"安八町"};
+  const yen=n=>Number(n||0).toLocaleString();
+  const byCity={};
+  agg.users.forEach(u=>{ const c=u.cityNo||''; (byCity[c]=byCity[c]||{cnt:0,units:0,yen:0,kyufu:0,copay:0}); const b=byCity[c]; b.cnt++; b.units+=u.totalUnits; b.yen+=u.yen; b.kyufu+=u.kyufu; b.copay+=u.copay; });
+  const cities=Object.keys(byCity).sort();
+  const G={cnt:0,units:0,yen:0,kyufu:0,copay:0};
+  cities.forEach(c=>{const b=byCity[c];G.cnt+=b.cnt;G.units+=b.units;G.yen+=b.yen;G.kyufu+=b.kyufu;G.copay+=b.copay;});
+  // ① 給付費請求サマリ
+  const sumRows=cities.map((c,i)=>`<tr><td class="c">${i+1}</td><td>${WELBE_CITY[c]||c}</td><td class="r">${byCity[c].cnt}</td><td class="r">${yen(byCity[c].yen)}</td><td class="r">${yen(byCity[c].kyufu)}</td><td class="r">${yen(byCity[c].copay)}</td><td class="r">0</td></tr>`).join('');
+  const summary=`<div class="doc">
+    <div class="tb"><span>${issueJ}</span><span class="lg">Welbe</span></div>
+    <h1>給付費請求サマリ</h1>
+    <div class="sub">対象請求月：令和${reiwa}年${mm}月分</div>
+    <div class="sec">事業所情報</div>
+    <table class="kv"><tbody><tr><th>事業所番号</th><td>${fac.jigyoshoNo||''}</td></tr><tr><th>事業所名</th><td>${esc(fac.corp||'')}</td></tr></tbody></table>
+    <table class="big"><tbody><tr><th>請求合計金額</th><td>${yen(G.kyufu)}</td></tr></tbody></table>
+    <div class="sec">請求詳細情報</div>
+    <table class="dt"><thead><tr><th>No.</th><th>請求先</th><th>件数</th><th>費用合計</th><th>給付費請求額</th><th>利用者負担額</th><th>自治体助成額</th></tr></thead>
+    <tbody>${sumRows}<tr class="tot"><td colspan="2" class="c">合計</td><td class="r">${G.cnt}</td><td class="r">${yen(G.yen)}</td><td class="r">${yen(G.kyufu)}</td><td class="r">${yen(G.copay)}</td><td class="r">0</td></tr></tbody></table>
+  </div>`;
+  // ② 介護給付費・訓練等給付費等請求書（市町村ごと）
+  const isA=fac.serviceType==='A';
+  const pages=cities.map(c=>{
+    const b=byCity[c];
+    const er='<tr><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>'; // 空行(名称+6値)
+    const empty=n=>er.repeat(n);
+    const svcCells=`<td>${svcLabel}</td><td class="r">${b.cnt}</td><td class="r">${yen(b.units)}</td><td class="r">${yen(b.yen)}</td><td class="r">${yen(b.kyufu)}</td><td class="r">${yen(b.copay)}</td><td class="r">0</td>`;
+    return `<div class="doc">
+      <div class="tb"><span>${issueJ}</span><span class="lg">Welbe</span></div>
+      <h1 class="h1s">介護給付費・訓練等給付費等請求書</h1>
+      <div class="rt">${issueJ}</div>
+      <div class="sec2">（&nbsp;請　求　先&nbsp;）</div>
+      <div class="reqwrap"><div class="dest">${WELBE_CITY[c]||c} 殿</div>
+      <table class="biller"><tbody>
+        <tr><th rowspan="5" class="vh">請<br>求<br>事<br>業<br>者</th><th>指定事業所番号</th><td>${fac.jigyoshoNo||''}</td></tr>
+        <tr><th>住所<br>(所在地)</th><td>${esc((fac.zip?'〒'+fac.zip+'\n':'')+(fac.addr||''))}</td></tr>
+        <tr><th>電話番号</th><td>${esc(fac.tel||'')}</td></tr>
+        <tr><th>名称</th><td>${esc(fac.corp||'')}</td></tr>
+        <tr><th>職・氏名</th><td>${esc(fac.rep||'')}</td></tr>
+      </tbody></table></div>
+      <div class="note2">下記のとおり請求します。</div>
+      <table class="ym2"><tbody><tr><td>令和</td><td>${reiwa}</td><td>年</td><td>${mm}</td><td>月分</td></tr></tbody></table>
+      <table class="amt2"><tbody><tr><th>請求金額</th><td>${yen(b.kyufu)}</td></tr></tbody></table>
+      <table class="rq"><thead><tr><th colspan="2">区分</th><th>件数</th><th>単位数</th><th>費用合計</th><th>給付費<br>請求額</th><th>利用者<br>負担額</th><th>自治体<br>助成額</th></tr></thead>
+      <tbody>
+        <tr><th rowspan="4" class="vh">介護<br>給付費</th><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>${empty(3)}
+        <tr><th rowspan="4" class="vh">訓練等<br>給付費</th>${svcCells}</tr>${empty(3)}
+        <tr class="sub2"><td colspan="2" class="c">小計</td><td class="r">${b.cnt}</td><td class="r">${yen(b.units)}</td><td class="r">${yen(b.yen)}</td><td class="r">${yen(b.kyufu)}</td><td class="r">${yen(b.copay)}</td><td class="r">0</td></tr>
+        <tr><td colspan="2" class="c">特定障害者特別給付費</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+        <tr class="tot"><td colspan="2" class="c">合計</td><td class="r">${b.cnt}</td><td class="r">${yen(b.units)}</td><td class="r">${yen(b.yen)}</td><td class="r">${yen(b.kyufu)}</td><td class="r">${yen(b.copay)}</td><td class="r">0</td></tr>
+      </tbody></table>
+    </div>`;
+  }).join('');
+  const html=`<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>請求書・明細書 ${y}年${m}月 ${esc(fac.name||'')}</title>
+  <style>*{box-sizing:border-box}@page{size:A4 portrait;margin:10mm}
+  body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;color:#000;margin:0;background:#e9edf1;font-size:11px}
+  .doc{width:210mm;min-height:297mm;margin:6mm auto;padding:12mm;background:#fff;box-shadow:0 1px 5px rgba(0,0,0,.15);page-break-after:always}
+  .tb{display:flex;justify-content:space-between;font-size:9px;color:#333}.tb .lg{font-weight:800;color:#004063;font-size:12px}
+  h1{text-align:center;font-size:26px;font-weight:700;letter-spacing:4px;margin:6px 0 14px}
+  .h1s{font-size:24px;letter-spacing:2px}
+  .rt{text-align:right;font-size:11px;margin:-8px 0 14px}
+  .sub{font-size:13px;margin:0 0 14px}
+  .sec{font-size:13px;font-weight:700;margin:16px 0 5px;border-bottom:1px solid #888;padding-bottom:2px}
+  .sec2{font-size:14px;font-weight:700;margin:14px 0 8px}
+  table{border-collapse:collapse}
+  .kv{width:60%}.kv th,.kv td{border:1px solid #000;padding:4px 8px;font-size:11px}.kv th{background:#f0f0f0;width:120px}
+  .big{width:100%;margin-top:10px}.big th{border:1px solid #000;background:#f0f0f0;padding:8px;width:140px;font-size:13px}.big td{border:1px solid #000;padding:8px;font-size:22px;font-weight:700}
+  .dt{width:100%;margin-top:6px}.dt th,.dt td{border:1px solid #000;padding:5px 7px;font-size:11px}.dt th{background:#f0f0f0}.dt td.r{text-align:right}.dt td.c{text-align:center}.dt tr.tot td{font-weight:700;background:#fafafa}
+  .reqwrap{display:flex;justify-content:space-between;align-items:flex-start;gap:20px}
+  .dest{font-size:16px;font-weight:700;margin-top:40px}
+  .biller{width:58%}.biller th,.biller td{border:1px solid #000;padding:5px 8px;font-size:11px;vertical-align:middle}.biller th{background:#f7f7f7;white-space:pre-line}.biller td{white-space:pre-line}.biller .vh{width:22px;text-align:center;font-weight:700}
+  .note2{margin:14px 0 6px;font-size:12px}
+  .ym2{margin-bottom:8px}.ym2 td{border:1px solid #000;padding:4px 10px;font-size:11px}
+  .amt2{width:50%;margin-bottom:14px}.amt2 th{border:1px solid #000;background:#f0f0f0;padding:6px 10px;width:90px}.amt2 td{border:1px solid #000;padding:6px 10px;text-align:right;font-size:18px;font-weight:700}
+  .rq{width:100%}.rq th,.rq td{border:1px solid #000;padding:4px 6px;font-size:10px}.rq thead th{background:#f0f0f0;text-align:center}.rq td.r{text-align:right}.rq td.c{text-align:center}.rq .vh{width:34px;text-align:center;background:#f7f7f7;font-weight:600}.rq tr.sub2 td,.rq tr.tot td{font-weight:700;background:#fafafa}
+  @media print{body{background:#fff}.doc{margin:0;box-shadow:none}}</style></head>
+  <body>${summary}${pages}<script>window.onload=function(){setTimeout(function(){window.print();},350);}<\/script></body></html>`;
+  const w=window.open('','_blank');
+  if(!w){ showToast('ポップアップがブロックされました。許可してください'); return; }
+  w.document.write(html); w.document.close();
+  showToast(`請求書・明細書（${cities.length}市町村）を表示しました ✓`);
 }
 
 // 請求書・領収書・代理受領書（利用者ごと1枚）を生成して印刷ビューを開く
