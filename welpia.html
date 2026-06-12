@@ -2953,7 +2953,7 @@ function execJissekiImport(){
   const clients=load('clients',[]).filter(c=>c.facilityId===_curFacId);
   const byReceipt={}; clients.forEach(c=>{ if(c.receiptNo) byReceipt[String(c.receiptNo)]=c; });
   const fmt=s=>(s&&s.length===4)?s.slice(0,2)+':'+s.slice(2):'';
-  const recByMonth={}; let matched=0; const unmatched=new Set(); const monthsSet=new Set();
+  const recByMonth={}; const tcByMonth={}; let matched=0; const unmatched=new Set(); const monthsSet=new Set();
   lines.forEach(r=>{
     if(r[2]==='J611' && r[3]==='02'){
       const svcYM=r[4]; const receiptNo=String(r[7]||''); const day=parseInt(r[10]);
@@ -2964,11 +2964,20 @@ function execJissekiImport(){
       const isAbs = r[37]==='8';
       const t1=parseInt(r[22]||0)||0, t2=parseInt(r[23]||0)||0;
       const transport=(t1&&t2)?'往復':(t1||t2)?'片道':'';
+      const inT=fmt(r[15]), outT=fmt(r[16]);
       if(!recByMonth[svcYM]) recByMonth[svcYM]={};
       if(!recByMonth[svcYM][c.id]) recByMonth[svcYM][c.id]={};
       recByMonth[svcYM][c.id][day] = isAbs
         ? {status:'欠席時対応'}
-        : {status:'通所', start:fmt(r[15]), end:fmt(r[16]), transport};
+        : {status:'通所', start:inT, end:outT, transport};
+      // タイムカードにも反映（通所日の出退勤）
+      if(!isAbs && (inT||outT)){
+        if(!tcByMonth[svcYM]) tcByMonth[svcYM]={};
+        if(!tcByMonth[svcYM][c.id]) tcByMonth[svcYM][c.id]={};
+        const o={importedBy:'J61'};
+        if(inT) o.in=inT; if(outT) o.out=outT;
+        tcByMonth[svcYM][c.id][day]=o;
+      }
       matched++;
     }
   });
@@ -2981,13 +2990,18 @@ function execJissekiImport(){
     const ex=load(k,{}); const imp=recByMonth[ym];
     Object.keys(imp).forEach(cid=>{ ex[cid]=Object.assign(ex[cid]||{}, imp[cid]); });
     save(k, ex);
+    // タイムカード(tc_)にも保存
+    const tk=_tcKey(_curFacId,y,m);
+    const tex=load(tk,{}); const timp=tcByMonth[ym]||{};
+    Object.keys(timp).forEach(cid=>{ tex[cid]=Object.assign(tex[cid]||{}, timp[cid]); });
+    save(tk, tex);
     const cid=`${_curFacId}_${ym}`;
     if(!claims.find(c=>c.id===cid)) claims.push({id:cid,facilityId:_curFacId,year:y,month:m,status:'submitted',memo:'J61取込'});
   });
   save('claims', claims);
   const mList=[...monthsSet].sort().map(s=>`${s.slice(0,4)}年${+s.slice(4)}月`).join('・');
   msg.style.color='var(--green-dk)';
-  msg.innerHTML=`✅ ${matched}件の実績を取込みました（${mList}）`+
+  msg.innerHTML=`✅ ${matched}件を取込みました（${mList}）<br>利用実績とタイムカードの両方に反映しました。`+
     (unmatched.size?`<br><span style="color:#c2410c">⚠ welbe未登録の受給者証 ${unmatched.size}件はスキップ：${[...unmatched].join(', ')}</span>`:'');
   if(typeof renderClaim==='function') renderClaim();
   showToast(`実績を取込みました（${matched}件）✓`);
