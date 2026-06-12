@@ -3029,6 +3029,7 @@ function genJissekiForm(claimArg){
   const wd=['日','月','火','水','木','金','土'];
   const fmt=s=>{ s=(s||'').replace(':',''); return s.length===4?s.slice(0,2)+':'+s.slice(2):''; };
   const nm=u=>esc(u.c&&u.c.name?u.c.name:u.kana||'');
+  const ymd=s=> s?String(s).replace(/[-/]/g,'').slice(0,8):'';
   const jdate=s=>{ const d=ymd(s); return d.length>=8?`${+d.slice(0,4)}年${+d.slice(4,6)}月${+d.slice(6,8)}日`:''; };
   const EMPTY8='<td></td>'.repeat(8); // 訪問〜施設外支援の8列
   const pages = agg.users.map(u=>{
