@@ -3041,7 +3041,7 @@ function genJissekiForm(claimArg){
         `<td class="c">${x.t1?'1':''}</td><td class="c">${x.t2?'1':''}</td>`+
         `${EMPTY8}<td></td><td></td></tr>`;
     }).join('');
-    let blanks=''; const need=Math.max(0, 26-u.daily.length);
+    let blanks=''; const need=Math.max(0, 31-u.daily.length);
     for(let i=0;i<need;i++) blanks+=`<tr class="bl"><td class="c">　</td>${'<td></td>'.repeat(16)}</tr>`;
     const startJ=jdate(u.c.startDate), day30=jdate(u.mgmtEnd);
     return `<div class="doc">
@@ -3075,7 +3075,7 @@ function genJissekiForm(claimArg){
   .gr th,.gr td{border:1px solid #000;font-size:8px;padding:1px;text-align:center;line-height:1.2}
   .gr th{background:#f5f5f5;font-weight:600}
   .gr td.c{text-align:center}.gr td.st{font-size:8px}
-  .gr tbody tr{height:15px}.gr tr.bl{height:15px}
+  .gr tbody tr{height:24px}.gr tr.bl{height:24px}
   .gr tfoot td{font-weight:600;background:#fafafa}
   .fn th,.fn td{border:1px solid #000;padding:3px 6px;font-size:9px;text-align:center}.fn th{background:#f0f0f0}
   @media print{body{background:#fff}.doc{margin:0;box-shadow:none}}</style></head>
