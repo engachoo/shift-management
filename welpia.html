@@ -2652,12 +2652,15 @@ function _toHalfKana(s){
 }
 
 // Shift-JIS バイト列（ASCII + 半角カナのみ）
+// 施設外就労（実施報告書等添付）に含まれる漢字のShift-JISバイト
+const _SJIS_KANJI={26045:[142,123],35373:[144,221],22806:[138,79],23601:[143,65],21172:[152,74],65288:[129,105],23455:[142,192],22577:[149,241],21578:[141,144],26360:[143,145],31561:[147,153],28155:[147,89],20184:[149,116],65289:[129,106]};
 function _sjisBytes(str){
   const out=[];
   for(const ch of str){
     const c=ch.charCodeAt(0);
     if(c<=0x7F) out.push(c);
     else if(c>=0xFF61&&c<=0xFF9F) out.push(c-0xFF61+0xA1);
+    else if(_SJIS_KANJI[c]) out.push(_SJIS_KANJI[c][0],_SJIS_KANJI[c][1]);
     else out.push(0x3F);
   }
   return new Uint8Array(out);
@@ -2700,7 +2703,7 @@ function _kokuhoAggregate(year,month){
         transCnt+=tr;
       }
       if(isAbsBillable) absence++;
-      daily.push({day:d, att:isAtt, start:isAtt?(r.start||'').replace(':',''):'', end:isAtt?(r.end||'').replace(':',''):'', t1:tr>=1?1:0, t2:tr>=2?1:0, abs:isAbsBillable});
+      daily.push({day:d, att:isAtt, start:isAtt?(r.start||'').replace(':',''):'', end:isAtt?(r.end||'').replace(':',''):'', t1:tr>=1?1:0, t2:tr>=2?1:0, abs:isAbsBillable, sgw:(st==='施設外就労')});
     }
     if(!daily.length) return; // 当月実績なしは除外
     // 初期加算：利用開始日から30日以内の通所日数（利用開始が直近の人だけ該当）
@@ -2779,6 +2782,7 @@ function _genKokuhoJisseki(agg){
       r2[10]=String(d.day);
       if(d.att){ r2[15]=d.start;r2[16]=d.end; }
       r2[22]=String(d.t1);r2[23]=String(d.t2);r2[33]='0';
+      if(d.sgw) r2[36]='施設外就労（実施報告書等添付）';
       if(d.abs) r2[37]='8';
       lines.push(r2);
     });
@@ -2967,11 +2971,12 @@ function execJissekiImport(){
       const t1=parseInt(r[22]||0)||0, t2=parseInt(r[23]||0)||0;
       const transport=(t1&&t2)?'往復':(t1||t2)?'片道':'';
       const inT=fmt(r[15]), outT=fmt(r[16]);
+      const isShigai = !isAbs && (r[36]||'').trim()!==''; // 列36に施設外就労の記載あり
       if(!recByMonth[svcYM]) recByMonth[svcYM]={};
       if(!recByMonth[svcYM][c.id]) recByMonth[svcYM][c.id]={};
       recByMonth[svcYM][c.id][day] = isAbs
         ? {status:'欠席時対応'}
-        : {status:'通所', start:inT, end:outT, transport};
+        : {status:(isShigai?'施設外就労':'通所'), start:inT, end:outT, transport};
       // タイムカードにも反映（通所日の出退勤）
       if(!isAbs && (inT||outT)){
         if(!tcByMonth[svcYM]) tcByMonth[svcYM]={};
