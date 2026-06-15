@@ -801,19 +801,27 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
             <b style="color:#c2410c">⚠ 初回は必ず以前のソフトの出力と1ヶ月分を見比べ、金額・件数が一致することを確認してから本番送信してください。</b>
           </div>
           <div class="claim-dl-row">
-            <button class="btn-claim-dl" style="background:var(--navy);border-color:var(--navy);color:#fff" onclick="dlKokuhoSeikyu()">⬇ 請求明細書（J11）</button>
             <button class="btn-claim-dl" style="background:var(--navy);border-color:var(--navy);color:#fff" onclick="dlKokuhoJisseki()">⬇ サービス提供実績記録票（J61）</button>
+            <button class="btn-claim-dl" style="background:var(--navy);border-color:var(--navy);color:#fff" onclick="dlKokuhoSeikyu()">⬇ 請求書・明細書（J11）</button>
           </div>
         </div>
 
-        <!-- ② 印刷・保管用の書類（PDF） -->
+        <!-- ② 規定フォーマットの印刷（国保連様式） -->
         <div class="claim-panel">
-          <div class="claim-panel-ttl">② 印刷・保管用の書類（PDF）</div>
-          <div style="font-size:12px;color:#5a6b50;margin:0 0 10px;line-height:1.6">選択中の請求月の書類を発行します。開いた画面で「印刷 → PDFに保存」できます。</div>
+          <div class="claim-panel-ttl">② 規定フォーマットの印刷（国保連様式・PDF）</div>
+          <div style="font-size:12px;color:#5a6b50;margin:0 0 10px;line-height:1.6">国保連の様式で印刷します。確認・保管用にご利用ください（印刷 → PDFに保存）。</div>
           <div class="claim-dl-row">
+            <button class="btn-claim-dl btn-claim-prt" onclick="genJissekiForm()">🖨 サービス提供実績記録票</button>
             <button class="btn-claim-dl btn-claim-prt" onclick="genSeikyuForm()">🖨 請求書・明細書</button>
-            <button class="btn-claim-dl btn-claim-prt" onclick="genJissekiForm()">🖨 実績記録票（様式）</button>
-            <button class="btn-claim-dl btn-claim-prt" onclick="genWelbeDocs('invoice')">🖨 請求書（利用者用）</button>
+          </div>
+        </div>
+
+        <!-- ③ 利用者向け書類（PDF） -->
+        <div class="claim-panel">
+          <div class="claim-panel-ttl">③ 利用者向け書類（PDF）</div>
+          <div style="font-size:12px;color:#5a6b50;margin:0 0 10px;line-height:1.6">利用者ごとに1枚ずつ発行します（印刷 → PDFに保存）。</div>
+          <div class="claim-dl-row">
+            <button class="btn-claim-dl btn-claim-prt" onclick="genWelbeDocs('invoice')">🖨 請求書</button>
             <button class="btn-claim-dl btn-claim-prt" onclick="genWelbeDocs('receipt')">🖨 領収書</button>
             <button class="btn-claim-dl btn-claim-prt" onclick="genWelbeDocs('proxy')">🖨 代理受領書</button>
           </div>
