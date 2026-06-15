@@ -2400,6 +2400,7 @@ function renderTcMonth(){
 // 請求
 // =========================================================
 function _seedClaimsIfEmpty(){
+  return; // プレースホルダ月の自動生成は廃止（取り込んだ月だけ表示）
   const fid=_curFacId;
   if(!fid) return;
   const existing=load('claims',[]).filter(c=>c.facilityId===fid);
@@ -2460,46 +2461,39 @@ function onClaimMonthChange(){ _updateClaimUserCount(); }
 function renderClaimHistory(fid, claims){
   const tbody=document.getElementById('claimHistoryBody');
   const hist=load('claim_history',[]).filter(h=>h.facilityId===fid);
-  // submitted/paid の月 ＋ 履歴にある月を表示
-  const monthSet=new Set();
-  claims.filter(c=>c.status==='submitted'||c.status==='paid').forEach(c=>monthSet.add(c.id));
-  hist.forEach(h=>monthSet.add(h.claimId));
-  if(!monthSet.size){
-    tbody.innerHTML='<tr><td colspan="4" style="text-align:center;color:#a0b8a0;padding:20px">履歴がありません</td></tr>';
+  // 実績データ(rec_)を取り込んだ月だけ表示（プレースホルダは出さない）
+  const months=claims.filter(c=>Object.keys(load(getRecKey(fid,c.year,c.month),{})).length>0)
+    .sort((a,b)=>(b.year*100+b.month)-(a.year*100+a.month));
+  if(!months.length){
+    tbody.innerHTML='<tr><td colspan="4" style="text-align:center;color:#a0b8a0;padding:20px">取り込んだ月がありません。J61を取り込むと、その月がここに追加されます。</td></tr>';
     return;
   }
-  const sorted=[...monthSet].sort((a,b)=>b.localeCompare(a));
   let html='';
-  for(const cid of sorted){
-    const claim=claims.find(c=>c.id===cid);
-    // claimId フォーマット: {facId}_{yyyyMM}
-    const ymPart=cid.slice(cid.lastIndexOf('_')+1);
-    const yr=+ymPart.slice(0,4), mo=+ymPart.slice(4);
-    const label=`${yr}年${mo}月分`;
+  for(const c of months){
+    const cid=c.id, label=`${c.year}年${c.month}月分`;
     const jH=hist.find(h=>h.claimId===cid&&h.fileType==='jisseki');
     const sH=hist.find(h=>h.claimId===cid&&h.fileType==='seikyu');
-    // 行1: サービス提供実績記録票（様式印刷ボタン付き）
+    const dl=(jH&&jH.dlAt)||(sH&&sH.dlAt)||'—';
+    // 行1: 事業者用（国保連提出・控え）
     html+=`<tr>
       <td style="font-weight:600;color:var(--navy)">${label}</td>
-      <td><span class="ftype-badge ftype-jisseki">サービス提供実績記録票</span></td>
-      <td style="color:var(--text-lt);font-size:12px">${jH?jH.dlAt:'—'}</td>
+      <td><span class="ftype-badge ftype-jisseki">事業者用（国保連提出・控え）</span></td>
+      <td style="color:var(--text-lt);font-size:12px">${dl}</td>
       <td><div class="claim-doc-btns">
-        <button class="btn-doc btn-doc-inv" onclick="printDoc('${cid}','jissekiform')">実績記録票</button>
+        <button class="btn-doc btn-doc-inv" onclick="printDoc('${cid}','jissekiform')">サービス提供実績記録票</button>
+        <button class="btn-doc btn-doc-inv" onclick="printDoc('${cid}','seikyuform')">請求書・明細書</button>
       </div></td>
     </tr>`;
-    // 行2: 請求書・明細書（帳票印刷ボタン付き）
+    // 行2: 利用者用
     html+=`<tr>
       <td style="font-weight:600;color:var(--navy)">${label}</td>
-      <td><span class="ftype-badge ftype-seikyu">請求書・明細書</span></td>
-      <td style="color:var(--text-lt);font-size:12px">${sH?sH.dlAt:'—'}</td>
-      <td>
-        <div class="claim-doc-btns">
-          <button class="btn-doc btn-doc-inv" onclick="printDoc('${cid}','seikyuform')">請求書・明細書</button>
-          <button class="btn-doc btn-doc-inv" onclick="printDoc('${cid}','invoice')">請求書</button>
-          <button class="btn-doc btn-doc-rec" onclick="printDoc('${cid}','receipt')">領収書</button>
-          <button class="btn-doc btn-doc-prx" onclick="printDoc('${cid}','proxy')">代理受領書</button>
-        </div>
-      </td>
+      <td><span class="ftype-badge ftype-seikyu">利用者用</span></td>
+      <td style="color:var(--text-lt);font-size:12px">—</td>
+      <td><div class="claim-doc-btns">
+        <button class="btn-doc btn-doc-inv" onclick="printDoc('${cid}','invoice')">請求書</button>
+        <button class="btn-doc btn-doc-rec" onclick="printDoc('${cid}','receipt')">領収書</button>
+        <button class="btn-doc btn-doc-prx" onclick="printDoc('${cid}','proxy')">代理受領書</button>
+      </div></td>
     </tr>`;
   }
   tbody.innerHTML=html;
