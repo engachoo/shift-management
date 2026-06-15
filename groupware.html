@@ -3748,6 +3748,8 @@ function tkHistory(formId){
 // 📄 請求書発行フォーム（大日産業テンプレート準拠）
 // =========================================================
 let _invView='list', _invEditId=null, _invFilter='all', _invVendorCallback=null;
+let _invShowArchived=false; // 発送済（アーカイブ）を一覧に展開表示するか
+function invToggleArchived(){ _invShowArchived=!_invShowArchived; renderInvList(); }
 let _invVendorSearch=''; // 業者名簿 社名検索
 let _invVendorDeptFilter=''; // 業者名簿 部門フィルター
 function invVendorSearch(){ _invVendorSearch=document.getElementById('invVSearch')?.value||''; renderInvVendors(); }
@@ -3863,6 +3865,9 @@ function renderInvList(){
 
   // ステータス絞り込み → プルダウン絞り込み
   let filtered=(_invFilter==='all'?invs:invs.filter(i=>i.status===_invFilter)).slice();
+  // 「全て」表示かつアーカイブ未展開のときは発送済を隠す
+  const _sentCount=invs.filter(i=>i.status==='sent').length;
+  if(_invFilter==='all' && !_invShowArchived) filtered=filtered.filter(i=>i.status!=='sent');
   if(_invFDept)    filtered=filtered.filter(i=>i.deptId===_invFDept);
   if(_invFVendor)  filtered=filtered.filter(i=>i.vendorId===_invFVendor);
   if(_invFClosing) filtered=filtered.filter(i=>i.closingDate===_invFClosing);
@@ -3969,8 +3974,11 @@ function renderInvList(){
         </select>
       </div>
     </div>
-    <div style="display:flex;align-items:center;justify-content:space-between">
-      <div style="font-size:12px;color:#64748b">${filtered.length} 件</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <div style="font-size:12px;color:#64748b">${filtered.length} 件</div>
+        ${_invFilter==='all'&&_sentCount>0?`<button onclick="invToggleArchived()" style="background:${_invShowArchived?'#ede9fe':'#f1f5f9'};border:1px solid ${_invShowArchived?'#c4b5fd':'#cbd5e1'};color:#6d28d9;border-radius:6px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer">📦 発送済アーカイブ（${_sentCount}件）${_invShowArchived?' ▲ 閉じる':' ▼ 展開'}</button>`:''}
+      </div>
       ${hasFilter ? '<button onclick="invClearFilter()" style="background:#fee2e2;border:1px solid #fca5a5;color:#dc2626;border-radius:6px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer">✕ 絞り込み解除</button>' : ''}
     </div>
   </div>
