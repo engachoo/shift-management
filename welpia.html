@@ -3201,13 +3201,19 @@ function genWelbeDocs(type, claimArg){
     if(type==='invoice'){
       docCount++;
       const rows=u.det.map(d=>`<tr><td>${esc(d.name)}</td><td class="r">${d.unit.toLocaleString()}</td><td class="r">${d.cnt}</td><td class="r">${(d.unit*d.cnt).toLocaleString()}</td></tr>`).join('');
+      const genmen = (fac.serviceType==='A') ? `<div class="sumrow"><span>A型減免・事業者減免額</span><b>-${yen(0)}</b></div>` : '';
       return `<div class="doc">${head(u)}<h1>請求書</h1><div class="h1rule"></div>
         <div class="addressee">${nm(u)}<span class="sama">様</span></div>
+        <div class="claimtop">以下のとおりご請求申し上げます。
+          <div class="claimsum"><span>請求合計金額</span><span class="amt">${yen(u.copay)}</span></div></div>
         <div class="meta"><b>${svcLabel}</b>　利用期間：${period}</div>
         <table class="detail"><thead><tr><th>サービス内容</th><th class="r">単位数</th><th class="r">利用回数</th><th class="r">ｻｰﾋﾞｽ単位数</th></tr></thead><tbody>${rows}</tbody></table>
-        <div class="sumbox"><div class="sumrow"><span>サービス費用算定合計</span><b>${yen(u.yen)}</b></div>
+        <div class="sumbox"><div class="sumrow"><span>単位小計</span><b>${(u.totalUnits||0).toLocaleString()}</b></div>
+        <div class="sumrow"><span>サービス費用算定合計金額</span><b>${yen(u.yen)}</b></div>
         <div class="sumrow"><span>給付費</span><b>-${yen(u.kyufu)}</b></div>
-        <div class="sumrow total"><span>請求合計金額（利用者負担）</span><span>${yen(u.copay)}</span></div></div>
+        <div class="sumrow"><span>自治体助成金額</span><b>-${yen(0)}</b></div>
+        ${genmen}
+        <div class="sumrow total"><span>利用者負担合計金額</span><span>${yen(u.copay)}</span></div></div>
         ${issuer}<div class="note">※ 単位単価 10円／単位（1円未満切り捨て）</div></div>`;
     }
     if(type==='receipt'){
@@ -3250,6 +3256,9 @@ function genWelbeDocs(type, claimArg){
   .detail th{background:#004063;color:#fff;padding:9px 11px;font-weight:600;text-align:left}
   .detail td{border-bottom:1px solid #e2e8f0;padding:8px 11px}.detail td.r,.detail th.r{text-align:right}
   .detail tr:nth-child(even) td{background:#f8fafc}
+  .claimtop{font-size:13px;color:#374151;margin:2px 0 14px}
+  .claimsum{display:flex;justify-content:space-between;align-items:center;border-top:2px solid #004063;border-bottom:2px solid #004063;padding:9px 6px;margin-top:8px}
+  .claimsum .amt{font-size:23px;font-weight:800;color:#004063}
   .sumbox{margin-left:auto;width:60%;border-top:2px solid #004063;padding-top:10px;font-size:13.5px;line-height:2.1}
   .sumrow{display:flex;justify-content:space-between}
   .sumrow.total{font-size:18px;font-weight:800;color:#004063;border-top:1px dashed #94a3b8;margin-top:6px;padding-top:7px}
