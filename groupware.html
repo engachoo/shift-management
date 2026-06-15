@@ -3127,7 +3127,7 @@ function renderTopWeek(s){
     const isSun=d.getDay()===0;
     const offEv=events.find(e=>e.memberIds&&e.memberIds.includes(uid)&&e.date===ds&&e.memo==='off');
     let bg=isToday?'#fffef0':holi||isSun?'#fff8f8':'';
-    html+=`<td style="vertical-align:top;padding:5px 6px;border:1px solid #dde3ec;min-height:80px;background:${bg};overflow:hidden;word-break:break-all">`;
+    html+=`<td ondragover="dragOverCell(event)" ondragleave="dragLeaveCell(event)" ondrop="dropEv('${ds}',event)" style="vertical-align:top;padding:5px 6px;border:1px solid #dde3ec;min-height:80px;background:${bg};overflow:hidden;word-break:break-all">`;
     if(offEv){
       html+='<span style="font-size:11px;background:#e5e7eb;border-radius:3px;padding:1px 6px;color:#6b7280">休み</span>';
     } else {
@@ -3137,7 +3137,7 @@ function renderTopWeek(s){
         const et=EV_TYPES[ev.type]||EV_TYPES.task;
         const ts=ev.startTime?(ev.startTime+(ev.endTime?'-'+ev.endTime:''))+' ':'';
         const recIcon=ev._recurring?'🔁':'';
-        html+=`<div onclick="openEvDetail('${ev.id}','${ev.date}')" title="${esc(ev.title)}" style="cursor:pointer;margin-bottom:3px">
+        html+=`<div onclick="openEvDetail('${ev.id}','${ev.date}')" title="${esc(ev.title)}"${ev._recurring?'':` draggable="true" ondragstart="dragEvStart('${ev.id}','${ev.date}',event)" ondragend="dragEndEv()"`} style="cursor:${ev._recurring?'pointer':'grab'};margin-bottom:3px">
           <span class="ev ${et.cls}" style="display:block;white-space:normal;word-break:break-all;overflow:hidden;font-size:11px;line-height:1.4">
             ${ts?`<span class="ev-time">${esc(ts)}</span>`:''}${recIcon}<span class="ev-badge" style="background:${et.color}">${et.short||et.label}</span>${esc(ev.title)}
           </span>
@@ -6163,7 +6163,7 @@ function dropEv(dropDate, e){
   }
   save('events',events);
   _dragEvId=null; _dragDate=null;
-  renderSchedule();
+  if(curMod==='top') renderTop(); else renderSchedule();
 }
 
 // ===== 予定種別カスタムドロップダウン =====
