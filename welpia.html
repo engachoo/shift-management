@@ -845,7 +845,6 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
           <div class="claim-panel-ttl" style="justify-content:space-between">
             <span>📋 請求書類CSVファイルのダウンロード履歴</span>
             <span style="display:flex;gap:8px">
-              <button class="btn-add" style="padding:6px 13px;font-size:12px;margin:0;background:#fff;border:1px solid #dc2626;color:#dc2626" onclick="clearClaimHistory()">🗑 履歴を全削除</button>
               <button class="btn-add" style="padding:6px 13px;font-size:12px;margin:0;background:var(--navy);border-color:var(--navy)" onclick="openClaimHistImport()">📥 knowbeからインポート</button>
             </span>
           </div>
@@ -2479,12 +2478,14 @@ function renderClaimHistory(fid, claims){
     const label=`${yr}年${mo}月分`;
     const jH=hist.find(h=>h.claimId===cid&&h.fileType==='jisseki');
     const sH=hist.find(h=>h.claimId===cid&&h.fileType==='seikyu');
-    // 行1: サービス提供実績記録票
+    // 行1: サービス提供実績記録票（様式印刷ボタン付き）
     html+=`<tr>
       <td style="font-weight:600;color:var(--navy)">${label}</td>
       <td><span class="ftype-badge ftype-jisseki">サービス提供実績記録票</span></td>
       <td style="color:var(--text-lt);font-size:12px">${jH?jH.dlAt:'—'}</td>
-      <td style="color:#ccc;font-size:12px">—</td>
+      <td><div class="claim-doc-btns">
+        <button class="btn-doc btn-doc-inv" onclick="printDoc('${cid}','jissekiform')">実績記録票</button>
+      </div></td>
     </tr>`;
     // 行2: 請求書・明細書（帳票印刷ボタン付き）
     html+=`<tr>
@@ -2493,6 +2494,7 @@ function renderClaimHistory(fid, claims){
       <td style="color:var(--text-lt);font-size:12px">${sH?sH.dlAt:'—'}</td>
       <td>
         <div class="claim-doc-btns">
+          <button class="btn-doc btn-doc-inv" onclick="printDoc('${cid}','seikyuform')">請求書・明細書</button>
           <button class="btn-doc btn-doc-inv" onclick="printDoc('${cid}','invoice')">請求書</button>
           <button class="btn-doc btn-doc-rec" onclick="printDoc('${cid}','receipt')">領収書</button>
           <button class="btn-doc btn-doc-prx" onclick="printDoc('${cid}','proxy')">代理受領書</button>
@@ -3315,6 +3317,8 @@ function printClaimFile(type){
 function printDoc(claimId,docType){
   const claim=load('claims',[]).find(c=>c.id===claimId);
   if(!claim){ showToast('請求月が見つかりません'); return; }
+  if(docType==='seikyuform'){ genSeikyuForm(claim); return; }
+  if(docType==='jissekiform'){ genJissekiForm(claim); return; }
   genWelbeDocs(docType, claim);
 }
 
