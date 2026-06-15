@@ -5690,13 +5690,24 @@ function fixPunchAlert(clientId,y,m,day){
 }
 
 // バナーHTMLを生成してmainAreaの上部に表示
+// 年度切替（4月）：前年度の取込済みデータがあれば整理を促す
+function getFiscalYearCleanup(){
+  const now=new Date();
+  if(now.getMonth()+1!==4) return 0; // 4月のみ
+  const thisAprilYM=now.getFullYear()*100+4;
+  return load('claims',[]).filter(c=>c.facilityId===_curFacId
+    && (c.year*100+c.month)<thisAprilYM
+    && Object.keys(load(getRecKey(_curFacId,c.year,c.month),{})).length>0).length;
+}
+
 function renderAlertBanner(){
   const wrap=document.getElementById('alertBannerWrap');
   if(!wrap) return;
   const al=getReceiptAlerts();
   const punch=getPunchAlerts();
+  const fy=getFiscalYearCleanup();
   const total=al.expired.length+al.soon30.length+al.soon60.length+punch.length;
-  if(!total){wrap.style.display='none';wrap.innerHTML='';return;}
+  if(!total && !fy){wrap.style.display='none';wrap.innerHTML='';return;}
 
   function makeList(arr){
     return arr.map(a=>{
@@ -5739,6 +5750,17 @@ function renderAlertBanner(){
       <span class="alr-ico">🕐</span>
       <div class="alr-body"><div class="alr-title">退勤の押し忘れがあります（${punch.length}件）</div>
         <ul class="alr-list">${items}</ul></div>
+      <button class="alr-close" onclick="this.closest('.alert-banner').remove()">✕</button>
+    </div>`;
+  }
+  if(fy){
+    html+=`<div class="alert-banner alr-yellow">
+      <span class="alr-ico">🗓</span>
+      <div class="alr-body"><div class="alr-title">新年度になりました（前年度の請求データ ${fy}ヶ月分があります）</div>
+        <div style="font-size:13px;line-height:1.8;margin-top:4px">前年度分を整理しましょう：<br>
+        ① <b>バックアップ</b>（システム設定→🛡️バックアップ→全データをダウンロード）<br>
+        ② 必要なPDFを<b>社内サーバー</b>へ保存<br>
+        ③ 確認後、welbeから整理</div></div>
       <button class="alr-close" onclick="this.closest('.alert-banner').remove()">✕</button>
     </div>`;
   }
