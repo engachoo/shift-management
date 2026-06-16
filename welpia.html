@@ -987,18 +987,20 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
 
         <!-- 施設外支援 累計日数 -->
         <div class="form-section">
-          <h3>施設外支援 累計日数（年度内） <span style="font-size:11px;font-weight:400;color:var(--text-lt)">上限180日</span></h3>
-          <div style="font-size:12px;color:var(--text-lt);margin-bottom:14px">利用者ごとの年度内累計日数を入力してください（前システムからの引継ぎ値）</div>
+          <h3>施設外就労 累計日数（年度内・利用者ごと） <span style="font-size:11px;font-weight:400;color:var(--text-lt)">上限180日／年度（4月リセット）</span></h3>
+          <div style="font-size:12px;color:var(--text-lt);margin-bottom:14px">「引継ぎ値」に前システムからの今年度累計を入力（年度頭からwelbe運用なら0）。welbeで記録した施設外就労は自動加算されます。</div>
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
             <span id="initFacNameLabel" style="font-weight:600;font-size:13px;color:var(--navy)"></span>
-            <button class="btn-save" onclick="saveOutsideDays()">保存する</button>
+            <button class="btn-save" onclick="saveOutsideDays()">引継ぎ値を保存</button>
           </div>
           <table style="width:100%;border-collapse:collapse;font-size:13px">
             <thead>
               <tr style="background:var(--green-lt)">
                 <th style="padding:8px 12px;text-align:left;font-size:12px;color:var(--navy);border-bottom:2px solid var(--border)">氏名</th>
                 <th style="padding:8px 12px;text-align:left;font-size:12px;color:var(--navy);border-bottom:2px solid var(--border)">フリガナ</th>
-                <th style="padding:8px 12px;text-align:center;font-size:12px;color:var(--navy);border-bottom:2px solid var(--border)">施設外支援 累計日数</th>
+                <th style="padding:8px 10px;text-align:center;font-size:12px;color:var(--navy);border-bottom:2px solid var(--border)">引継ぎ値</th>
+                <th style="padding:8px 10px;text-align:center;font-size:12px;color:var(--navy);border-bottom:2px solid var(--border)">welbe記録<br><span style="font-weight:400">(自動)</span></th>
+                <th style="padding:8px 10px;text-align:center;font-size:12px;color:var(--navy);border-bottom:2px solid var(--border)">累計</th>
                 <th style="padding:8px 12px;text-align:center;font-size:12px;color:var(--navy);border-bottom:2px solid var(--border)">残日数</th>
               </tr>
             </thead>
@@ -5043,39 +5045,77 @@ function saveInitConfig(){
 }
 
 // 施設外支援 累計日数テーブル
+// 年度内（4月〜当月）の施設外就労/支援日数を利用者ごとに集計（引継ぎ値は含めない）
+function getOutsideRecordedMap(fid){
+  const now=new Date();
+  const fyY=(now.getMonth()+1>=4)?now.getFullYear():now.getFullYear()-1;
+  const map={};
+  let y=fyY, m=4;
+  while(y*100+m <= now.getFullYear()*100+(now.getMonth()+1)){
+    const rec=load(getRecKey(fid,y,m),{});
+    Object.keys(rec).forEach(cid=>{
+      const days=rec[cid]; let c=0;
+      Object.keys(days).forEach(d=>{ const st=days[d]&&days[d].status; if(st==='施設外就労'||st==='施設外支援') c++; });
+      if(c) map[cid]=(map[cid]||0)+c;
+    });
+    m++; if(m>12){m=1;y++;}
+  }
+  return map;
+}
+// 累計（引継ぎ＋welbe記録）
+function getOutsideTotal(cid, fid){
+  const carry=(load('outside_days',{})[cid])||0;
+  const rec=getOutsideRecordedMap(fid)[cid]||0;
+  return carry+rec;
+}
+// 施設外就労 残日数アラート（残30日以下・利用者ごと）
+function getOutsideAlerts(){
+  const fid=_curFacId; if(!fid) return [];
+  const limit=loadCfg().outsideMax||180;
+  const carry=load('outside_days',{}); const recMap=getOutsideRecordedMap(fid);
+  const out=[];
+  load('clients',[]).filter(c=>c.active!==false&&c.facilityId===fid).forEach(c=>{
+    const used=(carry[c.id]||0)+(recMap[c.id]||0);
+    const remain=limit-used;
+    if(remain<=30) out.push({name:c.name, used, remain, limit, clientId:c.id});
+  });
+  return out.sort((a,b)=>a.remain-b.remain);
+}
+
 function renderOutsideDays(){
-  // 施設外支援は現在選択中の事業所の利用者のみ表示
   const facId=_curFacId;
   const clients=load('clients',[]).filter(c=>c.active!==false&&c.facilityId===facId);
   const outsideDays=load('outside_days',{});
+  const recMap=getOutsideRecordedMap(facId);
   const tbody=document.getElementById('outsideDaysTbody');
   if(!tbody) return;
   if(!clients.length){
-    tbody.innerHTML='<tr><td colspan="4" style="padding:16px;text-align:center;color:var(--text-lt)">利用者が登録されていません</td></tr>';
+    tbody.innerHTML='<tr><td colspan="6" style="padding:16px;text-align:center;color:var(--text-lt)">利用者が登録されていません</td></tr>';
     return;
   }
   const limit=loadCfg().outsideMax||180;
   tbody.innerHTML=clients.map(c=>{
-    const used=outsideDays[c.id]||0;
+    const carry=outsideDays[c.id]||0;
+    const rec=recMap[c.id]||0;
+    const used=carry+rec;
     const remain=Math.max(0,limit-used);
     const pct=Math.min(100,Math.round(used/limit*100));
     const barColor=pct>=90?'#e53e3e':pct>=70?'#ed8936':'var(--green)';
     return `<tr style="border-bottom:1px solid #eef3ec">
       <td style="padding:8px 12px;font-weight:600">${esc(c.name)}</td>
       <td style="padding:8px 12px;color:var(--text-lt);font-size:12px">${esc(c.kana||'')}</td>
-      <td style="padding:8px 12px;text-align:center">
-        <div style="display:flex;align-items:center;gap:8px;justify-content:center">
-          <input type="number" min="0" max="${limit}" value="${used}"
-            data-client="${c.id}"
-            style="width:70px;border:1.5px solid var(--border);border-radius:5px;padding:4px 8px;font-size:13px;text-align:center"
-            oninput="previewRemain('${c.id}',this.value,${limit})">
-          <span style="font-size:12px;color:var(--text-lt)">/ ${limit}日</span>
-        </div>
-        <div style="margin-top:4px;height:4px;background:#e2e8f0;border-radius:2px;overflow:hidden;width:100px;margin:4px auto 0">
+      <td style="padding:8px 10px;text-align:center">
+        <input type="number" min="0" max="${limit}" value="${carry}" data-client="${c.id}"
+          style="width:64px;border:1.5px solid var(--border);border-radius:5px;padding:4px 6px;font-size:13px;text-align:center">
+      </td>
+      <td style="padding:8px 10px;text-align:center;color:var(--text-lt)">${rec}日</td>
+      <td style="padding:8px 10px;text-align:center">
+        <div style="font-weight:700;color:${barColor}">${used}<span style="font-size:11px;font-weight:400;color:var(--text-lt)">/${limit}</span></div>
+        <div style="margin:4px auto 0;height:4px;background:#e2e8f0;border-radius:2px;overflow:hidden;width:90px">
           <div style="height:100%;width:${pct}%;background:${barColor};border-radius:2px"></div>
         </div>
       </td>
-      <td style="padding:8px 12px;text-align:center;font-size:13px" id="remain-${c.id}">
+      <td style="padding:8px 12px;text-align:center;font-size:13px">
         <span style="color:${remain<=30?'#e53e3e':remain<=60?'#ed8936':'var(--green-dk)'};font-weight:600">${remain}日</span>
       </td>
     </tr>`;
@@ -5707,7 +5747,8 @@ function renderAlertBanner(){
   const al=getReceiptAlerts();
   const punch=getPunchAlerts();
   const fy=getFiscalYearCleanup();
-  const total=al.expired.length+al.soon30.length+al.soon60.length+punch.length;
+  const outside=getOutsideAlerts();
+  const total=al.expired.length+al.soon30.length+al.soon60.length+punch.length+outside.length;
   if(!total && !fy){wrap.style.display='none';wrap.innerHTML='';return;}
 
   function makeList(arr){
@@ -5750,6 +5791,20 @@ function renderAlertBanner(){
     html+=`<div class="alert-banner alr-orange">
       <span class="alr-ico">🕐</span>
       <div class="alr-body"><div class="alr-title">退勤の押し忘れがあります（${punch.length}件）</div>
+        <ul class="alr-list">${items}</ul></div>
+      <button class="alr-close" onclick="this.closest('.alert-banner').remove()">✕</button>
+    </div>`;
+  }
+  if(outside.length){
+    const over=outside.filter(o=>o.remain<=0);
+    const items=outside.map(o=>{
+      const s=o.remain<=0?`<b style="color:#b91c1c">${Math.abs(o.remain)}日 超過</b>`:`残り<b>${o.remain}日</b>`;
+      return `<li><b>${esc(o.name)}</b>　施設外就労 ${o.used}/${o.limit}日（${s}）`
+        +`<button class="alr-upd" onclick="showView('init')" style="color:inherit;border-color:currentColor">確認</button></li>`;
+    }).join('');
+    html+=`<div class="alert-banner ${over.length?'alr-red':'alr-orange'}">
+      <span class="alr-ico">${over.length?'🔴':'🟠'}</span>
+      <div class="alr-body"><div class="alr-title">施設外就労が年間上限（${loadCfg().outsideMax||180}日）に近づいています（${outside.length}名）</div>
         <ul class="alr-list">${items}</ul></div>
       <button class="alr-close" onclick="this.closest('.alert-banner').remove()">✕</button>
     </div>`;
