@@ -951,8 +951,8 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
 
         <!-- 過去3ヶ月の延べ利用者数 -->
         <div class="form-section">
-          <h3>基本報酬計算用データ <span style="font-size:11px;font-weight:400;color:var(--text-lt)">（knowbe 初期設定情報より）</span></h3>
-          <div style="font-size:12px;color:var(--text-lt);margin-bottom:14px">過去3ヶ月の延べ利用者数（通所＋施設外支援の合計人数）</div>
+          <h3>基本報酬計算用データ <span style="font-size:11px;font-weight:400;color:var(--text-lt)">（延べ利用者数）</span></h3>
+          <div style="font-size:12px;color:var(--text-lt);margin-bottom:14px">過去3ヶ月の延べ利用者数（通所＋施設外の合計）。<b>welbeに実績がある月は自動集計</b>（緑背景・編集不可）、無い月のみ手入力（前システムの引継ぎ）。</div>
           <div class="form-row">
             <div class="form-group">
               <label>1ヶ月前 延べ利用者数</label>
@@ -5026,9 +5026,16 @@ function renderInit(){
   document.getElementById('cfg-out').value=cfg.outsideMax??180;
   document.getElementById('cfg-vis').value=cfg.visitMax??2;
   document.getElementById('cfg-wk').value=cfg.weeksPerYear??5;
-  document.getElementById('cfg-u1').value=cfg.users1mo??10;
-  document.getElementById('cfg-u2').value=cfg.users2mo??11;
-  document.getElementById('cfg-u3').value=cfg.users3mo??11;
+  // 延べ利用者数：welbeに実績がある月は自動集計、無い月は保存値（前システムからの引継ぎ）
+  const fid=_curFacId;
+  [['cfg-u1','users1mo',1],['cfg-u2','users2mo',2],['cfg-u3','users3mo',3]].forEach(([id,key,n])=>{
+    const d=new Date(); d.setMonth(d.getMonth()-n);
+    const auto=getMonthlyDeliveries(fid,d.getFullYear(),d.getMonth()+1);
+    const el=document.getElementById(id);
+    el.value = auto>0 ? auto : (cfg[key]??0);
+    el.readOnly = auto>0;  // 自動集計できた月は編集不可（welbeデータ優先）
+    el.style.background = auto>0 ? '#f1f8ee' : '';
+  });
   document.getElementById('cfg-firstMonth').value=cfg.firstMonth??'2019-12';
   _updateAvg();
   // 施設名ラベルを現在の事業所に同期
@@ -5082,6 +5089,12 @@ function getOutsideRecordedMap(fid){
     m++; if(m>12){m=1;y++;}
   }
   return map;
+}
+// 月の延べ利用者数（通所＋施設外の合計＝サービス提供日数の総和）
+function getMonthlyDeliveries(fid,y,m){
+  const rec=load(getRecKey(fid,y,m),{}); let n=0;
+  Object.keys(rec).forEach(cid=>{ const days=rec[cid]||{}; Object.keys(days).forEach(d=>{ const st=days[d]&&days[d].status; if(st==='通所'||st==='施設外就労'||st==='施設外支援') n++; }); });
+  return n;
 }
 // 累計（引継ぎ＋welbe記録）
 function getOutsideTotal(cid, fid){
