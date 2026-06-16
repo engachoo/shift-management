@@ -988,19 +988,16 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
         <!-- 施設外支援 累計日数 -->
         <div class="form-section">
           <h3>施設外就労 累計日数（年度内・利用者ごと） <span style="font-size:11px;font-weight:400;color:var(--text-lt)">上限180日／年度（4月リセット）</span></h3>
-          <div style="font-size:12px;color:var(--text-lt);margin-bottom:14px">「引継ぎ値」に前システムからの今年度累計を入力（年度頭からwelbe運用なら0）。welbeで記録した施設外就労は自動加算されます。</div>
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div style="font-size:12px;color:var(--text-lt);margin-bottom:14px">welbeで記録した施設外就労を利用者ごとに自動集計します（年度＝4月〜翌3月）。残30日以下でアラートします。</div>
+          <div style="margin-bottom:8px">
             <span id="initFacNameLabel" style="font-weight:600;font-size:13px;color:var(--navy)"></span>
-            <button class="btn-save" onclick="saveOutsideDays()">引継ぎ値を保存</button>
           </div>
           <table style="width:100%;border-collapse:collapse;font-size:13px">
             <thead>
               <tr style="background:var(--green-lt)">
                 <th style="padding:8px 12px;text-align:left;font-size:12px;color:var(--navy);border-bottom:2px solid var(--border)">氏名</th>
                 <th style="padding:8px 12px;text-align:left;font-size:12px;color:var(--navy);border-bottom:2px solid var(--border)">フリガナ</th>
-                <th style="padding:8px 10px;text-align:center;font-size:12px;color:var(--navy);border-bottom:2px solid var(--border)">引継ぎ値</th>
-                <th style="padding:8px 10px;text-align:center;font-size:12px;color:var(--navy);border-bottom:2px solid var(--border)">welbe記録<br><span style="font-weight:400">(自動)</span></th>
-                <th style="padding:8px 10px;text-align:center;font-size:12px;color:var(--navy);border-bottom:2px solid var(--border)">累計</th>
+                <th style="padding:8px 10px;text-align:center;font-size:12px;color:var(--navy);border-bottom:2px solid var(--border)">施設外就労 累計</th>
                 <th style="padding:8px 12px;text-align:center;font-size:12px;color:var(--navy);border-bottom:2px solid var(--border)">残日数</th>
               </tr>
             </thead>
@@ -5090,14 +5087,12 @@ function renderOutsideDays(){
   const tbody=document.getElementById('outsideDaysTbody');
   if(!tbody) return;
   if(!clients.length){
-    tbody.innerHTML='<tr><td colspan="6" style="padding:16px;text-align:center;color:var(--text-lt)">利用者が登録されていません</td></tr>';
+    tbody.innerHTML='<tr><td colspan="4" style="padding:16px;text-align:center;color:var(--text-lt)">利用者が登録されていません</td></tr>';
     return;
   }
   const limit=loadCfg().outsideMax||180;
   tbody.innerHTML=clients.map(c=>{
-    const carry=outsideDays[c.id]||0;
-    const rec=recMap[c.id]||0;
-    const used=carry+rec;
+    const used=(outsideDays[c.id]||0)+(recMap[c.id]||0);
     const remain=Math.max(0,limit-used);
     const pct=Math.min(100,Math.round(used/limit*100));
     const barColor=pct>=90?'#e53e3e':pct>=70?'#ed8936':'var(--green)';
@@ -5105,13 +5100,8 @@ function renderOutsideDays(){
       <td style="padding:8px 12px;font-weight:600">${esc(c.name)}</td>
       <td style="padding:8px 12px;color:var(--text-lt);font-size:12px">${esc(c.kana||'')}</td>
       <td style="padding:8px 10px;text-align:center">
-        <input type="number" min="0" max="${limit}" value="${carry}" data-client="${c.id}"
-          style="width:64px;border:1.5px solid var(--border);border-radius:5px;padding:4px 6px;font-size:13px;text-align:center">
-      </td>
-      <td style="padding:8px 10px;text-align:center;color:var(--text-lt)">${rec}日</td>
-      <td style="padding:8px 10px;text-align:center">
-        <div style="font-weight:700;color:${barColor}">${used}<span style="font-size:11px;font-weight:400;color:var(--text-lt)">/${limit}</span></div>
-        <div style="margin:4px auto 0;height:4px;background:#e2e8f0;border-radius:2px;overflow:hidden;width:90px">
+        <div style="font-weight:700;color:${barColor}">${used}<span style="font-size:11px;font-weight:400;color:var(--text-lt)">/${limit}日</span></div>
+        <div style="margin:4px auto 0;height:4px;background:#e2e8f0;border-radius:2px;overflow:hidden;width:100px">
           <div style="height:100%;width:${pct}%;background:${barColor};border-radius:2px"></div>
         </div>
       </td>
