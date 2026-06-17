@@ -6,6 +6,20 @@
 
 ---
 
+## ★ 事前調査の結果（2026-06-11 実施・実行前に必読）
+
+- **本番ロールバック点**：groupware.html は commit `01d0181`（ローカル＝リモート同期済み）
+- **本番Authドメイン**：`gw.dainichi.local` を使う（welpia/国保連は `welbe.dainichi.local` を既に使用中。別アプリ・別ユーザーなので名前空間を分ける）
+- **要事前対応（6文字未満パスワード）**：Firebase Authは6文字以上必須。下記2名は移行前にパスワードを6文字以上へ変更が必要：
+  - narita（現 `BL001`）
+  - nakasima（現 `BL002`）
+- **他アプリへの影響調査結果**：
+  - welpia.html（国保連・`kokuhoren_data`）→ **既にFirebase Authで運用中**（signIn/createUser/onAuthStateChanged実装済み）。よって `kokuhoren_data` を auth必須に締めても安全。
+  - shift_management.html / shift_management_welpia.html → gw2data等を使っておらず**影響なし**。
+  - **gw2data / gw_backups を no-auth で触っているのは groupware.html だけ** → ここを移行すれば本番の穴は塞がる。
+
+---
+
 ## 0. 前提・確認済みのこと
 
 - テスト環境で以下を実証済み：
