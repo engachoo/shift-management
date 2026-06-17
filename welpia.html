@@ -1032,10 +1032,19 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
             <tbody id="sysUserTbody"></tbody>
           </table>
         </div>
+        <!-- 退職者一覧（無効ユーザー・折りたたみ） -->
+        <div id="retiredWrap" style="margin-top:14px;display:none">
+          <button onclick="const b=document.getElementById('retiredBox');b.style.display=b.style.display==='none'?'block':'none';this.querySelector('.rt-arw').textContent=b.style.display==='none'?'▾':'▴'" style="background:#f1f5f9;border:1px solid #cbd5e0;color:#475569;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600">🗂 退職者一覧（無効） <span id="retiredCount"></span> <span class="rt-arw">▾</span></button>
+          <div id="retiredBox" style="display:none;margin-top:10px" class="form-section">
+            <table class="sys-tbl"><thead><tr>
+              <th style="min-width:110px">名前</th><th style="min-width:120px">ログインID</th><th style="min-width:160px">パスワード</th><th style="min-width:100px">権限</th><th style="min-width:80px">状態</th><th style="min-width:80px">操作</th>
+            </tr></thead><tbody id="sysUserTbodyInactive"></tbody></table>
+          </div>
+        </div>
         <div class="sys-warn">
           ⚠️ アカウントの新規作成・削除は
-          <a href="https://console.firebase.google.com/project/dainichi-001/authentication/users" target="_blank" style="color:#1d4ed8;font-weight:600">Firebase Console → Authentication ↗</a>
-          で行ってください。🔑 ボタンでパスワードリセットメールを送信できます。
+          <a href="https://console.firebase.google.com/project/welpia-001/authentication/users" target="_blank" style="color:#1d4ed8;font-weight:600">Firebase Console → Authentication ↗</a>
+          で行ってください。
         </div>
       </div>
     </div>
@@ -5377,7 +5386,9 @@ function renderSysUsers(){
     tbody.innerHTML=`<tr><td colspan="6" style="text-align:center;padding:28px;color:var(--text-lt)">ユーザーが登録されていません。「＋ 新規ユーザー」から追加してください。</td></tr>`;
     return;
   }
-  tbody.innerHTML=users.map(u=>{
+  const active=users.filter(u=>u.active!==false);
+  const inactive=users.filter(u=>u.active===false);
+  const rowHtml=u=>{
     const uid=u.id;
     const roleSel=`<select class="inline-input" id="role-su-${uid}" oninput="markSysUserDirty('${uid}')">
       <option value="admin"   ${u.role==='admin'  ?'selected':''}>管理者</option>
@@ -5407,7 +5418,18 @@ function renderSysUsers(){
         ${!isAdmin?`<button class="btn-danger" onclick="deleteSysUser('${uid}')" style="margin-left:5px">削除</button>`:''}
       </td>
     </tr>`;
-  }).join('');
+  };
+  tbody.innerHTML=active.map(rowHtml).join('') || '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text-lt)">有効なユーザーがいません</td></tr>';
+  // 退職者（無効）一覧
+  const wrap=document.getElementById('retiredWrap');
+  const itb=document.getElementById('sysUserTbodyInactive');
+  if(wrap&&itb){
+    if(inactive.length){
+      wrap.style.display='block';
+      document.getElementById('retiredCount').textContent=`${inactive.length}名`;
+      itb.innerHTML=inactive.map(rowHtml).join('');
+    }else{ wrap.style.display='none'; itb.innerHTML=''; }
+  }
 }
 
 function _readSysUserRow(uid,users){
