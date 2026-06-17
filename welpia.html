@@ -252,7 +252,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
 .ftype-badge{display:inline-block;font-size:11px;padding:3px 9px;border-radius:4px;font-weight:600}
 .ftype-seikyu{background:#dbeafe;color:#1d4ed8}
 .ftype-jisseki{background:#dcfce7;color:#16a34a}
-.claim-doc-btns{display:flex;gap:5px;flex-wrap:wrap}
+.claim-doc-btns{display:flex;gap:6px;flex-wrap:nowrap;justify-content:flex-start;white-space:nowrap}
 .btn-doc{border:1.5px solid;border-radius:5px;padding:5px 11px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s;background:#fff}
 .btn-doc-inv{border-color:var(--navy);color:var(--navy)}
 .btn-doc-inv:hover{background:var(--navy);color:#fff}
@@ -797,23 +797,30 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
         <div class="claim-panel" style="border:2px solid var(--green);background:#f3fbf0">
           <div class="claim-panel-ttl">① 国保連へ送るCSV（電子請求ファイル）</div>
           <div style="font-size:12px;color:#5a6b50;margin:0 0 10px;line-height:1.6">
-            国保中央会の取込ソフトにそのまま読み込める形式で出力します。<br>
-            <b style="color:#c2410c">⚠ 初回は必ず以前のソフトの出力と1ヶ月分を見比べ、金額・件数が一致することを確認してから本番送信してください。</b>
+            国保中央会の取込ソフトにそのまま読み込める形式で出力します。送信前に対象月・件数をご確認ください。
           </div>
           <div class="claim-dl-row">
-            <button class="btn-claim-dl" style="background:var(--navy);border-color:var(--navy);color:#fff" onclick="dlKokuhoSeikyu()">⬇ 請求明細書（J11）</button>
             <button class="btn-claim-dl" style="background:var(--navy);border-color:var(--navy);color:#fff" onclick="dlKokuhoJisseki()">⬇ サービス提供実績記録票（J61）</button>
+            <button class="btn-claim-dl" style="background:var(--navy);border-color:var(--navy);color:#fff" onclick="dlKokuhoSeikyu()">⬇ 請求書・明細書（J11）</button>
           </div>
         </div>
 
-        <!-- ② 印刷・保管用の書類（PDF） -->
+        <!-- ② 規定フォーマットの印刷（国保連様式） -->
         <div class="claim-panel">
-          <div class="claim-panel-ttl">② 印刷・保管用の書類（PDF）</div>
-          <div style="font-size:12px;color:#5a6b50;margin:0 0 10px;line-height:1.6">選択中の請求月の書類を発行します。開いた画面で「印刷 → PDFに保存」できます。</div>
+          <div class="claim-panel-ttl">② 規定フォーマットの印刷（国保連様式・PDF）</div>
+          <div style="font-size:12px;color:#5a6b50;margin:0 0 10px;line-height:1.6">国保連の様式で印刷します。確認・保管用にご利用ください（印刷 → PDFに保存）。</div>
           <div class="claim-dl-row">
+            <button class="btn-claim-dl btn-claim-prt" onclick="genJissekiForm()">🖨 サービス提供実績記録票</button>
             <button class="btn-claim-dl btn-claim-prt" onclick="genSeikyuForm()">🖨 請求書・明細書</button>
-            <button class="btn-claim-dl btn-claim-prt" onclick="genJissekiForm()">🖨 実績記録票（様式）</button>
-            <button class="btn-claim-dl btn-claim-prt" onclick="genWelbeDocs('invoice')">🖨 請求書（利用者用）</button>
+          </div>
+        </div>
+
+        <!-- ③ 利用者向け書類（PDF） -->
+        <div class="claim-panel">
+          <div class="claim-panel-ttl">③ 利用者向け書類（PDF）</div>
+          <div style="font-size:12px;color:#5a6b50;margin:0 0 10px;line-height:1.6">利用者ごとに1枚ずつ発行します（印刷 → PDFに保存）。</div>
+          <div class="claim-dl-row">
+            <button class="btn-claim-dl btn-claim-prt" onclick="genWelbeDocs('invoice')">🖨 請求書</button>
             <button class="btn-claim-dl btn-claim-prt" onclick="genWelbeDocs('receipt')">🖨 領収書</button>
             <button class="btn-claim-dl btn-claim-prt" onclick="genWelbeDocs('proxy')">🖨 代理受領書</button>
           </div>
@@ -837,7 +844,6 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
           <div class="claim-panel-ttl" style="justify-content:space-between">
             <span>📋 請求書類CSVファイルのダウンロード履歴</span>
             <span style="display:flex;gap:8px">
-              <button class="btn-add" style="padding:6px 13px;font-size:12px;margin:0;background:#fff;border:1px solid #dc2626;color:#dc2626" onclick="clearClaimHistory()">🗑 履歴を全削除</button>
               <button class="btn-add" style="padding:6px 13px;font-size:12px;margin:0;background:var(--navy);border-color:var(--navy)" onclick="openClaimHistImport()">📥 knowbeからインポート</button>
             </span>
           </div>
@@ -847,7 +853,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
                 <th style="width:120px">対象月</th>
                 <th>ファイル種別</th>
                 <th style="width:160px">ダウンロード日時</th>
-                <th style="width:240px">利用者帳票印刷</th>
+                <th style="width:400px">帳票印刷</th>
               </tr>
             </thead>
             <tbody id="claimHistoryBody">
@@ -945,8 +951,8 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
 
         <!-- 過去3ヶ月の延べ利用者数 -->
         <div class="form-section">
-          <h3>基本報酬計算用データ <span style="font-size:11px;font-weight:400;color:var(--text-lt)">（knowbe 初期設定情報より）</span></h3>
-          <div style="font-size:12px;color:var(--text-lt);margin-bottom:14px">過去3ヶ月の延べ利用者数（通所＋施設外支援の合計人数）</div>
+          <h3>基本報酬計算用データ <span style="font-size:11px;font-weight:400;color:var(--text-lt)">（延べ利用者数）</span></h3>
+          <div style="font-size:12px;color:var(--text-lt);margin-bottom:14px">過去3ヶ月の延べ利用者数（通所＋施設外の合計）。<b>welbeに実績がある月は自動集計</b>（緑背景・編集不可）、無い月のみ手入力（前システムの引継ぎ）。</div>
           <div class="form-row">
             <div class="form-group">
               <label>1ヶ月前 延べ利用者数</label>
@@ -980,18 +986,17 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
 
         <!-- 施設外支援 累計日数 -->
         <div class="form-section">
-          <h3>施設外支援 累計日数（年度内） <span style="font-size:11px;font-weight:400;color:var(--text-lt)">上限180日</span></h3>
-          <div style="font-size:12px;color:var(--text-lt);margin-bottom:14px">利用者ごとの年度内累計日数を入力してください（前システムからの引継ぎ値）</div>
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <h3>施設外就労 累計日数（年度内・利用者ごと） <span style="font-size:11px;font-weight:400;color:var(--text-lt)">上限180日／年度（4月リセット）</span></h3>
+          <div style="font-size:12px;color:var(--text-lt);margin-bottom:14px">welbeで記録した施設外就労を利用者ごとに自動集計します（年度＝4月〜翌3月）。残30日以下でアラートします。</div>
+          <div style="margin-bottom:8px">
             <span id="initFacNameLabel" style="font-weight:600;font-size:13px;color:var(--navy)"></span>
-            <button class="btn-save" onclick="saveOutsideDays()">保存する</button>
           </div>
           <table style="width:100%;border-collapse:collapse;font-size:13px">
             <thead>
               <tr style="background:var(--green-lt)">
                 <th style="padding:8px 12px;text-align:left;font-size:12px;color:var(--navy);border-bottom:2px solid var(--border)">氏名</th>
                 <th style="padding:8px 12px;text-align:left;font-size:12px;color:var(--navy);border-bottom:2px solid var(--border)">フリガナ</th>
-                <th style="padding:8px 12px;text-align:center;font-size:12px;color:var(--navy);border-bottom:2px solid var(--border)">施設外支援 累計日数</th>
+                <th style="padding:8px 10px;text-align:center;font-size:12px;color:var(--navy);border-bottom:2px solid var(--border)">施設外就労 累計</th>
                 <th style="padding:8px 12px;text-align:center;font-size:12px;color:var(--navy);border-bottom:2px solid var(--border)">残日数</th>
               </tr>
             </thead>
@@ -1771,16 +1776,26 @@ const MANUAL_SECTIONS = [
     <h4>利用状況の詳細</h4>
     <p>「利用状況の詳細」ボタンで、その日の状況をマトリクス表（状況別の人数・✓）で確認できます。</p>
     <div class="man-tip">💡 「欠席時対応」は加算対象、「欠席（加算なし）」は請求対象外として正しく区別されます。</div>` },
-  { ico:'📋', q:'請求（国保連への電子請求）', a:`
-    <p>国保連へ提出する電子請求ファイル（J11・J61）を出力します。<b>主に責任者が行う業務です。</b></p>
-    <h4>出力手順</h4>
+  { ico:'🗓', q:'月次の運用フロー（毎月の流れ）', a:`
+    <p>毎月の請求業務は次の流れです。<b>主に責任者が行います。</b></p>
     <ol>
-      <li>welbe右上で対象の事業所を選ぶ</li>
-      <li>「請求」→「対象請求月」を選択（なければ「＋月を追加」）</li>
-      <li>「<b>国保連 電子請求ファイル</b>」から<br>・請求明細書（J11）<br>・サービス提供実績記録票（J61）<br>をダウンロード</li>
+      <li><b>実績を用意</b>：welbeのタイムカードで打刻する（本番運用）か、ノービーのJ61 CSVを取り込む（移行期）</li>
+      <li><b>送迎・欠席・食事</b>など、打刻で入らない項目を利用実績で補う</li>
+      <li>「請求」で対象月を選び、<b>①国保連CSV</b>（J11/J61）をダウンロードして送信</li>
+      <li>必要に応じて<b>②規定フォーマット印刷</b>（実績記録票・請求書明細書）、<b>③利用者向け書類</b>（請求書・領収書・代理受領書）を発行</li>
     </ol>
-    <div class="man-warn">⚠ 初回は必ず、以前のソフト（ノービー）の出力と1ヶ月分を見比べ、金額・件数が一致することを確認してから本番送信してください。</div>
-    <div class="man-tip">💡 「確認用CSV」は人が読む集計表です。金額チェックに使えます。</div>` },
+    <div class="man-tip">💡 月をまたぐと請求履歴に自動で追加されます。書類はいつでも再発行できるので、PDFを溜め込む必要はありません。</div>` },
+  { ico:'📋', q:'請求（取込・国保連CSV・帳票発行）', a:`
+    <p>請求画面は3つの区分に分かれています。</p>
+    <h4>過去実績の取込（移行期）</h4>
+    <p>ノービーの「サービス提供実績記録票(J61)」CSVを「📥 実績記録票(J61)を取込」に貼り付けると、その月の出勤・欠席・送迎・施設外就労がwelbeに反映されます。</p>
+    <h4>① 国保連へ送るCSV（電子請求）</h4>
+    <p>・サービス提供実績記録票（J61）／・請求書・明細書（J11）。国保中央会の取込ソフトにそのまま読み込めます。送信前に対象月・件数を確認してください。</p>
+    <h4>② 規定フォーマットの印刷（事業者用）</h4>
+    <p>サービス提供実績記録票／請求書・明細書を国保連様式で印刷。確認・保管用。</p>
+    <h4>③ 利用者向け書類</h4>
+    <p>請求書／領収書／代理受領書を利用者ごとに発行（領収書・代理受領書は本人控え＋事業所控えが1枚に）。</p>
+    <div class="man-tip">💡 過去（〜2025年）の控えは大日サーバーの共有「国保連請求控え」→「請求書類ビューア」で閲覧します（請求画面下部に案内あり）。</div>` },
   { ico:'👥', q:'利用者情報（登録・受給者証期限）', a:`
     <p>利用者の受給者証番号・障害支援区分・負担上限・受給者証期限などを管理します。</p>
     <h4>編集</h4>
@@ -1798,14 +1813,29 @@ const MANUAL_SECTIONS = [
       <tr><td>羽島（A型）</td><td>2110400534</td><td>212019</td></tr>
       <tr><td>山県（B型）</td><td>2110800444</td><td>212159</td></tr></table>
     <div class="man-tip">💡 職員配置・処遇改善区分・平均工賃などの加算設定は、welbeの計算ロジックに組み込み済みです。個別入力は不要です。</div>` },
-  { ico:'🔔', q:'アラート（期限・退勤忘れ）', a:`
-    <p>画面上部に注意が必要な項目をバナーで表示します。</p>
+  { ico:'🔔', q:'アラート（期限・退勤忘れ・施設外・年度）', a:`
+    <p>画面上部に注意が必要な項目をバナーで表示します（表示中の事業所ごと）。</p>
     <ul>
       <li>🔴 <b>受給者証期限</b>：支給決定終了日が切れ／30日／60日以内</li>
       <li>🟠 <b>負担上限月額の適用期間</b>：終了が近い／切れ</li>
       <li>🕐 <b>退勤の押し忘れ</b>：出勤済みなのに退勤打刻がない過去日</li>
+      <li>🟠 <b>施設外就労 残日数</b>：年間上限180日まで残り30日以下／超過</li>
+      <li>🗓 <b>年度切替（4月）</b>：前年度データの整理（バックアップ→社内サーバー保存→整理）を案内</li>
     </ul>
-    <p>各アラートの「更新」「退勤を入力」ボタンから、その場で対応できます。</p>` },
+    <p>各アラートのボタンから、その場で対応できます。</p>` },
+  { ico:'🚶', q:'施設外就労の年間180日管理', a:`
+    <p>施設外就労には<b>利用者ごと・年度（4月〜翌3月）で年間180日の上限</b>があります。超過分は請求できず、返戻の原因になります。</p>
+    <h4>確認のしかた</h4>
+    <ol><li>「設定」→「初期設定情報」→「施設外就労 累計日数」</li>
+    <li>welbeで記録した施設外就労が<b>利用者ごとに自動集計</b>されます（手入力不要）</li></ol>
+    <p>残30日以下になるとアラートが出ます。4月になると累計はリセットされます。</p>` },
+  { ico:'🛡️', q:'バックアップ（データの保存）', a:`
+    <p>welbeの全データ（利用者・実績・請求・設定）をファイルに書き出せます。<b>管理者のみ。</b></p>
+    <h4>手順</h4>
+    <ol><li>「システム設定」→「🛡️ バックアップ」</li>
+    <li>「💾 全データをダウンロード」でJSONファイルを保存</li>
+    <li>OneDriveや外付けなど、別の場所にも保管</li></ol>
+    <div class="man-tip">💡 おすすめ：毎月の請求後と、年度末の整理前には必ずバックアップを。これがあればデータを失っても復元でき、全月の書類を再発行できます。</div>` },
   { ico:'🔐', q:'権限（管理者・責任者・スタッフ・端末）', a:`
     <p>役割ごとに使える機能を分けられます。</p>
     <table><tr><th>機能</th><th>管理者</th><th>責任者</th><th>スタッフ</th></tr>
@@ -2393,6 +2423,7 @@ function renderTcMonth(){
 // 請求
 // =========================================================
 function _seedClaimsIfEmpty(){
+  return; // プレースホルダ月の自動生成は廃止（取り込んだ月だけ表示）
   const fid=_curFacId;
   if(!fid) return;
   const existing=load('claims',[]).filter(c=>c.facilityId===fid);
@@ -2453,43 +2484,39 @@ function onClaimMonthChange(){ _updateClaimUserCount(); }
 function renderClaimHistory(fid, claims){
   const tbody=document.getElementById('claimHistoryBody');
   const hist=load('claim_history',[]).filter(h=>h.facilityId===fid);
-  // submitted/paid の月 ＋ 履歴にある月を表示
-  const monthSet=new Set();
-  claims.filter(c=>c.status==='submitted'||c.status==='paid').forEach(c=>monthSet.add(c.id));
-  hist.forEach(h=>monthSet.add(h.claimId));
-  if(!monthSet.size){
-    tbody.innerHTML='<tr><td colspan="4" style="text-align:center;color:#a0b8a0;padding:20px">履歴がありません</td></tr>';
+  // 実績データ(rec_)を取り込んだ月だけ表示（プレースホルダは出さない）
+  const months=claims.filter(c=>Object.keys(load(getRecKey(fid,c.year,c.month),{})).length>0)
+    .sort((a,b)=>(b.year*100+b.month)-(a.year*100+a.month));
+  if(!months.length){
+    tbody.innerHTML='<tr><td colspan="4" style="text-align:center;color:#a0b8a0;padding:20px">取り込んだ月がありません。J61を取り込むと、その月がここに追加されます。</td></tr>';
     return;
   }
-  const sorted=[...monthSet].sort((a,b)=>b.localeCompare(a));
   let html='';
-  for(const cid of sorted){
-    const claim=claims.find(c=>c.id===cid);
-    // claimId フォーマット: {facId}_{yyyyMM}
-    const ymPart=cid.slice(cid.lastIndexOf('_')+1);
-    const yr=+ymPart.slice(0,4), mo=+ymPart.slice(4);
-    const label=`${yr}年${mo}月分`;
+  for(const c of months){
+    const cid=c.id, label=`${c.year}年${c.month}月分`;
     const jH=hist.find(h=>h.claimId===cid&&h.fileType==='jisseki');
     const sH=hist.find(h=>h.claimId===cid&&h.fileType==='seikyu');
-    // 行1: サービス提供実績記録票
+    const dl=(jH&&jH.dlAt)||(sH&&sH.dlAt)||'—';
+    // 行1: 事業者用（国保連提出・控え）
     html+=`<tr>
       <td style="font-weight:600;color:var(--navy)">${label}</td>
-      <td><span class="ftype-badge ftype-jisseki">サービス提供実績記録票</span></td>
-      <td style="color:var(--text-lt);font-size:12px">${jH?jH.dlAt:'—'}</td>
-      <td style="color:#ccc;font-size:12px">—</td>
+      <td><span class="ftype-badge ftype-jisseki">事業者用（国保連提出・控え）</span></td>
+      <td style="color:var(--text-lt);font-size:12px">${dl}</td>
+      <td><div class="claim-doc-btns">
+        <button class="btn-doc btn-doc-inv" onclick="printDoc('${cid}','jissekiform')">サービス提供実績記録票</button>
+        <button class="btn-doc btn-doc-inv" onclick="printDoc('${cid}','seikyuform')">請求書・明細書</button>
+      </div></td>
     </tr>`;
-    // 行2: 請求書・明細書（帳票印刷ボタン付き）
+    // 行2: 利用者用
     html+=`<tr>
       <td style="font-weight:600;color:var(--navy)">${label}</td>
-      <td><span class="ftype-badge ftype-seikyu">請求書・明細書</span></td>
-      <td style="color:var(--text-lt);font-size:12px">${sH?sH.dlAt:'—'}</td>
-      <td>
-        <div class="claim-doc-btns">
-          <button class="btn-doc btn-doc-inv" onclick="printDoc('${cid}','invoice')">請求書</button>
-          <button class="btn-doc btn-doc-rec" onclick="printDoc('${cid}','receipt')">領収書</button>
-          <button class="btn-doc btn-doc-prx" onclick="printDoc('${cid}','proxy')">代理受領書</button>
-        </div>
-      </td>
+      <td><span class="ftype-badge ftype-seikyu">利用者用</span></td>
+      <td style="color:var(--text-lt);font-size:12px">—</td>
+      <td><div class="claim-doc-btns">
+        <button class="btn-doc btn-doc-inv" onclick="printDoc('${cid}','invoice')">請求書</button>
+        <button class="btn-doc btn-doc-rec" onclick="printDoc('${cid}','receipt')">領収書</button>
+        <button class="btn-doc btn-doc-prx" onclick="printDoc('${cid}','proxy')">代理受領書</button>
+      </div></td>
     </tr>`;
   }
   tbody.innerHTML=html;
@@ -2610,6 +2637,7 @@ const KOKUHO_MASTER = {
     j121_kubun:'2', copayDetail:true,
     components:[
       { code:'452013', unit:733, per:'attended', name:'就継ＡⅠ１２' },
+      { code:'455050', unit:30,  per:'initial', name:'初期加算' },
       { code:'456040', unit:94,  per:'absence', cap:4, name:'欠席時対応加算' },
       { code:'455290', unit:70,  per:'attended', name:'就継Ａ賃金向上達成指導員配置加算１' },
       { code:'456594', unit:174, per:'attended', name:'就継Ａ就労移行支援体制加算Ⅰ１２' }
@@ -3201,13 +3229,19 @@ function genWelbeDocs(type, claimArg){
     if(type==='invoice'){
       docCount++;
       const rows=u.det.map(d=>`<tr><td>${esc(d.name)}</td><td class="r">${d.unit.toLocaleString()}</td><td class="r">${d.cnt}</td><td class="r">${(d.unit*d.cnt).toLocaleString()}</td></tr>`).join('');
+      const genmen = (fac.serviceType==='A') ? `<div class="sumrow"><span>A型減免・事業者減免額</span><b>-${yen(0)}</b></div>` : '';
       return `<div class="doc">${head(u)}<h1>請求書</h1><div class="h1rule"></div>
         <div class="addressee">${nm(u)}<span class="sama">様</span></div>
+        <div class="claimtop">以下のとおりご請求申し上げます。
+          <div class="claimsum"><span>請求合計金額</span><span class="amt">${yen(u.copay)}</span></div></div>
         <div class="meta"><b>${svcLabel}</b>　利用期間：${period}</div>
         <table class="detail"><thead><tr><th>サービス内容</th><th class="r">単位数</th><th class="r">利用回数</th><th class="r">ｻｰﾋﾞｽ単位数</th></tr></thead><tbody>${rows}</tbody></table>
-        <div class="sumbox"><div class="sumrow"><span>サービス費用算定合計</span><b>${yen(u.yen)}</b></div>
+        <div class="sumbox"><div class="sumrow"><span>単位小計</span><b>${(u.totalUnits||0).toLocaleString()}</b></div>
+        <div class="sumrow"><span>サービス費用算定合計金額</span><b>${yen(u.yen)}</b></div>
         <div class="sumrow"><span>給付費</span><b>-${yen(u.kyufu)}</b></div>
-        <div class="sumrow total"><span>請求合計金額（利用者負担）</span><span>${yen(u.copay)}</span></div></div>
+        <div class="sumrow"><span>自治体助成金額</span><b>-${yen(0)}</b></div>
+        ${genmen}
+        <div class="sumrow total"><span>利用者負担合計金額</span><span>${yen(u.copay)}</span></div></div>
         ${issuer}<div class="note">※ 単位単価 10円／単位（1円未満切り捨て）</div></div>`;
     }
     if(type==='receipt'){
@@ -3250,6 +3284,9 @@ function genWelbeDocs(type, claimArg){
   .detail th{background:#004063;color:#fff;padding:9px 11px;font-weight:600;text-align:left}
   .detail td{border-bottom:1px solid #e2e8f0;padding:8px 11px}.detail td.r,.detail th.r{text-align:right}
   .detail tr:nth-child(even) td{background:#f8fafc}
+  .claimtop{font-size:13px;color:#374151;margin:2px 0 14px}
+  .claimsum{display:flex;justify-content:space-between;align-items:center;border-top:2px solid #004063;border-bottom:2px solid #004063;padding:9px 6px;margin-top:8px}
+  .claimsum .amt{font-size:23px;font-weight:800;color:#004063}
   .sumbox{margin-left:auto;width:60%;border-top:2px solid #004063;padding-top:10px;font-size:13.5px;line-height:2.1}
   .sumrow{display:flex;justify-content:space-between}
   .sumrow.total{font-size:18px;font-weight:800;color:#004063;border-top:1px dashed #94a3b8;margin-top:6px;padding-top:7px}
@@ -3298,6 +3335,8 @@ function printClaimFile(type){
 function printDoc(claimId,docType){
   const claim=load('claims',[]).find(c=>c.id===claimId);
   if(!claim){ showToast('請求月が見つかりません'); return; }
+  if(docType==='seikyuform'){ genSeikyuForm(claim); return; }
+  if(docType==='jissekiform'){ genJissekiForm(claim); return; }
   genWelbeDocs(docType, claim);
 }
 
@@ -4987,9 +5026,16 @@ function renderInit(){
   document.getElementById('cfg-out').value=cfg.outsideMax??180;
   document.getElementById('cfg-vis').value=cfg.visitMax??2;
   document.getElementById('cfg-wk').value=cfg.weeksPerYear??5;
-  document.getElementById('cfg-u1').value=cfg.users1mo??10;
-  document.getElementById('cfg-u2').value=cfg.users2mo??11;
-  document.getElementById('cfg-u3').value=cfg.users3mo??11;
+  // 延べ利用者数：welbeに実績がある月は自動集計、無い月は保存値（前システムからの引継ぎ）
+  const fid=_curFacId;
+  [['cfg-u1','users1mo',1],['cfg-u2','users2mo',2],['cfg-u3','users3mo',3]].forEach(([id,key,n])=>{
+    const d=new Date(); d.setMonth(d.getMonth()-n);
+    const auto=getMonthlyDeliveries(fid,d.getFullYear(),d.getMonth()+1);
+    const el=document.getElementById(id);
+    el.value = auto>0 ? auto : (cfg[key]??0);
+    el.readOnly = auto>0;  // 自動集計できた月は編集不可（welbeデータ優先）
+    el.style.background = auto>0 ? '#f1f8ee' : '';
+  });
   document.getElementById('cfg-firstMonth').value=cfg.firstMonth??'2019-12';
   _updateAvg();
   // 施設名ラベルを現在の事業所に同期
@@ -5027,11 +5073,54 @@ function saveInitConfig(){
 }
 
 // 施設外支援 累計日数テーブル
+// 年度内（4月〜当月）の施設外就労/支援日数を利用者ごとに集計（引継ぎ値は含めない）
+function getOutsideRecordedMap(fid){
+  const now=new Date();
+  const fyY=(now.getMonth()+1>=4)?now.getFullYear():now.getFullYear()-1;
+  const map={};
+  let y=fyY, m=4;
+  while(y*100+m <= now.getFullYear()*100+(now.getMonth()+1)){
+    const rec=load(getRecKey(fid,y,m),{});
+    Object.keys(rec).forEach(cid=>{
+      const days=rec[cid]; let c=0;
+      Object.keys(days).forEach(d=>{ const st=days[d]&&days[d].status; if(st==='施設外就労'||st==='施設外支援') c++; });
+      if(c) map[cid]=(map[cid]||0)+c;
+    });
+    m++; if(m>12){m=1;y++;}
+  }
+  return map;
+}
+// 月の延べ利用者数（通所＋施設外の合計＝サービス提供日数の総和）
+function getMonthlyDeliveries(fid,y,m){
+  const rec=load(getRecKey(fid,y,m),{}); let n=0;
+  Object.keys(rec).forEach(cid=>{ const days=rec[cid]||{}; Object.keys(days).forEach(d=>{ const st=days[d]&&days[d].status; if(st==='通所'||st==='施設外就労'||st==='施設外支援') n++; }); });
+  return n;
+}
+// 累計（引継ぎ＋welbe記録）
+function getOutsideTotal(cid, fid){
+  const carry=(load('outside_days',{})[cid])||0;
+  const rec=getOutsideRecordedMap(fid)[cid]||0;
+  return carry+rec;
+}
+// 施設外就労 残日数アラート（残30日以下・利用者ごと）
+function getOutsideAlerts(){
+  const fid=_curFacId; if(!fid) return [];
+  const limit=loadCfg().outsideMax||180;
+  const carry=load('outside_days',{}); const recMap=getOutsideRecordedMap(fid);
+  const out=[];
+  load('clients',[]).filter(c=>c.active!==false&&c.facilityId===fid).forEach(c=>{
+    const used=(carry[c.id]||0)+(recMap[c.id]||0);
+    const remain=limit-used;
+    if(remain<=30) out.push({name:c.name, used, remain, limit, clientId:c.id});
+  });
+  return out.sort((a,b)=>a.remain-b.remain);
+}
+
 function renderOutsideDays(){
-  // 施設外支援は現在選択中の事業所の利用者のみ表示
   const facId=_curFacId;
   const clients=load('clients',[]).filter(c=>c.active!==false&&c.facilityId===facId);
   const outsideDays=load('outside_days',{});
+  const recMap=getOutsideRecordedMap(facId);
   const tbody=document.getElementById('outsideDaysTbody');
   if(!tbody) return;
   if(!clients.length){
@@ -5040,26 +5129,20 @@ function renderOutsideDays(){
   }
   const limit=loadCfg().outsideMax||180;
   tbody.innerHTML=clients.map(c=>{
-    const used=outsideDays[c.id]||0;
+    const used=(outsideDays[c.id]||0)+(recMap[c.id]||0);
     const remain=Math.max(0,limit-used);
     const pct=Math.min(100,Math.round(used/limit*100));
     const barColor=pct>=90?'#e53e3e':pct>=70?'#ed8936':'var(--green)';
     return `<tr style="border-bottom:1px solid #eef3ec">
       <td style="padding:8px 12px;font-weight:600">${esc(c.name)}</td>
       <td style="padding:8px 12px;color:var(--text-lt);font-size:12px">${esc(c.kana||'')}</td>
-      <td style="padding:8px 12px;text-align:center">
-        <div style="display:flex;align-items:center;gap:8px;justify-content:center">
-          <input type="number" min="0" max="${limit}" value="${used}"
-            data-client="${c.id}"
-            style="width:70px;border:1.5px solid var(--border);border-radius:5px;padding:4px 8px;font-size:13px;text-align:center"
-            oninput="previewRemain('${c.id}',this.value,${limit})">
-          <span style="font-size:12px;color:var(--text-lt)">/ ${limit}日</span>
-        </div>
-        <div style="margin-top:4px;height:4px;background:#e2e8f0;border-radius:2px;overflow:hidden;width:100px;margin:4px auto 0">
+      <td style="padding:8px 10px;text-align:center">
+        <div style="font-weight:700;color:${barColor}">${used}<span style="font-size:11px;font-weight:400;color:var(--text-lt)">/${limit}日</span></div>
+        <div style="margin:4px auto 0;height:4px;background:#e2e8f0;border-radius:2px;overflow:hidden;width:100px">
           <div style="height:100%;width:${pct}%;background:${barColor};border-radius:2px"></div>
         </div>
       </td>
-      <td style="padding:8px 12px;text-align:center;font-size:13px" id="remain-${c.id}">
+      <td style="padding:8px 12px;text-align:center;font-size:13px">
         <span style="color:${remain<=30?'#e53e3e':remain<=60?'#ed8936':'var(--green-dk)'};font-weight:600">${remain}日</span>
       </td>
     </tr>`;
@@ -5675,13 +5758,25 @@ function fixPunchAlert(clientId,y,m,day){
 }
 
 // バナーHTMLを生成してmainAreaの上部に表示
+// 年度切替（4月）：前年度の取込済みデータがあれば整理を促す
+function getFiscalYearCleanup(){
+  const now=new Date();
+  if(now.getMonth()+1!==4) return 0; // 4月のみ
+  const thisAprilYM=now.getFullYear()*100+4;
+  return load('claims',[]).filter(c=>c.facilityId===_curFacId
+    && (c.year*100+c.month)<thisAprilYM
+    && Object.keys(load(getRecKey(_curFacId,c.year,c.month),{})).length>0).length;
+}
+
 function renderAlertBanner(){
   const wrap=document.getElementById('alertBannerWrap');
   if(!wrap) return;
   const al=getReceiptAlerts();
   const punch=getPunchAlerts();
-  const total=al.expired.length+al.soon30.length+al.soon60.length+punch.length;
-  if(!total){wrap.style.display='none';wrap.innerHTML='';return;}
+  const fy=getFiscalYearCleanup();
+  const outside=getOutsideAlerts();
+  const total=al.expired.length+al.soon30.length+al.soon60.length+punch.length+outside.length;
+  if(!total && !fy){wrap.style.display='none';wrap.innerHTML='';return;}
 
   function makeList(arr){
     return arr.map(a=>{
@@ -5724,6 +5819,31 @@ function renderAlertBanner(){
       <span class="alr-ico">🕐</span>
       <div class="alr-body"><div class="alr-title">退勤の押し忘れがあります（${punch.length}件）</div>
         <ul class="alr-list">${items}</ul></div>
+      <button class="alr-close" onclick="this.closest('.alert-banner').remove()">✕</button>
+    </div>`;
+  }
+  if(outside.length){
+    const over=outside.filter(o=>o.remain<=0);
+    const items=outside.map(o=>{
+      const s=o.remain<=0?`<b style="color:#b91c1c">${Math.abs(o.remain)}日 超過</b>`:`残り<b>${o.remain}日</b>`;
+      return `<li><b>${esc(o.name)}</b>　施設外就労 ${o.used}/${o.limit}日（${s}）`
+        +`<button class="alr-upd" onclick="showView('init')" style="color:inherit;border-color:currentColor">確認</button></li>`;
+    }).join('');
+    html+=`<div class="alert-banner ${over.length?'alr-red':'alr-orange'}">
+      <span class="alr-ico">${over.length?'🔴':'🟠'}</span>
+      <div class="alr-body"><div class="alr-title">施設外就労が年間上限（${loadCfg().outsideMax||180}日）に近づいています（${outside.length}名）</div>
+        <ul class="alr-list">${items}</ul></div>
+      <button class="alr-close" onclick="this.closest('.alert-banner').remove()">✕</button>
+    </div>`;
+  }
+  if(fy){
+    html+=`<div class="alert-banner alr-yellow">
+      <span class="alr-ico">🗓</span>
+      <div class="alr-body"><div class="alr-title">新年度になりました（前年度の請求データ ${fy}ヶ月分があります）</div>
+        <div style="font-size:13px;line-height:1.8;margin-top:4px">前年度分を整理しましょう：<br>
+        ① <b>バックアップ</b>（システム設定→🛡️バックアップ→全データをダウンロード）<br>
+        ② 必要なPDFを<b>社内サーバー</b>へ保存<br>
+        ③ 確認後、welbeから整理</div></div>
       <button class="alr-close" onclick="this.closest('.alert-banner').remove()">✕</button>
     </div>`;
   }
