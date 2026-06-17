@@ -874,6 +874,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
             <button class="btn-new" onclick="openUserModal(null)">＋ 新規ユーザー</button>
           </div>
           <table class="data-table" id="userTable"><thead><tr><th>名前</th><th>ログインID</th><th>パスワード</th><th>部署</th><th>権限</th><th>状態</th><th>操作</th></tr></thead><tbody id="userTbody"></tbody></table>
+          <div id="retiredUsersBox"></div>
         </div>
         <div id="adminDepts" style="display:none">
           <div style="display:flex;align-items:center;margin-bottom:12px">
@@ -8168,11 +8169,13 @@ function markRowDirty(uid){
   const btn=document.getElementById('bulkUpdBtn');
   if(btn&&btn.textContent.includes('一括更新')) btn.style.boxShadow='0 0 0 2px #f59e0b';
 }
+let _showRetiredUsers=false;
+function toggleRetiredUsers(){ _showRetiredUsers=!_showRetiredUsers; renderUserTable(); }
 function renderUserTable(){
   const users=load('users',[]);
   const depts=load('depts',[]);
   const deptOpts=depts.map(d=>`<option value="${d.id}">${esc(deptPath(d.id))}</option>`).join('');
-  document.getElementById('userTbody').innerHTML=users.map(u=>{
+  const _userRowHTML=u=>{
     const deptSel=`<select class="inline-input" id="dept-${u.id}" oninput="markRowDirty('${u.id}')" style="min-width:100px">
       <option value="">未設定</option>${depts.map(d=>`<option value="${d.id}"${d.id===u.deptId?' selected':''}>${esc(deptPath(d.id))}</option>`).join('')}
     </select>`;
@@ -8202,7 +8205,21 @@ function renderUserTable(){
       <td>${activeSel}</td>
       <td><button class="act-btn update-btn" id="upd-${u.id}" onclick="saveInlineRow('${u.id}')">更新</button></td>
     </tr>`;
-  }).join('');
+  };
+  const activeUsers =users.filter(u=>u.active!==false);
+  const retiredUsers=users.filter(u=>u.active===false);
+  document.getElementById('userTbody').innerHTML=activeUsers.map(_userRowHTML).join('');
+  // 退職者一覧（無効）：下部に折りたたみ表示
+  const box=document.getElementById('retiredUsersBox');
+  if(box){
+    if(!retiredUsers.length){ box.innerHTML=''; }
+    else{
+      box.innerHTML=`<div style="margin-top:18px">
+        <button onclick="toggleRetiredUsers()" style="background:#f1f5f9;border:1px solid #cbd5e1;color:#475569;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer">🗂 退職者一覧（${retiredUsers.length}名）${_showRetiredUsers?' ▲ 閉じる':' ▼ 展開'}</button>
+        ${_showRetiredUsers?`<div style="margin-top:10px;opacity:.85"><table class="data-table"><thead><tr><th>名前</th><th>ログインID</th><th>パスワード</th><th>部署</th><th>権限</th><th>状態</th><th>操作</th></tr></thead><tbody>${retiredUsers.map(_userRowHTML).join('')}</tbody></table></div>`:''}
+      </div>`;
+    }
+  }
 }
 
 function _readInlineRow(uid, users){
