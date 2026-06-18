@@ -2295,35 +2295,29 @@ async function doLogin(){
   const errEl = document.getElementById('loginError');
   errEl.textContent='';
   if(!lid||!lp){ errEl.textContent='IDとパスワードを入力してください'; return; }
-  const btn=document.querySelector('#loginScreen button'); if(btn){btn.disabled=true;}
-  // ① Firebase Auth で認証（パスワードはGoogle側で安全に検証）
+  // ① Firebase Auth で認証
   try{
     await _auth.signInWithEmailAndPassword(_authEmail(lid), lp);
+    if(!load('users',[]).length){ await _bootLoadData(); }
+    const u=load('users',[]).find(x=>x.loginId===lid && x.active!==false);
+    if(!u){ errEl.textContent='ユーザー情報が見つかりません（管理者にご連絡ください）'; return; }
+    setS({userId:u.id, name:u.name, role:u.role, deptId:u.deptId});
+    startApp();
+    return;
   }catch(e){
-    if(btn) btn.disabled=false;
-    errEl.textContent='IDまたはパスワードが正しくありません';
-    return;
+    // Auth未登録/不一致 → ② 従来方式へフォールバック（移行期間中・ルールが開いている間のみ機能）
   }
-  // ② 認証成功 → ここで初めてデータを読み込む（ルールがログイン必須のため）
-  document.getElementById('loadingScreen').style.display='flex';
-  document.getElementById('loginScreen').style.display='none';
-  const ok = await _bootLoadData();
-  document.getElementById('loadingScreen').style.display='none';
-  if(btn) btn.disabled=false;
-  if(!ok){
-    document.getElementById('loginScreen').style.display='flex';
-    errEl.textContent='データの取得に失敗しました。もう一度お試しください';
-    return;
-  }
-  // ③ プロフィール（名前・権限・部署）を取得してアプリへ
+  if(!load('users',[]).length){ await _bootLoadData(); }
   const u = load('users',[]).find(x=>x.loginId===lid && x.active!==false);
-  if(!u){
-    document.getElementById('loginScreen').style.display='flex';
-    errEl.textContent='ユーザー情報が見つかりません（管理者にご連絡ください）';
-    return;
-  }
+  if(!u || !chkPass(u.password, lp)){ errEl.textContent='IDまたはパスワードが正しくありません'; return; }
   setS({userId:u.id, name:u.name, role:u.role, deptId:u.deptId});
   startApp();
+  // ③ 遅延移行：6文字以上ならこの機会にAuthアカウントを作成
+  if(lp.length>=6){
+    _auth.createUserWithEmailAndPassword(_authEmail(lid), lp)
+      .then(()=>console.log('[auth] Authへ移行:', lid))
+      .catch(err=>console.log('[auth] 移行スキップ:', lid, err.code));
+  }
 }
 function doLoginRetry(lid, lp, errEl){
   const users = load('users',[]);
@@ -8558,30 +8552,16 @@ async function _bootLoadData(){
   startRealtimeSync(); // 他ユーザーの変更をリアルタイムで反映
   return true;
 }
-let _booted=false;
-(function boot(){
+(async function boot(){
   document.getElementById('loadingScreen').style.display = 'flex';
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('app').style.display = 'none';
-  // Firebase Auth のログイン状態を確認（データ読込はログイン後のみ）
-  _auth.onAuthStateChanged(async (fbUser)=>{
-    if(_booted) return; _booted=true;
-    if(fbUser){
-      // 既にログイン済み → データ読込して復帰
-      const ok = await _bootLoadData();
-      document.getElementById('loadingScreen').style.display='none';
-      if(!ok){
-        document.getElementById('loadingScreen').style.display='flex';
-        document.getElementById('loadingScreen').innerHTML='<div style="color:#f87171;font-size:14px;text-align:center;padding:20px">⚠️ データの取得に失敗しました。<br>再読み込みしてください。</div>';
-        return;
-      }
-      if(getS()) startApp(); else document.getElementById('loginScreen').style.display='flex';
-    } else {
-      // 未ログイン → データは読まずログイン画面を表示
-      document.getElementById('loadingScreen').style.display='none';
-      document.getElementById('loginScreen').style.display='flex';
-    }
-  });
+  // 移行期間：起動時にデータ読込を試みる（ルールが開いている間に未移行者を自動移行するため）
+  // ルールがログイン必須でも、既にAuthログイン済みなら読めるため問題なし
+  const ok = await _bootLoadData();
+  document.getElementById('loadingScreen').style.display='none';
+  if(getS() && ok){ startApp(); return; }
+  document.getElementById('loginScreen').style.display='flex';
 })();
 
 // =========================================================
