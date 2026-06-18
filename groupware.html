@@ -2947,6 +2947,10 @@ function showMod(mod,sub,_fromPop){
     document.getElementById('devAppsView').style.display='block';
     document.getElementById('m-tk').classList.add('active');
     renderTodokeApp();
+  } else if(mod==='emp'){
+    if(!getS()) return;
+    document.getElementById('devAppsView').style.display='block';
+    renderEmpApp();
   }
   updateBadges();
 }
@@ -3516,6 +3520,7 @@ function renderDevApps(){
     { id:'petty_cash', name:'小口出納帳',       icon:'💰', desc:'各部門の小口現金の収支を記録・管理します', status:'運用中', color:'#f0fdf4', border:'#16a34a' },
     { id:'invoice',    name:'請求書発行フォーム', icon:'📄', desc:'請求書の作成・承認・PDF出力・ラベル印刷を管理します', status:'運用中', color:'#eff6ff', border:'#3b82f6' },
     { id:'todoke',     name:'届出書ダウンロード', icon:'📋', desc:'各社の届出書をExcel・PDFでダウンロード。書式変更は総務経理・システムのみ', status:'運用中', color:'#fff7ed', border:'#fb923c' },
+    { id:'emp',        name:'従業員管理',         icon:'🧑‍💼', desc:'入社書類のダウンロード・従業員名簿の登録。総務経理・システムのみ（個人情報）', status:'開発中', color:'#faf5ff', border:'#a855f7' },
   ];
   const el = document.getElementById('devAppsContent');
   if(!el) return;
@@ -3533,6 +3538,193 @@ function openDevApp(id){
   if(id==='petty_cash') openPettyCash();
   else if(id==='invoice') openInvoiceApp();
   else if(id==='todoke') showMod('todoke');
+  else if(id==='emp') showMod('emp');
+}
+
+// =========================================================
+// 従業員管理アプリ（開発中）— Phase1：入社書類DL＋従業員名簿
+// =========================================================
+function empCanManage(){ const r=getS()?.role; return r==='system'||r==='soumu'; }
+// 入社書類セット（会社→雇用区分→店舗）。現状：AMUSE/アルバイト/羽島の8書類
+const EMP_DOCS = {
+  amuse: { part: { hashima: [
+    {n:'① 入社手続説明事項',   f:'forms/nyusha/amuse_part_hashima/01_入社手続説明事項.doc'},
+    {n:'② 制服借用書',         f:'forms/nyusha/amuse_part_hashima/02_制服借用書.doc'},
+    {n:'③ 労働誓約書(アルバイト)',f:'forms/nyusha/amuse_part_hashima/03_労働誓約書(アルバイト).doc'},
+    {n:'④ ロッカー使用約款',   f:'forms/nyusha/amuse_part_hashima/04_ロッカー使用約款.doc'},
+    {n:'⑤ 機密保持誓約書',     f:'forms/nyusha/amuse_part_hashima/05_機密保持誓約書.doc'},
+    {n:'⑥ 労働条件通知書',     f:'forms/nyusha/amuse_part_hashima/06_労働条件通知書.xlsx'},
+    {n:'⑦ マイナンバー提供のお願い',f:'forms/nyusha/amuse_part_hashima/07_マイナンバー提供のお願い.docx'},
+    {n:'⑧ WEB給与明細同意書',  f:'forms/nyusha/amuse_part_hashima/08_WEB給与明細同意書.docx'},
+  ]}},
+};
+const EMP_COMPANIES=[{id:'dainichi',name:'大日産業'},{id:'amuse',name:'AMUSE JAPAN'},{id:'welpia',name:'ウェルピア'}];
+const EMP_TYPES=['正社員','契約社員','パート','アルバイト'];
+let _empView='docs';   // 'docs' | 'roster' | 'form'
+let _empEditId=null;
+let _empDocCo='amuse', _empDocType='part', _empDocStore='hashima';
+
+function empDownloadDoc(path){
+  const a=document.createElement('a'); a.href=encodeURI(path); a.download=path.split('/').pop();
+  document.body.appendChild(a); a.click(); a.remove();
+}
+
+function renderEmpApp(){
+  const el=document.getElementById('devAppsContent'); if(!el) return;
+  if(!empCanManage()){
+    el.innerHTML='<div style="background:#fff1f2;border:1.5px solid #fecdd3;border-radius:10px;padding:18px;color:#be123c;font-size:14px">🔒 従業員管理は <strong>総務経理・システム権限</strong> の担当者のみ利用できます（個人情報を扱うため）。</div>';
+    return;
+  }
+  if(_empView==='form'){ return renderEmpForm(); }
+  const tab=(id,label)=>`<button onclick="_empView='${id}';renderEmpApp()" style="background:${_empView===id?'#7c3aed':'#f1f5f9'};color:${_empView===id?'#fff':'#374151'};border:1.5px solid ${_empView===id?'#7c3aed':'#d1d5db'};border-radius:8px;padding:9px 22px;font-size:14px;font-weight:700;cursor:pointer">${label}</button>`;
+  el.innerHTML=`
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+      <h2 style="font-size:18px;font-weight:700;color:#1a2b4a;margin:0">🧑‍💼 従業員管理</h2>
+      <span style="font-size:11px;background:#fef3c7;color:#92400e;border:1px solid #fde68a;border-radius:20px;padding:2px 10px;font-weight:700">開発中（Phase1）</span>
+    </div>
+    <div style="display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap">${tab('docs','📄 入社書類ダウンロード')}${tab('roster','📋 従業員名簿')}</div>
+    <div id="empBody"></div>`;
+  if(_empView==='docs') renderEmpDocs(); else renderEmpRoster();
+}
+
+function renderEmpDocs(){
+  const body=document.getElementById('empBody'); if(!body) return;
+  const docs=((EMP_DOCS[_empDocCo]||{})[_empDocType]||{})[_empDocStore]||null;
+  const coName=(EMP_COMPANIES.find(c=>c.id===_empDocCo)||{}).name||_empDocCo;
+  const rows=docs?docs.map((d,i)=>`
+    <tr style="border-bottom:1px solid #eef2f7;background:${i%2?'#faf5ff':'#fff'}">
+      <td style="padding:10px 12px;text-align:center;font-size:12px;color:#94a3b8;font-weight:700;width:36px">${i+1}</td>
+      <td style="padding:10px 14px;font-size:13px;color:#1a2b4a"><strong>${esc(d.n)}</strong><div style="font-size:11px;color:#9ca3af;margin-top:2px">${esc(d.f.split('.').pop().toUpperCase())}</div></td>
+      <td style="padding:10px 10px;text-align:center;white-space:nowrap">
+        <button onclick="empDownloadDoc('${d.f}')" style="background:#7c3aed;color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer">📥 ダウンロード</button>
+      </td>
+    </tr>`).join(''):'';
+  body.innerHTML=`
+    <div style="background:#faf5ff;border:1px solid #e9d5ff;border-radius:10px;padding:12px 16px;margin-bottom:14px;font-size:13px;color:#6b21a8;line-height:1.8">
+      対象：<strong>${esc(coName)} ／ アルバイト ／ 羽島</strong>　（他社・他区分は順次追加します）
+    </div>
+    <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;min-width:420px">
+        <thead><tr style="background:#6b21a8;color:#fff">
+          <th style="padding:10px 12px;font-size:12px;width:36px">No.</th>
+          <th style="padding:10px 14px;text-align:left;font-size:12px">書類名</th>
+          <th style="padding:10px 10px;font-size:12px">ダウンロード</th>
+        </tr></thead>
+        <tbody>${rows||'<tr><td colspan="3" style="padding:24px;text-align:center;color:#9ca3af;font-size:13px">この区分の書類は未登録です</td></tr>'}</tbody>
+      </table>
+    </div>`;
+}
+
+function renderEmpRoster(){
+  const body=document.getElementById('empBody'); if(!body) return;
+  const staff=load('emp_staff',[]);
+  const rows=staff.filter(s=>!s.retired).concat(staff.filter(s=>s.retired)).map(s=>{
+    const co=(EMP_COMPANIES.find(c=>c.id===s.company)||{}).name||s.company||'-';
+    return `<tr style="border-bottom:1px solid #eef2f7;${s.retired?'opacity:.55':''}">
+      <td style="padding:9px 12px;font-size:13px;color:#1a2b4a"><strong>${esc(s.name||'')}</strong>${s.furigana?`<div style="font-size:10px;color:#9ca3af">${esc(s.furigana)}</div>`:''}</td>
+      <td style="padding:9px 8px;font-size:12px;color:#475569">${esc(co)}</td>
+      <td style="padding:9px 8px;font-size:12px;color:#475569">${esc(s.empType||'-')}</td>
+      <td style="padding:9px 8px;font-size:12px;color:#475569">${esc(s.store||'-')}</td>
+      <td style="padding:9px 8px;font-size:12px;color:#475569">${esc(s.joinDate||'-')}</td>
+      <td style="padding:9px 8px;text-align:center">${s.retired?'<span style="font-size:11px;background:#f1f5f9;color:#64748b;border-radius:10px;padding:2px 8px">退職</span>':'<span style="font-size:11px;background:#dcfce7;color:#166534;border-radius:10px;padding:2px 8px">在籍</span>'}</td>
+      <td style="padding:9px 8px;text-align:center;white-space:nowrap"><button onclick="openEmpForm('${s.id}')" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;border-radius:6px;padding:5px 12px;font-size:12px;cursor:pointer">編集</button></td>
+    </tr>`;
+  }).join('');
+  body.innerHTML=`
+    <div style="display:flex;justify-content:flex-end;margin-bottom:10px"><button onclick="openEmpForm('')" style="background:#7c3aed;color:#fff;border:none;border-radius:7px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer">＋ 従業員を登録</button></div>
+    <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;min-width:620px">
+        <thead><tr style="background:#1e3a6b;color:#fff">
+          <th style="padding:9px 12px;text-align:left;font-size:12px">氏名</th>
+          <th style="padding:9px 8px;font-size:12px">会社</th>
+          <th style="padding:9px 8px;font-size:12px">雇用区分</th>
+          <th style="padding:9px 8px;font-size:12px">店舗</th>
+          <th style="padding:9px 8px;font-size:12px">入社日</th>
+          <th style="padding:9px 8px;font-size:12px">状態</th>
+          <th style="padding:9px 8px;font-size:12px">操作</th>
+        </tr></thead>
+        <tbody>${rows||'<tr><td colspan="7" style="padding:28px;text-align:center;color:#9ca3af;font-size:13px">まだ登録がありません。「＋ 従業員を登録」から追加してください。</td></tr>'}</tbody>
+      </table>
+    </div>`;
+}
+
+function openEmpForm(id){ _empEditId=id||null; _empView='form'; renderEmpApp(); }
+
+function renderEmpForm(){
+  const el=document.getElementById('devAppsContent'); if(!el) return;
+  const s=_empEditId?(load('emp_staff',[]).find(x=>x.id===_empEditId)||{}):{};
+  const coOpts=EMP_COMPANIES.map(c=>`<option value="${c.id}" ${s.company===c.id?'selected':''}>${esc(c.name)}</option>`).join('');
+  const typeOpts=EMP_TYPES.map(t=>`<option value="${t}" ${s.empType===t?'selected':''}>${t}</option>`).join('');
+  const fld=(id,label,val,type='text',ph='')=>`<div style="margin-bottom:10px"><label style="display:block;font-size:12px;font-weight:700;color:#475569;margin-bottom:3px">${label}</label><input id="emp-${id}" type="${type}" value="${esc(val||'')}" placeholder="${ph}" style="width:100%;border:1.5px solid #d1d5db;border-radius:6px;padding:8px 10px;font-size:13px;box-sizing:border-box"></div>`;
+  el.innerHTML=`
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+      <button onclick="_empView='roster';renderEmpApp()" style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:7px;padding:7px 14px;font-size:13px;cursor:pointer">← 名簿へ戻る</button>
+      <h2 style="font-size:17px;font-weight:700;color:#1a2b4a;margin:0">${_empEditId?'従業員情報の編集':'従業員を登録'}</h2>
+    </div>
+    <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:18px;max-width:760px">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0 16px">
+        <div>
+          <div style="margin-bottom:10px"><label style="display:block;font-size:12px;font-weight:700;color:#475569;margin-bottom:3px">会社</label><select id="emp-company" style="width:100%;border:1.5px solid #d1d5db;border-radius:6px;padding:8px 10px;font-size:13px">${coOpts}</select></div>
+          <div style="margin-bottom:10px"><label style="display:block;font-size:12px;font-weight:700;color:#475569;margin-bottom:3px">雇用区分</label><select id="emp-empType" style="width:100%;border:1.5px solid #d1d5db;border-radius:6px;padding:8px 10px;font-size:13px"><option value="">—</option>${typeOpts}</select></div>
+          ${fld('store','店舗','','text','例：羽島')}
+          ${fld('name','氏名',s.name)}
+          ${fld('furigana','フリガナ',s.furigana)}
+          ${fld('birthDate','生年月日',s.birthDate,'date')}
+          ${fld('gender','性別',s.gender,'text','男／女')}
+          ${fld('jobType','職種',s.jobType,'text','例：ホール')}
+          ${fld('department','部署',s.department)}
+        </div>
+        <div>
+          ${fld('phone','電話番号',s.phone,'text','090-...')}
+          ${fld('emergencyContact','緊急連絡先',s.emergencyContact)}
+          ${fld('address','住所',s.address)}
+          ${fld('salary','時給／給与',s.salary,'text','例：1,200円/h')}
+          ${fld('bankName','銀行名',s.bankName)}
+          ${fld('bankBranch','支店',s.bankBranch)}
+          ${fld('bankNo','口座番号',s.bankNo)}
+          ${fld('bankHolder','口座名義',s.bankHolder)}
+          ${fld('joinDate','入社日',s.joinDate,'date')}
+        </div>
+      </div>
+      <div style="margin-bottom:10px"><label style="display:block;font-size:12px;font-weight:700;color:#475569;margin-bottom:3px">備考</label><textarea id="emp-notes" rows="2" style="width:100%;border:1.5px solid #d1d5db;border-radius:6px;padding:8px 10px;font-size:13px;box-sizing:border-box;font-family:inherit">${esc(s.notes||'')}</textarea></div>
+      <div style="display:flex;align-items:center;gap:14px;margin:6px 0 14px;padding:10px;background:#f8fafc;border-radius:8px">
+        <label style="font-size:13px;font-weight:700;color:#475569"><input type="checkbox" id="emp-retired" ${s.retired?'checked':''}> 退職</label>
+        ${fld('retireDate','退職日',s.retireDate,'date')}
+      </div>
+      <div style="display:flex;gap:10px;align-items:center">
+        <button onclick="saveEmpForm()" style="background:#7c3aed;color:#fff;border:none;border-radius:8px;padding:10px 28px;font-size:14px;font-weight:700;cursor:pointer">💾 保存</button>
+        ${_empEditId?`<button onclick="deleteEmp('${_empEditId}')" style="background:#fff;border:1px solid #fca5a5;color:#dc2626;border-radius:8px;padding:10px 18px;font-size:13px;cursor:pointer">削除</button>`:''}
+      </div>
+    </div>`;
+  if(s.store!==undefined){ const e=document.getElementById('emp-store'); if(e) e.value=s.store||''; }
+}
+
+function saveEmpForm(){
+  const g=id=>document.getElementById('emp-'+id);
+  const name=g('name').value.trim();
+  if(!name){ alert('氏名を入力してください'); return; }
+  const staff=load('emp_staff',[]);
+  const data={
+    company:g('company').value, empType:g('empType').value, store:g('store').value.trim(),
+    name, furigana:g('furigana').value.trim(), birthDate:g('birthDate').value, gender:g('gender').value.trim(),
+    jobType:g('jobType').value.trim(), department:g('department').value.trim(),
+    phone:g('phone').value.trim(), emergencyContact:g('emergencyContact').value.trim(), address:g('address').value.trim(),
+    salary:g('salary').value.trim(), bankName:g('bankName').value.trim(), bankBranch:g('bankBranch').value.trim(),
+    bankNo:g('bankNo').value.trim(), bankHolder:g('bankHolder').value.trim(),
+    joinDate:g('joinDate').value, retireDate:g('retireDate').value, retired:g('retired').checked, notes:g('notes').value.trim()
+  };
+  if(_empEditId){ const i=staff.findIndex(x=>x.id===_empEditId); if(i>=0) staff[i]={...staff[i],...data}; }
+  else { staff.push({id:'emp'+Date.now(),...data}); }
+  save('emp_staff',staff);
+  _empView='roster'; renderEmpApp();
+  showToast(_empEditId?'従業員情報を更新しました ✓':'従業員を登録しました ✓');
+}
+
+function deleteEmp(id){
+  const s=load('emp_staff',[]).find(x=>x.id===id);
+  if(!confirm(`「${s?.name||''}」を名簿から削除しますか？`)) return;
+  save('emp_staff',load('emp_staff',[]).filter(x=>x.id!==id));
+  _empView='roster'; renderEmpApp(); showToast('削除しました');
 }
 
 // =========================================================
