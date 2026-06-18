@@ -1032,10 +1032,19 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
             <tbody id="sysUserTbody"></tbody>
           </table>
         </div>
+        <!-- 退職者一覧（無効ユーザー・折りたたみ） -->
+        <div id="retiredWrap" style="margin-top:14px;display:none">
+          <button onclick="const b=document.getElementById('retiredBox');b.style.display=b.style.display==='none'?'block':'none';this.querySelector('.rt-arw').textContent=b.style.display==='none'?'▾':'▴'" style="background:#f1f5f9;border:1px solid #cbd5e0;color:#475569;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600">🗂 退職者一覧（無効） <span id="retiredCount"></span> <span class="rt-arw">▾</span></button>
+          <div id="retiredBox" style="display:none;margin-top:10px" class="form-section">
+            <table class="sys-tbl"><thead><tr>
+              <th style="min-width:110px">名前</th><th style="min-width:120px">ログインID</th><th style="min-width:160px">パスワード</th><th style="min-width:100px">権限</th><th style="min-width:80px">状態</th><th style="min-width:80px">操作</th>
+            </tr></thead><tbody id="sysUserTbodyInactive"></tbody></table>
+          </div>
+        </div>
         <div class="sys-warn">
           ⚠️ アカウントの新規作成・削除は
-          <a href="https://console.firebase.google.com/project/dainichi-001/authentication/users" target="_blank" style="color:#1d4ed8;font-weight:600">Firebase Console → Authentication ↗</a>
-          で行ってください。🔑 ボタンでパスワードリセットメールを送信できます。
+          <a href="https://console.firebase.google.com/project/welpia-001/authentication/users" target="_blank" style="color:#1d4ed8;font-weight:600">Firebase Console → Authentication ↗</a>
+          で行ってください。
         </div>
       </div>
     </div>
@@ -1068,6 +1077,16 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
       <div class="page-hdr">システム設定 <span class="ph-sub">› バックアップ</span></div>
       <div class="content-area">
         <div style="font-size:13px;color:var(--text-lt);margin-bottom:16px;line-height:1.7">welbeの全データ（利用者・実績・請求・設定など）をファイルに書き出し／読み込みできます。定期的なバックアップや、データの移行に使います。</div>
+
+        <div class="form-section" style="margin-bottom:16px">
+          <div class="msec-hdr">🛡️ 自動バックアップ（クラウド保存）</div>
+          <div style="font-size:13px;color:#4a5568;line-height:1.7;margin-bottom:12px">
+            ログインのたびに、その日のデータの控え（スナップショット）を自動で保存します。<br>
+            <b>日々の控えは60日分</b>を保持し、<b style="color:#4f46e5">毎月1日の控えは永久保存</b>します。万一データが消えても、ここから過去の状態に戻せます。
+          </div>
+          <button class="btn-save" onclick="backupCreateNow()">📸 今すぐ控えを作成</button>
+          <div id="backupSnapList" style="font-size:13px;color:var(--text-lt);margin-top:14px">読み込み中...</div>
+        </div>
 
         <div class="form-section" style="margin-bottom:16px">
           <div class="msec-hdr">💾 エクスポート（書き出し）</div>
@@ -1686,6 +1705,8 @@ function startApp(){
   initCrocoPanel();
   renderAlertBanner();
   initBackButton();
+  // ログイン毎・毎月1日の自動バックアップ（1日1回）
+  if(s && s.role!=='kiosk') setTimeout(()=>{ try{ autoBackup(); }catch(e){} }, 1500);
 }
 
 // 戻るボタンで「サイト離脱」せず、アプリ内の前の画面へ戻す
@@ -1747,6 +1768,7 @@ function showView(v, _fromPop){
   else if(v==='init') renderInit();
   else if(v==='sysusers') renderSysUsers();
   else if(v==='sysperms') renderSysPerms();
+  else if(v==='sysbackup') backupListSnapshots();
   else if(v==='manual'){ document.getElementById('sm-manual')?.classList.add('active'); renderManual(); }
   if(typeof renderAlertBanner==='function') renderAlertBanner();
 }
@@ -1830,12 +1852,15 @@ const MANUAL_SECTIONS = [
     <li>welbeで記録した施設外就労が<b>利用者ごとに自動集計</b>されます（手入力不要）</li></ol>
     <p>残30日以下になるとアラートが出ます。4月になると累計はリセットされます。</p>` },
   { ico:'🛡️', q:'バックアップ（データの保存）', a:`
-    <p>welbeの全データ（利用者・実績・請求・設定）をファイルに書き出せます。<b>管理者のみ。</b></p>
-    <h4>手順</h4>
-    <ol><li>「システム設定」→「🛡️ バックアップ」</li>
-    <li>「💾 全データをダウンロード」でJSONファイルを保存</li>
-    <li>OneDriveや外付けなど、別の場所にも保管</li></ol>
-    <div class="man-tip">💡 おすすめ：毎月の請求後と、年度末の整理前には必ずバックアップを。これがあればデータを失っても復元でき、全月の書類を再発行できます。</div>` },
+    <h4>① 自動バックアップ（おまかせ・クラウド保存）</h4>
+    <p><b>ログインのたびに、その日のデータの控えが自動で保存</b>されます（1日1回）。日々の控えは<b>60日分</b>、<b>毎月1日の控えは永久保存</b>です。何もしなくてもバックアップされます。</p>
+    <ul><li>「システム設定」→「🛡️ バックアップ」に控えの一覧が出ます</li>
+    <li>「<b>この日に戻す</b>」で、その日の状態に復元できます</li>
+    <li>すぐ控えが欲しいときは「📸 今すぐ控えを作成」</li></ul>
+    <h4>② 手元へのダウンロード（クラウド全滅への備え）</h4>
+    <ol><li>「💾 全データをダウンロード」でJSONファイルを保存</li>
+    <li>OneDriveや社内サーバー・外付けなど、別の場所にも保管</li></ol>
+    <div class="man-tip">💡 自動バックアップはクラウド（Firebase）内の控えです。万一クラウドごと失う事態に備え、年度末や大きな変更の前は「💾 ダウンロード」で手元にも残しておくと万全です。</div>` },
   { ico:'🔐', q:'権限（管理者・責任者・スタッフ・端末）', a:`
     <p>役割ごとに使える機能を分けられます。</p>
     <table><tr><th>機能</th><th>管理者</th><th>責任者</th><th>スタッフ</th></tr>
@@ -2968,6 +2993,91 @@ function importAllData(file){
     document.getElementById('importFileInput').value='';
   };
   r.readAsText(file);
+}
+
+// ===== 自動バックアップ（クラウド・スナップショット） =====
+const _BACKUP_COL = 'kokuhoren_backups';
+const _BACKUP_DAILY_KEEP_DAYS = 60; // 日次は60日保持。毎月1日(月次)は永久保存
+
+// スナップショット対象データを収集（上限内に小さいキーを優先して収める）
+function _snapshotData(maxBytes){
+  const entries=[];
+  Object.keys(_cache).forEach(k=>{ entries.push([k, JSON.stringify(_cache[k])]); });
+  entries.sort((a,b)=>a[1].length-b[1].length); // 小さい順
+  const out={}; const dropped=[]; let total=2;
+  for(const [k,v] of entries){
+    if(maxBytes && total+v.length+k.length+5>maxBytes){ dropped.push(k); continue; }
+    out[k]=_cache[k]; total+=v.length+k.length+5;
+  }
+  return { data:out, dropped };
+}
+
+// 自動スナップショット（1日1回・ログイン時）
+async function autoBackup(){
+  if(!_fbReady) return;
+  if(Object.keys(_cache).length===0) return; // 読み込み不完全時はバックアップしない
+  const today=new Date().toLocaleDateString('sv',{timeZone:'Asia/Tokyo'}); // YYYY-MM-DD
+  try{
+    const ref=_db.collection(_BACKUP_COL).doc(today);
+    const snap=await ref.get();
+    if(snap.exists) return; // 今日分は作成済み
+    const { data:snapObj, dropped }=_snapshotData(900000);
+    await ref.set({ data:JSON.stringify(snapObj), at:new Date().toISOString(), by:(getS()?.name||'') });
+    if(dropped.length) console.warn('[backup] サイズ上限で除外:', dropped);
+    // 古い「日次」のみ整理。毎月1日(月次)は永久保存
+    const cutoff=new Date(Date.now()-_BACKUP_DAILY_KEEP_DAYS*86400000).toLocaleDateString('sv',{timeZone:'Asia/Tokyo'});
+    const all=await _db.collection(_BACKUP_COL).get();
+    const toDelete=[];
+    all.forEach(d=>{ const id=d.id; if(!/-01$/.test(id) && id<cutoff) toDelete.push(id); });
+    for(const old of toDelete){ await _db.collection(_BACKUP_COL).doc(old).delete(); }
+    console.log('[backup] 自動スナップショット作成:', today, '／日次整理:', toDelete.length+'件');
+  }catch(e){ console.warn('[backup] 自動バックアップ失敗:', e); }
+}
+
+// 今すぐスナップショット（手動）
+async function backupCreateNow(){
+  if(!_fbReady){ showToast('データベースに接続していません'); return; }
+  const today=new Date().toLocaleDateString('sv',{timeZone:'Asia/Tokyo'});
+  try{
+    const { data:snapObj, dropped }=_snapshotData(900000);
+    await _db.collection(_BACKUP_COL).doc(today).set({ data:JSON.stringify(snapObj), at:new Date().toISOString(), by:(getS()?.name||'') });
+    if(dropped.length) console.warn('[backup] サイズ上限で除外:', dropped);
+    showToast('✅ 今日の控えを保存しました');
+    backupListSnapshots();
+  }catch(e){ showToast('控えの作成に失敗しました: '+e.message); }
+}
+
+// 自動スナップショット一覧を表示
+async function backupListSnapshots(){
+  const el=document.getElementById('backupSnapList');
+  if(!el) return;
+  el.innerHTML='読み込み中...';
+  try{
+    const snap=await _db.collection(_BACKUP_COL).get();
+    const rows=[];
+    snap.forEach(d=>{ const x=d.data(); rows.push({ id:d.id, at:x.at, by:x.by, size:(x.data||'').length }); });
+    rows.sort((a,b)=>b.id.localeCompare(a.id));
+    if(!rows.length){ el.innerHTML='<div style="color:var(--text-lt)">まだ自動バックアップがありません。「📸 今すぐ控えを作成」で作れます。</div>'; return; }
+    el.innerHTML=rows.map(r=>{
+      const monthly=/-01$/.test(r.id);
+      return `<div style="display:flex;align-items:center;gap:10px;padding:9px 14px;border:1px solid ${monthly?'#c7d2fe':'#e2e8f0'};background:${monthly?'#eef2ff':'#fff'};border-radius:8px;margin-bottom:6px">
+        <div style="flex:1"><span style="font-weight:700;font-size:14px">${r.id}</span>${monthly?'<span style="font-size:10px;background:#4f46e5;color:#fff;border-radius:4px;padding:1px 6px;margin-left:6px;font-weight:700">月次・永久保存</span>':''} <span style="font-size:11px;color:#9ca3af">${(r.at||'').slice(0,16).replace('T',' ')}　${esc(r.by||'')}　${(r.size/1024).toFixed(0)}KB</span></div>
+        <button onclick="backupRestoreSnapshot('${r.id}')" style="background:#7c3aed;color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer">この日に戻す</button>
+      </div>`;}).join('');
+  }catch(e){ el.innerHTML='<div style="color:#dc2626">読み込みエラー: '+esc(e.message)+'</div>'; }
+}
+
+// スナップショットから復元
+async function backupRestoreSnapshot(date){
+  if(!confirm(`${date} の控えで現在のデータを上書きします。\nよろしいですか？`)) return;
+  try{
+    const doc=await _db.collection(_BACKUP_COL).doc(date).get();
+    if(!doc.exists){ showToast('控えが見つかりません'); return; }
+    const obj=JSON.parse(doc.data().data);
+    let n=0; Object.keys(obj).forEach(k=>{ save(k, obj[k]); n++; });
+    showToast(`✅ ${date} の状態に復元しました（${n}件）。再読み込みします`);
+    setTimeout(()=>location.reload(), 1500);
+  }catch(e){ showToast('復元に失敗しました: '+e.message); }
 }
 
 // ===== サービス提供実績記録票(J61) 取込 =====
@@ -5377,7 +5487,9 @@ function renderSysUsers(){
     tbody.innerHTML=`<tr><td colspan="6" style="text-align:center;padding:28px;color:var(--text-lt)">ユーザーが登録されていません。「＋ 新規ユーザー」から追加してください。</td></tr>`;
     return;
   }
-  tbody.innerHTML=users.map(u=>{
+  const active=users.filter(u=>u.active!==false);
+  const inactive=users.filter(u=>u.active===false);
+  const rowHtml=u=>{
     const uid=u.id;
     const roleSel=`<select class="inline-input" id="role-su-${uid}" oninput="markSysUserDirty('${uid}')">
       <option value="admin"   ${u.role==='admin'  ?'selected':''}>管理者</option>
@@ -5407,7 +5519,18 @@ function renderSysUsers(){
         ${!isAdmin?`<button class="btn-danger" onclick="deleteSysUser('${uid}')" style="margin-left:5px">削除</button>`:''}
       </td>
     </tr>`;
-  }).join('');
+  };
+  tbody.innerHTML=active.map(rowHtml).join('') || '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text-lt)">有効なユーザーがいません</td></tr>';
+  // 退職者（無効）一覧
+  const wrap=document.getElementById('retiredWrap');
+  const itb=document.getElementById('sysUserTbodyInactive');
+  if(wrap&&itb){
+    if(inactive.length){
+      wrap.style.display='block';
+      document.getElementById('retiredCount').textContent=`${inactive.length}名`;
+      itb.innerHTML=inactive.map(rowHtml).join('');
+    }else{ wrap.style.display='none'; itb.innerHTML=''; }
+  }
 }
 
 function _readSysUserRow(uid,users){
