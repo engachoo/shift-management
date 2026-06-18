@@ -1999,6 +1999,25 @@ const _auth = firebase.auth();
 // ログインIDを Firebase Auth 用のメール形式に変換（架空ドメイン・実在不要。welbe/国保連とは別名前空間）
 const _AUTH_DOMAIN = 'gw.dainichi.local';
 function _authEmail(loginId){ return String(loginId).toLowerCase()+'@'+_AUTH_DOMAIN; }
+// サブ接続でAuthアカウントを作成（管理者のログインを保ったまま新ユーザーを登録）
+let _secApp=null;
+function _secAuth(){
+  if(!_secApp){ try{ _secApp=firebase.initializeApp(_fbConfig,'provision'); }catch(e){ _secApp=firebase.app('provision'); } }
+  return _secApp.auth();
+}
+async function _provisionAuth(loginId, password){
+  if(!loginId||!password) return {ok:false,reason:'空'};
+  if(password.length<6) return {ok:false,reason:'6文字未満'};
+  try{
+    await _secAuth().createUserWithEmailAndPassword(_authEmail(loginId), password);
+    try{ await _secAuth().signOut(); }catch(e){}
+    return {ok:true};
+  }catch(e){
+    try{ await _secAuth().signOut(); }catch(_){}
+    if(e.code==='auth/email-already-in-use') return {ok:true,existed:true};
+    return {ok:false,reason:e.code||'失敗'};
+  }
+}
 const _COL = 'gw2data'; // Firestoreコレクション名
 
 // =========================================================
@@ -8365,6 +8384,13 @@ function saveUser(){
     users.push({id:loginId.replace(/[^a-z0-9_]/gi,'_'),loginId,password:passRaw,name,deptId:document.getElementById('u-dept').value,role:document.getElementById('u-role').value,active:document.getElementById('u-active').value==='1'});
   }
   save('users',users);closeModal('userModal');renderUserTable();
+  // 新規追加 or パスワード変更時：Authアカウントも自動作成（Firebaseコンソール不要）
+  if(passRaw){
+    _provisionAuth(loginId, passRaw).then(r=>{
+      if(r.ok && !r.existed) showToast(`「${name}」のログインが有効になりました ✓`);
+      else if(!r.ok && r.reason==='6文字未満') showToast('⚠ パスワードが6文字未満のため、この人はまだログインできません');
+    });
+  }
 }
 
 function renderDeptTree(){
