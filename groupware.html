@@ -2594,7 +2594,7 @@ function initData(){
 
   // 届出書フォーム初期データ（会社ごとに種類が異なる・ファイルは後でアップロード）
   // 大日・AMUSE JAPAN（19種類）
-  const tkNamesStd=['稟議','勤務・休暇','登録・休業関係','営業交通費','交通事故報告書','労災の件にて','紛失届','トラブル報告書','物品借用書','各種証明発行申請書','メールアドレス申請書','物品購入伺い兼発注依頼書','人事推薦書','退職願い','誓約書','給与明細　特別支給申請書','鍵の保管・利用に関する誓約書（羽島）','鍵の保管・利用に関する誓約書（桑名）'];
+  const tkNamesStd=['稟議','勤務・休暇','登録・休業関係','営業交通費','交通事故報告書','労災の件にて','紛失届','トラブル報告書','物品借用書','各種証明発行申請書','メールアドレス申請書','物品購入伺い兼発注依頼書','人事推薦書','退職願い','誓約書','給与明細　特別支給申請書','鍵の保管・利用に関する誓約書（羽島）'];
   // ウェルピア（18種類・勤怠(山下)削除、退職願いは6種を1枚に統合）
   const tkNamesWelpia=['稟議','勤務・休暇','登録・休業関係','営業交通費','交通事故報告書','労災の件にて','紛失届','トラブル報告書','物品借用書','各種証明発行申請書','メールアドレス申請書','物品購入伺い兼発注依頼書','人事推薦書','退職願い','誓約書','給与明細　特別支給申請書','鍵の保管・利用に関する誓約書'];
   const tkToday=new Date().toLocaleDateString('sv',{timeZone:'Asia/Tokyo'});
@@ -2617,6 +2617,13 @@ function initData(){
     const filtered=all.filter(f=>f.name!=='妊産婦誓約書');
     if(filtered.length!==all.length) save('todoke_forms',filtered);
     save('todoke_ninsanpu_removed','1');
+  }
+  // 鍵の保管誓約書（桑名）を削除。番号は表示時にidx+1で自動連番になる
+  if(load('todoke_forms',null) && load('todoke_kuwana_removed','')!=='1' && _isSafeToSave('todoke_forms')){
+    const all=load('todoke_forms',[]);
+    const filtered=all.filter(f=>f.name!=='鍵の保管・利用に関する誓約書（桑名）');
+    if(filtered.length!==all.length) save('todoke_forms',filtered);
+    save('todoke_kuwana_removed','1');
   }
 }
 
@@ -3538,8 +3545,8 @@ const TODOKE_COMPANIES = [
 ];
 // リポジトリ同梱の初期Excelファイル（書式編集でアップロードされた場合はそちらを優先）
 const TK_STATIC = {
-  dainichi: {"稟議":"forms/dainichi/f01.xlsx","勤務・休暇":"forms/dainichi/f02.xlsx","登録・休業関係":"forms/dainichi/f03.xlsx","営業交通費":"forms/dainichi/f04.xlsx","交通事故報告書":"forms/dainichi/f05.xlsx","労災の件にて":"forms/dainichi/f07.xlsx","紛失届":"forms/dainichi/f08.xlsx","トラブル報告書":"forms/dainichi/f09.xlsx","物品借用書":"forms/dainichi/f10.xlsx","各種証明発行申請書":"forms/dainichi/f11.xlsx","メールアドレス申請書":"forms/dainichi/f12.xlsx","物品購入伺い兼発注依頼書":"forms/dainichi/f13.xlsx","人事推薦書":"forms/dainichi/f14.xlsx","退職願い":"forms/dainichi/f15.xlsx","誓約書":"forms/dainichi/f16.xlsx","給与明細　特別支給申請書":"forms/dainichi/f17.xlsx","鍵の保管・利用に関する誓約書（羽島）":"forms/dainichi/f18.xlsx","鍵の保管・利用に関する誓約書（桑名）":"forms/dainichi/f19.xlsx"},
-  amuse: {"稟議":"forms/amuse/f01.xlsx","勤務・休暇":"forms/amuse/f02.xlsx","登録・休業関係":"forms/amuse/f03.xlsx","営業交通費":"forms/amuse/f04.xlsx","交通事故報告書":"forms/amuse/f05.xlsx","労災の件にて":"forms/amuse/f07.xlsx","紛失届":"forms/amuse/f08.xlsx","トラブル報告書":"forms/amuse/f09.xlsx","物品借用書":"forms/amuse/f10.xlsx","各種証明発行申請書":"forms/amuse/f11.xlsx","メールアドレス申請書":"forms/amuse/f12.xlsx","物品購入伺い兼発注依頼書":"forms/amuse/f13.xlsx","人事推薦書":"forms/amuse/f14.xlsx","退職願い":"forms/amuse/f15.xlsx","誓約書":"forms/amuse/f16.xlsx","給与明細　特別支給申請書":"forms/amuse/f17.xlsx","鍵の保管・利用に関する誓約書（羽島）":"forms/amuse/f18.xlsx","鍵の保管・利用に関する誓約書（桑名）":"forms/amuse/f19.xlsx"},
+  dainichi: {"稟議":"forms/dainichi/f01.xlsx","勤務・休暇":"forms/dainichi/f02.xlsx","登録・休業関係":"forms/dainichi/f03.xlsx","営業交通費":"forms/dainichi/f04.xlsx","交通事故報告書":"forms/dainichi/f05.xlsx","労災の件にて":"forms/dainichi/f07.xlsx","紛失届":"forms/dainichi/f08.xlsx","トラブル報告書":"forms/dainichi/f09.xlsx","物品借用書":"forms/dainichi/f10.xlsx","各種証明発行申請書":"forms/dainichi/f11.xlsx","メールアドレス申請書":"forms/dainichi/f12.xlsx","物品購入伺い兼発注依頼書":"forms/dainichi/f13.xlsx","人事推薦書":"forms/dainichi/f14.xlsx","退職願い":"forms/dainichi/f15.xlsx","誓約書":"forms/dainichi/f16.xlsx","給与明細　特別支給申請書":"forms/dainichi/f17.xlsx","鍵の保管・利用に関する誓約書（羽島）":"forms/dainichi/f18.xlsx"},
+  amuse: {"稟議":"forms/amuse/f01.xlsx","勤務・休暇":"forms/amuse/f02.xlsx","登録・休業関係":"forms/amuse/f03.xlsx","営業交通費":"forms/amuse/f04.xlsx","交通事故報告書":"forms/amuse/f05.xlsx","労災の件にて":"forms/amuse/f07.xlsx","紛失届":"forms/amuse/f08.xlsx","トラブル報告書":"forms/amuse/f09.xlsx","物品借用書":"forms/amuse/f10.xlsx","各種証明発行申請書":"forms/amuse/f11.xlsx","メールアドレス申請書":"forms/amuse/f12.xlsx","物品購入伺い兼発注依頼書":"forms/amuse/f13.xlsx","人事推薦書":"forms/amuse/f14.xlsx","退職願い":"forms/amuse/f15.xlsx","誓約書":"forms/amuse/f16.xlsx","給与明細　特別支給申請書":"forms/amuse/f17.xlsx","鍵の保管・利用に関する誓約書（羽島）":"forms/amuse/f18.xlsx"},
   welpia: {"稟議":"forms/welpia/f02.xlsx","勤務・休暇":"forms/welpia/f03.xlsx","登録・休業関係":"forms/welpia/f04.xlsx","営業交通費":"forms/welpia/f05.xlsx","交通事故報告書":"forms/welpia/f06.xlsx","労災の件にて":"forms/welpia/f08.xlsx","紛失届":"forms/welpia/f09.xlsx","トラブル報告書":"forms/welpia/f10.xlsx","物品借用書":"forms/welpia/f11.xlsx","各種証明発行申請書":"forms/welpia/f12.xlsx","メールアドレス申請書":"forms/welpia/f13.xlsx","物品購入伺い兼発注依頼書":"forms/welpia/f14.xlsx","人事推薦書":"forms/welpia/f15.xlsx","退職願い":"forms/welpia/f16.xlsx","誓約書":"forms/welpia/f22.xlsx","給与明細　特別支給申請書":"forms/welpia/f23.xlsx","鍵の保管・利用に関する誓約書":"forms/welpia/f24.xlsx"},
 };
 function tkStaticExcel(company,name){ return (TK_STATIC[company]||{})[name]||null; }
