@@ -8264,7 +8264,7 @@ function _readInlineRow(uid, users){
 
 function saveAllInlineRows(){
   const users = load('users',[]);
-  let errors=[], changed=0;
+  let errors=[], changed=0; const toProvision=[];
   users.forEach(u=>{
     const r=_readInlineRow(u.id, users);
     if(!r) return;
@@ -8273,10 +8273,22 @@ function saveAllInlineRows(){
       u.name=r.newName; u.loginId=r.newLid; u.password=r.newPw;
       u.deptId=r.newDept; u.role=r.newRole; u.active=r.newActive;
       changed++;
+      if(r.newActive && r.newPw) toProvision.push({lid:r.newLid, pw:r.newPw, name:r.newName});
     }
   });
   if(errors.length){ alert('以下のエラーがあります：\n\n'+errors.join('\n')); return; }
   save('users', users);
+  // 変更があった有効ユーザーをAuthへ自動登録（未登録のみ。登録済みは無視）
+  if(toProvision.length){
+    (async()=>{
+      let added=0;
+      for(const p of toProvision){
+        const res=await _provisionAuth(p.lid, p.pw);
+        if(res.ok && !res.existed) added++;
+      }
+      if(added) showToast(`${added}名のログインが有効になりました ✓`);
+    })();
+  }
   const btn=document.getElementById('bulkUpdBtn');
   if(btn){
     btn.textContent='✅ '+changed+'件 更新完了';
@@ -8298,6 +8310,13 @@ function saveInlineRow(uid){
   r.u.name=r.newName; r.u.loginId=r.newLid; r.u.password=r.newPw;
   r.u.deptId=r.newDept; r.u.role=r.newRole; r.u.active=r.newActive;
   save('users', users);
+  // 有効ユーザーかつパスワードありなら、Authアカウントを自動作成（未登録なら登録／登録済みは無視）
+  if(r.newActive && r.newPw){
+    _provisionAuth(r.newLid, r.newPw).then(res=>{
+      if(res.ok && !res.existed) showToast(`「${r.newName}」のログインが有効になりました ✓`);
+      else if(!res.ok && res.reason==='6文字未満') showToast('⚠ パスワードが6文字未満のため、この人はまだログインできません');
+    });
+  }
   // 保存後にパスワードを再ロック
   const pwInp = document.getElementById('pw-'+uid);
   const lockBtn = document.getElementById('pwlock-'+uid);
