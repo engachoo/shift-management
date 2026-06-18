@@ -2295,34 +2295,35 @@ async function doLogin(){
   const errEl = document.getElementById('loginError');
   errEl.textContent='';
   if(!lid||!lp){ errEl.textContent='IDとパスワードを入力してください'; return; }
-  if(!load('users',[]).length) initData();
-  const users = load('users',[]);
-  const u = users.find(x=>x.loginId===lid && x.active);
-
-  // ① まず Firebase Auth で照合（パスワードはGoogle側で安全に検証・ハッシュ化保管）
+  const btn=document.querySelector('#loginScreen button'); if(btn){btn.disabled=true;}
+  // ① Firebase Auth で認証（パスワードはGoogle側で安全に検証）
   try{
     await _auth.signInWithEmailAndPassword(_authEmail(lid), lp);
-    if(!u){ errEl.textContent='ユーザー情報が見つかりません（管理者にご連絡ください）'; return; }
-    setS({userId:u.id, name:u.name, role:u.role, deptId:u.deptId});
-    startApp();
-    return;
   }catch(e){
-    // Auth未登録/不一致 → ② 従来方式へフォールバック（誰も締め出さない）
-  }
-
-  // ② 従来方式（平文）で照合
-  if(!u || !chkPass(u.password, lp)){
+    if(btn) btn.disabled=false;
     errEl.textContent='IDまたはパスワードが正しくありません';
+    return;
+  }
+  // ② 認証成功 → ここで初めてデータを読み込む（ルールがログイン必須のため）
+  document.getElementById('loadingScreen').style.display='flex';
+  document.getElementById('loginScreen').style.display='none';
+  const ok = await _bootLoadData();
+  document.getElementById('loadingScreen').style.display='none';
+  if(btn) btn.disabled=false;
+  if(!ok){
+    document.getElementById('loginScreen').style.display='flex';
+    errEl.textContent='データの取得に失敗しました。もう一度お試しください';
+    return;
+  }
+  // ③ プロフィール（名前・権限・部署）を取得してアプリへ
+  const u = load('users',[]).find(x=>x.loginId===lid && x.active!==false);
+  if(!u){
+    document.getElementById('loginScreen').style.display='flex';
+    errEl.textContent='ユーザー情報が見つかりません（管理者にご連絡ください）';
     return;
   }
   setS({userId:u.id, name:u.name, role:u.role, deptId:u.deptId});
   startApp();
-  // ③ 遅延移行：まだAuth未登録なら、この機会にAuthアカウントを作成（6文字以上のみ）
-  if(lp.length>=6){
-    _auth.createUserWithEmailAndPassword(_authEmail(lid), lp)
-      .then(()=>console.log('[auth] Authへ移行:', lid))
-      .catch(err=>console.log('[auth] 移行スキップ:', lid, err.code));
-  }
 }
 function doLoginRetry(lid, lp, errEl){
   const users = load('users',[]);
@@ -2369,6 +2370,7 @@ function doLogout(){
   autoSaveAll(); // 未保存データを全モジュール一括保存
   stopActivityTimer();
   clearS();
+  try{ _auth.signOut(); }catch(e){} // Firebase Authもサインアウト
   document.getElementById('app').style.display='none';
   document.getElementById('loginScreen').style.display='flex';
   document.getElementById('loginId').value='';
@@ -8547,31 +8549,39 @@ function startApp(){
 // =========================================================
 // アプリ起動（Firestore読み込み後に初期化）
 // =========================================================
-(async function boot(){
-  // ローディング表示
+// ログイン成功後にデータを読み込んで初期化（共通）
+async function _bootLoadData(){
+  const ok = await loadAllFromFirestore();
+  if(!ok) return false;
+  initData();          // デフォルトデータ投入（未存在キーのみ）
+  migrateTimestamps(); // UTC→JSTタイムスタンプ修正（初回のみ）
+  startRealtimeSync(); // 他ユーザーの変更をリアルタイムで反映
+  return true;
+}
+let _booted=false;
+(function boot(){
   document.getElementById('loadingScreen').style.display = 'flex';
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('app').style.display = 'none';
-
-  const ok = await loadAllFromFirestore();
-  if(!ok){
-    document.getElementById('loadingScreen').innerHTML =
-      '<div style="color:#f87171;font-size:14px;text-align:center;padding:20px">⚠️ データベースへの接続に失敗しました。<br>ネットワーク接続を確認してください。</div>';
-    return;
-  }
-
-  initData(); // デフォルトデータ投入（未存在キーのみ）
-  migrateTimestamps(); // UTC→JSTタイムスタンプ修正（初回のみ）
-startRealtimeSync(); // 他ユーザーの変更をリアルタイムで反映
-
-  document.getElementById('loadingScreen').style.display = 'none';
-
-  // セッション復元またはログイン画面表示
-  if(getS()){
-    startApp();
-  } else {
-    document.getElementById('loginScreen').style.display = 'flex';
-  }
+  // Firebase Auth のログイン状態を確認（データ読込はログイン後のみ）
+  _auth.onAuthStateChanged(async (fbUser)=>{
+    if(_booted) return; _booted=true;
+    if(fbUser){
+      // 既にログイン済み → データ読込して復帰
+      const ok = await _bootLoadData();
+      document.getElementById('loadingScreen').style.display='none';
+      if(!ok){
+        document.getElementById('loadingScreen').style.display='flex';
+        document.getElementById('loadingScreen').innerHTML='<div style="color:#f87171;font-size:14px;text-align:center;padding:20px">⚠️ データの取得に失敗しました。<br>再読み込みしてください。</div>';
+        return;
+      }
+      if(getS()) startApp(); else document.getElementById('loginScreen').style.display='flex';
+    } else {
+      // 未ログイン → データは読まずログイン画面を表示
+      document.getElementById('loadingScreen').style.display='none';
+      document.getElementById('loginScreen').style.display='flex';
+    }
+  });
 })();
 
 // =========================================================
