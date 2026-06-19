@@ -3608,14 +3608,18 @@ async function empBulkPrint(){
   if(!others.length){ alert('一括印刷できる書類がありません'); return; }
   showToast('🖨 印刷用に準備中...',4000);
   try{
-    const bodies=[];
-    for(const d of others){
-      const res=await fetch(encodeURI(d.h)); const html=await res.text();
-      const m=html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
-      bodies.push(`<section style="page-break-after:always">${m?m[1]:html}</section>`);
+    let styles='', sections='';
+    for(let i=0;i<others.length;i++){
+      const res=await fetch(encodeURI(others[i].h)); const html=await res.text();
+      const sid='doc'+i;
+      // 各書類の<style>をスコープ化（クラス名衝突を防ぐ）
+      const sm=html.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
+      if(sm){ styles+=sm[1].replace(/([^{}]+)\{([^}]*)\}/g,(m,sel,bd)=>sel.split(',').map(s=>`#${sid} ${s.trim()}`).join(',')+'{'+bd+'}'); }
+      const bm=html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+      sections+=`<div id="${sid}" class="docpage">${bm?bm[1]:html}</div>`;
     }
     const w=window.open('','_blank');
-    w.document.write(`<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8"><title>入社書類（一括印刷）</title><style>@page{size:A4;margin:16mm}html,body{margin:0;padding:0}body{font-family:'MS Gothic','Osaka-Mono','Hiragino Kaku Gothic ProN','Yu Gothic',monospace;font-size:10.5pt;line-height:1.55;color:#000}p{margin:.18em 0!important;padding:0!important;text-indent:0!important;line-height:1.55!important;min-height:0!important;text-align:left!important}b{font-weight:700}table{border-collapse:collapse}td,th{border:1px solid #000;padding:2px 4px}section:last-child{page-break-after:auto}</style></head><body onload="setTimeout(function(){window.print()},500)">${bodies.join('')}</body></html>`);
+    w.document.write(`<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8"><title>入社書類（一括印刷）</title><style>@page{size:A4;margin:15mm}html,body{margin:0;padding:0}.docpage{page-break-after:always}.docpage:last-child{page-break-after:auto}.docpage *{font-family:'MS Gothic','Osaka-Mono','Hiragino Kaku Gothic ProN',monospace !important}${styles}</style></head><body onload="setTimeout(function(){window.print()},600)">${sections}</body></html>`);
     w.document.close();
   }catch(e){ alert('印刷準備に失敗しました: '+e.message); }
 }
