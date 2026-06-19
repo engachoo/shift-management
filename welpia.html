@@ -360,8 +360,6 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
 .tcpv-act.out{background:var(--navy)} .tcpv-act.out:hover{background:var(--navy-dk)}
 .tcpv-done{font-size:17px;color:var(--green-dk);font-weight:700;line-height:1.8}
 .tcpv-edit{margin-top:18px;background:#f3f4f6;color:#6b7280;border:none;border-radius:8px;padding:9px 18px;font-size:13px;cursor:pointer;font-family:inherit}
-.tcpv-clear{margin-top:14px;margin-left:10px;background:#fff;color:#dc2626;border:1.5px solid #fca5a5;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
-.tcpv-clear:hover{background:#fef2f2}
 /* ===== フォーム（設定） ===== */
 .form-section{background:#fff;border-radius:8px;padding:22px 24px;box-shadow:0 1px 4px rgba(0,0,0,.06);margin-bottom:16px}
 .form-section h3{font-size:15px;font-weight:700;color:var(--navy);margin-bottom:16px;padding-bottom:10px;border-bottom:2px solid var(--green-lt)}
@@ -2324,12 +2322,10 @@ function _renderTcpvCard(){
   } else if(!day.out){
     body=`<div class="tcpv-greet">通所中（出勤 ${day.in}）</div>
       <div class="tcpv-prev">本日の出勤時刻：${day.in}</div>
-      <button class="tcpv-act out" onclick="tcDoPunch('out')">退勤する</button>
-      ${can('timecard_edit')?`<div><button class="tcpv-clear" onclick="tcClearPunch()">🗑 打刻を取り消す</button></div>`:''}`;
+      <button class="tcpv-act out" onclick="tcDoPunch('out')">退勤する</button>`;
   } else {
     body=`<div class="tcpv-done">本日の利用は終了しました<br>出勤 ${day.in} ／ 退勤 ${day.out}</div>
-      ${can('timecard_edit')?`<button class="tcpv-edit" onclick="closeTcPunch();tcEdit('${cl.id}')">時刻を修正する</button>
-      <button class="tcpv-clear" onclick="tcClearPunch()">🗑 打刻を取り消す</button>`:''}`;
+      ${can('timecard_edit')?`<button class="tcpv-edit" onclick="closeTcPunch();tcEdit('${cl.id}')">時刻を修正する</button>`:''}`;
   }
   box.innerHTML=`<div class="tcpv-name">${esc(cl.name)} さん</div>${body}`;
 }
@@ -2337,20 +2333,6 @@ function tcDoPunch(type){
   if(!_tcpvClientId) return;
   tcPunch(_tcpvClientId,type);
   _renderTcpvCard();
-}
-// 誤打刻の取り消し：その日のタイムカード打刻と、連動して作られた利用実績を削除し再出勤できる状態に戻す
-function tcClearPunch(){
-  if(!_tcpvClientId) return;
-  if(!can('timecard_edit')){ showToast('打刻を取り消す権限がありません'); return; }
-  const cl=load('clients',[]).find(c=>c.id===_tcpvClientId);
-  if(!confirm(`${cl?.name||''} さんの本日の打刻を取り消します。\n誤って打刻した場合の取り消し用です。利用実績の通所も併せて取り消します。`)) return;
-  const fid=_tcFid(),y=_tcDate.getFullYear(),m=_tcDate.getMonth()+1,d=_tcDate.getDate();
-  const tcKey=_tcKey(fid,y,m); const tc=load(tcKey,{});
-  if(tc[_tcpvClientId]){ delete tc[_tcpvClientId][d]; save(tcKey,tc); }
-  const recKey=getRecKey(fid,y,m); const rec=load(recKey,{});
-  if(rec[_tcpvClientId]){ delete rec[_tcpvClientId][d]; save(recKey,rec); }
-  _renderTcpvCard();   // 「通所する」に戻る（再出勤可能）
-  showToast('打刻を取り消しました ✓');
 }
 
 function tcPunch(clientId, type){
