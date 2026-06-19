@@ -3615,7 +3615,7 @@ async function empBulkPrint(){
       bodies.push(`<section style="page-break-after:always">${m?m[1]:html}</section>`);
     }
     const w=window.open('','_blank');
-    w.document.write(`<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8"><title>入社書類（一括印刷）</title><style>@page{size:A4;margin:14mm}body{font-family:'Yu Gothic','Hiragino Kaku Gothic ProN',sans-serif;font-size:11.5pt;line-height:1.7;color:#000}section:last-child{page-break-after:auto}table{border-collapse:collapse}</style></head><body onload="setTimeout(function(){window.print()},500)">${bodies.join('')}</body></html>`);
+    w.document.write(`<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8"><title>入社書類（一括印刷）</title><style>@page{size:A4;margin:16mm}html,body{margin:0;padding:0}body{font-family:'MS Gothic','Osaka-Mono','Hiragino Kaku Gothic ProN','Yu Gothic',monospace;font-size:10.5pt;line-height:1.55;color:#000}p{margin:.18em 0!important;padding:0!important;text-indent:0!important;line-height:1.55!important;min-height:0!important;text-align:left!important}b{font-weight:700}table{border-collapse:collapse}td,th{border:1px solid #000;padding:2px 4px}section:last-child{page-break-after:auto}</style></head><body onload="setTimeout(function(){window.print()},500)">${bodies.join('')}</body></html>`);
     w.document.close();
   }catch(e){ alert('印刷準備に失敗しました: '+e.message); }
 }
