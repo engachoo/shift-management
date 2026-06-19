@@ -3575,10 +3575,10 @@ const EMP_DOCS={
       {n:'WEB給与明細同意書', f:'forms/nyusha/amuse_shain/07_WEB給与明細同意書.docx', h:'forms/nyusha/amuse_shain/print/07_WEB給与明細同意書.html'},
     ],
     dl:[
-      {n:'制服借用書（冬服）', f:'forms/nyusha/amuse_shain/11_制服借用書(冬服).doc'},
-      {n:'制服借用書（夏服）', f:'forms/nyusha/amuse_shain/12_制服借用書(夏服).doc'},
-      {n:'制服借用書（入社時）', f:'forms/nyusha/amuse_shain/13_制服借用書(入社時).doc'},
-      {n:'住宅入居補助規程', f:'forms/nyusha/amuse_shain/14_住宅入居補助規程.doc'},
+      {n:'制服借用書（冬服）', f:'forms/nyusha/amuse_shain/11_制服借用書(冬服).doc', h:'forms/nyusha/amuse_shain/print/11_制服借用書(冬服).html'},
+      {n:'制服借用書（夏服）', f:'forms/nyusha/amuse_shain/12_制服借用書(夏服).doc', h:'forms/nyusha/amuse_shain/print/12_制服借用書(夏服).html'},
+      {n:'制服借用書（入社時）', f:'forms/nyusha/amuse_shain/13_制服借用書(入社時).doc', h:'forms/nyusha/amuse_shain/print/13_制服借用書(入社時).html'},
+      {n:'住宅入居補助規程', f:'forms/nyusha/amuse_shain/14_住宅入居補助規程.doc', h:'forms/nyusha/amuse_shain/print/14_住宅入居補助規程.html'},
     ]
   } },
   dainichi:{pa:{},shain:{}},
@@ -3647,48 +3647,84 @@ function _empBranchBar(){
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">${cats}</div>`;
 }
 
+// 書式編集（マスター差し替え）は総務経理・システムのみ
+function empCanEditDocs(){ return ['system','soumu'].includes(empRole()); }
+function _empDocMaster(key){ return (load('emp_doc_masters',{})||{})[key]||null; }
+// 単票を印刷／PDF保存（HTML版を新ウィンドウで開いて印刷）
+async function empPrintDoc(h){
+  try{
+    showToast('🖨 印刷用に準備中...',3000);
+    const res=await fetch(encodeURI(h)); const html=await res.text();
+    const w=window.open('','_blank'); w.document.write(html); w.document.close();
+    setTimeout(()=>{ try{w.focus();w.print();}catch(e){} },500);
+  }catch(e){ alert('印刷準備に失敗しました: '+e.message); }
+}
+// 書式マスター（配布用PDF）を差し替え（総務経理・システムのみ）
+function empEditDocMaster(key){
+  if(!empCanEditDocs()){ alert('書式の編集は総務経理・システムのみ可能です'); return; }
+  const inp=document.createElement('input'); inp.type='file'; inp.accept='.pdf';
+  inp.onchange=async e=>{ const f=e.target.files[0]; if(!f) return;
+    showToast('📤 配布用PDFをアップロード中...',5000);
+    try{
+      const meta=await tkUploadFileToStore(f);
+      const m=load('emp_doc_masters',{})||{};
+      m[key]={ref:meta.ref,name:meta.name,size:meta.size,revDate:new Date().toLocaleDateString('sv',{timeZone:'Asia/Tokyo'})};
+      save('emp_doc_masters',m);
+      showToast('✅ 配布用PDFを更新しました'); renderEmpApp();
+    }catch(err){ alert(err.message); }
+  };
+  inp.click();
+}
+// 書類1件分の操作ボタン列（PDF配布＝全員、書式編集＝総務経理のみ）
+function _empDocActions(d){
+  const m=_empDocMaster(d.f); const canEdit=empCanEditDocs(); let b='';
+  if(m){ const nm=esc(m.name).replace(/'/g,"\\'"); b+=`<button onclick="empFileDownload('${m.ref}','${nm}')" style="background:#7c3aed;color:#fff;border:none;border-radius:6px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer">📥 PDF</button> `; }
+  if(d.h){ b+=`<button onclick="empPrintDoc('${d.h}')" style="background:#0ea5e9;color:#fff;border:none;border-radius:6px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer">🖨 印刷/PDF</button> `; }
+  if(canEdit){ b+=`<button onclick="empEditDocMaster('${d.f}')" style="background:#fff7ed;border:1px solid #fdba74;color:#c2410c;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer">✏️ 書式編集</button> <button onclick="empDownloadDoc('${d.f}')" style="background:#f1f5f9;border:1px solid #cbd5e1;color:#475569;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer">素材DL</button>`; }
+  return b;
+}
+function _empDocRows(arr){
+  return arr.map((d,i)=>{ const m=_empDocMaster(d.f);
+    return `<tr style="border-bottom:1px solid #eef2f7;background:${i%2?'#faf5ff':'#fff'}">
+      <td style="padding:9px 12px;text-align:center;font-size:12px;color:#94a3b8;font-weight:700;width:32px">${i+1}</td>
+      <td style="padding:9px 14px;font-size:13px;color:#1a2b4a"><strong>${esc(d.n)}</strong>${m?`<div style="font-size:10px;color:#16a34a">配布PDF改訂:${esc(m.revDate)}</div>`:''}</td>
+      <td style="padding:9px 10px;text-align:right;white-space:nowrap">${_empDocActions(d)}</td>
+    </tr>`; }).join('');
+}
 function renderEmpDocs(){
   const body=document.getElementById('empBody'); if(!body) return;
   const set=((EMP_DOCS[_empCo]||{})[_empCat])||{};
   const joken=set.joken, others=set.others||[], dl=set.dl||[];
   const catLabel=_empCat==='pa'?'パート・アルバイト':'社員';
-  let html=`<div style="background:#faf5ff;border:1px solid #e9d5ff;border-radius:10px;padding:12px 16px;margin-bottom:14px;font-size:13px;color:#6b21a8;line-height:1.8">対象：<strong>${esc(empCoName(_empCo))} ／ ${catLabel}</strong></div>`;
+  const canEdit=empCanEditDocs();
+  let html=`<div style="background:#faf5ff;border:1px solid #e9d5ff;border-radius:10px;padding:12px 16px;margin-bottom:14px;font-size:13px;color:#6b21a8;line-height:1.8">対象：<strong>${esc(empCoName(_empCo))} ／ ${catLabel}</strong><div style="font-size:11px;color:#9333ea;margin-top:4px">配布はPDF／印刷。書式の変更は総務経理・システムのみ（「書式編集」で配布用PDFを差し替え）。</div></div>`;
   if(!joken && !others.length && !dl.length){
     body.innerHTML=html+'<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:28px;text-align:center;color:#9ca3af;font-size:13px">この区分の入社書類はまだ登録されていません。</div>';
     return;
   }
-  // 労働条件通知書（担当者が編集可）
+  // 労働条件通知書（担当者が編集して交付＝Excel）
   if(joken){
     html+=`<div style="background:#fff;border:1px solid #bfdbfe;border-radius:12px;padding:16px;margin-bottom:14px">
       <div style="font-size:14px;font-weight:700;color:#1d4ed8;margin-bottom:4px">📝 労働条件通知書（担当者が編集して使用）</div>
-      <div style="font-size:11px;color:#6b7280;margin-bottom:10px">各担当者がExcelをダウンロードし、条件を編集して交付してください。</div>
+      <div style="font-size:11px;color:#6b7280;margin-bottom:10px">この書類のみ各担当者がExcelを編集して交付します。</div>
       <button onclick="empDownloadDoc('${joken.f}')" style="background:#1d4ed8;color:#fff;border:none;border-radius:6px;padding:7px 16px;font-size:13px;font-weight:700;cursor:pointer">📥 Excelをダウンロード</button>
     </div>`;
   }
-  // その他（一括印刷・手書き）
+  // その他（一括印刷・手書き記入）
   if(others.length){
-    const rows=others.map((d,i)=>`<tr style="border-bottom:1px solid #eef2f7;background:${i%2?'#faf5ff':'#fff'}">
-      <td style="padding:9px 12px;text-align:center;font-size:12px;color:#94a3b8;font-weight:700;width:32px">${i+1}</td>
-      <td style="padding:9px 14px;font-size:13px;color:#1a2b4a"><strong>${esc(d.n)}</strong></td>
-      <td style="padding:9px 10px;text-align:center;white-space:nowrap"><button onclick="empDownloadDoc('${d.f}')" style="background:#fff;border:1px solid #cbd5e1;color:#475569;border-radius:6px;padding:5px 12px;font-size:12px;cursor:pointer">個別DL</button></td>
-    </tr>`).join('');
-    html+=`<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden">
+    html+=`<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;margin-bottom:14px">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 16px;flex-wrap:wrap;border-bottom:1px solid #eef2f7">
-        <div><div style="font-size:14px;font-weight:700;color:#1a2b4a">🖨 その他の入社書類（入職者が手書き記入）</div><div style="font-size:11px;color:#6b7280">一括印刷でまとめて印刷 → 入職者に手書きで記入してもらいます。</div></div>
+        <div><div style="font-size:14px;font-weight:700;color:#1a2b4a">🖨 入社書類（入職者が手書き記入）</div><div style="font-size:11px;color:#6b7280">一括印刷でまとめて出力。各書類は印刷/PDFで配布します。</div></div>
         <button onclick="empBulkPrint()" style="background:#7c3aed;color:#fff;border:none;border-radius:8px;padding:9px 20px;font-size:14px;font-weight:700;cursor:pointer">🖨 一括印刷</button>
       </div>
-      <table style="width:100%;border-collapse:collapse"><tbody>${rows}</tbody></table>
+      <table style="width:100%;border-collapse:collapse"><tbody>${_empDocRows(others)}</tbody></table>
     </div>`;
   }
-  // 個別ダウンロードのみ（制服の季節別・規程など）
+  // その他（制服の季節別・規程など）
   if(dl.length){
-    const drows=dl.map((d,i)=>`<tr style="border-bottom:1px solid #eef2f7;background:${i%2?'#f8fafc':'#fff'}">
-      <td style="padding:9px 14px;font-size:13px;color:#1a2b4a"><strong>${esc(d.n)}</strong></td>
-      <td style="padding:9px 10px;text-align:center;white-space:nowrap"><button onclick="empDownloadDoc('${d.f}')" style="background:#fff;border:1px solid #cbd5e1;color:#475569;border-radius:6px;padding:5px 12px;font-size:12px;cursor:pointer">📥 個別DL</button></td>
-    </tr>`).join('');
     html+=`<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;margin-top:14px">
-      <div style="padding:12px 16px;border-bottom:1px solid #eef2f7"><div style="font-size:14px;font-weight:700;color:#1a2b4a">📂 その他（必要に応じて個別にダウンロード）</div><div style="font-size:11px;color:#6b7280">制服は季節に応じて選択。規程類は説明・控え用です。</div></div>
-      <table style="width:100%;border-collapse:collapse"><tbody>${drows}</tbody></table>
+      <div style="padding:12px 16px;border-bottom:1px solid #eef2f7"><div style="font-size:14px;font-weight:700;color:#1a2b4a">📂 その他（必要に応じて配布）</div><div style="font-size:11px;color:#6b7280">制服は季節に応じて選択。規程類は説明・控え用です。</div></div>
+      <table style="width:100%;border-collapse:collapse"><tbody>${_empDocRows(dl)}</tbody></table>
     </div>`;
   }
   body.innerHTML=html;
