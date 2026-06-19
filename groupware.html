@@ -3564,7 +3564,23 @@ const EMP_DOCS={
       {n:'マイナンバー提供のお願い', f:_EMP_BASE+'07_マイナンバー提供のお願い.docx', h:_EMP_BASE+'print/07_マイナンバー提供のお願い.html'},
       {n:'WEB給与明細同意書', f:_EMP_BASE+'08_WEB給与明細同意書.docx', h:_EMP_BASE+'print/08_WEB給与明細同意書.html'},
     ]
-  }, shain:{} },
+  }, shain:{
+    others:[
+      {n:'入社手続説明事項(社員)', f:'forms/nyusha/amuse_shain/01_入社手続説明事項(社員).doc', h:'forms/nyusha/amuse_shain/print/01_入社手続説明事項(社員).html'},
+      {n:'誓約書', f:'forms/nyusha/amuse_shain/02_誓約書.doc', h:'forms/nyusha/amuse_shain/print/02_誓約書.html'},
+      {n:'機密保持誓約書', f:'forms/nyusha/amuse_shain/03_機密保持誓約書.doc', h:'forms/nyusha/amuse_shain/print/03_機密保持誓約書.html'},
+      {n:'身元保証書', f:'forms/nyusha/amuse_shain/04_身元保証書.doc', h:'forms/nyusha/amuse_shain/print/04_身元保証書.html'},
+      {n:'マイナンバー提供のお願い', f:'forms/nyusha/amuse_shain/05_マイナンバー提供のお願い.docx', h:'forms/nyusha/amuse_shain/print/05_マイナンバー提供のお願い.html'},
+      {n:'メールアドレス申請書', f:'forms/nyusha/amuse_shain/06_メールアドレス申請書.docx', h:'forms/nyusha/amuse_shain/print/06_メールアドレス申請書.html'},
+      {n:'WEB給与明細同意書', f:'forms/nyusha/amuse_shain/07_WEB給与明細同意書.docx', h:'forms/nyusha/amuse_shain/print/07_WEB給与明細同意書.html'},
+    ],
+    dl:[
+      {n:'制服借用書（冬服）', f:'forms/nyusha/amuse_shain/11_制服借用書(冬服).doc'},
+      {n:'制服借用書（夏服）', f:'forms/nyusha/amuse_shain/12_制服借用書(夏服).doc'},
+      {n:'制服借用書（入社時）', f:'forms/nyusha/amuse_shain/13_制服借用書(入社時).doc'},
+      {n:'住宅入居補助規程', f:'forms/nyusha/amuse_shain/14_住宅入居補助規程.doc'},
+    ]
+  } },
   dainichi:{pa:{},shain:{}},
   welpia:{pa:{},shain:{}},
 };
@@ -3634,10 +3650,10 @@ function _empBranchBar(){
 function renderEmpDocs(){
   const body=document.getElementById('empBody'); if(!body) return;
   const set=((EMP_DOCS[_empCo]||{})[_empCat])||{};
-  const joken=set.joken, others=set.others||[];
+  const joken=set.joken, others=set.others||[], dl=set.dl||[];
   const catLabel=_empCat==='pa'?'パート・アルバイト':'社員';
   let html=`<div style="background:#faf5ff;border:1px solid #e9d5ff;border-radius:10px;padding:12px 16px;margin-bottom:14px;font-size:13px;color:#6b21a8;line-height:1.8">対象：<strong>${esc(empCoName(_empCo))} ／ ${catLabel}</strong></div>`;
-  if(!joken && !others.length){
+  if(!joken && !others.length && !dl.length){
     body.innerHTML=html+'<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:28px;text-align:center;color:#9ca3af;font-size:13px">この区分の入社書類はまだ登録されていません。</div>';
     return;
   }
@@ -3662,6 +3678,17 @@ function renderEmpDocs(){
         <button onclick="empBulkPrint()" style="background:#7c3aed;color:#fff;border:none;border-radius:8px;padding:9px 20px;font-size:14px;font-weight:700;cursor:pointer">🖨 一括印刷</button>
       </div>
       <table style="width:100%;border-collapse:collapse"><tbody>${rows}</tbody></table>
+    </div>`;
+  }
+  // 個別ダウンロードのみ（制服の季節別・規程など）
+  if(dl.length){
+    const drows=dl.map((d,i)=>`<tr style="border-bottom:1px solid #eef2f7;background:${i%2?'#f8fafc':'#fff'}">
+      <td style="padding:9px 14px;font-size:13px;color:#1a2b4a"><strong>${esc(d.n)}</strong></td>
+      <td style="padding:9px 10px;text-align:center;white-space:nowrap"><button onclick="empDownloadDoc('${d.f}')" style="background:#fff;border:1px solid #cbd5e1;color:#475569;border-radius:6px;padding:5px 12px;font-size:12px;cursor:pointer">📥 個別DL</button></td>
+    </tr>`).join('');
+    html+=`<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;margin-top:14px">
+      <div style="padding:12px 16px;border-bottom:1px solid #eef2f7"><div style="font-size:14px;font-weight:700;color:#1a2b4a">📂 その他（必要に応じて個別にダウンロード）</div><div style="font-size:11px;color:#6b7280">制服は季節に応じて選択。規程類は説明・控え用です。</div></div>
+      <table style="width:100%;border-collapse:collapse"><tbody>${drows}</tbody></table>
     </div>`;
   }
   body.innerHTML=html;
