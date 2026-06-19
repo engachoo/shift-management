@@ -360,6 +360,8 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
 .tcpv-act.out{background:var(--navy)} .tcpv-act.out:hover{background:var(--navy-dk)}
 .tcpv-done{font-size:17px;color:var(--green-dk);font-weight:700;line-height:1.8}
 .tcpv-edit{margin-top:18px;background:#f3f4f6;color:#6b7280;border:none;border-radius:8px;padding:9px 18px;font-size:13px;cursor:pointer;font-family:inherit}
+.tcpv-clear{margin-top:14px;margin-left:10px;background:#fff;color:#dc2626;border:1.5px solid #fca5a5;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
+.tcpv-clear:hover{background:#fef2f2}
 /* ===== フォーム（設定） ===== */
 .form-section{background:#fff;border-radius:8px;padding:22px 24px;box-shadow:0 1px 4px rgba(0,0,0,.06);margin-bottom:16px}
 .form-section h3{font-size:15px;font-weight:700;color:var(--navy);margin-bottom:16px;padding-bottom:10px;border-bottom:2px solid var(--green-lt)}
@@ -1922,7 +1924,8 @@ function renderDaily(){
   document.getElementById('dailyDateLabel').textContent=fmtDate(d);
   const y=d.getFullYear(),mo=d.getMonth()+1,day=d.getDate();
   const fid=_curFacId;
-  const clients=load('clients',[]).filter(c=>c.active!==false&&c.facilityId===fid);
+  const clients=load('clients',[]).filter(c=>c.active!==false&&c.facilityId===fid)
+    .sort((a,b)=>(a.kana||a.name||'').localeCompare(b.kana||b.name||'','ja'));
   const tbody=document.getElementById('dailyTbody');
   let t1=0,t2=0,med=0,html='';
   if(!clients.length){
@@ -2008,7 +2011,8 @@ function onMonthPicked(){const v=document.getElementById('hiddenMonthPicker').va
 function buildMonthlyClientSel(){
   const sel=document.getElementById('monthlyClientSel');
   const prev=sel.value;
-  const clients=load('clients',[]).filter(c=>c.active!==false&&c.facilityId===_curFacId);
+  const clients=load('clients',[]).filter(c=>c.active!==false&&c.facilityId===_curFacId)
+    .sort((a,b)=>(a.kana||a.name||'').localeCompare(b.kana||b.name||'','ja'));
   sel.innerHTML='';
   if(!clients.length){sel.innerHTML='<option value="">（利用者なし）</option>';return;}
   clients.forEach(c=>{const op=document.createElement('option');op.value=c.id;op.textContent=c.name;sel.appendChild(op);});
@@ -2127,20 +2131,24 @@ function clearRecord(){
   const k=getRecKey(_curFacId,y,mo);
   const r=load(k,{});
   if(r[cid])delete r[cid][day];
-  save(k,r); closeModal();
+  save(k,r);
+  _clearTcPunch(_curFacId,cid,y,mo,day); // タイムカードの打刻も連動して取り消す
+  closeModal();
   if(curView==='daily')renderDaily(); else renderMonthly();
   showToast('削除しました');
 }
 function saveRecordModal(){
   const {cid,y,mo,day}=_mCtx;
+  const status=document.getElementById('me-st').value;
   setRecord(_curFacId,cid,y,mo,day,{
-    status:document.getElementById('me-st').value,
+    status,
     start:document.getElementById('me-s').value,
     end:document.getElementById('me-e').value,
     transport:document.querySelector('input[name="me-tr"]:checked')?.value||'',
     visit:document.getElementById('me-vis').checked,
     medical:document.getElementById('me-med').checked
   });
+  if(!status) _clearTcPunch(_curFacId,cid,y,mo,day); // 「（未入力）」に戻したらタイムカードの打刻も取り消す
   closeModal();
   if(curView==='daily')renderDaily(); else renderMonthly();
   showToast('保存しました ✓');
@@ -2155,6 +2163,12 @@ let _tcClockTimer = null;
 
 function _tcFid(){ return _curFacId; }
 function _tcKey(fid,y,m){ return `tc_${fid}_${y}${String(m).padStart(2,'0')}`; }
+// 利用実績の取り消しに連動して、その日のタイムカード打刻も削除する
+function _clearTcPunch(fid,cid,y,mo,day){
+  const k=_tcKey(fid,y,mo);
+  const tc=load(k,{});
+  if(tc[cid] && tc[cid][day]){ delete tc[cid][day]; save(k,tc); }
+}
 function _isToday(d){ const n=new Date(); return d.getFullYear()===n.getFullYear()&&d.getMonth()===n.getMonth()&&d.getDate()===n.getDate(); }
 function _fmtTime(h,min){ return `${String(h).padStart(2,'0')}:${String(min).padStart(2,'0')}`; }
 
@@ -2310,10 +2324,12 @@ function _renderTcpvCard(){
   } else if(!day.out){
     body=`<div class="tcpv-greet">通所中（出勤 ${day.in}）</div>
       <div class="tcpv-prev">本日の出勤時刻：${day.in}</div>
-      <button class="tcpv-act out" onclick="tcDoPunch('out')">退勤する</button>`;
+      <button class="tcpv-act out" onclick="tcDoPunch('out')">退勤する</button>
+      ${can('timecard_edit')?`<div><button class="tcpv-clear" onclick="tcClearPunch()">🗑 打刻を取り消す</button></div>`:''}`;
   } else {
     body=`<div class="tcpv-done">本日の利用は終了しました<br>出勤 ${day.in} ／ 退勤 ${day.out}</div>
-      ${can('timecard_edit')?`<button class="tcpv-edit" onclick="closeTcPunch();tcEdit('${cl.id}')">時刻を修正する</button>`:''}`;
+      ${can('timecard_edit')?`<button class="tcpv-edit" onclick="closeTcPunch();tcEdit('${cl.id}')">時刻を修正する</button>
+      <button class="tcpv-clear" onclick="tcClearPunch()">🗑 打刻を取り消す</button>`:''}`;
   }
   box.innerHTML=`<div class="tcpv-name">${esc(cl.name)} さん</div>${body}`;
 }
@@ -2321,6 +2337,20 @@ function tcDoPunch(type){
   if(!_tcpvClientId) return;
   tcPunch(_tcpvClientId,type);
   _renderTcpvCard();
+}
+// 誤打刻の取り消し：その日のタイムカード打刻と、連動して作られた利用実績を削除し再出勤できる状態に戻す
+function tcClearPunch(){
+  if(!_tcpvClientId) return;
+  if(!can('timecard_edit')){ showToast('打刻を取り消す権限がありません'); return; }
+  const cl=load('clients',[]).find(c=>c.id===_tcpvClientId);
+  if(!confirm(`${cl?.name||''} さんの本日の打刻を取り消します。\n誤って打刻した場合の取り消し用です。利用実績の通所も併せて取り消します。`)) return;
+  const fid=_tcFid(),y=_tcDate.getFullYear(),m=_tcDate.getMonth()+1,d=_tcDate.getDate();
+  const tcKey=_tcKey(fid,y,m); const tc=load(tcKey,{});
+  if(tc[_tcpvClientId]){ delete tc[_tcpvClientId][d]; save(tcKey,tc); }
+  const recKey=getRecKey(fid,y,m); const rec=load(recKey,{});
+  if(rec[_tcpvClientId]){ delete rec[_tcpvClientId][d]; save(recKey,rec); }
+  _renderTcpvCard();   // 「通所する」に戻る（再出勤可能）
+  showToast('打刻を取り消しました ✓');
 }
 
 function tcPunch(clientId, type){
@@ -3171,10 +3201,10 @@ function genJissekiForm(claimArg){
     const rows = u.daily.map(x=>{
       const dt=new Date(y,m-1,x.day);
       return `<tr><td class="c">${x.day}</td><td class="c">${wd[dt.getDay()]}</td>`+
-        `<td class="c st">${x.abs?'欠席':''}</td>`+
+        `<td class="c st">${x.abs?'欠席':x.sgw?'施設外就労':''}</td>`+
         `<td class="c">${x.att?fmt(x.start):''}</td><td class="c">${x.att?fmt(x.end):''}</td>`+
         `<td class="c">${x.t1?'1':''}</td><td class="c">${x.t2?'1':''}</td>`+
-        `${EMPTY8}<td></td><td></td></tr>`;
+        `${EMPTY8}<td></td><td class="c">${x.sgw?'実施報告書添付':''}</td></tr>`;
     }).join('');
     let blanks=''; const need=Math.max(0, 31-u.daily.length);
     for(let i=0;i<need;i++) blanks+=`<tr class="bl"><td class="c">　</td>${'<td></td>'.repeat(16)}</tr>`;
@@ -5400,6 +5430,8 @@ const WELBE_PERM_DEFS = [
   { key:'claim_access',    label:'請求アクセス',       desc:'請求書類の作成・ダウンロード', group:'請求',         adm:true,  mgr:true,  stf:false },
   { key:'client_view',     label:'利用者情報閲覧',     desc:'利用者一覧の表示',             group:'利用者',       adm:true,  mgr:true,  stf:true  },
   { key:'client_edit',     label:'利用者情報編集',     desc:'利用者の追加・変更・削除',     group:'利用者',       adm:true,  mgr:true,  stf:false },
+  { key:'facility_edit',   label:'事業所情報の表示・編集', desc:'事業所情報の閲覧・変更',     group:'設定',         adm:true,  mgr:true,  stf:false },
+  { key:'init_edit',       label:'初期設定情報の表示・編集', desc:'初期設定情報の閲覧・変更', group:'設定',         adm:true,  mgr:true,  stf:false },
 ];
 const WELBE_ROLES = ['admin','manager','staff'];
 const WELBE_ROLE_LABELS = { admin:'管理者', manager:'責任者', staff:'スタッフ' };
@@ -5428,7 +5460,7 @@ function can(key){
 // 画面ごとの必要権限（__admin__=管理者専用、未定義=誰でも可）
 const VIEW_PERM = {
   claim:'claim_access', clients:'client_view',
-  facility:'__admin__', init:'__admin__',
+  facility:'facility_edit', init:'init_edit',
   sysusers:'__admin__', sysperms:'__admin__', croco:'__admin__'
 };
 function canView(v){
@@ -5455,10 +5487,10 @@ function applyPermVisibility(){
   const admin=_curRole()==='admin';
   set('sm-claim',    can('claim_access'));
   set('sm-clients',  can('client_view'));
-  set('sm-facility', admin);
-  set('sm-init',     admin);
+  set('sm-facility', can('facility_edit'));
+  set('sm-init',     can('init_edit'));
   // 設定グループ：子(事業所/利用者/初期設定)が1つでも見えるなら表示
-  const settingVisible = admin || can('client_view');
+  const settingVisible = can('facility_edit') || can('client_view') || can('init_edit');
   set('sm-setting', settingVisible);
   if(!settingVisible) set('sub-setting', false);
   // システム設定：管理者のみ
@@ -5894,6 +5926,8 @@ function getFiscalYearCleanup(){
 function renderAlertBanner(){
   const wrap=document.getElementById('alertBannerWrap');
   if(!wrap) return;
+  // タイムカード画面（打刻用）ではアラートバナーを表示しない
+  if(typeof curView!=='undefined' && curView==='timecard'){ wrap.style.display='none'; wrap.innerHTML=''; return; }
   const al=getReceiptAlerts();
   const punch=getPunchAlerts();
   const fy=getFiscalYearCleanup();
