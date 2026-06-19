@@ -3626,6 +3626,7 @@ function renderEmpRoster(){
       <td style="padding:9px 8px;font-size:12px;color:#475569">${esc(s.empType||'-')}</td>
       <td style="padding:9px 8px;font-size:12px;color:#475569">${esc(s.store||'-')}</td>
       <td style="padding:9px 8px;font-size:12px;color:#475569">${esc(s.joinDate||'-')}</td>
+      <td style="padding:9px 8px;text-align:center;font-size:12px;color:#475569">${(s.files&&s.files.length)?'📎'+s.files.length:'-'}</td>
       <td style="padding:9px 8px;text-align:center">${s.retired?'<span style="font-size:11px;background:#f1f5f9;color:#64748b;border-radius:10px;padding:2px 8px">退職</span>':'<span style="font-size:11px;background:#dcfce7;color:#166534;border-radius:10px;padding:2px 8px">在籍</span>'}</td>
       <td style="padding:9px 8px;text-align:center;white-space:nowrap"><button onclick="openEmpForm('${s.id}')" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;border-radius:6px;padding:5px 12px;font-size:12px;cursor:pointer">編集</button></td>
     </tr>`;
@@ -3640,10 +3641,11 @@ function renderEmpRoster(){
           <th style="padding:9px 8px;font-size:12px">雇用区分</th>
           <th style="padding:9px 8px;font-size:12px">店舗</th>
           <th style="padding:9px 8px;font-size:12px">入社日</th>
+          <th style="padding:9px 8px;font-size:12px">書類</th>
           <th style="padding:9px 8px;font-size:12px">状態</th>
           <th style="padding:9px 8px;font-size:12px">操作</th>
         </tr></thead>
-        <tbody>${rows||'<tr><td colspan="7" style="padding:28px;text-align:center;color:#9ca3af;font-size:13px">まだ登録がありません。「＋ 従業員を登録」から追加してください。</td></tr>'}</tbody>
+        <tbody>${rows||'<tr><td colspan="8" style="padding:28px;text-align:center;color:#9ca3af;font-size:13px">まだ登録がありません。「＋ 従業員を登録」から追加してください。</td></tr>'}</tbody>
       </table>
     </div>`;
 }
@@ -3695,7 +3697,8 @@ function renderEmpForm(){
         <button onclick="saveEmpForm()" style="background:#7c3aed;color:#fff;border:none;border-radius:8px;padding:10px 28px;font-size:14px;font-weight:700;cursor:pointer">💾 保存</button>
         ${_empEditId?`<button onclick="deleteEmp('${_empEditId}')" style="background:#fff;border:1px solid #fca5a5;color:#dc2626;border-radius:8px;padding:10px 18px;font-size:13px;cursor:pointer">削除</button>`:''}
       </div>
-    </div>`;
+    </div>
+    ${renderEmpFilesSection(s)}`;
   if(s.store!==undefined){ const e=document.getElementById('emp-store'); if(e) e.value=s.store||''; }
 }
 
@@ -3725,6 +3728,66 @@ function deleteEmp(id){
   if(!confirm(`「${s?.name||''}」を名簿から削除しますか？`)) return;
   save('emp_staff',load('emp_staff',[]).filter(x=>x.id!==id));
   _empView='roster'; renderEmpApp(); showToast('削除しました');
+}
+
+// ---- Phase2：従業員ごとの書類保管（PDF/Excel/Word・画像。fs://方式・1ファイル650KBまで）----
+function _fileIcon(name){ const e=(name||'').split('.').pop().toLowerCase(); return e==='pdf'?'📕':['xlsx','xls'].includes(e)?'📗':['docx','doc'].includes(e)?'📘':['jpg','jpeg','png'].includes(e)?'🖼️':'📄'; }
+function _fmtSize(b){ b=b||0; return b<1024?b+'B':b<1048576?(b/1024).toFixed(0)+'KB':(b/1048576).toFixed(1)+'MB'; }
+function renderEmpFilesSection(s){
+  if(!_empEditId){
+    return `<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:18px;max-width:760px;margin-top:16px;color:#9ca3af;font-size:13px">📎 保管書類：先に「💾 保存」で登録すると、ここに書類（PDF・Excel・Word・画像）を添付できます。</div>`;
+  }
+  const files=s.files||[];
+  const rows=files.map(f=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid #eef2f7;border-radius:8px;margin-bottom:6px">
+      <span style="font-size:18px">${_fileIcon(f.name)}</span>
+      <div style="flex:1;min-width:0"><div style="font-size:13px;color:#1a2b4a;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(f.name)}</div><div style="font-size:10px;color:#9ca3af">${_fmtSize(f.size)}${f.uploadedAt?'・'+esc(f.uploadedAt):''}</div></div>
+      <button onclick="empFileDownload('${f.ref}','${esc(f.name).replace(/'/g,"\\'")}')" style="background:#7c3aed;color:#fff;border:none;border-radius:6px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer">📥</button>
+      <button onclick="empDeleteFile('${f.ref}')" style="background:#fff;border:1px solid #fca5a5;color:#dc2626;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer">🗑</button>
+    </div>`).join('');
+  return `<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:18px;max-width:760px;margin-top:16px">
+    <div style="font-size:14px;font-weight:700;color:#1a2b4a;margin-bottom:4px">📎 保管書類（${files.length}件）</div>
+    <div style="font-size:11px;color:#9ca3af;margin-bottom:12px">記入済みの入社書類などをPDF・Excel・Word・画像で保管できます（1ファイル650KBまで）。</div>
+    ${rows||'<div style="color:#9ca3af;font-size:12px;padding:8px 0">まだ書類がありません。</div>'}
+    <label style="display:inline-block;margin-top:10px;background:#faf5ff;border:1.5px dashed #c084fc;color:#7c3aed;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer">＋ 書類を追加
+      <input type="file" multiple accept=".pdf,.xlsx,.xls,.docx,.doc,.jpg,.jpeg,.png" style="display:none" onchange="empUploadFiles(event)">
+    </label>
+  </div>`;
+}
+async function empUploadFiles(ev){
+  if(!_empEditId){ alert('先に保存してください'); return; }
+  const files=[...ev.target.files]; if(!files.length) return;
+  const staff=load('emp_staff',[]); const emp=staff.find(x=>x.id===_empEditId); if(!emp){ alert('対象が見つかりません'); return; }
+  emp.files=emp.files||[];
+  showToast('📤 アップロード中...',5000);
+  try{
+    for(const f of files){
+      const meta=await tkUploadFileToStore(f);
+      emp.files.push({ref:meta.ref,name:meta.name,size:meta.size,uploadedAt:new Date().toLocaleDateString('sv',{timeZone:'Asia/Tokyo'})});
+    }
+    save('emp_staff',staff);
+    showToast('✅ アップロードしました');
+    renderEmpApp();
+  }catch(e){ alert(e.message); }
+}
+async function empFileDownload(ref,name){
+  try{
+    showToast('📄 取得中...',3000);
+    const doc=await _db.collection(_COL).doc('tk_file_'+ref.replace('fs://','')).get();
+    if(!doc.exists){ alert('ファイルが見つかりません'); return; }
+    const data=JSON.parse(doc.data().v);
+    const a=document.createElement('a'); a.href=data.data; a.download=name||'file';
+    document.body.appendChild(a); a.click(); a.remove();
+    showToast('✅ ダウンロードしました');
+  }catch(e){ alert('ダウンロードに失敗しました: '+e.message); }
+}
+async function empDeleteFile(ref){
+  if(!confirm('この書類を削除しますか？')) return;
+  const staff=load('emp_staff',[]); const emp=staff.find(x=>x.id===_empEditId); if(!emp) return;
+  emp.files=(emp.files||[]).filter(f=>f.ref!==ref);
+  save('emp_staff',staff);
+  try{ await _db.collection(_COL).doc('tk_file_'+ref.replace('fs://','')).delete(); }catch(e){}
+  renderEmpApp(); showToast('削除しました');
 }
 
 // =========================================================
