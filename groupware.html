@@ -3629,7 +3629,9 @@ async function empOpenStoredPdf(ref){
   const w=window.open(url,'_blank');
   setTimeout(()=>URL.revokeObjectURL(url),60000);
 }
-// 一括印刷：①一括マスターPDFがあれば画面で開いて一括印刷／②Word一括マスターはDL／③無ければ各Wordを一括DL
+// その他の結合PDF（一括印刷用）パス
+function _empAllPdfPath(){ const set=((EMP_DOCS[_empCo]||{})[_empCat])||{}; const arr=(set.others||[]); if(!arr.length) return null; const f=arr[0].f; return f.slice(0,f.lastIndexOf('/'))+'/pdf/_ALL.pdf'; }
+// 一括印刷：①一括マスターPDFがあれば開く／②Word一括マスターはDL／③結合PDF(_ALL.pdf)を開いてまとめて印刷
 async function empBulkPrint(){
   const bm=_empDocMaster(_empBulkKey());
   if(bm){
@@ -3637,10 +3639,10 @@ async function empBulkPrint(){
     else empFileDownload(bm.ref,bm.name);
     return;
   }
-  const set=((EMP_DOCS[_empCo]||{})[_empCat])||{}; const others=set.others||[];
-  if(!others.length){ alert('一括印刷できる書類がありません'); return; }
-  showToast('📥 入社書類（Word）を一括ダウンロードします。Wordで開いて印刷してください',5000);
-  others.forEach((d,i)=> setTimeout(()=>empDownloadDoc(_empProtPath(d.f)), i*700) );
+  const all=_empAllPdfPath();
+  if(!all){ alert('一括印刷できる書類がありません'); return; }
+  showToast('🖨 まとめてPDFを開きます。表示後に印刷してください',4000);
+  window.open(encodeURI(all),'_blank');
 }
 
 function renderEmpApp(){
@@ -3701,12 +3703,14 @@ function empEditDocMaster(key){
   inp.click();
 }
 // 書類1件分の操作ボタン列（PDF配布＝全員、書式編集＝総務経理のみ）
-// 配布用の保護版パス（同フォルダ protected/ に .docx で保管・編集制限PW付き）
-function _empProtPath(f){ const i=f.lastIndexOf('/'); return f.slice(0,i)+'/protected/'+f.slice(i+1).replace(/\.(docx?|xlsx?)$/i,'.docx'); }
+// 配布用PDFのパス（同フォルダ pdf/ に .pdf で保管）
+function _empPdfPath(f){ const i=f.lastIndexOf('/'); return f.slice(0,i)+'/pdf/'+f.slice(i+1).replace(/\.(docx?|xlsx?)$/i,'.pdf'); }
 function _empDocActions(d){
   const m=_empDocMaster(d.f); const canEdit=empCanEditDocs(); let b='';
   if(m){ const nm=esc(m.name).replace(/'/g,"\\'"); b+=`<button onclick="empFileDownload('${m.ref}','${nm}')" style="background:#7c3aed;color:#fff;border:none;border-radius:6px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer">📥 配布ファイル</button> `; }
-  else { b+=`<button onclick="empDownloadDoc('${_empProtPath(d.f)}')" style="background:#7c3aed;color:#fff;border:none;border-radius:6px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer">🖨 印刷用DL（Word）</button> `; }
+  else { const pdf=encodeURI(_empPdfPath(d.f));
+    b+=`<button onclick="window.open('${pdf}','_blank')" style="background:#0ea5e9;color:#fff;border:none;border-radius:6px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer">🖨 印刷</button> `;
+    b+=`<button onclick="empDownloadDoc('${_empPdfPath(d.f)}')" style="background:#7c3aed;color:#fff;border:none;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer">📥 PDF</button> `; }
   if(canEdit){ b+=`<button onclick="empEditDocMaster('${d.f}')" style="background:#fff7ed;border:1px solid #fdba74;color:#c2410c;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer">✏️ 書式編集</button> <button onclick="empDownloadDoc('${d.f}')" style="background:#f1f5f9;border:1px solid #cbd5e1;color:#475569;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer">素材DL（編集用）</button>`; }
   return b;
 }
@@ -3724,7 +3728,7 @@ function renderEmpDocs(){
   const joken=set.joken, others=set.others||[], dl=set.dl||[];
   const catLabel=_empCat==='pa'?'パート・アルバイト':_empCat==='kanbu'?'役職者（幹部）':'一般社員';
   const canEdit=empCanEditDocs();
-  let html=`<div style="background:#faf5ff;border:1px solid #e9d5ff;border-radius:10px;padding:12px 16px;margin-bottom:14px;font-size:13px;color:#6b21a8;line-height:1.8">対象：<strong>${esc(empCoName(_empCo))} ／ ${catLabel}</strong><div style="font-size:11px;color:#9333ea;margin-top:4px">配布は編集制限つきWord（パスワード保護）。書式の変更は総務経理・システムのみ（「素材DL（編集用）」で編集→「書式編集」で差し替え）。</div></div>`;
+  let html=`<div style="background:#faf5ff;border:1px solid #e9d5ff;border-radius:10px;padding:12px 16px;margin-bottom:14px;font-size:13px;color:#6b21a8;line-height:1.8">対象：<strong>${esc(empCoName(_empCo))} ／ ${catLabel}</strong><div style="font-size:11px;color:#9333ea;margin-top:4px">配布はPDF（編集不可・元レイアウトのまま）。書式の変更は総務経理・システムのみ（「素材DL（編集用）」で編集→「書式編集」で差し替え）。</div></div>`;
   if(!joken && !others.length && !dl.length){
     body.innerHTML=html+'<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:28px;text-align:center;color:#9ca3af;font-size:13px">この区分の入社書類はまだ登録されていません。</div>';
     return;
@@ -3743,11 +3747,11 @@ function renderEmpDocs(){
     const bulkIsPdf=bulk&&/\.pdf$/i.test(bulk.name||'');
     const bulkBtn=bulk
       ? `<button onclick="empBulkPrint()" style="background:#7c3aed;color:#fff;border:none;border-radius:8px;padding:9px 20px;font-size:14px;font-weight:700;cursor:pointer">${bulkIsPdf?'🖨 一括印刷（PDF）':'📥 一括配布（'+esc((bulk.name||'').split('.').pop().toUpperCase())+'）'}</button>`
-      : `<button onclick="empBulkPrint()" style="background:#7c3aed;color:#fff;border:none;border-radius:8px;padding:9px 20px;font-size:14px;font-weight:700;cursor:pointer">🖨 一括印刷（Word一括DL）</button>`;
+      : `<button onclick="empBulkPrint()" style="background:#7c3aed;color:#fff;border:none;border-radius:8px;padding:9px 20px;font-size:14px;font-weight:700;cursor:pointer">🖨 一括印刷</button>`;
     const bulkEdit=canEdit?`<button onclick="empEditDocMaster('${_empBulkKey()}')" style="background:#fff7ed;border:1px solid #fdba74;color:#c2410c;border-radius:8px;padding:9px 14px;font-size:12px;font-weight:700;cursor:pointer">✏️ 一括マスター差替</button>`:'';
     html+=`<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;margin-bottom:14px">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 16px;flex-wrap:wrap;border-bottom:1px solid #eef2f7">
-        <div><div style="font-size:14px;font-weight:700;color:#1a2b4a">🖨 入社書類（入職者が手書き記入）</div><div style="font-size:11px;color:#6b7280">${bulk?'総務経理が登録した一括配布ファイルを配布します。':'「一括印刷」で全書類のWord（保護版）を一括ダウンロード→Wordで開いて印刷（元形式なのでズレません）。総務経理が「一括マスター」を登録すると1ファイルで配布できます。'}</div></div>
+        <div><div style="font-size:14px;font-weight:700;color:#1a2b4a">🖨 入社書類（入職者が手書き記入）</div><div style="font-size:11px;color:#6b7280">${bulk?'総務経理が登録した一括配布ファイルを配布します。':'「一括印刷」で全書類をまとめたPDFを開いて印刷。各書類は🖨印刷（PDF表示）／📥PDFで配布します（元レイアウトのまま）。'}</div></div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">${bulkBtn}${bulkEdit}</div>
       </div>
       <table style="width:100%;border-collapse:collapse"><tbody>${_empDocRows(others)}</tbody></table>
