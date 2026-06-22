@@ -3616,28 +3616,15 @@ function _empInit(){ const vis=empVisibleCompanies(); if(!_empCo||!vis.includes(
 function empDownloadDoc(path){ const a=document.createElement('a'); a.href=encodeURI(path); a.download=path.split('/').pop(); document.body.appendChild(a); a.click(); a.remove(); }
 
 function _empBulkKey(){ return _empCo+'_'+_empCat+'_BULK'; }
+// 一括印刷＝元形式（Word/保護版）を一括ダウンロード→Wordで開いて印刷（ズレ防止のためHTML印刷は廃止）
 async function empBulkPrint(){
   // 総務経理が一括配布マスター(PDF/Word等)をアップ済みならそれを配布
   const bm=_empDocMaster(_empBulkKey());
   if(bm){ empFileDownload(bm.ref,bm.name); return; }
   const set=((EMP_DOCS[_empCo]||{})[_empCat])||{}; const others=set.others||[];
   if(!others.length){ alert('一括印刷できる書類がありません'); return; }
-  showToast('🖨 印刷用に準備中...',4000);
-  try{
-    let styles='', sections='';
-    for(let i=0;i<others.length;i++){
-      const res=await fetch(encodeURI(others[i].h)); const html=await res.text();
-      const sid='doc'+i;
-      // 各書類の<style>をスコープ化（クラス名衝突を防ぐ）
-      const sm=html.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
-      if(sm){ styles+=sm[1].replace(/([^{}]+)\{([^}]*)\}/g,(m,sel,bd)=>sel.split(',').map(s=>`#${sid} ${s.trim()}`).join(',')+'{'+bd+'}'); }
-      const bm=html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
-      sections+=`<div id="${sid}" class="docpage">${bm?bm[1]:html}</div>`;
-    }
-    const w=window.open('','_blank');
-    w.document.write(`<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8"><title>入社書類（一括印刷）</title><style>@page{size:A4;margin:15mm}html,body{margin:0;padding:0}.docpage{page-break-after:always}.docpage:last-child{page-break-after:auto}.docpage *{font-family:'MS Gothic','Osaka-Mono','Hiragino Kaku Gothic ProN',monospace !important}${styles}</style></head><body onload="setTimeout(function(){window.print()},600)">${sections}</body></html>`);
-    w.document.close();
-  }catch(e){ alert('印刷準備に失敗しました: '+e.message); }
+  showToast('📥 入社書類（Word）を一括ダウンロードします。Wordで開いて印刷してください',5000);
+  others.forEach((d,i)=> setTimeout(()=>empDownloadDoc(_empProtPath(d.f)), i*700) );
 }
 
 function renderEmpApp(){
@@ -3703,8 +3690,7 @@ function _empProtPath(f){ const i=f.lastIndexOf('/'); return f.slice(0,i)+'/prot
 function _empDocActions(d){
   const m=_empDocMaster(d.f); const canEdit=empCanEditDocs(); let b='';
   if(m){ const nm=esc(m.name).replace(/'/g,"\\'"); b+=`<button onclick="empFileDownload('${m.ref}','${nm}')" style="background:#7c3aed;color:#fff;border:none;border-radius:6px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer">📥 配布ファイル</button> `; }
-  else { b+=`<button onclick="empDownloadDoc('${_empProtPath(d.f)}')" style="background:#7c3aed;color:#fff;border:none;border-radius:6px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer">📥 ダウンロード（保護）</button> `;
-         if(d.h){ b+=`<button onclick="empPrintDoc('${d.h}')" style="background:#0ea5e9;color:#fff;border:none;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer">🖨 印刷</button> `; } }
+  else { b+=`<button onclick="empDownloadDoc('${_empProtPath(d.f)}')" style="background:#7c3aed;color:#fff;border:none;border-radius:6px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer">📥 ダウンロード（保護）</button> `; }
   if(canEdit){ b+=`<button onclick="empEditDocMaster('${d.f}')" style="background:#fff7ed;border:1px solid #fdba74;color:#c2410c;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer">✏️ 書式編集</button> <button onclick="empDownloadDoc('${d.f}')" style="background:#f1f5f9;border:1px solid #cbd5e1;color:#475569;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer">素材DL（編集用）</button>`; }
   return b;
 }
@@ -3740,11 +3726,11 @@ function renderEmpDocs(){
     const bulk=_empDocMaster(_empBulkKey());
     const bulkBtn=bulk
       ? `<button onclick="empBulkPrint()" style="background:#7c3aed;color:#fff;border:none;border-radius:8px;padding:9px 20px;font-size:14px;font-weight:700;cursor:pointer">📥 一括配布（${esc((bulk.name||'').split('.').pop().toUpperCase())}）</button>`
-      : `<button onclick="empBulkPrint()" style="background:#7c3aed;color:#fff;border:none;border-radius:8px;padding:9px 20px;font-size:14px;font-weight:700;cursor:pointer">🖨 一括印刷</button>`;
+      : `<button onclick="empBulkPrint()" style="background:#7c3aed;color:#fff;border:none;border-radius:8px;padding:9px 20px;font-size:14px;font-weight:700;cursor:pointer">🖨 一括印刷（Word一括DL）</button>`;
     const bulkEdit=canEdit?`<button onclick="empEditDocMaster('${_empBulkKey()}')" style="background:#fff7ed;border:1px solid #fdba74;color:#c2410c;border-radius:8px;padding:9px 14px;font-size:12px;font-weight:700;cursor:pointer">✏️ 一括マスター差替</button>`:'';
     html+=`<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;margin-bottom:14px">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 16px;flex-wrap:wrap;border-bottom:1px solid #eef2f7">
-        <div><div style="font-size:14px;font-weight:700;color:#1a2b4a">🖨 入社書類（入職者が手書き記入）</div><div style="font-size:11px;color:#6b7280">${bulk?'総務経理が登録した一括配布ファイルを配布します。':'各書類は配布ファイル（PDF/保護Word等）または印刷で配布。総務経理が「一括マスター」を登録すると、まとめて1ファイルで配布できます。'}</div></div>
+        <div><div style="font-size:14px;font-weight:700;color:#1a2b4a">🖨 入社書類（入職者が手書き記入）</div><div style="font-size:11px;color:#6b7280">${bulk?'総務経理が登録した一括配布ファイルを配布します。':'「一括印刷」で全書類のWord（保護版）を一括ダウンロード→Wordで開いて印刷（元形式なのでズレません）。総務経理が「一括マスター」を登録すると1ファイルで配布できます。'}</div></div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">${bulkBtn}${bulkEdit}</div>
       </div>
       <table style="width:100%;border-collapse:collapse"><tbody>${_empDocRows(others)}</tbody></table>
