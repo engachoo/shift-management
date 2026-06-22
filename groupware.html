@@ -3630,7 +3630,7 @@ async function empOpenStoredPdf(ref){
   setTimeout(()=>URL.revokeObjectURL(url),60000);
 }
 // その他の結合PDF（一括印刷用）パス
-function _empAllPdfPath(){ const set=((EMP_DOCS[_empCo]||{})[_empCat])||{}; const arr=(set.others||[]); if(!arr.length) return null; const f=arr[0].f; return f.slice(0,f.lastIndexOf('/'))+'/pdf/_ALL.pdf'; }
+function _empAllPdfPath(){ const set=((EMP_DOCS[_empCo]||{})[_empCat])||{}; const arr=(set.others||[]); if(!arr.length) return null; const f=arr[0].f; return f.slice(0,f.lastIndexOf('/'))+'/pdf/ALL.pdf'; }
 // 一括印刷：①一括マスターPDFがあれば開く／②Word一括マスターはDL／③結合PDF(_ALL.pdf)を開いてまとめて印刷
 async function empBulkPrint(){
   const bm=_empDocMaster(_empBulkKey());
