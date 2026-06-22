@@ -3580,9 +3580,19 @@ const EMP_DOCS={
       {n:'制服借用書（入社時）', f:'forms/nyusha/amuse_shain/13_制服借用書(入社時).doc', h:'forms/nyusha/amuse_shain/print/13_制服借用書(入社時).html'},
       {n:'住宅入居補助規程', f:'forms/nyusha/amuse_shain/14_住宅入居補助規程.doc', h:'forms/nyusha/amuse_shain/print/14_住宅入居補助規程.html'},
     ]
+  }, kanbu:{
+    others:[
+      {n:'入社手続説明事項(役職者)', f:'forms/nyusha/amuse_kanbu/01_入社手続説明事項(役職者).doc', h:'forms/nyusha/amuse_kanbu/print/01_入社手続説明事項(役職者).html'},
+      {n:'誓約書', f:'forms/nyusha/amuse_kanbu/02_誓約書.doc', h:'forms/nyusha/amuse_kanbu/print/02_誓約書.html'},
+      {n:'機密保持誓約書(役職者)', f:'forms/nyusha/amuse_kanbu/03_機密保持誓約書(役職者).doc', h:'forms/nyusha/amuse_kanbu/print/03_機密保持誓約書(役職者).html'},
+      {n:'身元保証書', f:'forms/nyusha/amuse_kanbu/04_身元保証書.doc', h:'forms/nyusha/amuse_kanbu/print/04_身元保証書.html'},
+      {n:'マイナンバー提供のお願い', f:'forms/nyusha/amuse_kanbu/05_マイナンバー提供のお願い.docx', h:'forms/nyusha/amuse_kanbu/print/05_マイナンバー提供のお願い.html'},
+      {n:'メールアドレス申請書', f:'forms/nyusha/amuse_kanbu/06_メールアドレス申請書.docx', h:'forms/nyusha/amuse_kanbu/print/06_メールアドレス申請書.html'},
+      {n:'WEB給与明細同意書', f:'forms/nyusha/amuse_kanbu/07_WEB給与明細同意書.docx', h:'forms/nyusha/amuse_kanbu/print/07_WEB給与明細同意書.html'},
+    ]
   } },
-  dainichi:{pa:{},shain:{}},
-  welpia:{pa:{},shain:{}},
+  dainichi:{pa:{},shain:{},kanbu:{}},
+  welpia:{pa:{},shain:{},kanbu:{}},
 };
 
 // ---- 権限ヘルパー ----
@@ -3599,7 +3609,9 @@ function empCanEditRecord(rec){ const r=empRole(); const isPA=EMP_PA_TYPES.inclu
 function empCoName(id){ return (EMP_COMPANIES.find(c=>c.id===id)||{}).name||id||'-'; }
 
 let _empView='docs', _empEditId=null, _empCo=null, _empCat='pa';
-function _empInit(){ const vis=empVisibleCompanies(); if(!_empCo||!vis.includes(_empCo)) _empCo=vis[0]; if(_empCat==='shain'&&!empCanSeeShain()) _empCat='pa'; }
+function _empInit(){ const vis=empVisibleCompanies(); if(!_empCo||!vis.includes(_empCo)) _empCo=vis[0];
+  if((_empCat==='shain'||_empCat==='kanbu')&&!empCanSeeShain()) _empCat='pa';
+  if(_empCat==='kanbu'&&_empView==='roster') _empCat='shain'; } // 名簿は役職者カテゴリを持たない
 
 function empDownloadDoc(path){ const a=document.createElement('a'); a.href=encodeURI(path); a.download=path.split('/').pop(); document.body.appendChild(a); a.click(); a.remove(); }
 
@@ -3650,7 +3662,9 @@ function _empBranchBar(){
   const vis=empVisibleCompanies();
   const coTabs=vis.map(c=>`<button onclick="_empCo='${c}';renderEmpApp()" style="background:${_empCo===c?'#1e3a6b':'#eef2f7'};color:${_empCo===c?'#fff':'#475569'};border:none;border-radius:7px;padding:7px 16px;font-size:13px;font-weight:700;cursor:pointer">${esc(empCoName(c))}</button>`).join('');
   const catBtn=(id,label)=>`<button onclick="_empCat='${id}';renderEmpApp()" style="background:${_empCat===id?'#7c3aed':'#faf5ff'};color:${_empCat===id?'#fff':'#7c3aed'};border:1px solid #d8b4fe;border-radius:7px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer">${label}</button>`;
-  const cats=catBtn('pa','パート・アルバイト')+(empCanSeeShain()?catBtn('shain','社員'):'');
+  // 名簿は区分(pa/shain)のみ、入社書類は役職者(幹部)も選べる
+  let cats=catBtn('pa','パート・アルバイト');
+  if(empCanSeeShain()){ cats+=catBtn('shain','一般社員'); if(_empView==='docs') cats+=catBtn('kanbu','役職者（幹部）'); }
   return `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">${coTabs}</div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">${cats}</div>`;
 }
@@ -3703,7 +3717,7 @@ function renderEmpDocs(){
   const body=document.getElementById('empBody'); if(!body) return;
   const set=((EMP_DOCS[_empCo]||{})[_empCat])||{};
   const joken=set.joken, others=set.others||[], dl=set.dl||[];
-  const catLabel=_empCat==='pa'?'パート・アルバイト':'社員';
+  const catLabel=_empCat==='pa'?'パート・アルバイト':_empCat==='kanbu'?'役職者（幹部）':'一般社員';
   const canEdit=empCanEditDocs();
   let html=`<div style="background:#faf5ff;border:1px solid #e9d5ff;border-radius:10px;padding:12px 16px;margin-bottom:14px;font-size:13px;color:#6b21a8;line-height:1.8">対象：<strong>${esc(empCoName(_empCo))} ／ ${catLabel}</strong><div style="font-size:11px;color:#9333ea;margin-top:4px">配布はPDF／印刷。書式の変更は総務経理・システムのみ（「書式編集」で配布用PDFを差し替え）。</div></div>`;
   if(!joken && !others.length && !dl.length){
