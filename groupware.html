@@ -3613,7 +3613,8 @@ function _empInit(){ const vis=empVisibleCompanies(); if(!_empCo||!vis.includes(
   if((_empCat==='shain'||_empCat==='kanbu')&&!empCanSeeShain()) _empCat='pa';
   if(_empCat==='kanbu'&&_empView==='roster') _empCat='shain'; } // 名簿は役職者カテゴリを持たない
 
-function empDownloadDoc(path){ const a=document.createElement('a'); a.href=encodeURI(path); a.download=path.split('/').pop(); document.body.appendChild(a); a.click(); a.remove(); }
+const EMP_PDF_VER='20260622a'; // PDF差し替え時に更新するとキャッシュを更新できる
+function empDownloadDoc(path){ const a=document.createElement('a'); a.href=encodeURI(path); a.download=path.split('/').pop().split('?')[0]; document.body.appendChild(a); a.click(); a.remove(); }
 
 function _empBulkKey(){ return _empCo+'_'+_empCat+'_BULK'; }
 // 保管PDFを画面で開いて印刷（fs://のbase64→Blob→新規タブ）
@@ -3642,7 +3643,7 @@ async function empBulkPrint(){
   const all=_empAllPdfPath();
   if(!all){ alert('一括印刷できる書類がありません'); return; }
   showToast('🖨 まとめてPDFを開きます。表示後に印刷してください',4000);
-  window.open(encodeURI(all),'_blank');
+  window.open(encodeURI(all)+'?v='+EMP_PDF_VER,'_blank');
 }
 
 function renderEmpApp(){
@@ -3708,9 +3709,9 @@ function _empPdfPath(f){ const i=f.lastIndexOf('/'); return f.slice(0,i)+'/pdf/'
 function _empDocActions(d){
   const m=_empDocMaster(d.f); const canEdit=empCanEditDocs(); let b='';
   if(m){ const nm=esc(m.name).replace(/'/g,"\\'"); b+=`<button onclick="empFileDownload('${m.ref}','${nm}')" style="background:#7c3aed;color:#fff;border:none;border-radius:6px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer">📥 配布ファイル</button> `; }
-  else { const pdf=encodeURI(_empPdfPath(d.f));
+  else { const pdf=encodeURI(_empPdfPath(d.f))+'?v='+EMP_PDF_VER;
     b+=`<button onclick="window.open('${pdf}','_blank')" style="background:#0ea5e9;color:#fff;border:none;border-radius:6px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer">🖨 印刷</button> `;
-    b+=`<button onclick="empDownloadDoc('${_empPdfPath(d.f)}')" style="background:#7c3aed;color:#fff;border:none;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer">📥 PDF</button> `; }
+    b+=`<button onclick="empDownloadDoc('${pdf}')" style="background:#7c3aed;color:#fff;border:none;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer">📥 PDF</button> `; }
   if(canEdit){ b+=`<button onclick="empEditDocMaster('${d.f}')" style="background:#fff7ed;border:1px solid #fdba74;color:#c2410c;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer">✏️ 書式編集</button> <button onclick="empDownloadDoc('${d.f}')" style="background:#f1f5f9;border:1px solid #cbd5e1;color:#475569;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer">素材DL（編集用）</button>`; }
   return b;
 }
