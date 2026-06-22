@@ -3698,11 +3698,14 @@ function empEditDocMaster(key){
   inp.click();
 }
 // 書類1件分の操作ボタン列（PDF配布＝全員、書式編集＝総務経理のみ）
+// 配布用の保護版パス（同フォルダ protected/ に .docx で保管・編集制限PW付き）
+function _empProtPath(f){ const i=f.lastIndexOf('/'); return f.slice(0,i)+'/protected/'+f.slice(i+1).replace(/\.(docx?|xlsx?)$/i,'.docx'); }
 function _empDocActions(d){
   const m=_empDocMaster(d.f); const canEdit=empCanEditDocs(); let b='';
   if(m){ const nm=esc(m.name).replace(/'/g,"\\'"); b+=`<button onclick="empFileDownload('${m.ref}','${nm}')" style="background:#7c3aed;color:#fff;border:none;border-radius:6px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer">📥 配布ファイル</button> `; }
-  else if(d.h){ b+=`<button onclick="empPrintDoc('${d.h}')" style="background:#0ea5e9;color:#fff;border:none;border-radius:6px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer">🖨 印刷/PDF</button> `; }
-  if(canEdit){ b+=`<button onclick="empEditDocMaster('${d.f}')" style="background:#fff7ed;border:1px solid #fdba74;color:#c2410c;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer">✏️ 書式編集</button> <button onclick="empDownloadDoc('${d.f}')" style="background:#f1f5f9;border:1px solid #cbd5e1;color:#475569;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer">素材DL</button>`; }
+  else { b+=`<button onclick="empDownloadDoc('${_empProtPath(d.f)}')" style="background:#7c3aed;color:#fff;border:none;border-radius:6px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer">📥 ダウンロード（保護）</button> `;
+         if(d.h){ b+=`<button onclick="empPrintDoc('${d.h}')" style="background:#0ea5e9;color:#fff;border:none;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer">🖨 印刷</button> `; } }
+  if(canEdit){ b+=`<button onclick="empEditDocMaster('${d.f}')" style="background:#fff7ed;border:1px solid #fdba74;color:#c2410c;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer">✏️ 書式編集</button> <button onclick="empDownloadDoc('${d.f}')" style="background:#f1f5f9;border:1px solid #cbd5e1;color:#475569;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer">素材DL（編集用）</button>`; }
   return b;
 }
 function _empDocRows(arr){
@@ -3719,7 +3722,7 @@ function renderEmpDocs(){
   const joken=set.joken, others=set.others||[], dl=set.dl||[];
   const catLabel=_empCat==='pa'?'パート・アルバイト':_empCat==='kanbu'?'役職者（幹部）':'一般社員';
   const canEdit=empCanEditDocs();
-  let html=`<div style="background:#faf5ff;border:1px solid #e9d5ff;border-radius:10px;padding:12px 16px;margin-bottom:14px;font-size:13px;color:#6b21a8;line-height:1.8">対象：<strong>${esc(empCoName(_empCo))} ／ ${catLabel}</strong><div style="font-size:11px;color:#9333ea;margin-top:4px">配布はPDF／印刷。書式の変更は総務経理・システムのみ（「書式編集」で配布用PDFを差し替え）。</div></div>`;
+  let html=`<div style="background:#faf5ff;border:1px solid #e9d5ff;border-radius:10px;padding:12px 16px;margin-bottom:14px;font-size:13px;color:#6b21a8;line-height:1.8">対象：<strong>${esc(empCoName(_empCo))} ／ ${catLabel}</strong><div style="font-size:11px;color:#9333ea;margin-top:4px">配布は編集制限つきWord（パスワード保護）。書式の変更は総務経理・システムのみ（「素材DL（編集用）」で編集→「書式編集」で差し替え）。</div></div>`;
   if(!joken && !others.length && !dl.length){
     body.innerHTML=html+'<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:28px;text-align:center;color:#9ca3af;font-size:13px">この区分の入社書類はまだ登録されていません。</div>';
     return;
