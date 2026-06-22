@@ -3616,11 +3616,27 @@ function _empInit(){ const vis=empVisibleCompanies(); if(!_empCo||!vis.includes(
 function empDownloadDoc(path){ const a=document.createElement('a'); a.href=encodeURI(path); a.download=path.split('/').pop(); document.body.appendChild(a); a.click(); a.remove(); }
 
 function _empBulkKey(){ return _empCo+'_'+_empCat+'_BULK'; }
-// 一括印刷＝元形式（Word/保護版）を一括ダウンロード→Wordで開いて印刷（ズレ防止のためHTML印刷は廃止）
+// 保管PDFを画面で開いて印刷（fs://のbase64→Blob→新規タブ）
+async function empOpenStoredPdf(ref){
+  showToast('🖨 PDFを開いています...',3000);
+  const doc=await _db.collection(_COL).doc('tk_file_'+ref.replace('fs://','')).get();
+  if(!doc.exists){ alert('ファイルが見つかりません'); return; }
+  const data=JSON.parse(doc.data().v);
+  const b64=(data.data||'').split(',')[1]||'';
+  const bin=atob(b64); const arr=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
+  const url=URL.createObjectURL(new Blob([arr],{type:'application/pdf'}));
+  const w=window.open(url,'_blank');
+  setTimeout(()=>URL.revokeObjectURL(url),60000);
+}
+// 一括印刷：①一括マスターPDFがあれば画面で開いて一括印刷／②Word一括マスターはDL／③無ければ各Wordを一括DL
 async function empBulkPrint(){
-  // 総務経理が一括配布マスター(PDF/Word等)をアップ済みならそれを配布
   const bm=_empDocMaster(_empBulkKey());
-  if(bm){ empFileDownload(bm.ref,bm.name); return; }
+  if(bm){
+    if(/\.pdf$/i.test(bm.name||'')) await empOpenStoredPdf(bm.ref);
+    else empFileDownload(bm.ref,bm.name);
+    return;
+  }
   const set=((EMP_DOCS[_empCo]||{})[_empCat])||{}; const others=set.others||[];
   if(!others.length){ alert('一括印刷できる書類がありません'); return; }
   showToast('📥 入社書類（Word）を一括ダウンロードします。Wordで開いて印刷してください',5000);
@@ -3724,8 +3740,9 @@ function renderEmpDocs(){
   // その他（一括印刷・手書き記入）
   if(others.length){
     const bulk=_empDocMaster(_empBulkKey());
+    const bulkIsPdf=bulk&&/\.pdf$/i.test(bulk.name||'');
     const bulkBtn=bulk
-      ? `<button onclick="empBulkPrint()" style="background:#7c3aed;color:#fff;border:none;border-radius:8px;padding:9px 20px;font-size:14px;font-weight:700;cursor:pointer">📥 一括配布（${esc((bulk.name||'').split('.').pop().toUpperCase())}）</button>`
+      ? `<button onclick="empBulkPrint()" style="background:#7c3aed;color:#fff;border:none;border-radius:8px;padding:9px 20px;font-size:14px;font-weight:700;cursor:pointer">${bulkIsPdf?'🖨 一括印刷（PDF）':'📥 一括配布（'+esc((bulk.name||'').split('.').pop().toUpperCase())+'）'}</button>`
       : `<button onclick="empBulkPrint()" style="background:#7c3aed;color:#fff;border:none;border-radius:8px;padding:9px 20px;font-size:14px;font-weight:700;cursor:pointer">🖨 一括印刷（Word一括DL）</button>`;
     const bulkEdit=canEdit?`<button onclick="empEditDocMaster('${_empBulkKey()}')" style="background:#fff7ed;border:1px solid #fdba74;color:#c2410c;border-radius:8px;padding:9px 14px;font-size:12px;font-weight:700;cursor:pointer">✏️ 一括マスター差替</button>`:'';
     html+=`<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;margin-bottom:14px">
