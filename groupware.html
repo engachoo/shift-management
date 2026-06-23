@@ -3621,7 +3621,17 @@ const EMP_DOCS={
       {n:'本社事務 制服借用書（夏服）', f:'forms/nyusha/dainichi_shain/12_本社事務制服借用書(夏服).doc'},
       {n:'住宅入居補助規程', f:'forms/nyusha/dainichi_shain/13_住宅入居補助規程.doc'},
     ]
-  },kanbu:{}},
+  },kanbu:{
+    others:[
+      {n:'入社手続説明事項(役職者)', f:'forms/nyusha/dainichi_kanbu/01_入社手続説明事項(役職者).doc'},
+      {n:'誓約書', f:'forms/nyusha/dainichi_kanbu/02_誓約書.doc'},
+      {n:'機密保持誓約書(役職者)', f:'forms/nyusha/dainichi_kanbu/03_機密保持誓約書(役職者).doc'},
+      {n:'身元保証書', f:'forms/nyusha/dainichi_kanbu/04_身元保証書.doc'},
+      {n:'マイナンバー提供のお願い', f:'forms/nyusha/dainichi_kanbu/05_マイナンバー提供のお願い.pdf'},
+      {n:'メールアドレス申請書', f:'forms/nyusha/dainichi_kanbu/06_メールアドレス申請書.pdf'},
+      {n:'WEB給与明細同意書', f:'forms/nyusha/dainichi_kanbu/07_WEB給与明細同意書.docx'},
+    ]
+  }},
   welpia:{pa:{},shain:{},kanbu:{}},
 };
 
@@ -3643,7 +3653,7 @@ function _empInit(){ const vis=empVisibleCompanies(); if(!_empCo||!vis.includes(
   if((_empCat==='shain'||_empCat==='kanbu')&&!empCanSeeShain()) _empCat='pa';
   if(_empCat==='kanbu'&&_empView==='roster') _empCat='shain'; } // 名簿は役職者カテゴリを持たない
 
-const EMP_PDF_VER='20260622c'; // PDF差し替え時に更新するとキャッシュを更新できる
+const EMP_PDF_VER='20260622d'; // PDF差し替え時に更新するとキャッシュを更新できる
 function empDownloadDoc(path){ const a=document.createElement('a'); a.href=encodeURI(path); a.download=path.split('/').pop().split('?')[0]; document.body.appendChild(a); a.click(); a.remove(); }
 
 function _empBulkKey(){ return _empCo+'_'+_empCat+'_BULK'; }
