@@ -3589,6 +3589,9 @@ const EMP_DOCS={
       {n:'マイナンバー提供のお願い', f:'forms/nyusha/amuse_kanbu/05_マイナンバー提供のお願い.docx', h:'forms/nyusha/amuse_kanbu/print/05_マイナンバー提供のお願い.html'},
       {n:'メールアドレス申請書', f:'forms/nyusha/amuse_kanbu/06_メールアドレス申請書.docx', h:'forms/nyusha/amuse_kanbu/print/06_メールアドレス申請書.html'},
       {n:'WEB給与明細同意書', f:'forms/nyusha/amuse_kanbu/07_WEB給与明細同意書.docx', h:'forms/nyusha/amuse_kanbu/print/07_WEB給与明細同意書.html'},
+    ],
+    dl:[
+      {n:'住宅入居補助規程', f:'forms/nyusha/amuse_kanbu/11_住宅入居補助規程.doc'},
     ]
   } },
   dainichi:{pa:{
@@ -3630,6 +3633,9 @@ const EMP_DOCS={
       {n:'マイナンバー提供のお願い', f:'forms/nyusha/dainichi_kanbu/05_マイナンバー提供のお願い.pdf'},
       {n:'メールアドレス申請書', f:'forms/nyusha/dainichi_kanbu/06_メールアドレス申請書.pdf'},
       {n:'WEB給与明細同意書', f:'forms/nyusha/dainichi_kanbu/07_WEB給与明細同意書.docx'},
+    ],
+    dl:[
+      {n:'住宅入居補助規程', f:'forms/nyusha/dainichi_kanbu/11_住宅入居補助規程.doc'},
     ]
   }},
   welpia:{pa:{},shain:{},kanbu:{}},
@@ -3653,7 +3659,7 @@ function _empInit(){ const vis=empVisibleCompanies(); if(!_empCo||!vis.includes(
   if((_empCat==='shain'||_empCat==='kanbu')&&!empCanSeeShain()) _empCat='pa';
   if(_empCat==='kanbu'&&_empView==='roster') _empCat='shain'; } // 名簿は役職者カテゴリを持たない
 
-const EMP_PDF_VER='20260622d'; // PDF差し替え時に更新するとキャッシュを更新できる
+const EMP_PDF_VER='20260622e'; // PDF差し替え時に更新するとキャッシュを更新できる
 function empDownloadDoc(path){ const a=document.createElement('a'); a.href=encodeURI(path); a.download=path.split('/').pop().split('?')[0]; document.body.appendChild(a); a.click(); a.remove(); }
 
 function _empBulkKey(){ return _empCo+'_'+_empCat+'_BULK'; }
