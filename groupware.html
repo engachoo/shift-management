@@ -3769,7 +3769,12 @@ function renderEmpDocs(){
   const joken=set.joken, others=set.others||[], dl=set.dl||[];
   const catLabel=_empCat==='pa'?'パート・アルバイト':_empCat==='kanbu'?'役職者（幹部）':'一般社員';
   const canEdit=empCanEditDocs();
-  let html=`<div style="background:#faf5ff;border:1px solid #e9d5ff;border-radius:10px;padding:12px 16px;margin-bottom:14px;font-size:13px;color:#6b21a8;line-height:1.8">対象：<strong>${esc(empCoName(_empCo))} ／ ${catLabel}</strong><div style="font-size:11px;color:#9333ea;margin-top:4px">配布はPDF（編集不可・元レイアウトのまま）。書式の変更は総務経理・システムのみ（「素材DL（編集用）」で編集→「書式編集」で差し替え）。</div></div>`;
+  let html=`<div style="background:#fff1f2;border:1.5px solid #fecdd3;border-radius:10px;padding:12px 16px;margin-bottom:14px;font-size:13px;color:#be123c;line-height:1.9">
+      <strong>⚠️ ご注意</strong><br>
+      各担当者は必要な書類を <strong>印刷・ダウンロードして記入</strong> してください。<br>
+      <strong>書式（フォーマット）の変更は禁止</strong> です。変更の必要がある場合は <strong>本社（総務経理）にご相談</strong> ください。
+    </div>
+    <div style="background:#faf5ff;border:1px solid #e9d5ff;border-radius:10px;padding:10px 16px;margin-bottom:14px;font-size:13px;color:#6b21a8">対象：<strong>${esc(empCoName(_empCo))} ／ ${catLabel}</strong></div>`;
   if(!joken && !others.length && !dl.length){
     body.innerHTML=html+'<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:28px;text-align:center;color:#9ca3af;font-size:13px">この区分の入社書類はまだ登録されていません。</div>';
     return;
