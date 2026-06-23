@@ -3591,7 +3591,21 @@ const EMP_DOCS={
       {n:'WEB給与明細同意書', f:'forms/nyusha/amuse_kanbu/07_WEB給与明細同意書.docx', h:'forms/nyusha/amuse_kanbu/print/07_WEB給与明細同意書.html'},
     ]
   } },
-  dainichi:{pa:{},shain:{
+  dainichi:{pa:{
+    joken:{n:'労働条件通知書（パート）', f:'forms/nyusha/dainichi_pa/10_労働条件通知書.xlsx'},
+    others:[
+      {n:'入社手続説明事項(アルバイト)', f:'forms/nyusha/dainichi_pa/01_入社手続説明事項(アルバイト).doc'},
+      {n:'機密保持誓約書', f:'forms/nyusha/dainichi_pa/02_機密保持誓約書.doc'},
+      {n:'マイナンバー提供のお願い', f:'forms/nyusha/dainichi_pa/03_マイナンバー提供のお願い.pdf'},
+      {n:'メールアドレス申請書', f:'forms/nyusha/dainichi_pa/04_メールアドレス申請書.pdf'},
+      {n:'WEB給与明細同意書', f:'forms/nyusha/dainichi_pa/05_WEB給与明細同意書.docx'},
+    ],
+    dl:[
+      {n:'制服借用書（冬服）', f:'forms/nyusha/dainichi_pa/11_制服借用書(冬服).doc'},
+      {n:'制服借用書（夏服）', f:'forms/nyusha/dainichi_pa/12_制服借用書(夏服).doc'},
+      {n:'制服借用書（入社時）', f:'forms/nyusha/dainichi_pa/13_制服借用書(入社時).doc'},
+    ]
+  },shain:{
     joken:{n:'労働条件通知書', f:'forms/nyusha/dainichi_shain/10_労働条件通知書.xlsx'},
     others:[
       {n:'入社手続説明事項(社員)', f:'forms/nyusha/dainichi_shain/01_入社手続説明事項(社員).doc'},
@@ -3629,7 +3643,7 @@ function _empInit(){ const vis=empVisibleCompanies(); if(!_empCo||!vis.includes(
   if((_empCat==='shain'||_empCat==='kanbu')&&!empCanSeeShain()) _empCat='pa';
   if(_empCat==='kanbu'&&_empView==='roster') _empCat='shain'; } // 名簿は役職者カテゴリを持たない
 
-const EMP_PDF_VER='20260622b'; // PDF差し替え時に更新するとキャッシュを更新できる
+const EMP_PDF_VER='20260622c'; // PDF差し替え時に更新するとキャッシュを更新できる
 function empDownloadDoc(path){ const a=document.createElement('a'); a.href=encodeURI(path); a.download=path.split('/').pop().split('?')[0]; document.body.appendChild(a); a.click(); a.remove(); }
 
 function _empBulkKey(){ return _empCo+'_'+_empCat+'_BULK'; }
