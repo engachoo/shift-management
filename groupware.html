@@ -7211,17 +7211,15 @@ function renderCiList(){
   }
   const cis=load('circulars',[]);
   const me=myId();
-  // システムは全件閲覧可能・それ以外は自分が関係する申請のみ
-  // 取り下げ済みは申請者本人とシステムのみ表示（宛先メンバーには非表示）
-  const all=isSystem()
-    ? [...cis]
-    : cis.filter(c=>{
+  // 自分が関係する申請のみ表示（システムも他メンバーと同じ基準で扱う）
+  // 取り下げ済みは申請者本人のみ表示（宛先メンバーには非表示）
+  const all=cis.filter(c=>{
         if(c.withdrawn && c.author!==me) return false; // 他人の取り下げ済みは非表示
         return (c.recipients&&c.recipients.includes(me))||(c.cc&&c.cc.includes(me))||c.author===me;
       });
 
-  // Ccのみ（Toには含まれない）かどうか（システムは常にfalse＝フル操作可）
-  const isCcOnly=(c)=>isSystem()?false:!!(c.cc&&c.cc.includes(me)&&!(c.recipients&&c.recipients.includes(me))&&c.author!==me);
+  // Ccのみ（Toには含まれない）かどうか
+  const isCcOnly=(c)=>!!(c.cc&&c.cc.includes(me)&&!(c.recipients&&c.recipients.includes(me))&&c.author!==me);
   // 申請者（author）視点：自分以外の宛先全員が承認済みになって初めて「承認済」
   // ※申請者自身はrecipients追加時に自動確認済みになるため除外して判定する
   const _allConf=(c)=>{
@@ -7231,8 +7229,6 @@ function renderCiList(){
   };
   const ciPending=(c)=>{
     if(c.withdrawn||isCcOnly(c)) return false;
-    // システムは組織全体を監視：まだ全員承認が揃っていない案件を未承認として表示
-    if(isSystem()) return !_allConf(c);
     return c.author===me ? !_allConf(c) : (!c.responses[me]||c.responses[me]?.status==='pending');
   };
   const ciChecking=(c)=>(!c.withdrawn&&!isCcOnly(c)&&c.author!==me&&c.responses[me]?.status==='checking');
@@ -7240,7 +7236,6 @@ function renderCiList(){
   const ciDone=(c)=>{
     if(c.withdrawn) return c.author===me;
     if(isCcOnly(c)) return true;
-    if(isSystem()) return _allConf(c); // システムは全員承認済みで完了
     return c.author===me ? _allConf(c) : c.responses[me]?.status==='confirmed';
   };
 
