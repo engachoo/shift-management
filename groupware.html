@@ -3829,6 +3829,7 @@ function _empRosterRow(s,retiredSection){
   if(canEdit){
     if(retiredSection) ops+=` <button onclick="empSetRetire('${s.id}',false)" style="background:#dcfce7;border:1px solid #86efac;color:#166534;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer">復職</button>`;
     else ops+=` <button onclick="empSetRetire('${s.id}',true)" style="background:#fff7ed;border:1px solid #fdba74;color:#c2410c;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer">退職</button>`;
+    ops+=` <button onclick="empMove('${s.id}')" style="background:#eef2ff;border:1px solid #c7d2fe;color:#4338ca;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer">移動</button>`;
     ops+=` <button onclick="deleteEmp('${s.id}')" style="background:#fff;border:1px solid #fca5a5;color:#dc2626;border-radius:6px;padding:5px 9px;font-size:12px;cursor:pointer">削除</button>`;
   }
   return `<tr style="border-bottom:1px solid #eef2f7">
@@ -3876,6 +3877,31 @@ function empSetRetire(id,val){
   if(val && !s.retireDate) s.retireDate=new Date().toLocaleDateString('sv',{timeZone:'Asia/Tokyo'});
   save('emp_staff',staff); renderEmpApp();
   showToast(val?'退職者へ移動しました':'在籍に戻しました');
+}
+
+// 他社へ移動（グループ会社に重複所属するメンバーの所属替え）
+function empMove(id){
+  const staff=load('emp_staff',[]); const s=staff.find(x=>x.id===id); if(!s) return;
+  if(!empCanEditRecord(s)){ alert('権限がありません'); return; }
+  const others=EMP_COMPANIES.filter(c=>c.id!==s.company);
+  const ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:5000;display:flex;align-items:center;justify-content:center;padding:16px';
+  ov.innerHTML=`<div style="background:#fff;border-radius:12px;padding:20px;max-width:360px;width:100%;box-shadow:0 10px 40px rgba(0,0,0,.25)">
+    <div style="font-size:15px;font-weight:700;color:#1a2b4a;margin-bottom:4px">「${esc(s.name||'')}」の移動先</div>
+    <div style="font-size:11px;color:#9ca3af;margin-bottom:14px">選んだ会社の名簿（同じ雇用区分）へ移動します。</div>
+    ${others.map(c=>`<button data-co="${c.id}" style="display:block;width:100%;text-align:left;background:#eef2ff;border:1px solid #c7d2fe;color:#3730a3;border-radius:8px;padding:11px 14px;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:8px">${esc(c.name)} へ移動</button>`).join('')}
+    <button id="empMoveCancel" style="width:100%;background:#fff;border:1px solid #cbd5e1;color:#475569;border-radius:8px;padding:9px;font-size:13px;cursor:pointer;margin-top:4px">キャンセル</button>
+  </div>`;
+  document.body.appendChild(ov);
+  const close=()=>ov.remove();
+  ov.addEventListener('click',e=>{ if(e.target===ov) close(); });
+  ov.querySelector('#empMoveCancel').onclick=close;
+  ov.querySelectorAll('[data-co]').forEach(b=>b.onclick=()=>{
+    const co=b.dataset.co; const coName=empCoName(co);
+    if(!confirm(`「${s.name}」を ${coName} へ移動しますか？`)) return;
+    s.company=co; save('emp_staff',staff); close(); renderEmpApp();
+    showToast(`${coName} へ移動しました`);
+  });
 }
 
 // 名簿の貼り付け一括取込（タブ/カンマ区切り・1行目ヘッダー）。PIIはDBのみ保存。
