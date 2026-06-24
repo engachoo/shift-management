@@ -3699,6 +3699,7 @@ function renderEmpApp(){
   if(!empCanEnter()){ el.innerHTML='<div style="background:#fff1f2;border:1.5px solid #fecdd3;border-radius:10px;padding:18px;color:#be123c;font-size:14px">🔒 従業員管理を利用する権限がありません。</div>'; return; }
   _empInit();
   if(_empView==='form'){ return renderEmpForm(); }
+  if(_empView==='import'){ return renderEmpImport(); }
   const tab=(id,label)=>`<button onclick="_empView='${id}';renderEmpApp()" style="background:${_empView===id?'#7c3aed':'#f1f5f9'};color:${_empView===id?'#fff':'#374151'};border:1.5px solid ${_empView===id?'#7c3aed':'#d1d5db'};border-radius:8px;padding:9px 22px;font-size:14px;font-weight:700;cursor:pointer">${label}</button>`;
   el.innerHTML=`
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
@@ -3859,7 +3860,7 @@ function renderEmpRoster(){
   const retired=all.filter(s=>s.retired);
   const canAdd = _empCat==='pa' ? empCanEditRecord({empType:'アルバイト',company:_empCo}) : empCanSeeShain();
   body.innerHTML=`
-    ${canAdd?`<div style="display:flex;justify-content:flex-end;margin-bottom:10px"><button onclick="openEmpForm('')" style="background:#7c3aed;color:#fff;border:none;border-radius:7px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer">＋ 従業員を登録</button></div>`:''}
+    ${canAdd?`<div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:10px"><button onclick="_empView='import';renderEmpApp()" style="background:#fff;border:1.5px solid #c084fc;color:#7c3aed;border-radius:7px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer">📋 一括取込</button><button onclick="openEmpForm('')" style="background:#7c3aed;color:#fff;border:none;border-radius:7px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer">＋ 従業員を登録</button></div>`:''}
     <div style="font-size:12px;font-weight:700;color:#166534;margin:0 0 6px 2px">在籍（${active.length}名）</div>
     ${_empRosterTable(active,false,'この区分の在籍者はまだ登録がありません。')}
     <div style="margin-top:18px">
@@ -3875,6 +3876,50 @@ function empSetRetire(id,val){
   if(val && !s.retireDate) s.retireDate=new Date().toLocaleDateString('sv',{timeZone:'Asia/Tokyo'});
   save('emp_staff',staff); renderEmpApp();
   showToast(val?'退職者へ移動しました':'在籍に戻しました');
+}
+
+// 名簿の貼り付け一括取込（タブ/カンマ区切り・1行目ヘッダー）。PIIはDBのみ保存。
+const _EMP_IMPORT_MAP={'氏名':'name','名前':'name','フリガナ':'furigana','ふりがな':'furigana','性別':'gender','雇用区分':'empType','区分':'empType','職種':'jobType','部署':'department','業務':'department','業務内容':'department','店舗':'store','住所':'address','電話':'phone','電話番号':'phone','連絡先':'phone','緊急連絡先':'emergencyContact','生年月日':'birthDate','入社日':'joinDate','退職日':'retireDate','退社日':'retireDate','備考':'notes','銀行':'bankName','銀行名':'bankName','支店':'bankBranch','口座番号':'bankNo','名義':'bankHolder','口座名義':'bankHolder'};
+function renderEmpImport(){
+  const el=document.getElementById('devAppsContent'); if(!el) return;
+  el.innerHTML=`
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+      <button onclick="_empView='roster';renderEmpApp()" style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:7px;padding:7px 14px;font-size:13px;cursor:pointer">← 名簿へ戻る</button>
+      <h2 style="font-size:17px;font-weight:700;color:#1a2b4a;margin:0">📋 名簿の一括取込</h2>
+    </div>
+    <div style="background:#faf5ff;border:1px solid #e9d5ff;border-radius:10px;padding:12px 16px;margin-bottom:12px;font-size:12px;color:#6b21a8;line-height:1.9">
+      Excel等から<strong>1行目に項目名（ヘッダー）</strong>、2行目以降にデータを貼り付けて「取込」を押してください（タブ／カンマ区切り対応）。<br>
+      使える項目名：氏名・フリガナ・性別・雇用区分・職種・部署・店舗・住所・電話・緊急連絡先・生年月日・入社日・退職日・備考・銀行・支店・口座番号・名義<br>
+      ・会社は「<strong>${esc(empCoName(_empCo))}</strong>」として登録されます。・退職日が入っている人は自動で退職者になります。
+    </div>
+    <textarea id="emp-import-ta" rows="12" placeholder="氏名	フリガナ	性別	雇用区分	店舗	入社日&#10;山田 太郎	ヤマダ タロウ	男	正社員	羽島	2020-04-01" style="width:100%;border:1.5px solid #d1d5db;border-radius:8px;padding:10px;font-size:12px;font-family:monospace;box-sizing:border-box"></textarea>
+    <div style="display:flex;gap:10px;margin-top:12px">
+      <button onclick="empImportRun()" style="background:#7c3aed;color:#fff;border:none;border-radius:8px;padding:10px 28px;font-size:14px;font-weight:700;cursor:pointer">取込</button>
+      <button onclick="_empView='roster';renderEmpApp()" style="background:#fff;border:1px solid #cbd5e1;color:#475569;border-radius:8px;padding:10px 18px;font-size:13px;cursor:pointer">キャンセル</button>
+    </div>`;
+}
+function empImportRun(){
+  const txt=(document.getElementById('emp-import-ta').value||'').trim();
+  if(!txt){ alert('データを貼り付けてください'); return; }
+  const lines=txt.split(/\r?\n/).filter(l=>l.trim());
+  if(lines.length<2){ alert('1行目に項目名（ヘッダー）、2行目以降にデータを入れてください'); return; }
+  const sep=lines[0].includes('\t')?'\t':',';
+  const heads=lines[0].split(sep).map(h=>h.trim());
+  if(!heads.some(h=>_EMP_IMPORT_MAP[h]==='name')){ alert('ヘッダーに「氏名」が必要です'); return; }
+  const staff=load('emp_staff',[]); let added=0, skipped=0;
+  for(let i=1;i<lines.length;i++){
+    const cells=lines[i].split(sep);
+    const rec={company:_empCo};
+    heads.forEach((h,idx)=>{ const f=_EMP_IMPORT_MAP[h]; if(f) rec[f]=(cells[idx]||'').trim(); });
+    if(!rec.name){ continue; }
+    rec.retired=!!(rec.retireDate&&rec.retireDate.trim());
+    if(!empCanEditRecord(rec)){ skipped++; continue; }
+    rec.id='emp'+Date.now()+'_'+i;
+    staff.push(rec); added++;
+  }
+  save('emp_staff',staff);
+  _empView='roster'; renderEmpApp();
+  showToast(`${added}名を取り込みました${skipped?`（権限外${skipped}件スキップ）`:''} ✓`);
 }
 
 function openEmpForm(id){ _empEditId=id||null; _empView='form'; renderEmpApp(); }
