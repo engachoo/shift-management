@@ -3908,21 +3908,48 @@ function empMove(id){
 const _EMP_IMPORT_MAP={'氏名':'name','名前':'name','フリガナ':'furigana','ふりがな':'furigana','性別':'gender','雇用区分':'empType','区分':'empType','職種':'jobType','部署':'department','業務':'department','業務内容':'department','店舗':'store','住所':'address','電話':'phone','電話番号':'phone','連絡先':'phone','緊急連絡先':'emergencyContact','生年月日':'birthDate','入社日':'joinDate','退職日':'retireDate','退社日':'retireDate','備考':'notes','銀行':'bankName','銀行名':'bankName','支店':'bankBranch','口座番号':'bankNo','名義':'bankHolder','口座名義':'bankHolder'};
 function renderEmpImport(){
   const el=document.getElementById('devAppsContent'); if(!el) return;
+  const coOpts=empVisibleCompanies().map(c=>`<option value="${c}" ${c===_empCo?'selected':''}>${esc(empCoName(c))}</option>`).join('');
   el.innerHTML=`
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
       <button onclick="_empView='roster';renderEmpApp()" style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:7px;padding:7px 14px;font-size:13px;cursor:pointer">← 名簿へ戻る</button>
       <h2 style="font-size:17px;font-weight:700;color:#1a2b4a;margin:0">📋 名簿の一括取込</h2>
     </div>
-    <div style="background:#faf5ff;border:1px solid #e9d5ff;border-radius:10px;padding:12px 16px;margin-bottom:12px;font-size:12px;color:#6b21a8;line-height:1.9">
-      Excel等から<strong>1行目に項目名（ヘッダー）</strong>、2行目以降にデータを貼り付けて「取込」を押してください（タブ／カンマ区切り対応）。<br>
-      使える項目名：氏名・フリガナ・性別・雇用区分・職種・部署・店舗・住所・電話・緊急連絡先・生年月日・入社日・退職日・備考・銀行・支店・口座番号・名義<br>
-      ・会社は「<strong>${esc(empCoName(_empCo))}</strong>」として登録されます。・退職日が入っている人は自動で退職者になります。
+    <div style="background:#eef2ff;border:1.5px solid #c7d2fe;border-radius:10px;padding:12px 16px;margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span style="font-size:13px;font-weight:700;color:#3730a3">取込先の会社：</span>
+      <select id="emp-imp-co" style="border:1.5px solid #a5b4fc;border-radius:6px;padding:7px 12px;font-size:14px;font-weight:700">${coOpts}</select>
+      <span style="font-size:11px;color:#6366f1">※ 社員／アルバイト等の区分は「雇用区分」列で自動振り分けされます（1枚に全階級が混在してOK）</span>
     </div>
+    <div style="background:#faf5ff;border:1px solid #e9d5ff;border-radius:10px;padding:12px 16px;margin-bottom:12px;font-size:12px;color:#6b21a8;line-height:1.9">
+      <strong>方法A：ファイルから読み込み</strong>（Excel / CSV）→ 下のボタンで選択<br>
+      <strong>方法B：貼り付け</strong>（Excelの表をコピーして下の枠に貼り付け）。<br>
+      いずれも<strong>1行目は項目名（ヘッダー）</strong>。使える項目名：氏名・フリガナ・性別・雇用区分・職種・部署・店舗・住所・電話・緊急連絡先・生年月日・入社日・退職日・備考・銀行・支店・口座番号・名義<br>
+      ※ <strong>PDF・Wordは直接読めません</strong>。その場合はチャットで送っていただければ取込用に変換します。退職日が入っている人は自動で退職者になります。
+    </div>
+    <label style="display:inline-block;background:#faf5ff;border:1.5px dashed #c084fc;color:#7c3aed;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:10px">📎 ファイルから読み込み（Excel/CSV）
+      <input type="file" accept=".xlsx,.xls,.csv,.txt" style="display:none" onchange="empImportFile(event)">
+    </label>
     <textarea id="emp-import-ta" rows="12" placeholder="氏名	フリガナ	性別	雇用区分	店舗	入社日&#10;山田 太郎	ヤマダ タロウ	男	正社員	羽島	2020-04-01" style="width:100%;border:1.5px solid #d1d5db;border-radius:8px;padding:10px;font-size:12px;font-family:monospace;box-sizing:border-box"></textarea>
     <div style="display:flex;gap:10px;margin-top:12px">
       <button onclick="empImportRun()" style="background:#7c3aed;color:#fff;border:none;border-radius:8px;padding:10px 28px;font-size:14px;font-weight:700;cursor:pointer">取込</button>
       <button onclick="_empView='roster';renderEmpApp()" style="background:#fff;border:1px solid #cbd5e1;color:#475569;border-radius:8px;padding:10px 18px;font-size:13px;cursor:pointer">キャンセル</button>
     </div>`;
+}
+function empImportFile(ev){
+  const f=ev.target.files[0]; if(!f) return;
+  const ext=(f.name.split('.').pop()||'').toLowerCase();
+  const r=new FileReader();
+  if(ext==='xlsx'||ext==='xls'){
+    r.onload=e=>{ try{
+      const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      document.getElementById('emp-import-ta').value=XLSX.utils.sheet_to_csv(ws,{FS:'\t'});
+      showToast('Excelを読み込みました。内容を確認して「取込」を押してください');
+    }catch(err){ alert('Excelの読み込みに失敗しました: '+err.message); } };
+    r.readAsArrayBuffer(f);
+  } else {
+    r.onload=e=>{ document.getElementById('emp-import-ta').value=e.target.result; showToast('ファイルを読み込みました'); };
+    r.readAsText(f);
+  }
 }
 function empImportRun(){
   const txt=(document.getElementById('emp-import-ta').value||'').trim();
@@ -3932,10 +3959,11 @@ function empImportRun(){
   const sep=lines[0].includes('\t')?'\t':',';
   const heads=lines[0].split(sep).map(h=>h.trim());
   if(!heads.some(h=>_EMP_IMPORT_MAP[h]==='name')){ alert('ヘッダーに「氏名」が必要です'); return; }
+  const targetCo=document.getElementById('emp-imp-co')?.value||_empCo;
   const staff=load('emp_staff',[]); let added=0, skipped=0;
   for(let i=1;i<lines.length;i++){
     const cells=lines[i].split(sep);
-    const rec={company:_empCo};
+    const rec={company:targetCo};
     heads.forEach((h,idx)=>{ const f=_EMP_IMPORT_MAP[h]; if(f) rec[f]=(cells[idx]||'').trim(); });
     if(!rec.name){ continue; }
     rec.retired=!!(rec.retireDate&&rec.retireDate.trim());
