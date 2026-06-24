@@ -3821,37 +3821,60 @@ function renderEmpDocs(){
   body.innerHTML=html;
 }
 
+let _empShowRetired=false;
+function _empRosterRow(s,retiredSection){
+  const canEdit=empCanEditRecord(s);
+  let ops=`<button onclick="openEmpForm('${s.id}')" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer">${canEdit?'編集':'閲覧'}</button>`;
+  if(canEdit){
+    if(retiredSection) ops+=` <button onclick="empSetRetire('${s.id}',false)" style="background:#dcfce7;border:1px solid #86efac;color:#166534;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer">復職</button>`;
+    else ops+=` <button onclick="empSetRetire('${s.id}',true)" style="background:#fff7ed;border:1px solid #fdba74;color:#c2410c;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer">退職</button>`;
+    ops+=` <button onclick="deleteEmp('${s.id}')" style="background:#fff;border:1px solid #fca5a5;color:#dc2626;border-radius:6px;padding:5px 9px;font-size:12px;cursor:pointer">削除</button>`;
+  }
+  return `<tr style="border-bottom:1px solid #eef2f7">
+      <td style="padding:9px 12px;font-size:13px;color:#1a2b4a"><strong>${esc(s.name||'')}</strong>${s.furigana?`<div style="font-size:10px;color:#9ca3af">${esc(s.furigana)}</div>`:''}</td>
+      <td style="padding:9px 8px;font-size:12px;color:#475569">${esc(s.empType||'-')}</td>
+      <td style="padding:9px 8px;font-size:12px;color:#475569">${esc(s.store||'-')}</td>
+      <td style="padding:9px 8px;font-size:12px;color:#475569">${esc(retiredSection?(s.retireDate||'-'):(s.joinDate||'-'))}</td>
+      <td style="padding:9px 8px;text-align:center;font-size:12px;color:#475569">${(s.files&&s.files.length)?'📎'+s.files.length:'-'}</td>
+      <td style="padding:9px 8px;text-align:center;white-space:nowrap">${ops}</td>
+    </tr>`;
+}
+function _empRosterTable(arr,retiredSection,emptyMsg){
+  const head=`<thead><tr style="background:${retiredSection?'#64748b':'#1e3a6b'};color:#fff">
+      <th style="padding:9px 12px;text-align:left;font-size:12px">氏名</th>
+      <th style="padding:9px 8px;font-size:12px">区分</th>
+      <th style="padding:9px 8px;font-size:12px">店舗</th>
+      <th style="padding:9px 8px;font-size:12px">${retiredSection?'退職日':'入社日'}</th>
+      <th style="padding:9px 8px;font-size:12px">書類</th>
+      <th style="padding:9px 8px;font-size:12px">操作</th>
+    </tr></thead>`;
+  const rows=arr.map(s=>_empRosterRow(s,retiredSection)).join('')||`<tr><td colspan="6" style="padding:24px;text-align:center;color:#9ca3af;font-size:13px">${emptyMsg}</td></tr>`;
+  return `<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:560px">${head}<tbody>${rows}</tbody></table></div>`;
+}
 function renderEmpRoster(){
   const body=document.getElementById('empBody'); if(!body) return;
   const types=_empCat==='pa'?EMP_PA_TYPES:EMP_SHAIN_TYPES;
   const all=load('emp_staff',[]).filter(s=>s.company===_empCo && types.includes(s.empType||''));
-  const list=all.filter(s=>!s.retired).concat(all.filter(s=>s.retired));
+  const active=all.filter(s=>!s.retired);
+  const retired=all.filter(s=>s.retired);
   const canAdd = _empCat==='pa' ? empCanEditRecord({empType:'アルバイト',company:_empCo}) : empCanSeeShain();
-  const rows=list.map(s=>`<tr style="border-bottom:1px solid #eef2f7;${s.retired?'opacity:.55':''}">
-      <td style="padding:9px 12px;font-size:13px;color:#1a2b4a"><strong>${esc(s.name||'')}</strong>${s.furigana?`<div style="font-size:10px;color:#9ca3af">${esc(s.furigana)}</div>`:''}</td>
-      <td style="padding:9px 8px;font-size:12px;color:#475569">${esc(s.empType||'-')}</td>
-      <td style="padding:9px 8px;font-size:12px;color:#475569">${esc(s.store||'-')}</td>
-      <td style="padding:9px 8px;font-size:12px;color:#475569">${esc(s.joinDate||'-')}</td>
-      <td style="padding:9px 8px;text-align:center;font-size:12px;color:#475569">${(s.files&&s.files.length)?'📎'+s.files.length:'-'}</td>
-      <td style="padding:9px 8px;text-align:center">${s.retired?'<span style="font-size:11px;background:#f1f5f9;color:#64748b;border-radius:10px;padding:2px 8px">退職</span>':'<span style="font-size:11px;background:#dcfce7;color:#166534;border-radius:10px;padding:2px 8px">在籍</span>'}</td>
-      <td style="padding:9px 8px;text-align:center;white-space:nowrap"><button onclick="openEmpForm('${s.id}')" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;border-radius:6px;padding:5px 12px;font-size:12px;cursor:pointer">${empCanEditRecord(s)?'編集':'閲覧'}</button></td>
-    </tr>`).join('');
   body.innerHTML=`
     ${canAdd?`<div style="display:flex;justify-content:flex-end;margin-bottom:10px"><button onclick="openEmpForm('')" style="background:#7c3aed;color:#fff;border:none;border-radius:7px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer">＋ 従業員を登録</button></div>`:''}
-    <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;overflow-x:auto">
-      <table style="width:100%;border-collapse:collapse;min-width:600px">
-        <thead><tr style="background:#1e3a6b;color:#fff">
-          <th style="padding:9px 12px;text-align:left;font-size:12px">氏名</th>
-          <th style="padding:9px 8px;font-size:12px">区分</th>
-          <th style="padding:9px 8px;font-size:12px">店舗</th>
-          <th style="padding:9px 8px;font-size:12px">入社日</th>
-          <th style="padding:9px 8px;font-size:12px">書類</th>
-          <th style="padding:9px 8px;font-size:12px">状態</th>
-          <th style="padding:9px 8px;font-size:12px">操作</th>
-        </tr></thead>
-        <tbody>${rows||'<tr><td colspan="7" style="padding:28px;text-align:center;color:#9ca3af;font-size:13px">この区分の従業員はまだ登録がありません。</td></tr>'}</tbody>
-      </table>
+    <div style="font-size:12px;font-weight:700;color:#166534;margin:0 0 6px 2px">在籍（${active.length}名）</div>
+    ${_empRosterTable(active,false,'この区分の在籍者はまだ登録がありません。')}
+    <div style="margin-top:18px">
+      <button onclick="_empShowRetired=!_empShowRetired;renderEmpApp()" style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:7px;padding:7px 14px;font-size:12px;font-weight:700;color:#475569;cursor:pointer">📁 退職者一覧（${retired.length}名）　${_empShowRetired?'▲ 閉じる':'▼ 展開'}</button>
+      ${_empShowRetired?`<div style="margin-top:8px">${_empRosterTable(retired,true,'退職者はいません。')}</div>`:''}
     </div>`;
+}
+function empSetRetire(id,val){
+  const staff=load('emp_staff',[]); const s=staff.find(x=>x.id===id); if(!s) return;
+  if(s && !empCanEditRecord(s)){ alert('権限がありません'); return; }
+  if(val && !confirm(`「${s.name}」を退職にしますか？（退職者一覧へ移動します）`)) return;
+  s.retired=val;
+  if(val && !s.retireDate) s.retireDate=new Date().toLocaleDateString('sv',{timeZone:'Asia/Tokyo'});
+  save('emp_staff',staff); renderEmpApp();
+  showToast(val?'退職者へ移動しました':'在籍に戻しました');
 }
 
 function openEmpForm(id){ _empEditId=id||null; _empView='form'; renderEmpApp(); }
