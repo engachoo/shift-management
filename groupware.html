@@ -3680,9 +3680,22 @@ function empCanEditRecord(rec){ const r=empRole();
 function empCoName(id){ return (EMP_COMPANIES.find(c=>c.id===id)||{}).name||id||'-'; }
 
 let _empView='docs', _empEditId=null, _empCo=null, _empCat='pa';
+// ウェルピアの旧ラベル（職員／利用者）を羽島職員／羽島利用者へ一度だけ移行
+function _empMigrateWelpiaLabels(){
+  if(load('emp_welpia_relabel','')==='v1') return;
+  if(!(_fbDocCount>0 || _cache.hasOwnProperty('emp_staff'))){ return; } // 読込未完了時はスキップ
+  const staff=load('emp_staff',[]); let changed=false;
+  staff.forEach(s=>{ if(s.company==='welpia'){
+    if(s.empType==='職員'){ s.empType='羽島職員'; changed=true; }
+    else if(s.empType==='利用者'){ s.empType='羽島利用者'; changed=true; }
+  }});
+  if(changed) save('emp_staff',staff);
+  save('emp_welpia_relabel','v1');
+}
 function _empInit(){ const vis=empVisibleCompanies(); if(!_empCo||!vis.includes(_empCo)) _empCo=vis[0];
   if((_empCat==='shain'||_empCat==='kanbu')&&!empCanSeeShain()) _empCat='pa';
-  if(_empCat==='kanbu'&&_empView==='roster') _empCat='shain'; } // 名簿は役職者カテゴリを持たない
+  if(_empCat==='kanbu'&&_empView==='roster') _empCat='shain'; // 名簿は役職者カテゴリを持たない
+  _empMigrateWelpiaLabels(); }
 
 const EMP_PDF_VER='20260625b'; // PDF差し替え時に更新するとキャッシュを更新できる
 function empDownloadDoc(path){ const a=document.createElement('a'); a.href=encodeURI(path); a.download=path.split('/').pop().split('?')[0]; document.body.appendChild(a); a.click(); a.remove(); }
