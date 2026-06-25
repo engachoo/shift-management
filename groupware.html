@@ -3929,8 +3929,10 @@ function renderEmpRoster(){
       ${ordered.map(t=>fbtn(t,esc(t),pool.filter(s=>(s.empType||'未設定')===t).length)).join('')}
     </div>`;
   const all=_empTypeFilter?pool.filter(s=>(s.empType||'未設定')===_empTypeFilter):pool;
-  const active=all.filter(s=>!s.retired);
-  const retired=all.filter(s=>s.retired);
+  const _kana=s=>(s.furigana||s.name||'').toString();
+  const _aiueo=(a,b)=>_kana(a).localeCompare(_kana(b),'ja');
+  const active=all.filter(s=>!s.retired).sort(_aiueo);
+  const retired=all.filter(s=>s.retired).sort(_aiueo);
   const canAdd = empCanSeeShain() || empCanEditRecord({empType:'アルバイト',company:_empCo});
   body.innerHTML=`
     ${canAdd?`<div style="display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap"><button id="emp-bulkdel" onclick="empBulkDelete()" style="display:${_empSel.size?'inline-block':'none'};background:#dc2626;color:#fff;border:none;border-radius:7px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer">🗑 選択した<span id="emp-sel-cnt">${_empSel.size}</span>件を削除</button><button onclick="_empView='import';renderEmpApp()" style="background:#fff;border:1.5px solid #c084fc;color:#7c3aed;border-radius:7px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer">📋 一括取込</button><button onclick="openEmpForm('')" style="background:#7c3aed;color:#fff;border:none;border-radius:7px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer">＋ 従業員を登録</button></div>`:''}
@@ -3957,18 +3959,34 @@ function empMove(id){
   const staff=load('emp_staff',[]); const s=staff.find(x=>x.id===id); if(!s) return;
   if(!empCanEditRecord(s)){ alert('権限がありません'); return; }
   const others=EMP_COMPANIES.filter(c=>c.id!==s.company);
+  // 同一会社内で選べる分類
+  const catList=(s.company==='welpia'?EMP_WELPIA_TYPES:[...EMP_SHAIN_TYPES,...EMP_PA_TYPES])
+    .filter(t=>t!==s.empType && (empCanSeeShain()||!_empShainLevel(t)));
   const ov=document.createElement('div');
   ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:5000;display:flex;align-items:center;justify-content:center;padding:16px';
-  ov.innerHTML=`<div style="background:#fff;border-radius:12px;padding:20px;max-width:360px;width:100%;box-shadow:0 10px 40px rgba(0,0,0,.25)">
-    <div style="font-size:15px;font-weight:700;color:#1a2b4a;margin-bottom:4px">「${esc(s.name||'')}」の移動先</div>
-    <div style="font-size:11px;color:#9ca3af;margin-bottom:14px">選んだ会社の名簿（同じ雇用区分）へ移動します。</div>
-    ${others.map(c=>`<button data-co="${c.id}" style="display:block;width:100%;text-align:left;background:#eef2ff;border:1px solid #c7d2fe;color:#3730a3;border-radius:8px;padding:11px 14px;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:8px">${esc(c.name)} へ移動</button>`).join('')}
+  ov.innerHTML=`<div style="background:#fff;border-radius:12px;padding:20px;max-width:380px;width:100%;box-shadow:0 10px 40px rgba(0,0,0,.25);max-height:88vh;overflow:auto">
+    <div style="font-size:15px;font-weight:700;color:#1a2b4a;margin-bottom:2px">「${esc(s.name||'')}」の移動</div>
+    <div style="font-size:11px;color:#9ca3af;margin-bottom:12px">現在：${esc(empCoName(s.company))} ／ ${esc(s.empType||'-')}</div>
+    ${catList.length?`<div style="font-size:12px;font-weight:700;color:#475569;margin:2px 0 6px">区分を変更（同じ会社内）</div>
+    ${catList.map(t=>`<button data-cat="${esc(t)}" style="display:block;width:100%;text-align:left;background:#f5f3ff;border:1px solid #ddd6fe;color:#6d28d9;border-radius:8px;padding:10px 14px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:7px">${esc(t)} へ変更</button>`).join('')}`:''}
+    <div style="font-size:12px;font-weight:700;color:#475569;margin:12px 0 6px">他社へ移動</div>
+    ${others.map(c=>`<button data-co="${c.id}" style="display:block;width:100%;text-align:left;background:#eef2ff;border:1px solid #c7d2fe;color:#3730a3;border-radius:8px;padding:10px 14px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:7px">${esc(c.name)} へ移動</button>`).join('')}
     <button id="empMoveCancel" style="width:100%;background:#fff;border:1px solid #cbd5e1;color:#475569;border-radius:8px;padding:9px;font-size:13px;cursor:pointer;margin-top:4px">キャンセル</button>
   </div>`;
   document.body.appendChild(ov);
   const close=()=>ov.remove();
   ov.addEventListener('click',e=>{ if(e.target===ov) close(); });
   ov.querySelector('#empMoveCancel').onclick=close;
+  // 区分変更（同一会社内）。羽島/山県を含む区分なら部署も自動合わせ。
+  ov.querySelectorAll('[data-cat]').forEach(b=>b.onclick=()=>{
+    const cat=b.dataset.cat;
+    if(!confirm(`「${s.name}」を「${cat}」へ変更しますか？`)) return;
+    s.empType=cat;
+    if(/羽島/.test(cat)) s.department='ウェルピア-羽島';
+    else if(/山県/.test(cat)) s.department='ウェルピア-山県';
+    save('emp_staff',staff); close(); renderEmpApp();
+    showToast(`区分を「${cat}」へ変更しました`);
+  });
   ov.querySelectorAll('[data-co]').forEach(b=>b.onclick=()=>{
     const co=b.dataset.co; const coName=empCoName(co);
     if(!confirm(`「${s.name}」を ${coName} へ移動しますか？`)) return;
