@@ -3553,6 +3553,21 @@ function openDevApp(id){
 const EMP_COMPANIES=[{id:'dainichi',name:'大日産業'},{id:'amuse',name:'AMUSE JAPAN'},{id:'welpia',name:'ウェルピア'}];
 const EMP_PA_TYPES=['アルバイト','パート'];
 const EMP_SHAIN_TYPES=['正社員','契約社員'];
+// 部署プルダウン（出納帳部署と同一の9部署）
+const EMP_DEPTS=['大日-本社','AMUSE-本社','ウェルピア-本社','BLOCK-サイクル','BLOCK-Eats','BLOCK-ボディ','AMUSE-店舗','ウェルピア-羽島','ウェルピア-山県'];
+// 郵便番号→住所（番地以前）を自動補完（zipcloud・CORS対応）
+async function empLookupZip(){
+  const z=document.getElementById('emp-postalCode'); const a=document.getElementById('emp-address'); if(!z||!a) return;
+  const zip=(z.value||'').replace(/[^0-9]/g,''); if(zip.length!==7){ return; }
+  try{
+    const r=await fetch('https://zipcloud.ibsnet.co.jp/api/search?zipcode='+zip);
+    const j=await r.json();
+    if(j&&j.results&&j.results[0]){ const x=j.results[0]; const base=x.address1+x.address2+x.address3;
+      // 既存住所の番地以降を保持（番地以前のみ差し替え）
+      a.value=base; a.focus(); }
+    else { showToast('該当する住所が見つかりません'); }
+  }catch(e){ showToast('住所の自動取得に失敗しました'); }
+}
 const _EMP_BASE='forms/nyusha/amuse_part_hashima/';
 // 入社書類セット（会社→区分 pa/shain）。joken=労働条件通知書(担当者編集可)、others=その他(一括印刷・手書き)
 const EMP_DOCS={
@@ -3849,7 +3864,7 @@ function _empRosterRow(s,retiredSection){
       ${chk}
       <td style="padding:9px 12px;font-size:13px;color:#1a2b4a"><strong>${esc(s.name||'')}</strong>${s.furigana?`<div style="font-size:10px;color:#9ca3af">${esc(s.furigana)}</div>`:''}</td>
       <td style="padding:9px 8px;font-size:12px;color:#475569">${esc(s.empType||'-')}</td>
-      <td style="padding:9px 8px;font-size:12px;color:#475569">${esc(s.store||'-')}</td>
+      <td style="padding:9px 8px;font-size:12px;color:#475569">${esc(s.department||s.store||'-')}</td>
       <td style="padding:9px 8px;font-size:12px;color:#475569">${esc(retiredSection?(s.retireDate||'-'):(s.joinDate||'-'))}</td>
       <td style="padding:9px 8px;text-align:center;font-size:12px;color:#475569">${(s.files&&s.files.length)?'📎'+s.files.length:'-'}</td>
       <td style="padding:9px 8px;text-align:center;white-space:nowrap">${ops}</td>
@@ -3862,7 +3877,7 @@ function _empRosterTable(arr,retiredSection,emptyMsg){
       <th style="padding:9px 6px;width:28px;text-align:center"><input type="checkbox" ${allSel?'checked':''} onchange="empSelAll(this.checked,${JSON.stringify(ids).replace(/"/g,'&quot;')})" title="全選択" style="width:15px;height:15px;cursor:pointer"></th>
       <th style="padding:9px 12px;text-align:left;font-size:12px">氏名</th>
       <th style="padding:9px 8px;font-size:12px">区分</th>
-      <th style="padding:9px 8px;font-size:12px">店舗</th>
+      <th style="padding:9px 8px;font-size:12px">部署</th>
       <th style="padding:9px 8px;font-size:12px">${retiredSection?'退職日':'入社日'}</th>
       <th style="padding:9px 8px;font-size:12px">書類</th>
       <th style="padding:9px 8px;font-size:12px">操作</th>
@@ -3922,7 +3937,7 @@ function empMove(id){
 }
 
 // 名簿の貼り付け一括取込（タブ/カンマ区切り・1行目ヘッダー）。PIIはDBのみ保存。
-const _EMP_IMPORT_MAP={'氏名':'name','名前':'name','フリガナ':'furigana','ふりがな':'furigana','性別':'gender','雇用区分':'empType','区分':'empType','職種':'jobType','部署':'department','業務':'department','業務内容':'department','店舗':'store','住所':'address','電話':'phone','電話番号':'phone','連絡先':'phone','緊急連絡先':'emergencyContact','生年月日':'birthDate','入社日':'joinDate','退職日':'retireDate','退社日':'retireDate','備考':'notes','銀行':'bankName','銀行名':'bankName','支店':'bankBranch','口座番号':'bankNo','名義':'bankHolder','口座名義':'bankHolder'};
+const _EMP_IMPORT_MAP={'氏名':'name','名前':'name','フリガナ':'furigana','ふりがな':'furigana','性別':'gender','雇用区分':'empType','区分':'empType','職種':'jobType','部署':'department','業務':'department','業務内容':'department','店舗':'store','住所':'address','電話':'phone','電話番号':'phone','連絡先':'phone','緊急連絡先':'emergencyContact','続柄':'emergencyRelation','緊急連絡先続柄':'emergencyRelation','郵便番号':'postalCode','〒':'postalCode','生年月日':'birthDate','入社日':'joinDate','退職日':'retireDate','退社日':'retireDate','備考':'notes','銀行':'bankName','銀行名':'bankName','支店':'bankBranch','口座番号':'bankNo','名義':'bankHolder','口座名義':'bankHolder'};
 function renderEmpImport(){
   const el=document.getElementById('devAppsContent'); if(!el) return;
   const coOpts=empVisibleCompanies().map(c=>`<option value="${c}" ${c===_empCo?'selected':''}>${esc(empCoName(c))}</option>`).join('');
@@ -4004,11 +4019,11 @@ function renderEmpForm(){
   const typeList=_empCat==='pa'?EMP_PA_TYPES:EMP_SHAIN_TYPES;
   const typeOpts=typeList.map(t=>`<option value="${t}" ${s.empType===t?'selected':''}>${t}</option>`).join('');
   const fld=(id,label,val,type='text',ph='')=>`<div style="margin-bottom:10px"><label style="display:block;font-size:12px;font-weight:700;color:#475569;margin-bottom:3px">${label}</label><input id="emp-${id}" type="${type}" value="${esc(val||'')}" placeholder="${ph}" ${ro} style="width:100%;border:1.5px solid #d1d5db;border-radius:6px;padding:8px 10px;font-size:13px;box-sizing:border-box"></div>`;
-  // 給与エリア
-  let payHtml='';
-  if(_empCat==='pa'){ payHtml=fld('salary','時給／給与',s.salary,'text','例：1,200円/h'); }
-  else if(empCanSeeSalary()){ payHtml=`<div style="margin-bottom:10px"><label style="display:block;font-size:12px;font-weight:700;color:#b91c1c;margin-bottom:3px">給与条件（社員・システムのみ）🔒</label><textarea id="emp-salaryShain" rows="3" ${ro} style="width:100%;border:1.5px solid #fca5a5;border-radius:6px;padding:8px 10px;font-size:13px;box-sizing:border-box;font-family:inherit;background:#fff7f7">${esc(s.salaryShain||'')}</textarea></div>`; }
-  else { payHtml=`<div style="margin-bottom:10px;font-size:12px;color:#9ca3af;background:#f8fafc;border:1px dashed #cbd5e1;border-radius:6px;padding:10px">給与条件はシステム権限の担当者のみ閲覧・編集できます。</div>`; }
+  // 部署プルダウン
+  const deptOpts='<option value="">（選択）</option>'+EMP_DEPTS.map(d=>`<option value="${d}" ${s.department===d?'selected':''}>${d}</option>`).join('');
+  const deptFld=`<div style="margin-bottom:10px"><label style="display:block;font-size:12px;font-weight:700;color:#475569;margin-bottom:3px">部署</label><select id="emp-department" ${ro} style="width:100%;border:1.5px solid #d1d5db;border-radius:6px;padding:8px 10px;font-size:13px">${deptOpts}</select></div>`;
+  // 郵便番号（番地以前を自動補完）
+  const zipFld=`<div style="margin-bottom:10px"><label style="display:block;font-size:12px;font-weight:700;color:#475569;margin-bottom:3px">郵便番号</label><input id="emp-postalCode" type="text" value="${esc(s.postalCode||'')}" placeholder="例：5012345（7桁）" ${ro} oninput="if(this.value.replace(/[^0-9]/g,'').length===7)empLookupZip()" style="width:100%;border:1.5px solid #d1d5db;border-radius:6px;padding:8px 10px;font-size:13px;box-sizing:border-box"></div>`;
   el.innerHTML=`
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
       <button onclick="_empView='roster';renderEmpApp()" style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:7px;padding:7px 14px;font-size:13px;cursor:pointer">← 名簿へ戻る</button>
@@ -4020,19 +4035,18 @@ function renderEmpForm(){
         <div>
           <div style="margin-bottom:10px"><label style="display:block;font-size:12px;font-weight:700;color:#475569;margin-bottom:3px">会社</label><select id="emp-company" ${ro} style="width:100%;border:1.5px solid #d1d5db;border-radius:6px;padding:8px 10px;font-size:13px">${coOpts}</select></div>
           <div style="margin-bottom:10px"><label style="display:block;font-size:12px;font-weight:700;color:#475569;margin-bottom:3px">雇用区分</label><select id="emp-empType" ${ro} style="width:100%;border:1.5px solid #d1d5db;border-radius:6px;padding:8px 10px;font-size:13px">${typeOpts}</select></div>
-          ${fld('store','店舗',s.store,'text','例：羽島')}
+          ${deptFld}
           ${fld('name','氏名',s.name)}
           ${fld('furigana','フリガナ',s.furigana)}
           ${fld('birthDate','生年月日',s.birthDate,'date')}
           ${fld('gender','性別',s.gender,'text','男／女')}
-          ${fld('jobType','職種',s.jobType,'text','例：ホール')}
-          ${fld('department','部署',s.department)}
         </div>
         <div>
           ${fld('phone','電話番号',s.phone,'text','090-...')}
           ${fld('emergencyContact','緊急連絡先',s.emergencyContact)}
+          ${fld('emergencyRelation','緊急連絡先（続柄）',s.emergencyRelation,'text','例：父／配偶者')}
+          ${zipFld}
           ${fld('address','住所',s.address)}
-          ${payHtml}
           ${fld('bankName','銀行名',s.bankName)}
           ${fld('bankBranch','支店',s.bankBranch)}
           ${fld('bankNo','口座番号',s.bankNo)}
@@ -4051,7 +4065,6 @@ function renderEmpForm(){
       </div>`}
     </div>
     ${renderEmpFilesSection(s,readOnly)}`;
-  const st=document.getElementById('emp-store'); if(st) st.value=s.store||'';
 }
 
 function saveEmpForm(){
@@ -4061,16 +4074,16 @@ function saveEmpForm(){
   const staff=load('emp_staff',[]);
   const base=_empEditId?(staff.find(x=>x.id===_empEditId)||{}):{};
   const data={...base,
-    company:g('company').value, empType:g('empType').value, store:g('store').value.trim(),
+    company:g('company').value, empType:g('empType').value,
     name, furigana:g('furigana').value.trim(), birthDate:g('birthDate').value, gender:g('gender').value.trim(),
-    jobType:g('jobType').value.trim(), department:g('department').value.trim(),
-    phone:g('phone').value.trim(), emergencyContact:g('emergencyContact').value.trim(), address:g('address').value.trim(),
+    department:g('department').value,
+    phone:g('phone').value.trim(), emergencyContact:g('emergencyContact').value.trim(),
+    emergencyRelation:g('emergencyRelation').value.trim(),
+    postalCode:g('postalCode').value.trim(), address:g('address').value.trim(),
     bankName:g('bankName').value.trim(), bankBranch:g('bankBranch').value.trim(),
     bankNo:g('bankNo').value.trim(), bankHolder:g('bankHolder').value.trim(),
     joinDate:g('joinDate').value, retireDate:g('retireDate').value, retired:g('retired').checked, notes:g('notes').value.trim()
   };
-  if(g('salary')) data.salary=g('salary').value.trim();
-  if(g('salaryShain')) data.salaryShain=g('salaryShain').value.trim(); // systemのみ存在
   // 権限チェック（不正な保存を防止）
   if(!empCanEditRecord(data)){ alert('この区分・会社を登録する権限がありません'); return; }
   if(_empEditId){ const i=staff.findIndex(x=>x.id===_empEditId); if(i>=0) staff[i]=data; }
