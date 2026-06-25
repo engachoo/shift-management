@@ -21,6 +21,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef2f7;color:#2d3748;min-height:100vh;font-size:13px}
@@ -3948,28 +3949,54 @@ function renderEmpRoster(){
       ${_empShowRetired?`<div style="margin-top:8px">${_empRosterTable(retired,true,'退職者はいません。')}</div>`:''}
     </div>`;
 }
-// 全社・全分類の名簿をExcel出力（会社ごとにシート）。権限で見られる範囲のみ。
-function empExportExcel(){
-  if(typeof XLSX==='undefined'){ alert('Excelライブラリの読込に失敗しました'); return; }
-  const cols=['会社','雇用区分','部署','氏名','フリガナ','性別','生年月日','入社日','退職日','在籍状況','電話','緊急連絡先','続柄','郵便番号','住所','銀行名','支店','口座番号','口座名義','相談支援事業所','担当者','相談支援連絡先','備考'];
+// 全社・全分類の名簿をExcel出力（会社ごとにシート・装飾付き）。権限で見られる範囲のみ。
+async function empExportExcel(){
+  if(typeof ExcelJS==='undefined'){ alert('Excelライブラリの読込に失敗しました。通信環境をご確認ください'); return; }
+  const cols=[
+    {h:'会社',k:'co',w:14},{h:'雇用区分',k:'empType',w:12},{h:'部署',k:'dept',w:16},
+    {h:'氏名',k:'name',w:16},{h:'フリガナ',k:'furigana',w:16},{h:'性別',k:'gender',w:6},
+    {h:'生年月日',k:'birthDate',w:12},{h:'入社日',k:'joinDate',w:12},{h:'退職日',k:'retireDate',w:12},
+    {h:'在籍状況',k:'status',w:9},{h:'電話',k:'phone',w:18},{h:'緊急連絡先',k:'emergencyContact',w:28},
+    {h:'続柄',k:'emergencyRelation',w:8},{h:'郵便番号',k:'postalCode',w:10},{h:'住所',k:'address',w:28},
+    {h:'銀行名',k:'bankName',w:16},{h:'支店',k:'bankBranch',w:12},{h:'口座番号',k:'bankNo',w:12},
+    {h:'口座名義',k:'bankHolder',w:16},{h:'相談支援事業所',k:'supportOffice',w:22},{h:'担当者',k:'supportStaff',w:12},
+    {h:'相談支援連絡先',k:'supportContact',w:16},{h:'備考',k:'notes',w:22}
+  ];
   const all=load('emp_staff',[]);
-  const wb=XLSX.utils.book_new(); let total=0;
+  const wb=new ExcelJS.Workbook(); wb.creator='大日産業グループウェア'; let total=0;
+  const border={top:{style:'thin',color:{argb:'FFD7DEE8'}},bottom:{style:'thin',color:{argb:'FFD7DEE8'}},left:{style:'thin',color:{argb:'FFD7DEE8'}},right:{style:'thin',color:{argb:'FFD7DEE8'}}};
   empVisibleCompanies().forEach(co=>{
     let rows=all.filter(s=>s.company===co);
     if(!empCanSeeShain()) rows=rows.filter(s=>!_empShainLevel(s.empType));
-    // 分類順→あいうえお順
     const baseOrder=co==='welpia'?EMP_WELPIA_TYPES:[...EMP_SHAIN_TYPES,...EMP_PA_TYPES];
     const ord=t=>{const i=baseOrder.indexOf(t||'');return i<0?99:i;};
     rows.sort((a,b)=> ord(a.empType)-ord(b.empType) || (a.furigana||a.name||'').localeCompare(b.furigana||b.name||'','ja'));
-    const aoa=[cols];
-    rows.forEach(s=>{ total++; aoa.push([empCoName(co),s.empType||'',s.department||s.store||'',s.name||'',s.furigana||'',s.gender||'',s.birthDate||'',s.joinDate||'',s.retireDate||'',s.retired?'退職':'在籍',s.phone||'',s.emergencyContact||'',s.emergencyRelation||'',s.postalCode||'',s.address||'',s.bankName||'',s.bankBranch||'',s.bankNo||'',s.bankHolder||'',s.supportOffice||'',s.supportStaff||'',s.supportContact||'',s.notes||'']); });
-    const ws=XLSX.utils.aoa_to_sheet(aoa);
-    ws['!cols']=cols.map(c=>({wch: c==='緊急連絡先'||c==='住所'?24:(c==='備考'?20:12)}));
-    XLSX.utils.book_append_sheet(wb,ws,empCoName(co).slice(0,28));
+    const ws=wb.addWorksheet(empCoName(co).slice(0,28),{views:[{state:'frozen',ySplit:1}]});
+    ws.columns=cols.map(c=>({header:c.h,key:c.k,width:c.w}));
+    // ヘッダー装飾
+    const hr=ws.getRow(1); hr.height=26;
+    hr.eachCell(c=>{ c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF1E3A6B'}};
+      c.font={bold:true,color:{argb:'FFFFFFFF'},size:11,name:'Yu Gothic'};
+      c.alignment={vertical:'middle',horizontal:'center'}; c.border=border; });
+    rows.forEach((s,i)=>{ total++;
+      const r=ws.addRow({co:empCoName(co),empType:s.empType||'',dept:s.department||s.store||'',name:s.name||'',furigana:s.furigana||'',gender:s.gender||'',birthDate:s.birthDate||'',joinDate:s.joinDate||'',retireDate:s.retireDate||'',status:s.retired?'退職':'在籍',phone:s.phone||'',emergencyContact:s.emergencyContact||'',emergencyRelation:s.emergencyRelation||'',postalCode:s.postalCode||'',address:s.address||'',bankName:s.bankName||'',bankBranch:s.bankBranch||'',bankNo:s.bankNo||'',bankHolder:s.bankHolder||'',supportOffice:s.supportOffice||'',supportStaff:s.supportStaff||'',supportContact:s.supportContact||'',notes:s.notes||''});
+      r.height=20;
+      const zebra=i%2===1; const retired=s.retired;
+      r.eachCell({includeEmpty:true},c=>{ c.border=border; c.font={size:10,name:'Yu Gothic',color:{argb:retired?'FF9CA3AF':'FF1A2B4A'}};
+        c.alignment={vertical:'middle',wrapText:false};
+        c.fill={type:'pattern',pattern:'solid',fgColor:{argb:retired?'FFF3F4F6':(zebra?'FFF6F9FC':'FFFFFFFF')}}; });
+      // 在籍状況セルを色分け
+      const st=r.getCell('status'); st.alignment={vertical:'middle',horizontal:'center'};
+      st.font={size:10,bold:true,name:'Yu Gothic',color:{argb:retired?'FFB91C1C':'FF166534'}};
+    });
+    ws.autoFilter={from:{row:1,column:1},to:{row:1,column:cols.length}};
   });
   if(!total){ alert('出力できる従業員データがありません'); return; }
   const ymd=new Date().toLocaleDateString('sv',{timeZone:'Asia/Tokyo'}).replace(/-/g,'');
-  XLSX.writeFile(wb,`従業員名簿_${ymd}.xlsx`);
+  const buf=await wb.xlsx.writeBuffer();
+  const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`従業員名簿_${ymd}.xlsx`;
+  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(a.href);
   showToast(`Excelを出力しました（${total}名）`);
 }
 function empSetRetire(id,val){
