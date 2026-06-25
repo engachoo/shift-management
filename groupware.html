@@ -3553,6 +3553,10 @@ function openDevApp(id){
 const EMP_COMPANIES=[{id:'dainichi',name:'大日産業'},{id:'amuse',name:'AMUSE JAPAN'},{id:'welpia',name:'ウェルピア'}];
 const EMP_PA_TYPES=['アルバイト','パート'];
 const EMP_SHAIN_TYPES=['正社員','契約社員'];
+// ウェルピア専用の5区分（正社員／羽島職員／羽島利用者／山県職員／山県利用者）
+const EMP_WELPIA_TYPES=['正社員','羽島職員','羽島利用者','山県職員','山県利用者'];
+// 社員相当（system/soumuのみ編集可）の判定。職員・利用者はPAレベル扱い。
+function _empShainLevel(t){ return /正社員|契約社員/.test(t||''); }
 // 部署プルダウン（出納帳部署と同一の9部署）
 const EMP_DEPTS=['大日-本社','AMUSE-本社','ウェルピア-本社','BLOCK-サイクル','BLOCK-Eats','BLOCK-ボディ','AMUSE-店舗','ウェルピア-羽島','ウェルピア-山県'];
 // 郵便番号→住所（番地以前）を自動補完（zipcloud・CORS対応）
@@ -3665,8 +3669,8 @@ function empUserCompany(){ const g=getUserDeptGroup(myId()); return g==='amuse'?
 function empVisibleCompanies(){ const r=empRole(); return (r==='system'||r==='soumu'||r==='admin')?['dainichi','amuse','welpia']:[empUserCompany()]; }
 function empCanSeeShain(){ return ['system','soumu'].includes(empRole()); }
 function empCanSeeSalary(){ return empRole()==='system'; }
-function empCanEditRecord(rec){ const r=empRole(); const isPA=EMP_PA_TYPES.includes(rec.empType||'');
-  if(!isPA) return r==='system'||r==='soumu';
+function empCanEditRecord(rec){ const r=empRole();
+  if(_empShainLevel(rec.empType)) return r==='system'||r==='soumu';
   if(r==='system'||r==='soumu'||r==='admin') return true;
   return (rec.company||'')===empUserCompany(); }
 function empCoName(id){ return (EMP_COMPANIES.find(c=>c.id===id)||{}).name||id||'-'; }
@@ -3732,11 +3736,14 @@ function _empBranchBar(){
   const vis=empVisibleCompanies();
   const coTabs=vis.map(c=>`<button onclick="_empCo='${c}';renderEmpApp()" style="background:${_empCo===c?'#1e3a6b':'#eef2f7'};color:${_empCo===c?'#fff':'#475569'};border:none;border-radius:7px;padding:7px 16px;font-size:13px;font-weight:700;cursor:pointer">${esc(empCoName(c))}</button>`).join('');
   const catBtn=(id,label)=>`<button onclick="_empCat='${id}';renderEmpApp()" style="background:${_empCat===id?'#7c3aed':'#faf5ff'};color:${_empCat===id?'#fff':'#7c3aed'};border:1px solid #d8b4fe;border-radius:7px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer">${label}</button>`;
-  // 名簿は区分(pa/shain)のみ、入社書類は役職者(幹部)も選べる
-  let cats=catBtn('pa','パート・アルバイト');
-  if(empCanSeeShain()){ cats+=catBtn('shain','一般社員'); if(_empView==='docs') cats+=catBtn('kanbu','役職者（幹部）'); }
-  return `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">${coTabs}</div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">${cats}</div>`;
+  // 区分(pa/shain/幹部)タブは入社書類のみ。名簿は識別ボタンで絞り込むため非表示。
+  let cats='';
+  if(_empView==='docs'){
+    cats=catBtn('pa','パート・アルバイト');
+    if(empCanSeeShain()){ cats+=catBtn('shain','一般社員')+catBtn('kanbu','役職者（幹部）'); }
+  }
+  return `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:${cats?'8px':'16px'}">${coTabs}</div>
+          ${cats?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">${cats}</div>`:''}`;
 }
 
 // 書式編集（マスター差し替え）は総務経理・システムのみ
@@ -3839,6 +3846,8 @@ function renderEmpDocs(){
 
 let _empShowRetired=false;
 let _empSel=new Set();
+let _empTypeFilter=''; // 名簿の識別ボタン（雇用区分フィルター）
+function empSetTypeFilter(t){ _empTypeFilter=t; _empSel.clear(); renderEmpApp(); }
 function empToggleSel(id,ck){ if(ck)_empSel.add(id); else _empSel.delete(id);
   const c=document.getElementById('emp-sel-cnt'); if(c)c.textContent=_empSel.size;
   const b=document.getElementById('emp-bulkdel'); if(b)b.style.display=_empSel.size?'inline-block':'none'; }
@@ -3887,13 +3896,26 @@ function _empRosterTable(arr,retiredSection,emptyMsg){
 }
 function renderEmpRoster(){
   const body=document.getElementById('empBody'); if(!body) return;
-  const types=_empCat==='pa'?EMP_PA_TYPES:EMP_SHAIN_TYPES;
-  const all=load('emp_staff',[]).filter(s=>s.company===_empCo && types.includes(s.empType||''));
+  // 会社の全従業員。社員相当（正社員・契約社員）はsystem/soumuのみ閲覧可。
+  let pool=load('emp_staff',[]).filter(s=>s.company===_empCo);
+  if(!empCanSeeShain()) pool=pool.filter(s=>!_empShainLevel(s.empType));
+  // 識別ボタン（雇用区分フィルター）。会社既定の並び順を優先。
+  const baseOrder=_empCo==='welpia'?EMP_WELPIA_TYPES:[...EMP_SHAIN_TYPES,...EMP_PA_TYPES];
+  const present=[...new Set(pool.map(s=>s.empType||'未設定'))];
+  const ordered=[...baseOrder.filter(t=>present.includes(t)),...present.filter(t=>!baseOrder.includes(t))];
+  if(_empTypeFilter && !present.includes(_empTypeFilter)) _empTypeFilter='';
+  const fbtn=(val,label,n)=>`<button onclick="empSetTypeFilter('${val}')" style="background:${_empTypeFilter===val?'#1e3a6b':'#eef2f7'};color:${_empTypeFilter===val?'#fff':'#475569'};border:none;border-radius:18px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer">${label}<span style="opacity:.75;font-weight:400">（${n}）</span></button>`;
+  const filterBar=`<div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px">
+      ${fbtn('','全員',pool.length)}
+      ${ordered.map(t=>fbtn(t,esc(t),pool.filter(s=>(s.empType||'未設定')===t).length)).join('')}
+    </div>`;
+  const all=_empTypeFilter?pool.filter(s=>(s.empType||'未設定')===_empTypeFilter):pool;
   const active=all.filter(s=>!s.retired);
   const retired=all.filter(s=>s.retired);
-  const canAdd = _empCat==='pa' ? empCanEditRecord({empType:'アルバイト',company:_empCo}) : empCanSeeShain();
+  const canAdd = empCanSeeShain() || empCanEditRecord({empType:'アルバイト',company:_empCo});
   body.innerHTML=`
     ${canAdd?`<div style="display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap"><button id="emp-bulkdel" onclick="empBulkDelete()" style="display:${_empSel.size?'inline-block':'none'};background:#dc2626;color:#fff;border:none;border-radius:7px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer">🗑 選択した<span id="emp-sel-cnt">${_empSel.size}</span>件を削除</button><button onclick="_empView='import';renderEmpApp()" style="background:#fff;border:1.5px solid #c084fc;color:#7c3aed;border-radius:7px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer">📋 一括取込</button><button onclick="openEmpForm('')" style="background:#7c3aed;color:#fff;border:none;border-radius:7px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer">＋ 従業員を登録</button></div>`:''}
+    ${filterBar}
     <div style="font-size:12px;font-weight:700;color:#166534;margin:0 0 6px 2px">在籍（${active.length}名）</div>
     ${_empRosterTable(active,false,'この区分の在籍者はまだ登録がありません。')}
     <div style="margin-top:18px">
@@ -4012,12 +4034,14 @@ function openEmpForm(id){ _empEditId=id||null; _empView='form'; renderEmpApp(); 
 
 function renderEmpForm(){
   const el=document.getElementById('devAppsContent'); if(!el) return;
-  const s=_empEditId?(load('emp_staff',[]).find(x=>x.id===_empEditId)||{}):{company:_empCo, empType:(_empCat==='pa'?'アルバイト':'正社員')};
+  const s=_empEditId?(load('emp_staff',[]).find(x=>x.id===_empEditId)||{}):{company:_empCo, empType:(_empCo==='welpia'?'':_empTypeFilter||(_empCat==='pa'?'アルバイト':'正社員'))};
   const readOnly=_empEditId?!empCanEditRecord(s):false;
   const ro=readOnly?'disabled':'';
   const coOpts=empVisibleCompanies().map(c=>`<option value="${c}" ${s.company===c?'selected':''}>${esc(empCoName(c))}</option>`).join('');
-  const typeList=_empCat==='pa'?EMP_PA_TYPES:EMP_SHAIN_TYPES;
-  const typeOpts=typeList.map(t=>`<option value="${t}" ${s.empType===t?'selected':''}>${t}</option>`).join('');
+  const formCo=s.company||_empCo;
+  let typeList=formCo==='welpia'?EMP_WELPIA_TYPES.slice():(_empCat==='pa'?EMP_PA_TYPES.slice():EMP_SHAIN_TYPES.slice());
+  if(s.empType && !typeList.includes(s.empType)) typeList=[s.empType,...typeList]; // 既存値を保持
+  const typeOpts=(s.empType?'':'<option value="" selected>（選択）</option>')+typeList.map(t=>`<option value="${t}" ${s.empType===t?'selected':''}>${t}</option>`).join('');
   const fld=(id,label,val,type='text',ph='')=>`<div style="margin-bottom:10px"><label style="display:block;font-size:12px;font-weight:700;color:#475569;margin-bottom:3px">${label}</label><input id="emp-${id}" type="${type}" value="${esc(val||'')}" placeholder="${ph}" ${ro} style="width:100%;border:1.5px solid #d1d5db;border-radius:6px;padding:8px 10px;font-size:13px;box-sizing:border-box"></div>`;
   // 部署プルダウン
   const deptOpts='<option value="">（選択）</option>'+EMP_DEPTS.map(d=>`<option value="${d}" ${s.department===d?'selected':''}>${d}</option>`).join('');
