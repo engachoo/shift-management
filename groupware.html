@@ -3980,7 +3980,11 @@ async function empExportExcel(co,typeFilter){
   rows.sort((a,b)=> ord(a.empType)-ord(b.empType) || (a.furigana||a.name||'').localeCompare(b.furigana||b.name||'','ja'));
   const wb=new ExcelJS.Workbook(); wb.creator='大日産業グループウェア';
   const sheetName=(typeFilter?typeFilter:empCoName(co)).slice(0,28);
-  const ws=wb.addWorksheet(sheetName,{views:[{state:'frozen',ySplit:1}]});
+  const ws=wb.addWorksheet(sheetName,{views:[{state:'frozen',ySplit:1}],
+    pageSetup:{paperSize:8,orientation:'landscape',fitToPage:true,fitToWidth:1,fitToHeight:1,horizontalCentered:true,
+      margins:{left:0.3,right:0.3,top:0.4,bottom:0.4,header:0.2,footer:0.2}},
+    headerFooter:{firstHeader:''}});
+  ws.pageSetup.printTitlesRow='1:1';
   ws.columns=cols.map(c=>({header:c.h,key:c.k,width:c.w}));
   const hr=ws.getRow(1); hr.height=26;
   hr.eachCell(c=>{ c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF1E3A6B'}};
