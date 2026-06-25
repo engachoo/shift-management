@@ -3971,7 +3971,7 @@ async function empExportExcel(co,typeFilter){
   const border={top:{style:'thin',color:{argb:'FFD7DEE8'}},bottom:{style:'thin',color:{argb:'FFD7DEE8'}},left:{style:'thin',color:{argb:'FFD7DEE8'}},right:{style:'thin',color:{argb:'FFD7DEE8'}}};
   // 雇用区分ごとの背景色（淡色）
   const TYPE_FILL={'正社員':'FFD6E4FA','契約社員':'FFD2EFEA','アルバイト':'FFFBF0CC','パート':'FFFAD9C0','羽島職員':'FFD8F0DC','羽島利用者':'FFFCEFC9','山県職員':'FFE4D8F5','山県利用者':'FFFBD7E6'};
-  let rows=all.filter(s=>s.company===co);
+  let rows=all.filter(s=>s.company===co && !s.retired);
   if(!empCanSeeShain()) rows=rows.filter(s=>!_empShainLevel(s.empType));
   if(typeFilter) rows=rows.filter(s=>(s.empType||'未設定')===typeFilter);
   if(!rows.length){ alert('出力できる従業員データがありません'); return; }
