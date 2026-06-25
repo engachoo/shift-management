@@ -4175,11 +4175,12 @@ function saveEmpForm(){
   };
   // 権限チェック（不正な保存を防止）
   if(!empCanEditRecord(data)){ alert('この区分・会社を登録する権限がありません'); return; }
+  const isNew=!_empEditId;
   if(_empEditId){ const i=staff.findIndex(x=>x.id===_empEditId); if(i>=0) staff[i]=data; }
   else { data.id='emp'+Date.now(); staff.push(data); }
   save('emp_staff',staff);
-  _empView='roster'; renderEmpApp();
-  showToast(_empEditId?'従業員情報を更新しました ✓':'従業員を登録しました ✓');
+  if(isNew){ _empEditId=data.id; _empView='form'; renderEmpApp(); showToast('登録しました ✓ 続けて書類を添付できます'); }
+  else { _empView='roster'; renderEmpApp(); showToast('従業員情報を更新しました ✓'); }
 }
 
 function deleteEmp(id){
