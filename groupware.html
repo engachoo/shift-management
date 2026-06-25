@@ -3951,7 +3951,7 @@ function renderEmpRoster(){
 // 全社・全分類の名簿をExcel出力（会社ごとにシート）。権限で見られる範囲のみ。
 function empExportExcel(){
   if(typeof XLSX==='undefined'){ alert('Excelライブラリの読込に失敗しました'); return; }
-  const cols=['会社','雇用区分','部署','氏名','フリガナ','性別','生年月日','入社日','退職日','在籍状況','電話','緊急連絡先','続柄','郵便番号','住所','銀行名','支店','口座番号','口座名義','備考'];
+  const cols=['会社','雇用区分','部署','氏名','フリガナ','性別','生年月日','入社日','退職日','在籍状況','電話','緊急連絡先','続柄','郵便番号','住所','銀行名','支店','口座番号','口座名義','相談支援事業所','担当者','相談支援連絡先','備考'];
   const all=load('emp_staff',[]);
   const wb=XLSX.utils.book_new(); let total=0;
   empVisibleCompanies().forEach(co=>{
@@ -3962,7 +3962,7 @@ function empExportExcel(){
     const ord=t=>{const i=baseOrder.indexOf(t||'');return i<0?99:i;};
     rows.sort((a,b)=> ord(a.empType)-ord(b.empType) || (a.furigana||a.name||'').localeCompare(b.furigana||b.name||'','ja'));
     const aoa=[cols];
-    rows.forEach(s=>{ total++; aoa.push([empCoName(co),s.empType||'',s.department||s.store||'',s.name||'',s.furigana||'',s.gender||'',s.birthDate||'',s.joinDate||'',s.retireDate||'',s.retired?'退職':'在籍',s.phone||'',s.emergencyContact||'',s.emergencyRelation||'',s.postalCode||'',s.address||'',s.bankName||'',s.bankBranch||'',s.bankNo||'',s.bankHolder||'',s.notes||'']); });
+    rows.forEach(s=>{ total++; aoa.push([empCoName(co),s.empType||'',s.department||s.store||'',s.name||'',s.furigana||'',s.gender||'',s.birthDate||'',s.joinDate||'',s.retireDate||'',s.retired?'退職':'在籍',s.phone||'',s.emergencyContact||'',s.emergencyRelation||'',s.postalCode||'',s.address||'',s.bankName||'',s.bankBranch||'',s.bankNo||'',s.bankHolder||'',s.supportOffice||'',s.supportStaff||'',s.supportContact||'',s.notes||'']); });
     const ws=XLSX.utils.aoa_to_sheet(aoa);
     ws['!cols']=cols.map(c=>({wch: c==='緊急連絡先'||c==='住所'?24:(c==='備考'?20:12)}));
     XLSX.utils.book_append_sheet(wb,ws,empCoName(co).slice(0,28));
@@ -4024,7 +4024,7 @@ function empMove(id){
 }
 
 // 名簿の貼り付け一括取込（タブ/カンマ区切り・1行目ヘッダー）。PIIはDBのみ保存。
-const _EMP_IMPORT_MAP={'氏名':'name','名前':'name','フリガナ':'furigana','ふりがな':'furigana','性別':'gender','雇用区分':'empType','区分':'empType','職種':'jobType','部署':'department','業務':'department','業務内容':'department','店舗':'store','住所':'address','電話':'phone','電話番号':'phone','連絡先':'phone','緊急連絡先':'emergencyContact','続柄':'emergencyRelation','緊急連絡先続柄':'emergencyRelation','郵便番号':'postalCode','〒':'postalCode','生年月日':'birthDate','入社日':'joinDate','退職日':'retireDate','退社日':'retireDate','備考':'notes','銀行':'bankName','銀行名':'bankName','支店':'bankBranch','口座番号':'bankNo','名義':'bankHolder','口座名義':'bankHolder'};
+const _EMP_IMPORT_MAP={'氏名':'name','名前':'name','フリガナ':'furigana','ふりがな':'furigana','性別':'gender','雇用区分':'empType','区分':'empType','職種':'jobType','部署':'department','業務':'department','業務内容':'department','店舗':'store','住所':'address','電話':'phone','電話番号':'phone','連絡先':'phone','緊急連絡先':'emergencyContact','続柄':'emergencyRelation','緊急連絡先続柄':'emergencyRelation','郵便番号':'postalCode','〒':'postalCode','相談支援事業所':'supportOffice','相談支援事業所名':'supportOffice','担当者':'supportStaff','担当者名':'supportStaff','相談支援連絡先':'supportContact','事業所連絡先':'supportContact','生年月日':'birthDate','入社日':'joinDate','退職日':'retireDate','退社日':'retireDate','備考':'notes','銀行':'bankName','銀行名':'bankName','支店':'bankBranch','口座番号':'bankNo','名義':'bankHolder','口座名義':'bankHolder'};
 function renderEmpImport(){
   const el=document.getElementById('devAppsContent'); if(!el) return;
   const coOpts=empVisibleCompanies().map(c=>`<option value="${c}" ${c===_empCo?'selected':''}>${esc(empCoName(c))}</option>`).join('');
@@ -4143,6 +4143,14 @@ function renderEmpForm(){
           ${fld('joinDate','入社日',s.joinDate,'date')}
         </div>
       </div>
+      <div style="margin:4px 0 10px;padding:12px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px">
+        <div style="font-size:12px;font-weight:700;color:#0369a1;margin-bottom:8px">相談支援（利用者向け）</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:0 16px">
+          ${fld('supportOffice','相談支援事業所',s.supportOffice)}
+          ${fld('supportStaff','担当者',s.supportStaff)}
+          ${fld('supportContact','連絡先',s.supportContact)}
+        </div>
+      </div>
       <div style="margin-bottom:10px"><label style="display:block;font-size:12px;font-weight:700;color:#475569;margin-bottom:3px">備考</label><textarea id="emp-notes" rows="2" ${ro} style="width:100%;border:1.5px solid #d1d5db;border-radius:6px;padding:8px 10px;font-size:13px;box-sizing:border-box;font-family:inherit">${esc(s.notes||'')}</textarea></div>
       <div style="display:flex;align-items:center;gap:14px;margin:6px 0 14px;padding:10px;background:#f8fafc;border-radius:8px">
         <label style="font-size:13px;font-weight:700;color:#475569"><input type="checkbox" id="emp-retired" ${s.retired?'checked':''} ${ro}> 退職</label>
@@ -4171,6 +4179,7 @@ function saveEmpForm(){
     postalCode:g('postalCode').value.trim(), address:g('address').value.trim(),
     bankName:g('bankName').value.trim(), bankBranch:g('bankBranch').value.trim(),
     bankNo:g('bankNo').value.trim(), bankHolder:g('bankHolder').value.trim(),
+    supportOffice:g('supportOffice').value.trim(), supportStaff:g('supportStaff').value.trim(), supportContact:g('supportContact').value.trim(),
     joinDate:g('joinDate').value, retireDate:g('retireDate').value, retired:g('retired').checked, notes:g('notes').value.trim()
   };
   // 権限チェック（不正な保存を防止）
