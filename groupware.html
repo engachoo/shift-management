@@ -4196,7 +4196,12 @@ function _fileIcon(name){ const e=(name||'').split('.').pop().toLowerCase(); ret
 function _fmtSize(b){ b=b||0; return b<1024?b+'B':b<1048576?(b/1024).toFixed(0)+'KB':(b/1048576).toFixed(1)+'MB'; }
 function renderEmpFilesSection(s,readOnly){
   if(!_empEditId){
-    return `<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:18px;max-width:760px;margin-top:16px;color:#9ca3af;font-size:13px">📎 保管書類：先に「💾 保存」で登録すると、ここに書類（PDF・Excel・Word・画像）を添付できます。</div>`;
+    return `<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:18px;max-width:760px;margin-top:16px">
+      <div style="font-size:14px;font-weight:700;color:#1a2b4a;margin-bottom:4px">📎 保管書類</div>
+      <div style="font-size:11px;color:#9ca3af;margin-bottom:12px">記入済みの入社書類などをPDF・Excel・Word・画像で保管できます（1ファイル650KBまで）。</div>
+      <button onclick="empNewAttach()" style="background:#faf5ff;border:1.5px dashed #c084fc;color:#7c3aed;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer">＋ 書類を追加</button>
+      <div style="font-size:11px;color:#9ca3af;margin-top:8px">※ 押すと自動で保存してから添付します（先に氏名の入力が必要）。</div>
+    </div>`;
   }
   const files=s.files||[];
   const rows=files.map(f=>`
@@ -4210,8 +4215,15 @@ function renderEmpFilesSection(s,readOnly){
     <div style="font-size:14px;font-weight:700;color:#1a2b4a;margin-bottom:4px">📎 保管書類（${files.length}件）</div>
     <div style="font-size:11px;color:#9ca3af;margin-bottom:12px">記入済みの入社書類などをPDF・Excel・Word・画像で保管できます（1ファイル650KBまで）。</div>
     ${rows||'<div style="color:#9ca3af;font-size:12px;padding:8px 0">まだ書類がありません。</div>'}
-    ${readOnly?'':`<label style="display:inline-block;margin-top:10px;background:#faf5ff;border:1.5px dashed #c084fc;color:#7c3aed;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer">＋ 書類を追加<input type="file" multiple accept=".pdf,.xlsx,.xls,.docx,.doc,.jpg,.jpeg,.png" style="display:none" onchange="empUploadFiles(event)"></label>`}
+    ${readOnly?'':`<label style="display:inline-block;margin-top:10px;background:#faf5ff;border:1.5px dashed #c084fc;color:#7c3aed;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer">＋ 書類を追加<input id="emp-file-input" type="file" multiple accept=".pdf,.xlsx,.xls,.docx,.doc,.jpg,.jpeg,.png" style="display:none" onchange="empUploadFiles(event)"></label>`}
   </div>`;
+}
+// 新規登録時：氏名チェック→自動保存（フォーム維持）→ファイル選択を開く
+function empNewAttach(){
+  const n=document.getElementById('emp-name');
+  if(!n||!n.value.trim()){ alert('先に氏名を入力してください'); return; }
+  saveEmpForm(); // 新規なら _empEditId が設定され、フォームのまま再描画される
+  setTimeout(()=>{ const inp=document.getElementById('emp-file-input'); if(inp) inp.click(); },350);
 }
 async function empUploadFiles(ev){
   if(!_empEditId){ alert('先に保存してください'); return; }
