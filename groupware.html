@@ -722,31 +722,37 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
       <button onclick="closeSidebar()" style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer;line-height:1;padding:0 2px">×</button>
     </div>
     <div class="side-item" id="m-top" onclick="showMod('top')"><span class="si-icon">🏠</span>ホーム<span class="side-badge" id="badge-top" style="display:none"></span></div>
-    <div class="side-group">スケジュール</div>
-    <div class="side-item" id="m-sgw" onclick="showMod('schedule','gw')"><span class="si-icon">📅</span>グループ週</div>
-    <div class="side-item" id="m-spm" onclick="showMod('schedule','pm')"><span class="si-icon">🗓️</span>個人月</div>
-    <div class="side-item" id="m-spy" onclick="showMod('schedule','py')"><span class="si-icon">📆</span>個人年</div>
-    <div class="side-group">コミュニケーション</div>
-    <div class="side-item" id="m-ci" onclick="showMod('circular')"><span class="si-icon">📝</span>承認申請<span class="side-badge" id="badge-ci">0</span></div>
-    <div class="side-item" id="m-bl" onclick="showMod('bulletin')"><span class="si-icon">📌</span>連絡事項<span class="side-badge" id="badge-bl" style="display:none"></span></div>
-    <div class="side-item" id="m-en" onclick="showMod('evnotif')"><span class="si-icon">🔔</span>更新・変更の通知<span class="side-badge" id="badge-en" style="display:none"></span></div>
-    <div class="side-item" id="m-td" onclick="showMod('todo')"><span class="si-icon">✅</span>ToDo<span class="side-badge gray" id="badge-td" style="display:none"></span><span class="side-badge" id="badge-td-urgent" style="display:none;margin-left:3px"></span></div>
+    <div class="side-group side-group-toggle" data-grp="sched" onclick="toggleSideGroup('sched')"><span>スケジュール</span><span class="side-group-arrow">▼</span></div>
+    <div id="grpBody-sched">
+      <div class="side-item" id="m-sgw" onclick="showMod('schedule','gw')"><span class="si-icon">📅</span>グループ週</div>
+      <div class="side-item" id="m-spm" onclick="showMod('schedule','pm')"><span class="si-icon">🗓️</span>個人月</div>
+      <div class="side-item" id="m-spy" onclick="showMod('schedule','py')"><span class="si-icon">📆</span>個人年</div>
+    </div>
+    <div class="side-group side-group-toggle" data-grp="comm" onclick="toggleSideGroup('comm')"><span>コミュニケーション</span><span class="side-group-arrow">▼</span></div>
+    <div id="grpBody-comm">
+      <div class="side-item" id="m-ci" onclick="showMod('circular')"><span class="si-icon">📝</span>承認申請<span class="side-badge" id="badge-ci">0</span></div>
+      <div class="side-item" id="m-bl" onclick="showMod('bulletin')"><span class="si-icon">📌</span>連絡事項<span class="side-badge" id="badge-bl" style="display:none"></span></div>
+      <div class="side-item" id="m-en" onclick="showMod('evnotif')"><span class="si-icon">🔔</span>更新・変更の通知<span class="side-badge" id="badge-en" style="display:none"></span></div>
+      <div class="side-item" id="m-td" onclick="showMod('todo')"><span class="si-icon">✅</span>ToDo<span class="side-badge gray" id="badge-td" style="display:none"></span><span class="side-badge" id="badge-td-urgent" style="display:none;margin-left:3px"></span></div>
+    </div>
     <div id="acctMenu" style="display:none">
-      <div class="side-group">経理・事務</div>
-      <div class="side-item" id="m-pc" onclick="showMod('pettycash')"><span class="si-icon">💰</span>現金出納簿</div>
-      <div class="side-item" id="m-inv" style="display:none" onclick="showInvoiceApp()"><span class="si-icon">📄</span>請求書フォーム</div>
+      <div class="side-group side-group-toggle" data-grp="acct" onclick="toggleSideGroup('acct')"><span>経理・事務</span><span class="side-group-arrow">▼</span></div>
+      <div id="grpBody-acct">
+        <div class="side-item" id="m-pc" onclick="showMod('pettycash')"><span class="si-icon">💰</span>現金出納簿</div>
+        <div class="side-item" id="m-inv" style="display:none" onclick="showInvoiceApp()"><span class="si-icon">📄</span>請求書フォーム</div>
+      </div>
     </div>
     <div id="hrMenu" style="display:none">
-      <div class="side-group">人事・勤怠・労務</div>
-      <div class="side-item" id="m-tk" onclick="showMod('todoke')"><span class="si-icon">📋</span>届出書ダウンロード</div>
-      <div class="side-item" id="m-emp" onclick="showMod('emp','docs')"><span class="si-icon">📄</span>入社書類<span style="font-size:10px;background:#fef3c7;color:#92400e;border:1px solid #fde68a;border-radius:10px;padding:1px 6px;margin-left:4px;font-weight:700">テスト</span></div>
-      <div class="side-item" id="m-empmgmt" onclick="showMod('emp','roster')"><span class="si-icon">🧑‍💼</span>従業員管理<span style="font-size:10px;background:#fef3c7;color:#92400e;border:1px solid #fde68a;border-radius:10px;padding:1px 6px;margin-left:4px;font-weight:700">テスト</span></div>
+      <div class="side-group side-group-toggle" data-grp="hr" onclick="toggleSideGroup('hr')"><span>人事・勤怠・労務</span><span class="side-group-arrow">▼</span></div>
+      <div id="grpBody-hr">
+        <div class="side-item" id="m-tk" onclick="showMod('todoke')"><span class="si-icon">📋</span>届出書ダウンロード</div>
+        <div class="side-item" id="m-emp" onclick="showMod('emp','docs')"><span class="si-icon">📄</span>入社書類<span style="font-size:10px;background:#fef3c7;color:#92400e;border:1px solid #fde68a;border-radius:10px;padding:1px 6px;margin-left:4px;font-weight:700">テスト</span></div>
+        <div class="side-item" id="m-empmgmt" onclick="showMod('emp','roster')"><span class="si-icon">🧑‍💼</span>従業員管理<span style="font-size:10px;background:#fef3c7;color:#92400e;border:1px solid #fde68a;border-radius:10px;padding:1px 6px;margin-left:4px;font-weight:700">テスト</span></div>
+      </div>
     </div>
     <div id="adminMenu" style="display:none">
-      <div class="side-group side-group-toggle" id="sysGroupHdr" onclick="toggleSysGroup()">
-        <span>システム設定</span><span class="side-group-arrow" id="sysGroupArrow">▼</span>
-      </div>
-      <div id="sysGroupBody">
+      <div class="side-group side-group-toggle" data-grp="sys" onclick="toggleSideGroup('sys')"><span>システム設定</span><span class="side-group-arrow">▼</span></div>
+      <div id="grpBody-sys">
         <div class="side-item" id="m-au" onclick="showMod('admin','users')"><span class="si-icon">👤</span>ユーザー管理</div>
         <div class="side-item" id="m-ad" onclick="showMod('admin','depts')"><span class="si-icon">🏢</span>部署管理</div>
         <div class="side-item" id="m-ap" onclick="showMod('admin','perms')"><span class="si-icon">🔐</span>権限設定</div>
@@ -8799,22 +8805,25 @@ function resetPermMatrix(){
 // 管理者パネル
 // =========================================================
 // システム設定グループの折りたたみ切替（状態は記憶）
-function toggleSysGroup(){
-  const body=document.getElementById('sysGroupBody');
-  const hdr=document.getElementById('sysGroupHdr');
+const SIDE_GROUPS=['sched','comm','acct','hr','sys'];
+function toggleSideGroup(grp){
+  const body=document.getElementById('grpBody-'+grp);
+  const hdr=document.querySelector('.side-group-toggle[data-grp="'+grp+'"]');
   if(!body||!hdr) return;
   const collapsed = body.style.display!=='none';
   body.style.display = collapsed ? 'none' : 'block';
   hdr.classList.toggle('collapsed', collapsed);
-  try{ localStorage.setItem('gw2_sysGroupCollapsed', collapsed?'1':'0'); }catch(e){}
+  try{ localStorage.setItem('gw2_grpCollapsed_'+grp, collapsed?'1':'0'); }catch(e){}
 }
 // 起動時に前回の折りたたみ状態を復元
 function restoreSysGroupState(){
-  let collapsed=false;
-  try{ collapsed = localStorage.getItem('gw2_sysGroupCollapsed')==='1'; }catch(e){}
-  const body=document.getElementById('sysGroupBody');
-  const hdr=document.getElementById('sysGroupHdr');
-  if(body&&hdr&&collapsed){ body.style.display='none'; hdr.classList.add('collapsed'); }
+  SIDE_GROUPS.forEach(grp=>{
+    let collapsed=false;
+    try{ collapsed = localStorage.getItem('gw2_grpCollapsed_'+grp)==='1'; }catch(e){}
+    const body=document.getElementById('grpBody-'+grp);
+    const hdr=document.querySelector('.side-group-toggle[data-grp="'+grp+'"]');
+    if(body&&hdr&&collapsed){ body.style.display='none'; hdr.classList.add('collapsed'); }
+  });
 }
 
 function switchAdminTab(tab){
