@@ -3935,7 +3935,10 @@ function renderEmpRoster(){
   const retired=all.filter(s=>s.retired).sort(_aiueo);
   const canAdd = empCanSeeShain() || empCanEditRecord({empType:'アルバイト',company:_empCo});
   body.innerHTML=`
-    ${canAdd?`<div style="display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap"><button id="emp-bulkdel" onclick="empBulkDelete()" style="display:${_empSel.size?'inline-block':'none'};background:#dc2626;color:#fff;border:none;border-radius:7px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer">🗑 選択した<span id="emp-sel-cnt">${_empSel.size}</span>件を削除</button><button onclick="_empView='import';renderEmpApp()" style="background:#fff;border:1.5px solid #c084fc;color:#7c3aed;border-radius:7px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer">📋 一括取込</button><button onclick="openEmpForm('')" style="background:#7c3aed;color:#fff;border:none;border-radius:7px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer">＋ 従業員を登録</button></div>`:''}
+    <div style="display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+      <button onclick="empExportExcel()" style="background:#16a34a;color:#fff;border:none;border-radius:7px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer">📊 Excel出力（全社）</button>
+      ${canAdd?`<button id="emp-bulkdel" onclick="empBulkDelete()" style="display:${_empSel.size?'inline-block':'none'};background:#dc2626;color:#fff;border:none;border-radius:7px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer">🗑 選択した<span id="emp-sel-cnt">${_empSel.size}</span>件を削除</button><button onclick="_empView='import';renderEmpApp()" style="background:#fff;border:1.5px solid #c084fc;color:#7c3aed;border-radius:7px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer">📋 一括取込</button><button onclick="openEmpForm('')" style="background:#7c3aed;color:#fff;border:none;border-radius:7px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer">＋ 従業員を登録</button>`:''}
+    </div>
     ${filterBar}
     <div style="font-size:12px;font-weight:700;color:#166534;margin:0 0 6px 2px">在籍（${active.length}名）</div>
     ${_empRosterTable(active,false,'この区分の在籍者はまだ登録がありません。')}
@@ -3943,6 +3946,30 @@ function renderEmpRoster(){
       <button onclick="_empShowRetired=!_empShowRetired;renderEmpApp()" style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:7px;padding:7px 14px;font-size:12px;font-weight:700;color:#475569;cursor:pointer">📁 退職者一覧（${retired.length}名）　${_empShowRetired?'▲ 閉じる':'▼ 展開'}</button>
       ${_empShowRetired?`<div style="margin-top:8px">${_empRosterTable(retired,true,'退職者はいません。')}</div>`:''}
     </div>`;
+}
+// 全社・全分類の名簿をExcel出力（会社ごとにシート）。権限で見られる範囲のみ。
+function empExportExcel(){
+  if(typeof XLSX==='undefined'){ alert('Excelライブラリの読込に失敗しました'); return; }
+  const cols=['会社','雇用区分','部署','氏名','フリガナ','性別','生年月日','入社日','退職日','在籍状況','電話','緊急連絡先','続柄','郵便番号','住所','銀行名','支店','口座番号','口座名義','備考'];
+  const all=load('emp_staff',[]);
+  const wb=XLSX.utils.book_new(); let total=0;
+  empVisibleCompanies().forEach(co=>{
+    let rows=all.filter(s=>s.company===co);
+    if(!empCanSeeShain()) rows=rows.filter(s=>!_empShainLevel(s.empType));
+    // 分類順→あいうえお順
+    const baseOrder=co==='welpia'?EMP_WELPIA_TYPES:[...EMP_SHAIN_TYPES,...EMP_PA_TYPES];
+    const ord=t=>{const i=baseOrder.indexOf(t||'');return i<0?99:i;};
+    rows.sort((a,b)=> ord(a.empType)-ord(b.empType) || (a.furigana||a.name||'').localeCompare(b.furigana||b.name||'','ja'));
+    const aoa=[cols];
+    rows.forEach(s=>{ total++; aoa.push([empCoName(co),s.empType||'',s.department||s.store||'',s.name||'',s.furigana||'',s.gender||'',s.birthDate||'',s.joinDate||'',s.retireDate||'',s.retired?'退職':'在籍',s.phone||'',s.emergencyContact||'',s.emergencyRelation||'',s.postalCode||'',s.address||'',s.bankName||'',s.bankBranch||'',s.bankNo||'',s.bankHolder||'',s.notes||'']); });
+    const ws=XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols']=cols.map(c=>({wch: c==='緊急連絡先'||c==='住所'?24:(c==='備考'?20:12)}));
+    XLSX.utils.book_append_sheet(wb,ws,empCoName(co).slice(0,28));
+  });
+  if(!total){ alert('出力できる従業員データがありません'); return; }
+  const ymd=new Date().toLocaleDateString('sv',{timeZone:'Asia/Tokyo'}).replace(/-/g,'');
+  XLSX.writeFile(wb,`従業員名簿_${ymd}.xlsx`);
+  showToast(`Excelを出力しました（${total}名）`);
 }
 function empSetRetire(id,val){
   const staff=load('emp_staff',[]); const s=staff.find(x=>x.id===id); if(!s) return;
