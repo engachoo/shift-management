@@ -3661,7 +3661,7 @@ function _empInit(){ const vis=empVisibleCompanies(); if(!_empCo||!vis.includes(
   if((_empCat==='shain'||_empCat==='kanbu')&&!empCanSeeShain()) _empCat='pa';
   if(_empCat==='kanbu'&&_empView==='roster') _empCat='shain'; } // 名簿は役職者カテゴリを持たない
 
-const EMP_PDF_VER='20260625a'; // PDF差し替え時に更新するとキャッシュを更新できる
+const EMP_PDF_VER='20260625b'; // PDF差し替え時に更新するとキャッシュを更新できる
 function empDownloadDoc(path){ const a=document.createElement('a'); a.href=encodeURI(path); a.download=path.split('/').pop().split('?')[0]; document.body.appendChild(a); a.click(); a.remove(); }
 
 function _empBulkKey(){ return _empCo+'_'+_empCat+'_BULK'; }
