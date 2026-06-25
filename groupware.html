@@ -3924,9 +3924,10 @@ function renderEmpRoster(){
   const ordered=[...baseVisible,...extra];
   if(_empTypeFilter && !ordered.includes(_empTypeFilter)) _empTypeFilter='';
   const fbtn=(val,label,n)=>`<button onclick="empSetTypeFilter('${val}')" style="background:${_empTypeFilter===val?'#1e3a6b':'#eef2f7'};color:${_empTypeFilter===val?'#fff':'#475569'};border:none;border-radius:18px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer">${label}<span style="opacity:.75;font-weight:400">（${n}）</span></button>`;
+  const poolActive=pool.filter(s=>!s.retired); // 件数は在籍のみ（退職者は除く）
   const filterBar=`<div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px">
-      ${fbtn('','全員',pool.length)}
-      ${ordered.map(t=>fbtn(t,esc(t),pool.filter(s=>(s.empType||'未設定')===t).length)).join('')}
+      ${fbtn('','全員',poolActive.length)}
+      ${ordered.map(t=>fbtn(t,esc(t),poolActive.filter(s=>(s.empType||'未設定')===t).length)).join('')}
     </div>`;
   const all=_empTypeFilter?pool.filter(s=>(s.empType||'未設定')===_empTypeFilter):pool;
   const _kana=s=>(s.furigana||s.name||'').toString();
