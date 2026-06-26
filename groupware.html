@@ -3929,7 +3929,12 @@ function renderEmpDocs(){
   const items=others.map(d=>({n:d.n,f:d.f}));
   const optItems=dl.map(d=>({n:d.n,f:d.f}));
 
-  let html=`<div style="background:#faf5ff;border:1px solid #e9d5ff;border-radius:10px;padding:10px 16px;margin-bottom:14px;font-size:13px;color:#6b21a8">対象：<strong>${esc(empCoName(_empCo))} ／ ${catLabel}</strong></div>`;
+  let html=`<div style="background:#fff1f2;border:1.5px solid #fecdd3;border-radius:10px;padding:12px 16px;margin-bottom:14px;font-size:13px;color:#be123c;line-height:1.9">
+      <strong>⚠️ ご注意</strong><br>
+      各担当者は必要な様式を <strong>ダウンロードして記入</strong> してください。<br>
+      <strong>書式（フォーマット）の変更は禁止</strong> です。変更の必要がある場合は <strong>本社（総務経理）にご相談</strong> ください。
+    </div>
+    <div style="background:#faf5ff;border:1px solid #e9d5ff;border-radius:10px;padding:10px 16px;margin-bottom:14px;font-size:13px;color:#6b21a8">対象：<strong>${esc(empCoName(_empCo))} ／ ${catLabel}</strong></div>`;
 
   // ===== 労働条件通知書（各社独立表記・担当者が編集して交付）=====
   if(bundle&&bundle.excel){
