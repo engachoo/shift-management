@@ -3889,9 +3889,8 @@ function renderEmpDocs(){
   const canEdit=empCanEditDocs();
   const bundle=_empBundle();
 
-  // 行データ（届出書と同じ：name / path / 一括フラグ）。労働条件通知書は独立表記するため表には入れない。
+  // 行データ。労働条件通知書・ワード一括は独立表記するため表には入れない（個別様式のみ）。
   const items=[];
-  if(bundle) items.push({n:'入社書類一括（全様式まとめ）',f:bundle.word,bulk:true});
   [...others,...dl].forEach(d=>items.push({n:d.n,f:d.f}));
 
   let html=`<div style="background:#fff1f2;border:1.5px solid #fecdd3;border-radius:10px;padding:12px 16px;margin-bottom:14px;font-size:13px;color:#be123c;line-height:1.9">
@@ -3913,6 +3912,22 @@ function renderEmpDocs(){
         <button onclick="empBundlePrint('${xp}','excel')" style="background:#0ea5e9;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer">🖨 Excel印刷</button>
         <button onclick="empDocHistory('${xp}','労働条件通知書（Excel）')" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;border-radius:8px;padding:9px 12px;font-size:12px;cursor:pointer">📜 改訂履歴${xHist?`(${xHist})`:''}</button>
         ${canEdit?`<button onclick="empEditDocMaster('${xp}')" style="background:#fff7ed;border:1px solid #fdba74;color:#c2410c;border-radius:8px;padding:9px 12px;font-size:12px;font-weight:700;cursor:pointer">✏️ 書式編集</button>`:''}
+      </div>
+    </div>`;
+  }
+
+  // ===== 入社書類一括（全様式まとめ・Word）独立表記 =====
+  if(bundle&&bundle.word){
+    const wm=_empDocMaster(bundle.word), wHist=(wm&&wm.history||[]).length;
+    const wp=bundle.word.replace(/'/g,"\\'");
+    html+=`<div style="background:#fff;border:1.5px solid #bfdbfe;border-radius:12px;padding:14px 16px;margin-bottom:16px">
+      <div style="font-size:14px;font-weight:700;color:#1e3a6b;margin-bottom:2px">📘 入社書類一括（全様式まとめ・Word）</div>
+      <div style="font-size:11px;color:#6b7280;margin-bottom:10px">全様式を1ファイルに統合。Wordで開いて <strong>Ctrl+P</strong> で全部まとめて印刷できます（PDF変換しないのでズレません）。</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <button onclick="empBundleDL('${wp}')" style="background:#2563eb;color:#fff;border:none;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer">📥 ワードをダウンロード</button>
+        <button onclick="empBundlePrint('${wp}','word')" style="background:#0ea5e9;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer">🖨 ワード一括印刷</button>
+        <button onclick="empDocHistory('${wp}','入社書類一括（Word）')" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;border-radius:8px;padding:9px 12px;font-size:12px;cursor:pointer">📜 改訂履歴${wHist?`(${wHist})`:''}</button>
+        ${canEdit?`<button onclick="empEditDocMaster('${wp}')" style="background:#fff7ed;border:1px solid #fdba74;color:#c2410c;border-radius:8px;padding:9px 12px;font-size:12px;font-weight:700;cursor:pointer">✏️ 書式編集</button>`:''}
       </div>
     </div>`;
   }
