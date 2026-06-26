@@ -3632,8 +3632,8 @@ const EMP_DOCS={
     others:[
       {n:'入社手続説明事項(アルバイト)', f:'forms/nyusha/dainichi_pa/01_入社手続説明事項(アルバイト).doc'},
       {n:'機密保持誓約書', f:'forms/nyusha/dainichi_pa/02_機密保持誓約書.doc'},
-      {n:'マイナンバー提供のお願い', f:'forms/nyusha/dainichi_pa/03_マイナンバー提供のお願い.pdf'},
-      {n:'メールアドレス申請書', f:'forms/nyusha/dainichi_pa/04_メールアドレス申請書.pdf'},
+      {n:'マイナンバー提供のお願い', f:'forms/nyusha/dainichi_pa/03_マイナンバー提供のお願い.docx'},
+      {n:'メールアドレス申請書', f:'forms/nyusha/dainichi_pa/04_メールアドレス申請書.docx'},
       {n:'WEB給与明細同意書', f:'forms/nyusha/dainichi_pa/05_WEB給与明細同意書.docx'},
     ],
     dl:[
@@ -3647,8 +3647,8 @@ const EMP_DOCS={
       {n:'誓約書', f:'forms/nyusha/dainichi_shain/02_誓約書.doc'},
       {n:'機密保持誓約書', f:'forms/nyusha/dainichi_shain/03_機密保持誓約書.doc'},
       {n:'身元保証書', f:'forms/nyusha/dainichi_shain/04_身元保証書.doc'},
-      {n:'マイナンバー提供のお願い', f:'forms/nyusha/dainichi_shain/05_マイナンバー提供のお願い.pdf'},
-      {n:'メールアドレス申請書', f:'forms/nyusha/dainichi_shain/06_メールアドレス申請書.pdf'},
+      {n:'マイナンバー提供のお願い', f:'forms/nyusha/dainichi_shain/05_マイナンバー提供のお願い.docx'},
+      {n:'メールアドレス申請書', f:'forms/nyusha/dainichi_shain/06_メールアドレス申請書.docx'},
       {n:'WEB給与明細同意書', f:'forms/nyusha/dainichi_shain/07_WEB給与明細同意書.docx'},
     ],
     dl:[
@@ -3662,8 +3662,8 @@ const EMP_DOCS={
       {n:'誓約書', f:'forms/nyusha/dainichi_kanbu/02_誓約書.doc'},
       {n:'機密保持誓約書(役職者)', f:'forms/nyusha/dainichi_kanbu/03_機密保持誓約書(役職者).doc'},
       {n:'身元保証書', f:'forms/nyusha/dainichi_kanbu/04_身元保証書.doc'},
-      {n:'マイナンバー提供のお願い', f:'forms/nyusha/dainichi_kanbu/05_マイナンバー提供のお願い.pdf'},
-      {n:'メールアドレス申請書', f:'forms/nyusha/dainichi_kanbu/06_メールアドレス申請書.pdf'},
+      {n:'マイナンバー提供のお願い', f:'forms/nyusha/dainichi_kanbu/05_マイナンバー提供のお願い.docx'},
+      {n:'メールアドレス申請書', f:'forms/nyusha/dainichi_kanbu/06_メールアドレス申請書.docx'},
       {n:'WEB給与明細同意書', f:'forms/nyusha/dainichi_kanbu/07_WEB給与明細同意書.docx'},
     ],
     dl:[
@@ -3867,60 +3867,70 @@ function empDocHistory(path,name){
 }
 // 現在の会社×区分の統合ファイル定義を取得
 function _empBundle(){ return (EMP_BUNDLES[_empCo]||[]).find(b=>b.cat===_empCat)||null; }
+function _empFmt(p){ return /\.xlsx?$/i.test(p||'')?'Excel':'Word'; }
+function _empKind(p){ return /\.xlsx?$/i.test(p||'')?'excel':'word'; }
+// 届出書と同一形式：ダウンロード(実ファイル)／印刷(DL→デスクトップ)／改訂履歴／書式編集。PDFなし。
 function renderEmpDocs(){
   const body=document.getElementById('empBody'); if(!body) return;
   const set=((EMP_DOCS[_empCo]||{})[_empCat])||{};
-  const joken=set.joken, others=set.others||[], dl=set.dl||[];
+  const others=set.others||[], dl=set.dl||[];
   const catLabel=_empCat==='pa'?'パート・アルバイト':_empCat==='kanbu'?'役職者（幹部）':'一般社員';
   const canEdit=empCanEditDocs();
   const bundle=_empBundle();
+
+  // 行データ（届出書と同じ：name / path / 一括フラグ）
+  const items=[];
+  if(bundle){ items.push({n:'入社書類一括（全様式まとめ）',f:bundle.word,bulk:true});
+    if(bundle.excel) items.push({n:'労働条件通知書',f:bundle.excel}); }
+  [...others,...dl].forEach(d=>items.push({n:d.n,f:d.f}));
+
   let html=`<div style="background:#fff1f2;border:1.5px solid #fecdd3;border-radius:10px;padding:12px 16px;margin-bottom:14px;font-size:13px;color:#be123c;line-height:1.9">
       <strong>⚠️ ご注意</strong><br>
-      各担当者は必要な書類を <strong>ダウンロードして記入</strong> してください。<br>
-      <strong>書式（フォーマット）の変更は禁止</strong> です。変更の必要がある場合は <strong>本社（総務経理）にご相談</strong> ください。
+      <strong>ダウンロード／印刷はワード・エクセルの実ファイル</strong>です。デスクトップ版のWord/Excelで開いて印刷してください（PDF変換しないのでズレません）。<br>
+      <strong>書式の変更は禁止</strong>です。変更が必要な場合は<strong>本社（総務経理）にご相談</strong>ください。
     </div>
     <div style="background:#faf5ff;border:1px solid #e9d5ff;border-radius:10px;padding:10px 16px;margin-bottom:14px;font-size:13px;color:#6b21a8">対象：<strong>${esc(empCoName(_empCo))} ／ ${catLabel}</strong></div>`;
 
-  // ===== 一括印刷（統合ファイル）=====
-  if(bundle){
-    const wm=_empDocMaster(bundle.word), wHist=(wm&&wm.history||[]).length;
-    const wp=bundle.word.replace(/'/g,"\\'");
-    let wordBtns=`<button onclick="empBundlePrint('${wp}','word')" style="background:#2563eb;color:#fff;border:none;border-radius:8px;padding:10px 18px;font-size:14px;font-weight:700;cursor:pointer">📘 ワード一括印刷（全様式）</button>
-      <button onclick="empBundleDL('${wp}')" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;border-radius:8px;padding:10px 14px;font-size:13px;font-weight:700;cursor:pointer">📥 ワードDL</button>
-      <button onclick="empDocHistory('${wp}','入社書類一括（Word）')" style="background:#fff;border:1px solid #cbd5e1;color:#475569;border-radius:8px;padding:10px 12px;font-size:12px;cursor:pointer">📜 改訂履歴${wHist?`(${wHist})`:''}</button>
-      ${canEdit?`<button onclick="empEditDocMaster('${wp}')" style="background:#fff7ed;border:1px solid #fdba74;color:#c2410c;border-radius:8px;padding:10px 12px;font-size:12px;font-weight:700;cursor:pointer">✏️ 書式編集</button>`:''}`;
-    let excelBtns='';
-    if(bundle.excel){
-      const xm=_empDocMaster(bundle.excel), xHist=(xm&&xm.history||[]).length;
-      const xp=bundle.excel.replace(/'/g,"\\'");
-      excelBtns=`<div style="border-top:1px dashed #e2e8f0;margin-top:12px;padding-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-        <span style="font-size:12px;color:#166534;font-weight:700">労働条件通知書（Excel）：</span>
-        <button onclick="empBundlePrint('${xp}','excel')" style="background:#16a34a;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer">📗 エクセル印刷</button>
-        <button onclick="empBundleDL('${xp}')" style="background:#f0fdf4;border:1px solid #bbf7d0;color:#166534;border-radius:8px;padding:9px 14px;font-size:13px;font-weight:700;cursor:pointer">📥 エクセルDL</button>
-        <button onclick="empDocHistory('${xp}','労働条件通知書（Excel）')" style="background:#fff;border:1px solid #cbd5e1;color:#475569;border-radius:8px;padding:9px 12px;font-size:12px;cursor:pointer">📜 改訂履歴${xHist?`(${xHist})`:''}</button>
-        ${canEdit?`<button onclick="empEditDocMaster('${xp}')" style="background:#fff7ed;border:1px solid #fdba74;color:#c2410c;border-radius:8px;padding:9px 12px;font-size:12px;font-weight:700;cursor:pointer">✏️ 書式編集</button>`:''}</div>`;
-    }
-    html+=`<div style="background:#fff;border:1.5px solid #bfdbfe;border-radius:12px;padding:16px;margin-bottom:16px">
-      <div style="font-size:15px;font-weight:700;color:#1e3a6b;margin-bottom:4px">🖨 一括印刷</div>
-      <div style="font-size:12px;color:#6b7280;margin-bottom:12px"><strong>ワード一括印刷</strong>＝全様式を1ファイルに統合。Wordで開いて <strong>Ctrl+P</strong> で全部まとめて印刷できます（PDF変換しないのでズレません）。</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">${wordBtns}</div>
-      ${excelBtns}
-    </div>`;
-  }
-
-  if(!joken && !others.length && !dl.length && !bundle){
+  if(!items.length){
     body.innerHTML=html+'<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:28px;text-align:center;color:#9ca3af;font-size:13px">この区分の入社書類はまだ登録されていません。</div>';
     return;
   }
 
-  // ===== 個別様式（現状どおり・1枚ずつダウンロード）=====
-  const indiv=[...others,...dl];
-  if(indiv.length){
-    html+=`<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;overflow-x:auto">
-      <div style="padding:12px 16px;border-bottom:1px solid #eef2f7"><div style="font-size:14px;font-weight:700;color:#1a2b4a">📂 個別様式（1枚ずつ）</div><div style="font-size:11px;color:#6b7280">必要な様式だけ単独でダウンロードできます。</div></div>
-      <table style="width:100%;border-collapse:collapse"><tbody>${_empDocRows(indiv)}</tbody></table>
-    </div>`;
-  }
+  const rows=items.map((it,i)=>{
+    const fmt=_empFmt(it.f), kind=_empKind(it.f);
+    const m=_empDocMaster(it.f); const histN=(m&&m.history||[]).length;
+    const pe=it.f.replace(/'/g,"\\'"); const ne=esc(it.n).replace(/'/g,"\\'");
+    const dlColor=kind==='excel'?'#16a34a':'#2563eb';
+    return `<tr style="border-bottom:1px solid #eef2f7;background:${it.bulk?'#eff6ff':(i%2?'#f8fafc':'#fff')}">
+      <td style="padding:10px 12px;text-align:center;font-size:12px;color:#94a3b8;font-weight:700;width:36px">${i+1}</td>
+      <td style="padding:10px 14px;font-size:13px;color:#1a2b4a"><strong>${esc(it.n)}</strong>
+        <span style="font-size:10px;background:${kind==='excel'?'#dcfce7':'#dbeafe'};color:${kind==='excel'?'#166534':'#1e40af'};border-radius:8px;padding:1px 7px;margin-left:6px;font-weight:700">${fmt}</span>
+        ${it.bulk?'<span style="font-size:10px;background:#fef9c3;color:#854d0e;border-radius:8px;padding:1px 7px;margin-left:4px;font-weight:700">一括</span>':''}
+        ${m?`<div style="font-size:10px;color:#16a34a;margin-top:2px">差替版を配布中（改訂:${esc(m.revDate||'-')}）</div>`:''}</td>
+      <td style="padding:10px 10px;text-align:center;white-space:nowrap">
+        <button onclick="empBundleDL('${pe}')" style="background:${dlColor};color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer">📥 ${fmt}</button></td>
+      <td style="padding:10px 10px;text-align:center;white-space:nowrap">
+        <button onclick="empBundlePrint('${pe}','${kind}')" style="background:#0ea5e9;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer">🖨 ${fmt}印刷</button></td>
+      <td style="padding:10px 10px;text-align:center;white-space:nowrap">
+        <button onclick="empDocHistory('${pe}','${ne}')" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;border-radius:6px;padding:6px 10px;font-size:12px;cursor:pointer">📜 改訂履歴${histN?`(${histN})`:''}</button></td>
+      ${canEdit?`<td style="padding:10px 10px;text-align:center;white-space:nowrap">
+        <button onclick="empEditDocMaster('${pe}')" style="background:#fff7ed;border:1px solid #fdba74;color:#c2410c;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer">✏️ 書式編集</button></td>`:''}
+    </tr>`;
+  }).join('');
+  const colCount=canEdit?6:5;
+  html+=`<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;overflow-x:auto">
+    <table style="width:100%;border-collapse:collapse;min-width:560px">
+      <thead><tr style="background:#1e3a6b;color:#fff">
+        <th style="padding:10px 12px;text-align:center;font-size:12px;width:36px">No.</th>
+        <th style="padding:10px 14px;text-align:left;font-size:12px">書類名</th>
+        <th style="padding:10px 10px;text-align:center;font-size:12px">ダウンロード</th>
+        <th style="padding:10px 10px;text-align:center;font-size:12px">印刷</th>
+        <th style="padding:10px 10px;text-align:center;font-size:12px">改訂履歴</th>
+        ${canEdit?'<th style="padding:10px 10px;text-align:center;font-size:12px">書式編集</th>':''}
+      </tr></thead>
+      <tbody>${rows||`<tr><td colspan="${colCount}" style="padding:20px;text-align:center;color:#9ca3af">登録がありません</td></tr>`}</tbody>
+    </table></div>
+    ${canEdit?'':'<div style="font-size:11px;color:#9ca3af;margin-top:10px">※ 書式の変更（書式編集）は総務経理・システム権限のみ可能です。</div>'}`;
   body.innerHTML=html;
 }
 
