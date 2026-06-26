@@ -3679,7 +3679,7 @@ const EMP_DOCS={
 const EMP_BUNDLES={
   dainichi:[
     {cat:'pa',   label:'パート・アルバイト', word:'forms/nyusha/dainichi_pa/00_入社書類一括.docx',    excel:'forms/nyusha/dainichi_pa/10_労働条件通知書.xlsx'},
-    {cat:'shain',label:'一般社員',           word:'forms/nyusha/dainichi_shain/00_入社書類一括.docx', excel:'forms/nyusha/dainichi_shain/10_労働条件通知書.xlsx', kitei:'forms/nyusha/dainichi_shain/13_住宅入居補助規程.doc'},
+    {cat:'shain',label:'一般社員',           word:'forms/nyusha/dainichi_shain/00_入社書類一括.docx', kitei:'forms/nyusha/dainichi_shain/13_住宅入居補助規程.doc'},
     {cat:'kanbu',label:'役職者（幹部）',      word:'forms/nyusha/dainichi_kanbu/00_入社書類一括.docx', kitei:'forms/nyusha/dainichi_kanbu/11_住宅入居補助規程.doc'},
   ],
   amuse:[
@@ -3889,9 +3889,10 @@ function renderEmpDocs(){
   const canEdit=empCanEditDocs();
   const bundle=_empBundle();
 
-  // 行データ。労働条件通知書・ワード一括は独立表記するため表には入れない（個別様式のみ）。
-  const items=[];
-  [...others,...dl].forEach(d=>items.push({n:d.n,f:d.f}));
+  // 行データ。労働条件通知書・ワード一括は独立表記するため表には入れない。
+  // 標準様式（others）と、必要に応じて配布（制服・社宅＝dl）を分けて表示する。
+  const items=others.map(d=>({n:d.n,f:d.f}));
+  const optItems=dl.map(d=>({n:d.n,f:d.f}));
 
   let html=`<div style="background:#fff1f2;border:1.5px solid #fecdd3;border-radius:10px;padding:12px 16px;margin-bottom:14px;font-size:13px;color:#be123c;line-height:1.9">
       <strong>⚠️ ご注意</strong><br>
@@ -3932,46 +3933,52 @@ function renderEmpDocs(){
     </div>`;
   }
 
-  if(!items.length){
+  if(!items.length && !optItems.length){
     body.innerHTML=html+'<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:28px;text-align:center;color:#9ca3af;font-size:13px">この区分の入社書類はまだ登録されていません。</div>';
     return;
   }
 
-  const rows=items.map((it,i)=>{
-    const fmt=_empFmt(it.f), kind=_empKind(it.f);
-    const m=_empDocMaster(it.f); const histN=(m&&m.history||[]).length;
-    const pe=it.f.replace(/'/g,"\\'"); const ne=esc(it.n).replace(/'/g,"\\'");
-    const dlColor=kind==='excel'?'#16a34a':'#2563eb';
-    return `<tr style="border-bottom:1px solid #eef2f7;background:${it.bulk?'#eff6ff':(i%2?'#f8fafc':'#fff')}">
-      <td style="padding:10px 12px;text-align:center;font-size:12px;color:#94a3b8;font-weight:700;width:36px">${i+1}</td>
-      <td style="padding:10px 14px;font-size:13px;color:#1a2b4a"><strong>${esc(it.n)}</strong>
-        <span style="font-size:10px;background:${kind==='excel'?'#dcfce7':'#dbeafe'};color:${kind==='excel'?'#166534':'#1e40af'};border-radius:8px;padding:1px 7px;margin-left:6px;font-weight:700">${fmt}</span>
-        ${it.bulk?'<span style="font-size:10px;background:#fef9c3;color:#854d0e;border-radius:8px;padding:1px 7px;margin-left:4px;font-weight:700">一括</span>':''}
-        ${m?`<div style="font-size:10px;color:#16a34a;margin-top:2px">差替版を配布中（改訂:${esc(m.revDate||'-')}）</div>`:''}</td>
-      <td style="padding:10px 10px;text-align:center;white-space:nowrap">
-        <button onclick="empBundleDL('${pe}')" style="background:${dlColor};color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer">📥 ${fmt}</button></td>
-      <td style="padding:10px 10px;text-align:center;white-space:nowrap">
-        <button onclick="empBundlePrint('${pe}','${kind}')" style="background:#0ea5e9;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer">🖨 ${fmt}印刷</button></td>
-      <td style="padding:10px 10px;text-align:center;white-space:nowrap">
-        <button onclick="empDocHistory('${pe}','${ne}')" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;border-radius:6px;padding:6px 10px;font-size:12px;cursor:pointer">📜 改訂履歴${histN?`(${histN})`:''}</button></td>
-      ${canEdit?`<td style="padding:10px 10px;text-align:center;white-space:nowrap">
-        <button onclick="empEditDocMaster('${pe}')" style="background:#fff7ed;border:1px solid #fdba74;color:#c2410c;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer">✏️ 書式編集</button></td>`:''}
-    </tr>`;
-  }).join('');
-  const colCount=canEdit?6:5;
-  html+=`<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;overflow-x:auto">
-    <table style="width:100%;border-collapse:collapse;min-width:560px">
-      <thead><tr style="background:#1e3a6b;color:#fff">
-        <th style="padding:10px 12px;text-align:center;font-size:12px;width:36px">No.</th>
-        <th style="padding:10px 14px;text-align:left;font-size:12px">書類名</th>
-        <th style="padding:10px 10px;text-align:center;font-size:12px">ダウンロード</th>
-        <th style="padding:10px 10px;text-align:center;font-size:12px">印刷</th>
-        <th style="padding:10px 10px;text-align:center;font-size:12px">改訂履歴</th>
-        ${canEdit?'<th style="padding:10px 10px;text-align:center;font-size:12px">書式編集</th>':''}
-      </tr></thead>
-      <tbody>${rows||`<tr><td colspan="${colCount}" style="padding:20px;text-align:center;color:#9ca3af">登録がありません</td></tr>`}</tbody>
-    </table></div>
-    ${canEdit?'':'<div style="font-size:11px;color:#9ca3af;margin-top:10px">※ 書式の変更（書式編集）は総務経理・システム権限のみ可能です。</div>'}`;
+  // 1つの書類テーブルを生成
+  const buildTable=(title,desc,arr,headBg)=>{
+    if(!arr.length) return '';
+    const rows=arr.map((it,i)=>{
+      const fmt=_empFmt(it.f), kind=_empKind(it.f);
+      const m=_empDocMaster(it.f); const histN=(m&&m.history||[]).length;
+      const pe=it.f.replace(/'/g,"\\'"); const ne=esc(it.n).replace(/'/g,"\\'");
+      const dlColor=kind==='excel'?'#16a34a':'#2563eb';
+      return `<tr style="border-bottom:1px solid #eef2f7;background:${i%2?'#f8fafc':'#fff'}">
+        <td style="padding:10px 12px;text-align:center;font-size:12px;color:#94a3b8;font-weight:700;width:36px">${i+1}</td>
+        <td style="padding:10px 14px;font-size:13px;color:#1a2b4a"><strong>${esc(it.n)}</strong>
+          <span style="font-size:10px;background:${kind==='excel'?'#dcfce7':'#dbeafe'};color:${kind==='excel'?'#166534':'#1e40af'};border-radius:8px;padding:1px 7px;margin-left:6px;font-weight:700">${fmt}</span>
+          ${m?`<div style="font-size:10px;color:#16a34a;margin-top:2px">差替版を配布中（改訂:${esc(m.revDate||'-')}）</div>`:''}</td>
+        <td style="padding:10px 10px;text-align:center;white-space:nowrap">
+          <button onclick="empBundleDL('${pe}')" style="background:${dlColor};color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer">📥 ${fmt}</button></td>
+        <td style="padding:10px 10px;text-align:center;white-space:nowrap">
+          <button onclick="empBundlePrint('${pe}','${kind}')" style="background:#0ea5e9;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer">🖨 ${fmt}印刷</button></td>
+        <td style="padding:10px 10px;text-align:center;white-space:nowrap">
+          <button onclick="empDocHistory('${pe}','${ne}')" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;border-radius:6px;padding:6px 10px;font-size:12px;cursor:pointer">📜 改訂履歴${histN?`(${histN})`:''}</button></td>
+        ${canEdit?`<td style="padding:10px 10px;text-align:center;white-space:nowrap">
+          <button onclick="empEditDocMaster('${pe}')" style="background:#fff7ed;border:1px solid #fdba74;color:#c2410c;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer">✏️ 書式編集</button></td>`:''}
+      </tr>`;
+    }).join('');
+    return `<div style="margin-bottom:8px;margin-top:6px"><span style="font-size:14px;font-weight:700;color:#1a2b4a">${title}</span>${desc?`<span style="font-size:11px;color:#6b7280;margin-left:8px">${desc}</span>`:''}</div>
+      <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;overflow-x:auto;margin-bottom:16px">
+        <table style="width:100%;border-collapse:collapse;min-width:560px">
+          <thead><tr style="background:${headBg};color:#fff">
+            <th style="padding:10px 12px;text-align:center;font-size:12px;width:36px">No.</th>
+            <th style="padding:10px 14px;text-align:left;font-size:12px">書類名</th>
+            <th style="padding:10px 10px;text-align:center;font-size:12px">ダウンロード</th>
+            <th style="padding:10px 10px;text-align:center;font-size:12px">印刷</th>
+            <th style="padding:10px 10px;text-align:center;font-size:12px">改訂履歴</th>
+            ${canEdit?'<th style="padding:10px 10px;text-align:center;font-size:12px">書式編集</th>':''}
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table></div>`;
+  };
+
+  html+=buildTable('📂 標準様式','記入してもらう書類',items,'#1e3a6b');
+  html+=buildTable('👕 必要に応じて（制服・社宅）','該当者のみ配布',optItems,'#475569');
+  if(!canEdit) html+='<div style="font-size:11px;color:#9ca3af;margin-top:2px">※ 書式の変更（書式編集）は総務経理・システム権限のみ可能です。</div>';
   body.innerHTML=html;
 }
 
