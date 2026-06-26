@@ -4398,14 +4398,15 @@ function renderTodokeApp(){
   const rows=forms.map((f,idx)=>{
     const hasExcel=!!(f.excel&&f.excel.ref)||!!tkStaticExcel(f.company,f.name), hasPdf=!!(f.pdf&&f.pdf.ref);
     const histCount=(f.history||[]).length;
+    const isWord=/\.docx?$/i.test((f.excel&&f.excel.name)||''); const fmt=isWord?'Word':'Excel';
     return `<tr style="border-bottom:1px solid #eef2f7;background:${idx%2?'#f8fafc':'#fff'}">
       <td style="padding:10px 12px;text-align:center;font-size:12px;color:#94a3b8;font-weight:700;width:36px">${idx+1}</td>
       <td style="padding:10px 14px;font-size:13px;color:#1a2b4a"><strong>${esc(f.name)}</strong><div style="font-size:11px;color:#9ca3af;margin-top:2px">改訂：${esc(f.revDate||'-')}</div></td>
       <td style="padding:10px 10px;text-align:center;white-space:nowrap">
-        ${hasExcel?`<button onclick="tkDownload('${f.id}','excel')" style="background:#16a34a;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer">📥 Excel</button>`:`<span style="font-size:11px;color:#cbd5e1">未登録</span>`}
+        ${hasExcel?`<button onclick="tkDownload('${f.id}','excel')" style="background:${isWord?'#2563eb':'#16a34a'};color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer">📥 ${fmt}</button>`:`<span style="font-size:11px;color:#cbd5e1">未登録</span>`}
       </td>
       <td style="padding:10px 10px;text-align:center;white-space:nowrap">
-        ${hasExcel?`<button onclick="tkPrint('${f.id}')" style="background:#0ea5e9;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer">🖨 Excel印刷</button>`:`<span style="font-size:11px;color:#cbd5e1">未登録</span>`}
+        ${hasExcel?`<button onclick="tkPrint('${f.id}')" style="background:#0ea5e9;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer">🖨 ${fmt}印刷</button>`:`<span style="font-size:11px;color:#cbd5e1">未登録</span>`}
       </td>
       <td style="padding:10px 10px;text-align:center;white-space:nowrap">
         <button onclick="tkHistory('${f.id}')" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;border-radius:6px;padding:6px 10px;font-size:12px;cursor:pointer">📜 改訂履歴${histCount?`(${histCount})`:''}</button>
@@ -4434,7 +4435,7 @@ function renderTodokeApp(){
         <thead><tr style="background:#1e3a6b;color:#fff">
           <th style="padding:10px 12px;text-align:center;font-size:12px;width:36px">No.</th>
           <th style="padding:10px 14px;text-align:left;font-size:12px">届出書名</th>
-          <th style="padding:10px 10px;text-align:center;font-size:12px">Excel</th>
+          <th style="padding:10px 10px;text-align:center;font-size:12px">ダウンロード</th>
           <th style="padding:10px 10px;text-align:center;font-size:12px">印刷</th>
           <th style="padding:10px 10px;text-align:center;font-size:12px">改訂履歴</th>
           ${canManage?'<th style="padding:10px 10px;text-align:center;font-size:12px">書式編集</th>':''}
@@ -4496,39 +4497,14 @@ async function tkDownload(formId, kind){
 
 // 印刷（手書き用）。同梱フォームは書式を保った印刷用HTMLを開く
 async function tkPrint(formId){
+  // 印刷＝ファイル（Excel/Word）をそのままダウンロードし、デスクトップのアプリで開いて印刷する。
+  // ブラウザ用HTML変換（ウェブ版）やPDF化はしない＝元の書式どおりに印刷できる。
   const f=load('todoke_forms',[]).find(x=>x.id===formId); if(!f) return;
-  // ① 書式編集でアップロード済みExcel → SheetJSでHTML化して印刷
-  if(f.excel&&f.excel.ref){
-    try{
-      showToast('🖨 印刷用に変換中...',3000);
-      const fileId=f.excel.ref.replace('fs://','');
-      const doc=await _db.collection(_COL).doc('tk_file_'+fileId).get();
-      if(!doc.exists){ alert('ファイルが見つかりません'); return; }
-      const data=JSON.parse(doc.data().v);
-      const b64=(data.data||'').split(',')[1];
-      const wb=XLSX.read(b64,{type:'base64'});
-      const ws=wb.Sheets[wb.SheetNames[0]];
-      const tableHtml=XLSX.utils.sheet_to_html(ws);
-      const w=window.open('','_blank');
-      if(!w){ alert('ポップアップがブロックされました。ブラウザの設定で許可してください。'); return; }
-      w.document.write(`<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8"><title>${esc(f.name)}</title>`+
-        `<style>@page{size:A4 portrait;margin:10mm}body{margin:0;font-family:'Yu Gothic','ＭＳ Ｐゴシック',sans-serif}`+
-        `table{border-collapse:collapse;width:100%}td{border:0.6pt solid #000;padding:2px 4px;font-size:11pt}`+
-        `.bar{padding:8px;text-align:center;background:#f1f5f9}.bar button{background:#1a3a6b;color:#fff;border:none;border-radius:6px;padding:8px 20px;font-size:14px;font-weight:700;cursor:pointer}`+
-        `@media print{.bar{display:none}}</style></head><body>`+
-        `<div class="bar"><button onclick="window.print()">🖨 印刷する</button></div>${tableHtml}</body></html>`);
-      w.document.close();
-    }catch(e){ alert('印刷の準備に失敗しました: '+e.message); }
-    return;
-  }
-  // ② 同梱の印刷用HTML（書式保持）
-  const path=tkStaticExcel(f.company,f.name);
-  if(path){
-    const w=window.open(path.replace(/\.xlsx$/,'.html'),'_blank');
-    if(!w) alert('ポップアップがブロックされました。ブラウザの設定で許可してください。');
-    return;
-  }
-  alert('印刷できるファイルがありません');
+  const isWord=/\.docx?$/i.test((f.excel&&f.excel.name)||'');
+  await tkDownload(formId,'excel');
+  showToast(isWord
+    ? '🖨 ダウンロードしたWordを開き、Ctrl+P で印刷してください'
+    : '🖨 ダウンロードしたExcelを開き、印刷時に「ブック全体」を選んで印刷してください',6000);
 }
 
 // アップロード画面を開く
