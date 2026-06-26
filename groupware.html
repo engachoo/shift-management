@@ -3998,14 +3998,14 @@ function renderEmpDocs(){
     }).join('');
     return `<div style="margin-bottom:8px;margin-top:6px"><span style="font-size:14px;font-weight:700;color:#1a2b4a">${title}</span>${desc?`<span style="font-size:11px;color:#6b7280;margin-left:8px">${desc}</span>`:''}</div>
       <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;overflow-x:auto;margin-bottom:16px">
-        <table style="width:100%;border-collapse:collapse;min-width:560px">
+        <table style="width:100%;border-collapse:collapse;table-layout:fixed;min-width:${canEdit?'820':'680'}px">
           <thead><tr style="background:${headBg};color:#fff">
-            <th style="padding:10px 12px;text-align:center;font-size:12px;width:36px">No.</th>
+            <th style="padding:10px 12px;text-align:center;font-size:12px;width:40px">No.</th>
             <th style="padding:10px 14px;text-align:left;font-size:12px">書類名</th>
-            <th style="padding:10px 10px;text-align:center;font-size:12px">ダウンロード</th>
-            <th style="padding:10px 10px;text-align:center;font-size:12px">印刷</th>
-            <th style="padding:10px 10px;text-align:center;font-size:12px">改訂履歴</th>
-            ${canEdit?'<th style="padding:10px 10px;text-align:center;font-size:12px">書式編集</th>':''}
+            <th style="padding:10px 10px;text-align:center;font-size:12px;width:140px">ダウンロード</th>
+            <th style="padding:10px 10px;text-align:center;font-size:12px;width:140px">印刷</th>
+            <th style="padding:10px 10px;text-align:center;font-size:12px;width:120px">改訂履歴</th>
+            ${canEdit?'<th style="padding:10px 10px;text-align:center;font-size:12px;width:120px">書式編集</th>':''}
           </tr></thead>
           <tbody>${rows}</tbody>
         </table></div>`;
