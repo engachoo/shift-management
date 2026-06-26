@@ -3837,14 +3837,25 @@ function _empDocRows(arr){
     </tr>`; }).join('');
 }
 // 統合ファイルのDL（書式編集で差し替えがあればそちらを優先）
-function empBundleDL(path){
+// 静的ファイルは fetch→Blob で強制ダウンロード（ブラウザのWeb表示を回避＝デスクトップのWord/Excelで開ける）
+async function empBundleDL(path){
   const m=_empDocMaster(path);
-  if(m){ empFileDownload(m.ref,m.name); }
-  else { empDownloadDoc(path+'?v='+EMP_PDF_VER); }
+  if(m){ empFileDownload(m.ref,m.name); return; }
+  try{
+    showToast('📄 ダウンロード中...',2000);
+    const res=await fetch(encodeURI(path)+'?v='+EMP_PDF_VER);
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const blob=await res.blob();
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download=path.split('/').pop().split('?')[0];
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),30000);
+    showToast('✅ ダウンロードしました');
+  }catch(e){ alert('ダウンロードに失敗しました: '+e.message); }
 }
 // 統合ファイルの「印刷」＝DLしてアプリ（Word/Excel）で開いて印刷する案内付き
-function empBundlePrint(path,kind){
-  empBundleDL(path);
+async function empBundlePrint(path,kind){
+  await empBundleDL(path);
   showToast(kind==='excel'
     ? '🖨 Excelで開き、印刷時に「ブック全体」を選んで印刷してください'
     : '🖨 Wordで開き、Ctrl+P で一括印刷してください（ズレません）',6000);
