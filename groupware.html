@@ -3889,10 +3889,9 @@ function renderEmpDocs(){
   const canEdit=empCanEditDocs();
   const bundle=_empBundle();
 
-  // 行データ（届出書と同じ：name / path / 一括フラグ）
+  // 行データ（届出書と同じ：name / path / 一括フラグ）。労働条件通知書は独立表記するため表には入れない。
   const items=[];
-  if(bundle){ items.push({n:'入社書類一括（全様式まとめ）',f:bundle.word,bulk:true});
-    if(bundle.excel) items.push({n:'労働条件通知書',f:bundle.excel}); }
+  if(bundle) items.push({n:'入社書類一括（全様式まとめ）',f:bundle.word,bulk:true});
   [...others,...dl].forEach(d=>items.push({n:d.n,f:d.f}));
 
   let html=`<div style="background:#fff1f2;border:1.5px solid #fecdd3;border-radius:10px;padding:12px 16px;margin-bottom:14px;font-size:13px;color:#be123c;line-height:1.9">
@@ -3901,6 +3900,22 @@ function renderEmpDocs(){
       <strong>書式の変更は禁止</strong>です。変更が必要な場合は<strong>本社（総務経理）にご相談</strong>ください。
     </div>
     <div style="background:#faf5ff;border:1px solid #e9d5ff;border-radius:10px;padding:10px 16px;margin-bottom:14px;font-size:13px;color:#6b21a8">対象：<strong>${esc(empCoName(_empCo))} ／ ${catLabel}</strong></div>`;
+
+  // ===== 労働条件通知書（各社独立表記・担当者が編集して交付）=====
+  if(bundle&&bundle.excel){
+    const xm=_empDocMaster(bundle.excel), xHist=(xm&&xm.history||[]).length;
+    const xp=bundle.excel.replace(/'/g,"\\'");
+    html+=`<div style="background:#fff;border:1.5px solid #bbf7d0;border-radius:12px;padding:14px 16px;margin-bottom:16px">
+      <div style="font-size:14px;font-weight:700;color:#166534;margin-bottom:2px">📝 労働条件通知書（Excel・担当者が編集して交付）</div>
+      <div style="font-size:11px;color:#6b7280;margin-bottom:10px">この書類のみ各担当者がExcelを編集して交付します。デスクトップのExcelで開いてください。</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <button onclick="empBundleDL('${xp}')" style="background:#16a34a;color:#fff;border:none;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer">📥 エクセルをダウンロード</button>
+        <button onclick="empBundlePrint('${xp}','excel')" style="background:#0ea5e9;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer">🖨 Excel印刷</button>
+        <button onclick="empDocHistory('${xp}','労働条件通知書（Excel）')" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;border-radius:8px;padding:9px 12px;font-size:12px;cursor:pointer">📜 改訂履歴${xHist?`(${xHist})`:''}</button>
+        ${canEdit?`<button onclick="empEditDocMaster('${xp}')" style="background:#fff7ed;border:1px solid #fdba74;color:#c2410c;border-radius:8px;padding:9px 12px;font-size:12px;font-weight:700;cursor:pointer">✏️ 書式編集</button>`:''}
+      </div>
+    </div>`;
+  }
 
   if(!items.length){
     body.innerHTML=html+'<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:28px;text-align:center;color:#9ca3af;font-size:13px">この区分の入社書類はまだ登録されていません。</div>';
