@@ -923,6 +923,11 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
             <button onclick="backupCreateNow()" style="background:#1a56db;color:#fff;border:none;border-radius:8px;padding:10px 18px;font-size:13px;font-weight:700;cursor:pointer">📸 今すぐスナップショット</button>
             <label style="background:#f59e0b;color:#fff;border-radius:8px;padding:10px 18px;font-size:13px;font-weight:700;cursor:pointer;display:inline-block">↺ ファイルから復元<input type="file" accept="application/json" onchange="backupImportJSON(this)" style="display:none"></label>
           </div>
+          <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:12px 16px;margin-bottom:22px">
+            <div style="font-size:13px;font-weight:700;color:#92400e;margin-bottom:4px">🧹 転送量の削減（添付ファイルの別保管）</div>
+            <div style="font-size:12px;color:#6b7280;line-height:1.7;margin-bottom:10px">回覧板や様式の添付ファイルを専用の保管場所へ移します。これにより<strong>起動時に毎回ダウンロードされる量が大きく減り</strong>、無料枠の転送量を節約できます。<br><strong>必ず先に「💾 バックアップをダウンロード」を済ませてから</strong>実行してください。</div>
+            <button id="btnMigrateFiles" onclick="migrateFilesToFileCol()" style="background:#d97706;color:#fff;border:none;border-radius:8px;padding:10px 18px;font-size:13px;font-weight:700;cursor:pointer">🧹 既存の添付を別保管へ移動</button>
+          </div>
           <div style="font-size:13px;font-weight:700;margin-bottom:10px">📅 自動スナップショット一覧（クリックでその日に復元）</div>
           <div id="backupSnapList" style="font-size:13px;color:#9ca3af">読み込み中...</div>
         </div>
@@ -2028,6 +2033,30 @@ async function _provisionAuth(loginId, password){
   }
 }
 const _COL = 'gw2data'; // Firestoreコレクション名
+const _FILECOL = 'gw2files'; // 添付ファイル本体(base64)専用コレクション。本体データ(_COL)の一括取得から分離し転送量を削減
+
+// 添付ファイルの保存（専用コレクション）。idKey 例: 'tk_file_'+id / 'ci_file_'+id
+// 専用コレクションが未許可（ルール未更新）の場合は旧_COLへ自動退避して機能を止めない
+async function fileStoreSet(idKey, obj){
+  const payload={ v: JSON.stringify(obj) };
+  try{
+    await _db.collection(_FILECOL).doc(idKey).set(payload);
+  }catch(e){
+    console.warn('[fileStore] '+_FILECOL+'への保存に失敗→'+_COL+'へ退避:', e.code||e.message);
+    await _db.collection(_COL).doc(idKey).set(payload);
+  }
+}
+// 添付ファイルの取得（新コレクション優先・旧_COLにフォールバック）。無ければ null
+async function fileStoreGet(idKey){
+  let doc = await _db.collection(_FILECOL).doc(idKey).get();
+  if(!doc || !doc.exists) doc = await _db.collection(_COL).doc(idKey).get();
+  return (doc && doc.exists) ? JSON.parse(doc.data().v) : null;
+}
+// 添付ファイルの削除（新旧コレクションとも）
+async function fileStoreDelete(idKey){
+  try{ await _db.collection(_FILECOL).doc(idKey).delete(); }catch(e){}
+  try{ await _db.collection(_COL).doc(idKey).delete(); }catch(e){}
+}
 
 // =========================================================
 // データ層（Firestoreキャッシュ + メモリ）
@@ -2063,6 +2092,7 @@ async function loadAllFromFirestore(){
   try {
     const snap = await _db.collection(_COL).get();
     snap.forEach(doc => {
+      if(doc.id.startsWith('ci_file_')||doc.id.startsWith('tk_file_')) return; // 添付本体はキャッシュしない（必要時に個別取得）
       try { _cache[doc.id] = JSON.parse(doc.data().v); _fbDocCount++; } catch(e){}
     });
     _fbReady = true;
@@ -2092,6 +2122,7 @@ function startRealtimeSync(){
   _db.collection(_COL).onSnapshot(snap=>{
     snap.docChanges().forEach(change=>{
       if(change.type==='modified'||change.type==='added'){
+        if(change.doc.id.startsWith('ci_file_')||change.doc.id.startsWith('tk_file_')) return; // 添付本体はキャッシュしない
         try{ _cache[change.doc.id]=JSON.parse(change.doc.data().v); }catch(e){}
       }
     });
@@ -3727,9 +3758,8 @@ function _empBulkKey(){ return _empCo+'_'+_empCat+'_BULK'; }
 // 保管PDFを画面で開いて印刷（fs://のbase64→Blob→新規タブ）
 async function empOpenStoredPdf(ref){
   showToast('🖨 PDFを開いています...',3000);
-  const doc=await _db.collection(_COL).doc('tk_file_'+ref.replace('fs://','')).get();
-  if(!doc.exists){ alert('ファイルが見つかりません'); return; }
-  const data=JSON.parse(doc.data().v);
+  const data=await fileStoreGet('tk_file_'+ref.replace('fs://',''));
+  if(!data){ alert('ファイルが見つかりません'); return; }
   const b64=(data.data||'').split(',')[1]||'';
   const bin=atob(b64); const arr=new Uint8Array(bin.length);
   for(let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
@@ -4444,9 +4474,8 @@ async function empUploadFiles(ev){
 async function empFileDownload(ref,name){
   try{
     showToast('📄 取得中...',3000);
-    const doc=await _db.collection(_COL).doc('tk_file_'+ref.replace('fs://','')).get();
-    if(!doc.exists){ alert('ファイルが見つかりません'); return; }
-    const data=JSON.parse(doc.data().v);
+    const data=await fileStoreGet('tk_file_'+ref.replace('fs://',''));
+    if(!data){ alert('ファイルが見つかりません'); return; }
     const a=document.createElement('a'); a.href=data.data; a.download=name||'file';
     document.body.appendChild(a); a.click(); a.remove();
     showToast('✅ ダウンロードしました');
@@ -4457,7 +4486,7 @@ async function empDeleteFile(ref){
   const staff=load('emp_staff',[]); const emp=staff.find(x=>x.id===_empEditId); if(!emp) return;
   emp.files=(emp.files||[]).filter(f=>f.ref!==ref);
   save('emp_staff',staff);
-  try{ await _db.collection(_COL).doc('tk_file_'+ref.replace('fs://','')).delete(); }catch(e){}
+  await fileStoreDelete('tk_file_'+ref.replace('fs://',''));
   renderEmpApp(); showToast('削除しました');
 }
 
@@ -4544,7 +4573,7 @@ async function tkUploadFileToStore(file){
   const base64=await new Promise((res,rej)=>{const r=new FileReader();r.onload=e=>res(e.target.result);r.onerror=rej;r.readAsDataURL(file);});
   if(base64.length>900000) throw new Error(`「${file.name}」が大きすぎます（目安650KB以下）。ファイルを軽くしてから再度お試しください。`);
   const fileId=uid();
-  await _db.collection(_COL).doc('tk_file_'+fileId).set({ v: JSON.stringify({ name:file.name, type:file.type, size:file.size, data:base64 }) });
+  await fileStoreSet('tk_file_'+fileId, { name:file.name, type:file.type, size:file.size, data:base64 });
   return { ref:'fs://'+fileId, name:file.name, size:file.size };
 }
 
@@ -4557,9 +4586,8 @@ async function tkDownload(formId, kind){
     try{
       showToast('📄 ファイルを取得中...',3000);
       const fileId=meta.ref.replace('fs://','');
-      const doc=await _db.collection(_COL).doc('tk_file_'+fileId).get();
-      if(!doc.exists){ alert('ファイルが見つかりません'); return; }
-      const data=JSON.parse(doc.data().v);
+      const data=await fileStoreGet('tk_file_'+fileId);
+      if(!data){ alert('ファイルが見つかりません'); return; }
       const a=document.createElement('a');
       a.href=data.data; a.download=meta.name||(kind==='pdf'?'届出書.pdf':'届出書.xlsx');
       document.body.appendChild(a); a.click(); document.body.removeChild(a);
@@ -8081,7 +8109,7 @@ async function uploadCiFileToCloud(file){
     }
     // gw2data コレクションに ci_file_ プレフィックスで保存（既存ルールで許可済み）
     const fileId = uid();
-    await _db.collection(_COL).doc('ci_file_'+fileId).set({ v: JSON.stringify({ name: file.name, type: file.type, size: file.size, data: base64 }) });
+    await fileStoreSet('ci_file_'+fileId, { name: file.name, type: file.type, size: file.size, data: base64 });
     // fs:// プレフィックスで識別できるようにする
     return 'fs://' + fileId;
   }
@@ -8153,9 +8181,8 @@ async function downloadCiFile(ciId,fileIdx){
     const fileId=f.url.slice(5);
     try{
       showToast('📄 ファイルを取得中...',3000);
-      const doc=await _db.collection(_COL).doc('ci_file_'+fileId).get();
-      if(!doc.exists){ alert('ファイルが見つかりません'); return; }
-      const data=JSON.parse(doc.data().v);
+      const data=await fileStoreGet('ci_file_'+fileId);
+      if(!data){ alert('ファイルが見つかりません'); return; }
       openOrDownload(data.data, data.name, data.type);
     } catch(e){
       alert('ファイルの取得に失敗しました: '+e.message);
@@ -9030,9 +9057,21 @@ async function backupCreateNow(){
 }
 
 // 全データをJSONファイルとしてダウンロード（添付ファイル含む完全バックアップ）
-function backupExportJSON(){
+async function backupExportJSON(){
+  showToast('💾 バックアップを準備中...（添付も収集します）',6000);
   const all = {};
   Object.keys(_cache).forEach(k=> all[k] = _cache[k]);
+  // 添付本体は _cache に載っていないため、新旧コレクションから直接収集して完全バックアップにする
+  try{
+    const fsnap = await _db.collection(_FILECOL).get();
+    fsnap.forEach(d=>{ try{ all[d.id]=JSON.parse(d.data().v); }catch(e){} });
+    const csnap = await _db.collection(_COL).get();
+    csnap.forEach(d=>{
+      if((d.id.startsWith('ci_file_')||d.id.startsWith('tk_file_')) && !(d.id in all)){
+        try{ all[d.id]=JSON.parse(d.data().v); }catch(e){}
+      }
+    });
+  }catch(e){ console.warn('[backup] 添付収集に一部失敗:', e); }
   const blob = new Blob([JSON.stringify(all)], { type:'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -9050,16 +9089,54 @@ function backupImportJSON(input){
   if(!file) return;
   if(!confirm('このファイルの内容で現在のデータを上書きします。\nよろしいですか？\n\n（念のため先に「💾 ダウンロード」で現状を保存することを推奨します）')){ input.value=''; return; }
   const reader = new FileReader();
-  reader.onload = ()=>{
+  reader.onload = async ()=>{
     try{
       const obj = JSON.parse(reader.result);
-      let n=0; Object.keys(obj).forEach(k=>{ save(k, obj[k]); n++; });
+      let n=0;
+      for(const k of Object.keys(obj)){
+        if(k.startsWith('ci_file_')||k.startsWith('tk_file_')){
+          await fileStoreSet(k, obj[k]); // 添付は専用コレクションへ復元
+        } else {
+          save(k, obj[k]);
+        }
+        n++;
+      }
       showToast(`✅ ${n}件のデータを復元しました。再読み込みします`);
       setTimeout(()=>location.reload(), 1500);
     }catch(e){ alert('ファイルの読み込みに失敗しました: '+e.message); }
   };
   reader.readAsText(file);
   input.value='';
+}
+
+// 既存の添付（_COL内のci_file_/tk_file_）を専用コレクションへ移動して転送量を削減
+// 安全手順：コピー→照合(取得確認)→削除。失敗時は元を残す。
+async function migrateFilesToFileCol(){
+  if(!_fbReady){ alert('データベースに接続していません'); return; }
+  if(!confirm('既存の添付ファイルを「別保管」へ移動して、起動時の転送量を減らします。\n\n⚠ 実行前に必ず「💾 バックアップをダウンロード」を済ませてください。\n\n続行しますか？')) return;
+  const btn=document.getElementById('btnMigrateFiles'); if(btn){ btn.disabled=true; btn.textContent='移動中...'; }
+  try{
+    const snap = await _db.collection(_COL).get();
+    const fileDocs=[];
+    snap.forEach(d=>{ if(d.id.startsWith('ci_file_')||d.id.startsWith('tk_file_')) fileDocs.push({id:d.id, v:d.data().v}); });
+    if(!fileDocs.length){ alert('移動対象の添付はありませんでした（すでに別保管済みです）。'); if(btn){btn.disabled=false;btn.textContent='🧹 既存の添付を別保管へ移動';} return; }
+    let moved=0, failed=0;
+    for(const fd of fileDocs){
+      try{
+        // 1) コピー
+        await _db.collection(_FILECOL).doc(fd.id).set({ v: fd.v });
+        // 2) 照合（コピー先が存在することを確認）
+        const chk = await _db.collection(_FILECOL).doc(fd.id).get();
+        if(!chk.exists){ failed++; continue; }
+        // 3) 元を削除
+        await _db.collection(_COL).doc(fd.id).delete();
+        moved++;
+        if(btn) btn.textContent=`移動中... ${moved}/${fileDocs.length}`;
+      }catch(e){ failed++; console.warn('[migrate] 失敗', fd.id, e); }
+    }
+    alert(`完了しました。\n移動: ${moved}件${failed?` ／ 失敗: ${failed}件（元データは残っています）`:''}\n\n再読み込みします。`);
+    setTimeout(()=>location.reload(), 800);
+  }catch(e){ alert('移動に失敗しました: '+e.message); if(btn){btn.disabled=false;btn.textContent='🧹 既存の添付を別保管へ移動';} }
 }
 
 // 自動スナップショット一覧を表示
