@@ -5538,8 +5538,8 @@ function invPrintBodyHTML(inv, opts){
     <div style="text-align:center;font-size:22pt;font-weight:700;letter-spacing:10px;margin-bottom:6mm;color:#1e3a6b">請　求　書</div>
     <div style="display:flex;justify-content:space-between;margin-bottom:5mm;align-items:flex-start">
       <div style="flex:1;padding-right:10mm">
-        <div style="font-size:14pt;font-weight:700;border-bottom:2.5px solid #1e3a6b;padding-bottom:2mm;margin-bottom:3mm;color:#000">${vendor?esc(vendor.name)+'　御中':'　　　　　　　　御中'}</div>
-        ${vendor?`<div style="font-size:9pt;color:#444;line-height:1.8">${esc(vendor.address||vendor.addr1||'')}</div>${vendor.contact?`<div style="font-size:9pt;margin-top:1mm">担当：${esc(vendor.contact)}</div>`:''}`:'' }
+        <div style="font-size:14pt;font-weight:700;border-bottom:2.5px solid #1e3a6b;padding-bottom:2mm;margin-bottom:3mm;color:#000">${vendor?esc(vendor.name)+'　'+(vendor.vendorType==='individual'?(vendor.honorific||'様'):'御中'):'　　　　　　　　御中'}</div>
+        ${vendor?`<div style="font-size:9pt;color:#444;line-height:1.8">${esc(vendor.address||vendor.addr1||'')}</div>`:'' }
       </div>
       <div style="text-align:right;font-size:9pt;min-width:72mm;position:relative;line-height:1.8">
         ${showSeal?`<canvas id="inv-print-seal" width="72" height="72" style="position:absolute;top:0;right:-2mm;opacity:.80"></canvas>`:''}
@@ -5643,15 +5643,14 @@ function renderInvLabel(invId){
   const buildToLabel=()=>{
     if(!vendor) return '<div style="color:#999;font-size:11px;padding:8px">業者未設定</div>';
     const isInd=vendor.vendorType==='individual';
-    const hasCont=!!vendor.contact;
-    const honorific=isInd||hasCont?'様':'御中';
+    const honorific=isInd?(vendor.honorific||'様'):'御中';
     const zip=vendor.zip?'〒'+vendor.zip:'';
     const addr1=vendor.addr1||vendor.address||'';
     const addr2=vendor.addr2||'';
-    // 社名・役職・個人名の分解
+    // 社名・役職・個人名の分解（請求先の担当者名は表記しない）
     const corpName=!isInd?vendor.name:'';
-    const deptTxt=vendor.dept||'';
-    const personName=hasCont?vendor.contact:(isInd?vendor.name:'');
+    const deptTxt='';
+    const personName=isInd?vendor.name:'';
     // 御中パターン（法人・担当者なし）：社名と御中を同行・同サイズ
     const centerBlock = corpName && !personName
       ? `<div style="font-size:12pt;font-weight:700;color:#000;letter-spacing:.06em;line-height:1.3;text-align:center">${esc(corpName)}　${honorific}</div>`
@@ -5916,11 +5915,17 @@ function openInvVendorModal(id, callback){
     </div>
     <div class="inv-field"><label class="req">＊ 業者区分</label>
       <div style="display:flex;gap:20px;margin-top:4px">
-        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:normal"><input type="radio" name="ivm-type" value="corporate" ${f.vendorType!=='individual'?'checked':''} onchange="document.getElementById('ivm-name-lbl').textContent='＊ 法人名（正式名称）'"> 法人</label>
-        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:normal"><input type="radio" name="ivm-type" value="individual" ${f.vendorType==='individual'?'checked':''} onchange="document.getElementById('ivm-name-lbl').textContent='＊ 氏名'"> 個人</label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:normal"><input type="radio" name="ivm-type" value="corporate" ${f.vendorType!=='individual'?'checked':''} onchange="document.getElementById('ivm-name-lbl').textContent='＊ 法人名（正式名称）';document.getElementById('ivm-honorific-row').style.display='none'"> 法人</label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:normal"><input type="radio" name="ivm-type" value="individual" ${f.vendorType==='individual'?'checked':''} onchange="document.getElementById('ivm-name-lbl').textContent='＊ 氏名';document.getElementById('ivm-honorific-row').style.display=''"> 個人</label>
       </div>
     </div>
     <div class="inv-field"><label class="req" id="ivm-name-lbl">＊ ${f.vendorType==='individual'?'氏名':'法人名（正式名称）'}</label><input id="ivm-name" value="${esc(f.name||'')}" placeholder="例：株式会社○○"></div>
+    <div class="inv-field" id="ivm-honorific-row" style="display:${f.vendorType==='individual'?'':'none'}"><label>敬称（個人の宛名）</label>
+      <div style="display:flex;gap:20px;margin-top:4px">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:normal"><input type="radio" name="ivm-honorific" value="様" ${f.honorific!=='御中'?'checked':''}> 様</label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:normal"><input type="radio" name="ivm-honorific" value="御中" ${f.honorific==='御中'?'checked':''}> 御中</label>
+      </div>
+    </div>
     <div class="inv-field"><label>部署名（任意）</label><input id="ivm-dept" value="${esc(f.dept||'')}" placeholder="例：営業部"></div>
     <div class="inv-field"><label>担当者名（任意）</label><input id="ivm-contact" value="${esc(f.contact||'')}" placeholder="例：山田 太郎"></div>
     <div class="inv-field"><label class="req">＊ 送付先住所</label>
@@ -6010,8 +6015,9 @@ function saveInvVendor(editId){
   const vendors=load('inv_vendors',[]);
   const type=document.querySelector('input[name="ivm-type"]:checked')?.value||'corporate';
   const zip=gv('ivm-zip');
+  const honorific=type==='individual'?(document.querySelector('input[name="ivm-honorific"]:checked')?.value||'様'):'御中';
   const obj={
-    name, vendorType:type,
+    name, vendorType:type, honorific,
     tradingDeptIds:[...document.querySelectorAll('.ivm-td-cb:checked')].map(cb=>cb.value),
     dept:gv('ivm-dept'), contact:gv('ivm-contact'),
     zip, addr1, addr2:gv('ivm-addr2'),
