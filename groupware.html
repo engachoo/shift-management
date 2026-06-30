@@ -3872,8 +3872,12 @@ function empEditDocMaster(key,name){
     </div>
     <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:#92400e;line-height:1.8">⚠️ ${note}</div>
     <label style="display:block;font-size:13px;font-weight:700;color:#374151;margin-bottom:6px">📎 直したファイルを選ぶ</label>
-    <input type="file" accept=".doc,.docx,.xls,.xlsx" onchange="_empEditFile=this.files[0]||null" style="margin-bottom:8px;font-size:13px;width:100%">
-    <div style="font-size:12px;color:#92400e;margin-bottom:16px;line-height:1.8">※ ファイルは650KBくらいまで。保存すると更新日が今日になり、これまでの変更も記録に残ります。</div>
+    <input type="file" accept=".doc,.docx,.xls,.xlsx" onchange="_empEditFile=this.files[0]||null" style="margin-bottom:12px;font-size:13px;width:100%">
+    <label style="display:block;font-size:13px;font-weight:700;color:#374151;margin-bottom:6px">👤 担当者名</label>
+    <input type="text" id="empEditBy" value="${esc(getS()?.name||'')}" placeholder="例）岩清水 克尚" style="margin-bottom:12px;font-size:13px;width:100%;padding:8px 10px;border:1px solid #cbd5e1;border-radius:7px;box-sizing:border-box">
+    <label style="display:block;font-size:13px;font-weight:700;color:#374151;margin-bottom:6px">📝 変更内容（どこを直したか）</label>
+    <textarea id="empEditNote" rows="2" placeholder="例）住所欄を追加／誤字を修正" style="margin-bottom:10px;font-size:13px;width:100%;padding:8px 10px;border:1px solid #cbd5e1;border-radius:7px;box-sizing:border-box;resize:vertical"></textarea>
+    <div style="font-size:12px;color:#92400e;margin-bottom:16px;line-height:1.8">※ ファイルは650KBくらいまで。保存すると更新日が今日になり、担当者名・変更内容も記録に残ります。</div>
     <div style="display:flex;gap:10px;justify-content:flex-end">
       <button onclick="document.getElementById('empEditOv').remove()" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#374151;border-radius:7px;padding:9px 18px;font-size:13px;cursor:pointer">キャンセル</button>
       <button id="empEditSave" onclick="empEditDocSave('${ke}')" style="background:#1a3a6b;color:#fff;border:none;border-radius:7px;padding:9px 24px;font-size:14px;font-weight:700;cursor:pointer">💾 保存</button>
@@ -3884,13 +3888,17 @@ function empEditDocMaster(key,name){
 }
 async function empEditDocSave(key){
   if(!_empEditFile){ alert('直したファイルを選んでください'); return; }
+  const by=(document.getElementById('empEditBy')?.value||'').trim();
+  const note=(document.getElementById('empEditNote')?.value||'').trim();
+  if(!by){ alert('担当者名を入力してください'); return; }
+  if(!note){ alert('変更内容を入力してください'); return; }
   const btn=document.getElementById('empEditSave'); if(btn){ btn.disabled=true; btn.textContent='保存中...'; }
   try{
     const meta=await tkUploadFileToStore(_empEditFile);
     const m=load('emp_doc_masters',{})||{};
     const today=new Date().toLocaleDateString('sv',{timeZone:'Asia/Tokyo'});
     const prevHist=(m[key]&&m[key].history)||[];
-    m[key]={ref:meta.ref,name:meta.name,size:meta.size,revDate:today,history:[...prevHist,{date:today,name:meta.name,size:meta.size}]};
+    m[key]={ref:meta.ref,name:meta.name,size:meta.size,revDate:today,history:[...prevHist,{date:today,by:by,note:note,name:meta.name,size:meta.size}]};
     save('emp_doc_masters',m);
     document.getElementById('empEditOv')?.remove();
     showToast('✅ 書類を更新しました'); renderEmpApp();
@@ -3943,8 +3951,14 @@ async function empBundlePrint(path,kind){
 // 改訂履歴の表示
 function empDocHistory(path,name){
   const m=_empDocMaster(path); const hist=(m&&m.history)||[];
-  const rows=hist.length?hist.slice().reverse().map(h=>`<div style="display:flex;justify-content:space-between;gap:10px;padding:9px 12px;border-bottom:1px solid #eef2f7;font-size:13px">
-      <span style="color:#1a2b4a">${esc(h.date||'-')}</span><span style="color:#6b7280">${esc(h.name||'')}</span></div>`).join('')
+  const rows=hist.length?hist.slice().reverse().map(h=>`<div style="padding:10px 14px;border-bottom:1px solid #eef2f7;font-size:13px">
+      <div style="display:flex;justify-content:space-between;gap:10px;margin-bottom:${h.note?'4px':'0'}">
+        <span style="color:#1a2b4a;font-weight:700">${esc(h.date||'-')}</span>
+        <span style="color:#7c3aed;font-weight:700">${esc(h.by||'担当者未記録')}</span>
+      </div>
+      ${h.note?`<div style="color:#374151;line-height:1.6">${esc(h.note)}</div>`:''}
+      <div style="color:#9ca3af;font-size:11px;margin-top:2px">${esc(h.name||'')}</div>
+    </div>`).join('')
     :'<div style="padding:24px;text-align:center;color:#9ca3af;font-size:13px">改訂履歴はまだありません（既定の様式を使用中）</div>';
   const ov=document.createElement('div');
   ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:5000;display:flex;align-items:center;justify-content:center;padding:16px';
@@ -4674,7 +4688,11 @@ function renderTkUpload(){
         <input id="tk-name" value="${esc(_tkUpload.name)}" ${isNew?'':'readonly'} placeholder="例：稟議" style="width:100%;border:1.5px solid #d1d5db;border-radius:6px;padding:8px 10px;font-size:14px;box-sizing:border-box;margin-bottom:16px;${isNew?'':'background:#f3f4f6;color:#6b7280'}">
         <label style="display:block;font-size:13px;font-weight:700;color:#374151;margin-bottom:6px">📎 ${isNew?'':'直した '}ファイルを選ぶ（Excel）</label>
         <input type="file" id="tk-excel" accept=".xlsx,.xls,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onchange="_tkUpload.excelFile=this.files[0]||null" style="margin-bottom:16px;font-size:13px;width:100%">
-        <div style="font-size:12px;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:8px 10px;margin-bottom:16px;line-height:1.8">※ ファイルは <strong>650KBくらいまで</strong>。保存すると<strong>更新日が今日になり</strong>、これまでの変更も記録に残ります。</div>
+        <label style="display:block;font-size:13px;font-weight:700;color:#374151;margin-bottom:6px">👤 担当者名</label>
+        <input type="text" id="tk-by" value="${esc(getS()?.name||'')}" placeholder="例）岩清水 克尚" style="width:100%;border:1px solid #cbd5e1;border-radius:6px;padding:8px 10px;font-size:13px;box-sizing:border-box;margin-bottom:14px">
+        <label style="display:block;font-size:13px;font-weight:700;color:#374151;margin-bottom:6px">📝 変更内容（どこを直したか）</label>
+        <textarea id="tk-note" rows="2" placeholder="例）金額欄を追加／日付の書式を修正" style="width:100%;border:1px solid #cbd5e1;border-radius:6px;padding:8px 10px;font-size:13px;box-sizing:border-box;margin-bottom:16px;resize:vertical"></textarea>
+        <div style="font-size:12px;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:8px 10px;margin-bottom:16px;line-height:1.8">※ ファイルは <strong>650KBくらいまで</strong>。保存すると<strong>更新日が今日になり</strong>、担当者名・変更内容も記録に残ります。</div>
         <div style="display:flex;gap:10px;justify-content:flex-end">
           <button onclick="renderTodokeApp()" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#374151;border-radius:7px;padding:9px 18px;font-size:13px;cursor:pointer">キャンセル</button>
           <button id="tk-save-btn" onclick="tkSaveUpload()" style="background:#1a3a6b;color:#fff;border:none;border-radius:7px;padding:9px 24px;font-size:14px;font-weight:700;cursor:pointer">💾 保存</button>
@@ -4689,6 +4707,13 @@ async function tkSaveUpload(){
   const name=document.getElementById('tk-name')?.value.trim();
   if(!name){ alert('届出書名を入力してください'); return; }
   if(isNew && !_tkUpload.excelFile){ alert('Excelファイルを選択してください'); return; }
+  const by=(document.getElementById('tk-by')?.value||'').trim();
+  const note=(document.getElementById('tk-note')?.value||'').trim();
+  const willChange = !!(_tkUpload.excelFile || _tkUpload.pdfFile);
+  if(willChange){
+    if(!by){ alert('担当者名を入力してください'); return; }
+    if(!note){ alert('変更内容を入力してください'); return; }
+  }
   const btn=document.getElementById('tk-save-btn');
   if(btn){ btn.disabled=true; btn.textContent='保存中...'; }
   try{
@@ -4706,7 +4731,7 @@ async function tkSaveUpload(){
       const today=new Date().toLocaleDateString('sv',{timeZone:'Asia/Tokyo'});
       form.revDate=today;
       form.history=form.history||[];
-      form.history.unshift({ date:today, at:jstISO(), by:getS()?.name||'', excel:_tkUpload.excelFile?_tkUpload.excelFile.name:'', pdf:_tkUpload.pdfFile?_tkUpload.pdfFile.name:'' });
+      form.history.unshift({ date:today, at:jstISO(), by:by||getS()?.name||'', note:note||'', excel:_tkUpload.excelFile?_tkUpload.excelFile.name:'', pdf:_tkUpload.pdfFile?_tkUpload.pdfFile.name:'' });
     }
     save('todoke_forms',forms);
     showToast('✅ 保存しました');
@@ -4723,8 +4748,11 @@ function tkHistory(formId){
   const old=document.getElementById('tkHistOverlay'); if(old) old.remove();
   const hist=f.history||[];
   const rows=hist.length?hist.map(h=>`<div style="padding:10px 14px;border-bottom:1px solid #eef2f7">
-      <div style="font-size:13px;font-weight:700;color:#1a2b4a">${esc(h.date||(h.at||'').slice(0,10))}</div>
-      <div style="font-size:12px;color:#6b7280;margin-top:2px">変更者：${esc(h.by||'-')}</div>
+      <div style="display:flex;justify-content:space-between;gap:10px">
+        <span style="font-size:13px;font-weight:700;color:#1a2b4a">${esc(h.date||(h.at||'').slice(0,10))}</span>
+        <span style="font-size:12px;font-weight:700;color:#7c3aed">${esc(h.by||'-')}</span>
+      </div>
+      ${h.note?`<div style="font-size:13px;color:#374151;margin-top:4px;line-height:1.6">${esc(h.note)}</div>`:''}
       ${h.excel?`<div style="font-size:11px;color:#16a34a;margin-top:2px">📥 ${esc(h.excel)}</div>`:''}
       ${h.pdf?`<div style="font-size:11px;color:#dc2626">📄 ${esc(h.pdf)}</div>`:''}
     </div>`).join(''):'<div style="padding:24px;text-align:center;color:#9ca3af;font-size:13px">改訂履歴はまだありません</div>';
