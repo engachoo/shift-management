@@ -3843,6 +3843,37 @@ async function empPrintDoc(h){
   }catch(e){ alert('印刷準備に失敗しました: '+e.message); }
 }
 // 書式編集（届出書と同じガイド付き画面）。総務経理・システムのみ。
+// 改訂の記録ポップアップ：担当者名・改訂理由を入力させ {by,note} を返す（キャンセルでnull）
+function _askRevision(defaultBy){
+  return new Promise(resolve=>{
+    const ov=document.createElement('div');
+    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:6000;display:flex;align-items:center;justify-content:center;padding:16px';
+    ov.innerHTML=`<div style="background:#fff;border-radius:12px;max-width:420px;width:100%;padding:20px;box-shadow:0 10px 40px rgba(0,0,0,.3)" onclick="event.stopPropagation()">
+      <div style="font-size:16px;font-weight:700;color:#1a2b4a;margin-bottom:4px">📝 改訂の記録</div>
+      <div style="font-size:12px;color:#6b7280;margin-bottom:14px">保存する前に、担当者名と改訂理由を入力してください（改訂履歴に残ります）。</div>
+      <label style="display:block;font-size:13px;font-weight:700;color:#374151;margin-bottom:6px">👤 担当者名</label>
+      <input id="_revBy" type="text" value="${esc(defaultBy||'')}" placeholder="例）岩清水 克尚" style="width:100%;border:1px solid #cbd5e1;border-radius:7px;padding:9px 10px;font-size:14px;box-sizing:border-box;margin-bottom:14px">
+      <label style="display:block;font-size:13px;font-weight:700;color:#374151;margin-bottom:6px">📝 改訂理由（どこを直したか）</label>
+      <textarea id="_revNote" rows="3" placeholder="例）住所欄を追加／誤字を修正" style="width:100%;border:1px solid #cbd5e1;border-radius:7px;padding:9px 10px;font-size:14px;box-sizing:border-box;resize:vertical;margin-bottom:16px"></textarea>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button id="_revCancel" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#374151;border-radius:7px;padding:9px 18px;font-size:13px;cursor:pointer">キャンセル</button>
+        <button id="_revOk" style="background:#1a3a6b;color:#fff;border:none;border-radius:7px;padding:9px 22px;font-size:14px;font-weight:700;cursor:pointer">記録して保存</button>
+      </div>
+    </div>`;
+    const close=v=>{ ov.remove(); resolve(v); };
+    document.body.appendChild(ov);
+    ov.querySelector('#_revCancel').onclick=()=>close(null);
+    ov.querySelector('#_revOk').onclick=()=>{
+      const by=(ov.querySelector('#_revBy').value||'').trim();
+      const note=(ov.querySelector('#_revNote').value||'').trim();
+      if(!by){ alert('担当者名を入力してください'); return; }
+      if(!note){ alert('改訂理由を入力してください'); return; }
+      close({by,note});
+    };
+    ov.addEventListener('click',e=>{ if(e.target===ov) close(null); });
+    setTimeout(()=>{ const el=ov.querySelector('#_revBy'); if(el){ el.focus(); el.select(); } },50);
+  });
+}
 let _empEditFile=null;
 function empEditDocMaster(key,name){
   if(!empCanEditDocs()){ alert('書式の編集は総務経理・システムのみ可能です'); return; }
@@ -3872,12 +3903,8 @@ function empEditDocMaster(key,name){
     </div>
     <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:#92400e;line-height:1.8">⚠️ ${note}</div>
     <label style="display:block;font-size:13px;font-weight:700;color:#374151;margin-bottom:6px">📎 直したファイルを選ぶ</label>
-    <input type="file" accept=".doc,.docx,.xls,.xlsx" onchange="_empEditFile=this.files[0]||null" style="margin-bottom:12px;font-size:13px;width:100%">
-    <label style="display:block;font-size:13px;font-weight:700;color:#374151;margin-bottom:6px">👤 担当者名</label>
-    <input type="text" id="empEditBy" value="${esc(getS()?.name||'')}" placeholder="例）岩清水 克尚" style="margin-bottom:12px;font-size:13px;width:100%;padding:8px 10px;border:1px solid #cbd5e1;border-radius:7px;box-sizing:border-box">
-    <label style="display:block;font-size:13px;font-weight:700;color:#374151;margin-bottom:6px">📝 変更内容（どこを直したか）</label>
-    <textarea id="empEditNote" rows="2" placeholder="例）住所欄を追加／誤字を修正" style="margin-bottom:10px;font-size:13px;width:100%;padding:8px 10px;border:1px solid #cbd5e1;border-radius:7px;box-sizing:border-box;resize:vertical"></textarea>
-    <div style="font-size:12px;color:#92400e;margin-bottom:16px;line-height:1.8">※ ファイルは650KBくらいまで。保存すると更新日が今日になり、担当者名・変更内容も記録に残ります。</div>
+    <input type="file" accept=".doc,.docx,.xls,.xlsx" onchange="_empEditFile=this.files[0]||null" style="margin-bottom:8px;font-size:13px;width:100%">
+    <div style="font-size:12px;color:#92400e;margin-bottom:16px;line-height:1.8">※ ファイルは650KBくらいまで。<strong>「保存」を押すと、担当者名と改訂理由の入力画面が出ます。</strong>入力した内容は改訂履歴に残ります。</div>
     <div style="display:flex;gap:10px;justify-content:flex-end">
       <button onclick="document.getElementById('empEditOv').remove()" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#374151;border-radius:7px;padding:9px 18px;font-size:13px;cursor:pointer">キャンセル</button>
       <button id="empEditSave" onclick="empEditDocSave('${ke}')" style="background:#1a3a6b;color:#fff;border:none;border-radius:7px;padding:9px 24px;font-size:14px;font-weight:700;cursor:pointer">💾 保存</button>
@@ -3888,10 +3915,9 @@ function empEditDocMaster(key,name){
 }
 async function empEditDocSave(key){
   if(!_empEditFile){ alert('直したファイルを選んでください'); return; }
-  const by=(document.getElementById('empEditBy')?.value||'').trim();
-  const note=(document.getElementById('empEditNote')?.value||'').trim();
-  if(!by){ alert('担当者名を入力してください'); return; }
-  if(!note){ alert('変更内容を入力してください'); return; }
+  const info=await _askRevision(getS()?.name||'');
+  if(!info) return; // キャンセル
+  const by=info.by, note=info.note;
   const btn=document.getElementById('empEditSave'); if(btn){ btn.disabled=true; btn.textContent='保存中...'; }
   try{
     const meta=await tkUploadFileToStore(_empEditFile);
@@ -4688,11 +4714,7 @@ function renderTkUpload(){
         <input id="tk-name" value="${esc(_tkUpload.name)}" ${isNew?'':'readonly'} placeholder="例：稟議" style="width:100%;border:1.5px solid #d1d5db;border-radius:6px;padding:8px 10px;font-size:14px;box-sizing:border-box;margin-bottom:16px;${isNew?'':'background:#f3f4f6;color:#6b7280'}">
         <label style="display:block;font-size:13px;font-weight:700;color:#374151;margin-bottom:6px">📎 ${isNew?'':'直した '}ファイルを選ぶ（Excel）</label>
         <input type="file" id="tk-excel" accept=".xlsx,.xls,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onchange="_tkUpload.excelFile=this.files[0]||null" style="margin-bottom:16px;font-size:13px;width:100%">
-        <label style="display:block;font-size:13px;font-weight:700;color:#374151;margin-bottom:6px">👤 担当者名</label>
-        <input type="text" id="tk-by" value="${esc(getS()?.name||'')}" placeholder="例）岩清水 克尚" style="width:100%;border:1px solid #cbd5e1;border-radius:6px;padding:8px 10px;font-size:13px;box-sizing:border-box;margin-bottom:14px">
-        <label style="display:block;font-size:13px;font-weight:700;color:#374151;margin-bottom:6px">📝 変更内容（どこを直したか）</label>
-        <textarea id="tk-note" rows="2" placeholder="例）金額欄を追加／日付の書式を修正" style="width:100%;border:1px solid #cbd5e1;border-radius:6px;padding:8px 10px;font-size:13px;box-sizing:border-box;margin-bottom:16px;resize:vertical"></textarea>
-        <div style="font-size:12px;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:8px 10px;margin-bottom:16px;line-height:1.8">※ ファイルは <strong>650KBくらいまで</strong>。保存すると<strong>更新日が今日になり</strong>、担当者名・変更内容も記録に残ります。</div>
+        <div style="font-size:12px;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:8px 10px;margin-bottom:16px;line-height:1.8">※ ファイルは <strong>650KBくらいまで</strong>。<strong>「保存」を押すと、担当者名と改訂理由の入力画面が出ます。</strong>入力した内容は改訂履歴に残ります。</div>
         <div style="display:flex;gap:10px;justify-content:flex-end">
           <button onclick="renderTodokeApp()" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#374151;border-radius:7px;padding:9px 18px;font-size:13px;cursor:pointer">キャンセル</button>
           <button id="tk-save-btn" onclick="tkSaveUpload()" style="background:#1a3a6b;color:#fff;border:none;border-radius:7px;padding:9px 24px;font-size:14px;font-weight:700;cursor:pointer">💾 保存</button>
@@ -4707,12 +4729,12 @@ async function tkSaveUpload(){
   const name=document.getElementById('tk-name')?.value.trim();
   if(!name){ alert('届出書名を入力してください'); return; }
   if(isNew && !_tkUpload.excelFile){ alert('Excelファイルを選択してください'); return; }
-  const by=(document.getElementById('tk-by')?.value||'').trim();
-  const note=(document.getElementById('tk-note')?.value||'').trim();
   const willChange = !!(_tkUpload.excelFile || _tkUpload.pdfFile);
+  let by='', note='';
   if(willChange){
-    if(!by){ alert('担当者名を入力してください'); return; }
-    if(!note){ alert('変更内容を入力してください'); return; }
+    const info=await _askRevision(getS()?.name||'');
+    if(!info) return; // キャンセル
+    by=info.by; note=info.note;
   }
   const btn=document.getElementById('tk-save-btn');
   if(btn){ btn.disabled=true; btn.textContent='保存中...'; }
