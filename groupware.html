@@ -3001,6 +3001,7 @@ function showMod(mod,sub,_fromPop){
     if(!getS()) return;
     document.getElementById('devAppsView').style.display='block';
     document.getElementById('m-tk').classList.add('active');
+    if(sub!=='keep') _tkCompany='dainichi'; // サイドバーから開いたら大日産業から開始
     renderTodokeApp();
   } else if(mod==='emp'){
     if(!getS()) return;
@@ -3008,6 +3009,8 @@ function showMod(mod,sub,_fromPop){
     if(sub==='roster'){ _empView='roster'; }
     else if(sub==='docs'){ _empView='docs'; }
     else if(sub!=='keep'){ _empView='docs'; }
+    if(sub!=='keep') _empCo='dainichi'; // サイドバーから開いたら大日産業から開始
+    if(_empCo==='dainichi'&&!empVisibleCompanies().includes('dainichi')) _empCo=null; // 権限で大日が見えない場合は後続_empInitで補正
     const activeId=(_empView==='docs')?'m-emp':'m-empmgmt';
     document.getElementById(activeId)?.classList.add('active');
     renderEmpApp();
