@@ -4918,6 +4918,8 @@ function invPrintBack(){ _invView='detail'; renderInvApp(); }
 function invCanManage(){ const r=getS()?.role; return r==='soumu'||r==='system'||r==='admin'; }
 function invCanCreate(){ const r=getS()?.role; return ['manager','admin','soumu','system','user'].includes(r); }
 function invCanEditAny(){ const r=getS()?.role; return r==='system'||r==='soumu'||r==='admin'; }
+// 承認（電子押印）・承認段階の差し戻しは system のみ
+function invCanApprove(){ return getS()?.role==='system'; }
 function invNextNo(){
   const invs=load('invoices',[]); const yr=new Date().getFullYear();
   const max=invs.filter(i=>i.invoiceNo&&i.invoiceNo.startsWith('INV-'+yr+'-')).reduce((m,i)=>Math.max(m,parseInt(i.invoiceNo.split('-')[2])||0),0);
@@ -5340,12 +5342,12 @@ function renderInvDetail(invId){
   const inv=load('invoices',[]).find(i=>i.id===invId); if(!inv){_invView='list';renderInvApp();return;}
   const def=INV_ST[inv.status]||INV_ST.draft; const dept=invDeptInfo(inv.deptId)||{};
   const vendor=load('inv_vendors',[]).find(v=>v.id===inv.vendorId)||null;
-  const me=myId(); const canManage=invCanManage();
+  const me=myId(); const canManage=invCanManage(); const canApprove=invCanApprove();
   const users=load('users',[]); const uName=id=>users.find(u=>u.id===id)?.name||id||'';
   const t=invCalcTotals(inv.items||[]);
   let actions='';
   if(inv.status==='submitted'&&canManage) actions=`<button onclick="invReview('${invId}')" style="background:#7c3aed;color:#fff;border:none;border-radius:7px;padding:9px 20px;font-size:13px;font-weight:700;cursor:pointer">📋 確認済み → 承認申請へ</button><button onclick="invReject('${invId}')" style="background:#dc2626;color:#fff;border:none;border-radius:7px;padding:9px 20px;font-size:13px;font-weight:700;cursor:pointer;margin-left:8px">↩ 差し戻し</button>`;
-  else if(inv.status==='reviewing'&&canManage) actions=`<button onclick="invApprove('${invId}')" style="background:#16a34a;color:#fff;border:none;border-radius:7px;padding:10px 24px;font-size:14px;font-weight:700;cursor:pointer">✅ 承認する（電子押印）</button><button onclick="invReject('${invId}')" style="background:#dc2626;color:#fff;border:none;border-radius:7px;padding:9px 20px;font-size:13px;font-weight:700;cursor:pointer;margin-left:8px">↩ 差し戻し</button>`;
+  else if(inv.status==='reviewing'&&canApprove) actions=`<button onclick="invApprove('${invId}')" style="background:#16a34a;color:#fff;border:none;border-radius:7px;padding:10px 24px;font-size:14px;font-weight:700;cursor:pointer">✅ 承認する（電子押印）</button><button onclick="invReject('${invId}')" style="background:#dc2626;color:#fff;border:none;border-radius:7px;padding:9px 20px;font-size:13px;font-weight:700;cursor:pointer;margin-left:8px">↩ 差し戻し</button>`;
   else if((inv.status==='approved'||inv.status==='sent')&&canManage) actions=`<button onclick="_invEditId='${invId}';_invView='print';renderInvApp()" style="background:#7c3aed;color:#fff;border:none;border-radius:7px;padding:9px 20px;font-size:13px;font-weight:700;cursor:pointer">🖨 PDF出力・印刷</button>${vendor?`<button onclick="_invEditId='${invId}';_invView='label';renderInvApp()" style="background:#16a34a;color:#fff;border:none;border-radius:7px;padding:9px 20px;font-size:13px;font-weight:700;cursor:pointer;margin-left:8px">🏷 封筒ラベル</button>`:''}${inv.status==='approved'?`<button onclick="invMarkSent('${invId}')" style="background:#7c3aed;color:#fff;border:none;border-radius:7px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;margin-left:8px">📮 発送済にする</button>`:''}`;
   if((inv.status==='draft'||inv.status==='rejected')&&(inv.createdBy===me||invCanEditAny())) actions+=`<button onclick="_invEditId='${invId}';_invView='form';renderInvApp()" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#374151;border-radius:7px;padding:9px 20px;font-size:13px;cursor:pointer;margin-left:8px">✏ 編集</button>`;
   el.innerHTML=`
@@ -5413,6 +5415,7 @@ function invReview(invId){
   save('invoices',invs); invStatusNotif(invs[i],'📋','承認申請へ'); showToast('確認済みにしました 🔍'); renderInvDetail(invId);
 }
 function invApprove(invId){
+  if(!invCanApprove()){ alert('承認（電子押印）はシステム権限のみ可能です'); return; }
   if(!confirm('この請求書を承認し、電子角印を押印しますか？'))return;
   const invs=load('invoices',[]); const i=invs.findIndex(x=>x.id===invId); if(i<0)return;
   const memo=document.getElementById('inv-review-memo')?.value||invs[i].reviewNotes||'';
