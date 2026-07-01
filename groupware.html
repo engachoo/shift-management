@@ -4155,10 +4155,10 @@ function _empRosterRow(s,retiredSection){
   }
   return `<tr style="border-bottom:1px solid #eef2f7">
       ${chk}
-      <td style="padding:9px 12px;font-size:13px;color:#1a2b4a"><strong>${esc(s.name||'')}</strong>${s.furigana?`<div style="font-size:10px;color:#9ca3af">${esc(s.furigana)}</div>`:''}</td>
-      <td style="padding:9px 8px;font-size:12px;color:#475569">${esc(s.empType||'-')}</td>
-      <td style="padding:9px 8px;font-size:12px;color:#475569">${esc(s.department||s.store||'-')}</td>
-      <td style="padding:9px 8px;font-size:12px;color:#475569">${esc(retiredSection?(s.retireDate||'-'):(s.joinDate||'-'))}</td>
+      <td style="padding:9px 12px;font-size:13px;color:#1a2b4a;white-space:nowrap"><strong>${esc(s.name||'')}</strong>${s.furigana?`<div style="font-size:10px;color:#9ca3af">${esc(s.furigana)}</div>`:''}</td>
+      <td style="padding:9px 8px;font-size:12px;color:#475569;white-space:nowrap">${esc(s.empType||'-')}</td>
+      <td style="padding:9px 8px;font-size:12px;color:#475569;white-space:nowrap">${esc(s.department||s.store||'-')}</td>
+      <td style="padding:9px 8px;font-size:12px;color:#475569;white-space:nowrap">${esc(retiredSection?(s.retireDate||'-'):(s.joinDate||'-'))}</td>
       <td style="padding:9px 8px;text-align:center;font-size:12px;color:#475569">${(s.files&&s.files.length)?'📎'+s.files.length:'-'}</td>
       <td style="padding:9px 8px;text-align:center;white-space:nowrap">${ops}</td>
     </tr>`;
@@ -4168,12 +4168,12 @@ function _empRosterTable(arr,retiredSection,emptyMsg){
   const allSel=ids.length>0&&ids.every(id=>_empSel.has(id));
   const head=`<thead><tr style="background:${retiredSection?'#92400e':'#b45309'};color:#fff">
       <th style="padding:9px 6px;width:28px;text-align:center"><input type="checkbox" ${allSel?'checked':''} onchange="empSelAll(this.checked,${JSON.stringify(ids).replace(/"/g,'&quot;')})" title="全選択" style="width:15px;height:15px;cursor:pointer"></th>
-      <th style="padding:9px 12px;text-align:left;font-size:12px">氏名</th>
-      <th style="padding:9px 8px;font-size:12px">区分</th>
-      <th style="padding:9px 8px;font-size:12px">部署</th>
-      <th style="padding:9px 8px;font-size:12px">${retiredSection?'退職日':'入社日'}</th>
-      <th style="padding:9px 8px;font-size:12px">書類</th>
-      <th style="padding:9px 8px;font-size:12px">操作</th>
+      <th style="padding:9px 12px;text-align:left;font-size:12px;white-space:nowrap">氏名</th>
+      <th style="padding:9px 8px;font-size:12px;white-space:nowrap">区分</th>
+      <th style="padding:9px 8px;font-size:12px;white-space:nowrap">部署</th>
+      <th style="padding:9px 8px;font-size:12px;white-space:nowrap">${retiredSection?'退職日':'入社日'}</th>
+      <th style="padding:9px 8px;font-size:12px;white-space:nowrap">書類</th>
+      <th style="padding:9px 8px;font-size:12px;white-space:nowrap">操作</th>
     </tr></thead>`;
   const rows=arr.map(s=>_empRosterRow(s,retiredSection)).join('')||`<tr><td colspan="7" style="padding:24px;text-align:center;color:#9ca3af;font-size:13px">${emptyMsg}</td></tr>`;
   return `<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:560px">${head}<tbody>${rows}</tbody></table></div>`;
@@ -4604,7 +4604,7 @@ function renderTodokeApp(){
     const isWord=/\.docx?$/i.test((f.excel&&f.excel.name)||''); const fmt=isWord?'Word':'Excel';
     return `<tr style="border-bottom:1px solid #eef2f7;background:${idx%2?'#f8fafc':'#fff'}">
       <td style="padding:10px 12px;text-align:center;font-size:12px;color:#94a3b8;font-weight:700;width:36px">${idx+1}</td>
-      <td style="padding:10px 14px;font-size:13px;color:#1a2b4a"><strong>${esc(f.name)}</strong><div style="font-size:11px;color:#9ca3af;margin-top:2px">改訂：${esc(f.revDate||'-')}</div></td>
+      <td style="padding:10px 14px;font-size:13px;color:#1a2b4a;white-space:nowrap"><strong>${esc(f.name)}</strong><div style="font-size:11px;color:#9ca3af;margin-top:2px">改訂：${esc(f.revDate||'-')}</div></td>
       <td style="padding:10px 10px;text-align:center;white-space:nowrap">
         ${hasExcel?`<button onclick="tkDownload('${f.id}','excel')" style="background:${isWord?'#2563eb':'#16a34a'};color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer">📥 ${fmt}</button>`:`<span style="font-size:11px;color:#cbd5e1">未登録</span>`}
       </td>
@@ -4637,12 +4637,12 @@ function renderTodokeApp(){
     <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;overflow-x:auto">
       <table style="width:100%;border-collapse:collapse;min-width:560px">
         <thead><tr style="background:#0f766e;color:#fff">
-          <th style="padding:10px 12px;text-align:center;font-size:12px;width:36px">No.</th>
-          <th style="padding:10px 14px;text-align:left;font-size:12px">届出書名</th>
-          <th style="padding:10px 10px;text-align:center;font-size:12px">ダウンロード</th>
-          <th style="padding:10px 10px;text-align:center;font-size:12px">印刷</th>
-          <th style="padding:10px 10px;text-align:center;font-size:12px">改訂履歴</th>
-          ${canManage?'<th style="padding:10px 10px;text-align:center;font-size:12px">書式編集</th>':''}
+          <th style="padding:10px 12px;text-align:center;font-size:12px;width:36px;white-space:nowrap">No.</th>
+          <th style="padding:10px 14px;text-align:left;font-size:12px;white-space:nowrap">届出書名</th>
+          <th style="padding:10px 10px;text-align:center;font-size:12px;white-space:nowrap">ダウンロード</th>
+          <th style="padding:10px 10px;text-align:center;font-size:12px;white-space:nowrap">印刷</th>
+          <th style="padding:10px 10px;text-align:center;font-size:12px;white-space:nowrap">改訂履歴</th>
+          ${canManage?'<th style="padding:10px 10px;text-align:center;font-size:12px;white-space:nowrap">書式編集</th>':''}
         </tr></thead>
         <tbody>${rows||`<tr><td colspan="${colCount}" style="padding:20px;text-align:center;color:#9ca3af">届出書がまだ登録されていません</td></tr>`}</tbody>
       </table>
