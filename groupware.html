@@ -3506,7 +3506,7 @@ function renderInvBulk(){
   }).join('');
   el.innerHTML=`
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
-    <button onclick="_invView='list';renderInvApp()" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#475569;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:12px">← 一覧</button>
+    <button onclick="_invView='list';renderInvApp()" style="background:#2563eb;border:none;color:#fff;border-radius:8px;padding:10px 22px;cursor:pointer;font-size:15px;font-weight:700;box-shadow:0 2px 6px rgba(37,99,235,.3)">← 一覧へ戻る</button>
     <h2 style="font-size:17px;font-weight:700;color:#1a2b4a;margin:0">📋 請求書一括登録</h2>
     <span style="font-size:12px;color:#6b7280">複数の下書きをまとめて作成</span>
     <div style="margin-left:auto;display:flex;gap:8px">
@@ -5139,7 +5139,7 @@ function renderInvForm(editId){
   </tr>`;
   el.innerHTML=`
   <div style="display:flex;align-items:center;gap:8px;margin-bottom:20px">
-    <button onclick="_invView='list';renderInvApp()" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#475569;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:12px">← 一覧</button>
+    <button onclick="_invView='list';renderInvApp()" style="background:#2563eb;border:none;color:#fff;border-radius:8px;padding:10px 22px;cursor:pointer;font-size:15px;font-weight:700;box-shadow:0 2px 6px rgba(37,99,235,.3)">← 一覧へ戻る</button>
     <h2 style="font-size:17px;font-weight:700;color:#1a2b4a;margin:0">${editId?'📄 請求書を編集':'📄 請求書を作成'}</h2>
   </div>
   <div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap">
@@ -5350,7 +5350,7 @@ function renderInvDetail(invId){
   if((inv.status==='draft'||inv.status==='rejected')&&(inv.createdBy===me||invCanEditAny())) actions+=`<button onclick="_invEditId='${invId}';_invView='form';renderInvApp()" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#374151;border-radius:7px;padding:9px 20px;font-size:13px;cursor:pointer;margin-left:8px">✏ 編集</button>`;
   el.innerHTML=`
   <div style="display:flex;align-items:center;gap:8px;margin-bottom:20px;flex-wrap:wrap">
-    <button onclick="_invView='list';renderInvApp()" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#475569;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:12px">← 一覧</button>
+    <button onclick="_invView='list';renderInvApp()" style="background:#2563eb;border:none;color:#fff;border-radius:8px;padding:10px 22px;cursor:pointer;font-size:15px;font-weight:700;box-shadow:0 2px 6px rgba(37,99,235,.3)">← 一覧へ戻る</button>
     <h2 style="font-size:17px;font-weight:700;color:#1a2b4a;margin:0">📄 ${esc(inv.invoiceNo||'請求書')}</h2>
     <span class="inv-badge" style="background:${def.bg};color:${def.color};border-color:${def.border}">${def.icon} ${def.label}</span>
   </div>
@@ -5758,7 +5758,7 @@ function renderInvDepts(){
   el.innerHTML=`
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
     <div style="display:flex;align-items:center;gap:8px">
-      <button onclick="_invView='list';renderInvApp()" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#475569;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:12px">← 一覧</button>
+      <button onclick="_invView='list';renderInvApp()" style="background:#2563eb;border:none;color:#fff;border-radius:8px;padding:10px 22px;cursor:pointer;font-size:15px;font-weight:700;box-shadow:0 2px 6px rgba(37,99,235,.3)">← 一覧へ戻る</button>
       <h2 style="font-size:17px;font-weight:700;color:#1a2b4a;margin:0">🏢 部署・口座設定</h2>
     </div>
     <button onclick="openInvDeptModal(null)" style="background:#1a3a6b;color:#fff;border:none;border-radius:7px;padding:7px 18px;font-size:13px;font-weight:700;cursor:pointer">＋ 部署を追加</button>
@@ -5880,7 +5880,7 @@ function renderInvVendors(){
   el.innerHTML=
     '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">'
     +'<div style="display:flex;align-items:center;gap:8px">'
-    +'<button onclick="_invView=\'list\';renderInvApp()" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#475569;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:12px">← 一覧</button>'
+    +'<button onclick="_invView=\'list\';renderInvApp()" style="background:#2563eb;border:none;color:#fff;border-radius:8px;padding:10px 22px;cursor:pointer;font-size:15px;font-weight:700;box-shadow:0 2px 6px rgba(37,99,235,.3)">← 一覧へ戻る</button>'
     +'<h2 style="font-size:17px;font-weight:700;color:#1a2b4a;margin:0">📋 業者名簿</h2>'
     +'</div>'
     +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
@@ -6191,7 +6191,7 @@ function renderInvVendorChoice(){
   const el=document.getElementById('devAppsContent'); if(!el)return;
   el.innerHTML=`
   <div style="display:flex;align-items:center;gap:8px;margin-bottom:28px">
-    <button onclick="_invView='list';renderInvApp()" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#475569;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:12px">← 一覧</button>
+    <button onclick="_invView='list';renderInvApp()" style="background:#2563eb;border:none;color:#fff;border-radius:8px;padding:10px 22px;cursor:pointer;font-size:15px;font-weight:700;box-shadow:0 2px 6px rgba(37,99,235,.3)">← 一覧へ戻る</button>
     <h2 style="font-size:17px;font-weight:700;color:#1a2b4a;margin:0">📄 新規請求書 — 宛先を選択してください</h2>
   </div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;max-width:600px">
