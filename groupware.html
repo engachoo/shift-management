@@ -5356,7 +5356,7 @@ function renderInvDetail(invId){
     <h2 style="font-size:17px;font-weight:700;color:#1a2b4a;margin:0">📄 ${esc(inv.invoiceNo||'請求書')}</h2>
     <span class="inv-badge" style="background:${def.bg};color:${def.color};border-color:${def.border}">${def.icon} ${def.label}</span>
   </div>
-  <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;max-width:900px">
+  <div class="inv-form-grid" style="display:grid;grid-template-columns:2fr 1fr;gap:16px;max-width:900px">
     <div>
       <div style="background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;padding:20px;margin-bottom:14px">
         <table style="width:100%;font-size:13px;border-collapse:collapse">
@@ -5925,7 +5925,7 @@ function openInvVendorModal(id, callback){
     return names.map(n=>{ const d=_modalAllDepts.find(x=>x.name===n); return d?d.id:null; }).filter(Boolean);
   })();
   const curTradingNames=curTradingIds.map(id=>{ const d=_modalAllDepts.find(x=>x.id===id); return d?d.name:id; });
-  const html=`<div style="display:flex;flex-direction:column;gap:14px;min-width:360px;max-width:460px">
+  const html=`<div style="display:flex;flex-direction:column;gap:14px;min-width:min(360px,78vw);max-width:460px">
     <div class="inv-field"><label>取引部門（複数選択可）</label>
       <div style="margin-top:4px;border:1.5px solid #d1d5db;border-radius:6px;max-height:180px;overflow-y:auto;background:#fff">
         ${_modalAllDepts.map(d=>`<label style="display:flex;align-items:center;padding:7px 12px;font-size:13px;color:#1a2b4a;cursor:pointer;border-bottom:1px solid #f1f5f9;user-select:none"><input type="checkbox" class="ivm-td-cb" value="${esc(d.id)}"${curTradingIds.includes(d.id)?' checked':''} style="width:auto;flex-shrink:0;margin-right:8px;cursor:pointer;padding:0;border:none;box-shadow:none"> ${esc(d.name)}</label>`).join('')}
@@ -6197,7 +6197,7 @@ function renderInvVendorChoice(){
     <button onclick="_invView='list';renderInvApp()" style="background:#2563eb;border:none;color:#fff;border-radius:8px;padding:10px 22px;cursor:pointer;font-size:15px;font-weight:700;box-shadow:0 2px 6px rgba(37,99,235,.3)">← 一覧へ戻る</button>
     <h2 style="font-size:17px;font-weight:700;color:#1a2b4a;margin:0">📄 新規請求書 — 宛先を選択してください</h2>
   </div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;max-width:600px">
+  <div class="inv-form-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:20px;max-width:600px">
     <div onclick="_invView='form';renderInvApp()" style="background:#fff;border:2px solid #3b82f6;border-radius:14px;padding:32px 24px;cursor:pointer;text-align:center;transition:.15s"
          onmouseenter="this.style.background='#eff6ff'" onmouseleave="this.style.background='#fff'">
       <div style="font-size:48px;margin-bottom:14px">📋</div>
