@@ -4917,7 +4917,7 @@ function invPrintExec(){ window.print(); }
 function invPrintBack(){ _invView='detail'; renderInvApp(); }
 function invCanManage(){ const r=getS()?.role; return r==='soumu'||r==='system'||r==='admin'; }
 function invCanCreate(){ const r=getS()?.role; return ['manager','admin','soumu','system','user'].includes(r); }
-function invCanEditAny(){ const r=getS()?.role; return r==='system'||r==='soumu'; }
+function invCanEditAny(){ const r=getS()?.role; return r==='system'||r==='soumu'||r==='admin'; }
 function invNextNo(){
   const invs=load('invoices',[]); const yr=new Date().getFullYear();
   const max=invs.filter(i=>i.invoiceNo&&i.invoiceNo.startsWith('INV-'+yr+'-')).reduce((m,i)=>Math.max(m,parseInt(i.invoiceNo.split('-')[2])||0),0);
@@ -9605,9 +9605,12 @@ function startApp(){
   }
   // 経理・事務メニューはログイン済み全ユーザーに表示
   document.getElementById('acctMenu').style.display='block';
-  // 請求書フォーム・人事勤怠労務（届出書）は system・soumu のみ表示（届出書はテスト中）
-  if(s.role==='system'||s.role==='soumu'){
+  // 請求書フォームは system・soumu・admin（管理者）に表示
+  if(s.role==='system'||s.role==='soumu'||s.role==='admin'){
     document.getElementById('m-inv').style.display='flex';
+  }
+  // 人事勤怠労務（届出書）は system・soumu のみ表示（届出書はテスト中）
+  if(s.role==='system'||s.role==='soumu'){
     document.getElementById('hrMenu').style.display='block';
   }
   // システム設定・開発中のアプリは system のみ表示
