@@ -4100,8 +4100,6 @@ function renderEmpDocs(){
         <td style="padding:10px 10px;text-align:center;white-space:nowrap">
           <button onclick="empBundleDL('${pe}')" style="background:${dlColor};color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer">📥 ${fmt}</button></td>
         <td style="padding:10px 10px;text-align:center;white-space:nowrap">
-          <button onclick="empBundlePrint('${pe}','${kind}')" style="background:#0ea5e9;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer">🖨 ${fmt}印刷</button></td>
-        <td style="padding:10px 10px;text-align:center;white-space:nowrap">
           <button onclick="empDocHistory('${pe}','${ne}')" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;border-radius:6px;padding:6px 10px;font-size:12px;cursor:pointer">📜 改訂履歴${histN?`(${histN})`:''}</button></td>
         ${canEdit?`<td style="padding:10px 10px;text-align:center;white-space:nowrap">
           <button onclick="empEditDocMaster('${pe}','${ne}')" style="background:#fff7ed;border:1px solid #fdba74;color:#c2410c;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer">✏️ 書式編集</button></td>`:''}
@@ -4109,12 +4107,11 @@ function renderEmpDocs(){
     }).join('');
     return `<div style="margin-bottom:8px;margin-top:6px"><span style="font-size:14px;font-weight:700;color:#1a2b4a">${title}</span>${desc?`<span style="font-size:11px;color:#6b7280;margin-left:8px">${desc}</span>`:''}</div>
       <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;overflow-x:auto;margin-bottom:16px">
-        <table style="width:100%;border-collapse:collapse;table-layout:fixed;min-width:${canEdit?'820':'680'}px">
+        <table style="width:100%;border-collapse:collapse;table-layout:fixed;min-width:${canEdit?'680':'540'}px">
           <thead><tr style="background:${headBg};color:#fff">
             <th style="padding:10px 12px;text-align:center;font-size:12px;width:40px">No.</th>
             <th style="padding:10px 14px;text-align:left;font-size:12px">書類名</th>
             <th style="padding:10px 10px;text-align:center;font-size:12px;width:140px">ダウンロード</th>
-            <th style="padding:10px 10px;text-align:center;font-size:12px;width:140px">印刷</th>
             <th style="padding:10px 10px;text-align:center;font-size:12px;width:120px">改訂履歴</th>
             ${canEdit?'<th style="padding:10px 10px;text-align:center;font-size:12px;width:120px">書式編集</th>':''}
           </tr></thead>
@@ -4609,9 +4606,6 @@ function renderTodokeApp(){
         ${hasExcel?`<button onclick="tkDownload('${f.id}','excel')" style="background:${isWord?'#2563eb':'#16a34a'};color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer">📥 ${fmt}</button>`:`<span style="font-size:11px;color:#cbd5e1">未登録</span>`}
       </td>
       <td style="padding:10px 10px;text-align:center;white-space:nowrap">
-        ${hasExcel?`<button onclick="tkPrint('${f.id}')" style="background:#0ea5e9;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer">🖨 ${fmt}印刷</button>`:`<span style="font-size:11px;color:#cbd5e1">未登録</span>`}
-      </td>
-      <td style="padding:10px 10px;text-align:center;white-space:nowrap">
         <button onclick="tkHistory('${f.id}')" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;border-radius:6px;padding:6px 10px;font-size:12px;cursor:pointer">📜 改訂履歴${histCount?`(${histCount})`:''}</button>
       </td>
       ${canManage?`<td style="padding:10px 10px;text-align:center;white-space:nowrap">
@@ -4619,7 +4613,7 @@ function renderTodokeApp(){
       </td>`:''}
     </tr>`;
   }).join('');
-  const colCount=canManage?6:5;
+  const colCount=canManage?5:4;
   el.innerHTML=`
     <div style="background:#f0fdfa;border-top:5px solid #0d9488;border:1px solid #99f6e4;border-top-width:5px;border-radius:14px;padding:18px">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
@@ -4640,7 +4634,6 @@ function renderTodokeApp(){
           <th style="padding:10px 12px;text-align:center;font-size:12px;width:36px;white-space:nowrap">No.</th>
           <th style="padding:10px 14px;text-align:left;font-size:12px;white-space:nowrap">届出書名</th>
           <th style="padding:10px 10px;text-align:center;font-size:12px;white-space:nowrap">ダウンロード</th>
-          <th style="padding:10px 10px;text-align:center;font-size:12px;white-space:nowrap">印刷</th>
           <th style="padding:10px 10px;text-align:center;font-size:12px;white-space:nowrap">改訂履歴</th>
           ${canManage?'<th style="padding:10px 10px;text-align:center;font-size:12px;white-space:nowrap">書式編集</th>':''}
         </tr></thead>
