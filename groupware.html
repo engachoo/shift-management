@@ -3726,14 +3726,14 @@ const EMP_DOCS={
 // excel=労働条件通知書（印刷範囲設定済み）／kitei=住宅入居補助規程（別扱い・規程文書）
 const EMP_BUNDLES={
   dainichi:[
-    {cat:'pa',   label:'パート・アルバイト', word:'forms/nyusha/dainichi_pa/00_入社書類一括.docx',    excel:'forms/nyusha/dainichi_pa/10_労働条件通知書.xlsx'},
-    {cat:'shain',label:'一般社員',           word:'forms/nyusha/dainichi_shain/00_入社書類一括.docx', kitei:'forms/nyusha/dainichi_shain/13_住宅入居補助規程.doc'},
-    {cat:'kanbu',label:'役職者（幹部）',      word:'forms/nyusha/dainichi_kanbu/00_入社書類一括.docx', kitei:'forms/nyusha/dainichi_kanbu/11_住宅入居補助規程.doc'},
+    {cat:'pa',   label:'パートアルバイト',   word:'forms/nyusha/dainichi_pa/00_入社書類一括.docx',    excel:'forms/nyusha/dainichi_pa/10_労働条件通知書.xlsx'},
+    {cat:'shain',label:'正社員',             word:'forms/nyusha/dainichi_shain/00_入社書類一括.docx', kitei:'forms/nyusha/dainichi_shain/13_住宅入居補助規程.doc'},
+    {cat:'kanbu',label:'正社員（店舗鍵保持）', word:'forms/nyusha/dainichi_kanbu/00_入社書類一括.docx', kitei:'forms/nyusha/dainichi_kanbu/11_住宅入居補助規程.doc'},
   ],
   amuse:[
-    {cat:'pa',   label:'パート（羽島）',     word:'forms/nyusha/amuse_part_hashima/00_入社書類一括.docx', excel:'forms/nyusha/amuse_part_hashima/06_労働条件通知書.xlsx'},
-    {cat:'shain',label:'一般社員',           word:'forms/nyusha/amuse_shain/00_入社書類一括.docx',        kitei:'forms/nyusha/amuse_shain/14_住宅入居補助規程.doc'},
-    {cat:'kanbu',label:'役職者（幹部）',      word:'forms/nyusha/amuse_kanbu/00_入社書類一括.docx',        kitei:'forms/nyusha/amuse_kanbu/11_住宅入居補助規程.doc'},
+    {cat:'pa',   label:'パートアルバイト',   word:'forms/nyusha/amuse_part_hashima/00_入社書類一括.docx', excel:'forms/nyusha/amuse_part_hashima/06_労働条件通知書.xlsx'},
+    {cat:'shain',label:'正社員',             word:'forms/nyusha/amuse_shain/00_入社書類一括.docx',        kitei:'forms/nyusha/amuse_shain/14_住宅入居補助規程.doc'},
+    {cat:'kanbu',label:'正社員（店舗鍵保持）', word:'forms/nyusha/amuse_kanbu/00_入社書類一括.docx',        kitei:'forms/nyusha/amuse_kanbu/11_住宅入居補助規程.doc'},
   ],
   welpia:[],
 };
@@ -3750,6 +3750,14 @@ function empCanEditRecord(rec){ const r=empRole();
   if(r==='system'||r==='soumu'||r==='admin') return true;
   return (rec.company||'')===empUserCompany(); }
 function empCoName(id){ return (EMP_COMPANIES.find(c=>c.id===id)||{}).name||id||'-'; }
+// 入社書類の区分ラベル（大日・AMUSEは パートアルバイト／正社員／正社員（店舗鍵保持））
+function _empCatLabel(cat, co){
+  co=co||_empCo;
+  if(co==='dainichi'||co==='amuse'){
+    return {pa:'パートアルバイト', shain:'正社員', kanbu:'正社員（店舗鍵保持）'}[cat]||cat;
+  }
+  return {pa:'パート・アルバイト', shain:'一般社員', kanbu:'役職者（幹部）'}[cat]||cat;
+}
 
 let _empView='docs', _empEditId=null, _empCo=null, _empCat='pa';
 // ウェルピアの旧ラベル（職員／利用者）を羽島職員／羽島利用者へ一度だけ移行
@@ -3834,8 +3842,8 @@ function _empBranchBar(){
   // 区分(pa/shain/幹部)タブは入社書類のみ。名簿は識別ボタンで絞り込むため非表示。
   let cats='';
   if(_empView==='docs'){
-    cats=catBtn('pa','パート・アルバイト');
-    if(empCanSeeShain()){ cats+=catBtn('shain','一般社員')+catBtn('kanbu','役職者（幹部）'); }
+    cats=catBtn('pa',_empCatLabel('pa'));
+    if(empCanSeeShain()){ cats+=catBtn('shain',_empCatLabel('shain'))+catBtn('kanbu',_empCatLabel('kanbu')); }
   }
   return `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:${cats?'8px':'16px'}">${coTabs}</div>
           ${cats?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">${cats}</div>`:''}`;
@@ -4016,7 +4024,7 @@ function renderEmpDocs(){
   const body=document.getElementById('empBody'); if(!body) return;
   const set=((EMP_DOCS[_empCo]||{})[_empCat])||{};
   const others=set.others||[], dl=set.dl||[];
-  const catLabel=_empCat==='pa'?'パート・アルバイト':_empCat==='kanbu'?'役職者（幹部）':'一般社員';
+  const catLabel=_empCatLabel(_empCat);
   const canEdit=empCanEditDocs();
   const bundle=_empBundle();
 
