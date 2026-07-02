@@ -849,7 +849,10 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
     <div id="evnotifView" style="display:none;padding:12px">
       <div class="page-hdr" style="position:static;margin-bottom:12px">
         <h2>🔔 更新・変更の通知</h2>
-        <button class="btn-secondary" onclick="dismissAllEvNotifs()" style="font-size:12px;padding:4px 12px">すべて既読にする</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn-secondary" onclick="dismissAllEvNotifs()" style="font-size:12px;padding:4px 12px">すべて既読にする</button>
+          <button onclick="deleteAllEvNotifs()" style="font-size:12px;padding:4px 12px;background:#fff1f2;border:1px solid #fecdd3;color:#be123c;border-radius:8px;cursor:pointer;white-space:nowrap">🗑 すべて削除</button>
+        </div>
       </div>
       <div id="evnotifList"></div>
     </div>
@@ -7631,6 +7634,24 @@ function dismissAllEvNotifs(){
   save('evNotifs',notifs);
   renderEvNotif();
   updateBadges();
+}
+// すべて削除（自分宛の通知を自分の一覧から削除。他の人の通知には影響しません）
+function deleteAllEvNotifs(){
+  const me=myId();
+  const notifs=load('evNotifs',[]);
+  const mineCount=notifs.filter(n=>n.targetUserIds?.includes(me)&&!n.deletedBy?.includes(me)).length;
+  if(!mineCount){ showToast('削除する通知はありません'); return; }
+  if(!confirm(`通知をすべて削除しますか？（${mineCount}件）`)) return;
+  notifs.forEach(n=>{
+    if(n.targetUserIds?.includes(me)){
+      if(!n.deletedBy) n.deletedBy=[];
+      if(!n.deletedBy.includes(me)) n.deletedBy.push(me);
+    }
+  });
+  save('evNotifs',notifs);
+  renderEvNotif();
+  updateBadges();
+  showToast('通知をすべて削除しました 🗑');
 }
 
 function editFromDetail(){
