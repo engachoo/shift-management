@@ -3362,7 +3362,7 @@ function updateBadges(){
     blBadge.style.display=unread?'':'none';
   }
   // 予定変更のお知らせバッジ
-  const evNotifCount=load('evNotifs',[]).filter(n=>n.targetUserIds?.includes(me)&&!n.readBy?.includes(me)).length;
+  const evNotifCount=load('evNotifs',[]).filter(n=>n.targetUserIds?.includes(me)&&!n.readBy?.includes(me)&&!n.deletedBy?.includes(me)).length;
   const enBadge=document.getElementById('badge-en');
   if(enBadge){ enBadge.textContent=evNotifCount||''; enBadge.style.display=evNotifCount?'':'none'; }
   // ホームバッジに予定通知を加算
