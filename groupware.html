@@ -1465,38 +1465,6 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
   </div>
 </div>
 
-<!-- パスワード変更モーダル -->
-<div class="modal-bg" id="pwModal">
-  <div class="modal sm">
-    <div class="modal-hdr"><h3>パスワード変更</h3><button class="modal-close" onclick="closeModal('pwModal')">×</button></div>
-    <div class="modal-body">
-      <div id="pw-target-name" style="font-weight:700;color:#1a2b4a;margin-bottom:14px;font-size:14px"></div>
-      <div class="f-row">
-        <label class="f-label">新しいパスワード <span style="color:#e53e3e">*</span></label>
-        <div class="pass-wrap">
-          <input class="f-input" id="pw-new" type="password" placeholder="新しいパスワードを入力" style="padding-right:40px" oninput="updatePassStrength('pw-new','pw-new-note')">
-          <button class="pass-eye" type="button" onclick="toggleEye('pw-new',this)" tabindex="-1">🐵</button>
-        </div>
-        <div style="display:flex;gap:6px;margin-top:6px">
-          <button type="button" onclick="applyGenPass('pw-new','pw-new-note')"
-            style="flex:1;background:linear-gradient(135deg,#1a3a6b,#1d4ed8);color:#fff;border:none;border-radius:6px;padding:7px 10px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px">
-            🎲 強力なPWを生成
-          </button>
-          <button type="button" onclick="copyPassField('pw-new')"
-            style="background:#f0f4fa;color:#1a3a6b;border:1px solid #c3d3e8;border-radius:6px;padding:7px 10px;font-size:12px;font-weight:600;cursor:pointer">
-            📋 コピー
-          </button>
-        </div>
-        <div class="pass-note" id="pw-new-note"></div>
-      </div>
-    </div>
-    <div class="modal-foot">
-      <button class="btn-secondary" onclick="closeModal('pwModal')">キャンセル</button>
-      <button class="btn-primary" onclick="savePw()">変更する</button>
-    </div>
-  </div>
-</div>
-
 <!-- 部署管理 -->
 <div class="modal-bg" id="deptModal">
   <div class="modal sm">
@@ -3997,12 +3965,6 @@ async function empBundleDL(path){
   }catch(e){ alert('ダウンロードに失敗しました: '+e.message); }
 }
 // 統合ファイルの「印刷」＝DLしてアプリ（Word/Excel）で開いて印刷する案内付き
-async function empBundlePrint(path,kind){
-  await empBundleDL(path);
-  showToast(kind==='excel'
-    ? '🖨 Excelで開き、印刷時に「ブック全体」を選んで印刷してください'
-    : '🖨 Wordで開き、Ctrl+P で一括印刷してください（ズレません）',6000);
-}
 // 改訂履歴の表示
 function empDocHistory(path,name){
   const m=_empDocMaster(path); const hist=(m&&m.history)||[];
@@ -4059,7 +4021,6 @@ function renderEmpDocs(){
       <div style="font-size:11px;color:#6b7280;margin-bottom:10px">この書類のみ各担当者がExcelを編集して交付します。デスクトップのExcelで開いてください。</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
         <button onclick="empBundleDL('${xp}')" style="background:#16a34a;color:#fff;border:none;border-radius:8px;padding:9px 14px;min-width:200px;font-size:13px;font-weight:700;cursor:pointer">📥 Excelをダウンロード</button>
-        <button onclick="empBundlePrint('${xp}','excel')" style="background:#0ea5e9;color:#fff;border:none;border-radius:8px;padding:9px 14px;min-width:140px;font-size:13px;font-weight:700;cursor:pointer">🖨 Excelを印刷</button>
         <button onclick="empDocHistory('${xp}','労働条件通知書（Excel）')" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;border-radius:8px;padding:9px 12px;min-width:120px;font-size:12px;cursor:pointer">📜 改訂履歴${xHist?`(${xHist})`:''}</button>
         ${canEdit?`<button onclick="empEditDocMaster('${xp}','労働条件通知書（Excel）')" style="background:#fff7ed;border:1px solid #fdba74;color:#c2410c;border-radius:8px;padding:9px 12px;min-width:110px;font-size:12px;font-weight:700;cursor:pointer">✏️ 書式編集</button>`:''}
       </div>
@@ -4075,7 +4036,6 @@ function renderEmpDocs(){
       <div style="font-size:11px;color:#6b7280;margin-bottom:10px">全様式を1ファイルに統合。Wordで開いて <strong>Ctrl+P</strong> で全部まとめて印刷できます（PDF変換しないのでズレません）。</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
         <button onclick="empBundleDL('${wp}')" style="background:#2563eb;color:#fff;border:none;border-radius:8px;padding:9px 14px;min-width:200px;font-size:13px;font-weight:700;cursor:pointer">📥 Wordをダウンロード</button>
-        <button onclick="empBundlePrint('${wp}','word')" style="background:#0ea5e9;color:#fff;border:none;border-radius:8px;padding:9px 14px;min-width:140px;font-size:13px;font-weight:700;cursor:pointer">🖨 Wordを印刷</button>
         <button onclick="empDocHistory('${wp}','入社書類一括（Word）')" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;border-radius:8px;padding:9px 12px;min-width:120px;font-size:12px;cursor:pointer">📜 改訂履歴${wHist?`(${wHist})`:''}</button>
         ${canEdit?`<button onclick="empEditDocMaster('${wp}','入社書類一括（Word）')" style="background:#fff7ed;border:1px solid #fdba74;color:#c2410c;border-radius:8px;padding:9px 12px;min-width:110px;font-size:12px;font-weight:700;cursor:pointer">✏️ 書式編集</button>`:''}
       </div>
@@ -4696,17 +4656,6 @@ async function tkDownload(formId, kind){
 }
 
 // 印刷（手書き用）。同梱フォームは書式を保った印刷用HTMLを開く
-async function tkPrint(formId){
-  // 印刷＝ファイル（Excel/Word）をそのままダウンロードし、デスクトップのアプリで開いて印刷する。
-  // ブラウザ用HTML変換（ウェブ版）やPDF化はしない＝元の書式どおりに印刷できる。
-  const f=load('todoke_forms',[]).find(x=>x.id===formId); if(!f) return;
-  const isWord=/\.docx?$/i.test((f.excel&&f.excel.name)||'');
-  await tkDownload(formId,'excel');
-  showToast(isWord
-    ? '🖨 ダウンロードしたWordを開き、Ctrl+P で印刷してください'
-    : '🖨 ダウンロードしたExcelを開き、印刷時に「ブック全体」を選んで印刷してください',6000);
-}
-
 // アップロード画面を開く
 function tkOpenUpload(formId){
   if(!tkCanManage()){ alert('フォーマット変更はシステム・総務経理のみ可能です'); return; }
