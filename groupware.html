@@ -885,7 +885,8 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
             <button id="bulkUpdBtn" class="btn-secondary" onclick="saveAllInlineRows()" style="font-weight:700;background:#fef9c3;border:1px solid #ca8a04;color:#78350f;padding:5px 14px;border-radius:5px;cursor:pointer">⬆ 一括更新</button>
             <button class="btn-new" onclick="openUserModal(null)">＋ 新規ユーザー</button>
           </div>
-          <table class="data-table" id="userTable"><thead><tr><th>名前</th><th>ログインID</th><th>パスワード</th><th>部署</th><th>権限</th><th>状態</th><th>操作</th></tr></thead><tbody id="userTbody"></tbody></table>
+          <div style="font-size:11px;color:#6b7280;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:8px 10px;margin-bottom:8px;line-height:1.7">🔐 パスワードは暗号化して管理されるため<strong>表示されません</strong>。新規発行・再発行するときだけ「パスワード発行」欄に入力（🎲で生成）して更新してください。<strong>すでにログインできる人のパスワードはここでは変更できません</strong>（再発行手順が必要）。</div>
+          <table class="data-table" id="userTable"><thead><tr><th>名前</th><th>ログインID</th><th>パスワード発行</th><th>部署</th><th>権限</th><th>状態</th><th>操作</th></tr></thead><tbody id="userTbody"></tbody></table>
           <div id="retiredUsersBox"></div>
         </div>
         <div id="adminDepts" style="display:none">
@@ -2207,28 +2208,6 @@ function applyGenPass(inputId, noteId){
 }
 
 // インライン行：🔒ロック切り替え
-function toggleInlinePwLock(uid){
-  const inp  = document.getElementById('pw-'+uid);
-  const btn  = document.getElementById('pwlock-'+uid);
-  if(!inp || !btn) return;
-  const isLocked = inp.readOnly;
-  if(isLocked){
-    // 解除確認
-    if(!confirm('パスワードの編集ロックを解除しますか？\n解除後は「更新」ボタンで保存されます。')) return;
-    inp.readOnly = false;
-    inp.style.cursor = '';
-    btn.textContent = '🔓';
-    btn.classList.add('unlocked');
-    btn.title = 'ロック中（クリックで再ロック）';
-    inp.focus();
-  } else {
-    inp.readOnly = true;
-    btn.textContent = '🔒';
-    btn.classList.remove('unlocked');
-    btn.title = 'クリックして編集解除';
-  }
-}
-
 // インライン行：📋コピー
 function copyInlinePw(uid){
   const inp = document.getElementById('pw-'+uid);
@@ -2240,14 +2219,10 @@ function copyInlinePw(uid){
   });
 }
 
-// インライン行（既存ユーザーテーブル）用：生成→ロック解除→行をdirtyマーク
+// インライン行（既存ユーザーテーブル）用：強力PWを生成して発行欄へ
 function applyGenPassInline(uid){
   const inp  = document.getElementById('pw-'+uid);
-  const btn  = document.getElementById('pwlock-'+uid);
   if(!inp) return;
-  // ロックを自動解除
-  inp.readOnly = false;
-  if(btn){ btn.textContent='🔓'; btn.classList.add('unlocked'); btn.title='ロック中（クリックで再ロック）'; }
   const pw = genStrongPassword(14);
   inp.value = pw;
   inp.type = 'text';
@@ -2487,6 +2462,15 @@ function initData(){
   }
 
   if((usersChanged || !users.length) && _isSafeToSave('users')) save('users', users);
+
+  // ---- DB内の平文パスワードを完全撤去（Auth一本化に伴う・一回限り） ----
+  // ログインはFirebase Authのみで判定するため、DBのパスワード欄は不要。全員分を空にする。
+  if(load('migrated_pw_purge','')!=='1' && _isSafeToSave('users')){
+    const uu=load('users',[]); let purged=false;
+    uu.forEach(u=>{ if(u.password){ u.password=''; purged=true; } });
+    if(purged) save('users',uu);
+    save('migrated_pw_purge','1');
+  }
 
   const events = [
     {id:'e1', memberIds:['iwashimizu'],date:'2026-05-08',startTime:'09:00',endTime:'10:30',type:'visitor',title:'位田会計',memo:''},
@@ -9200,11 +9184,9 @@ function renderUserTable(){
       <td><input class="inline-input" id="name-${u.id}" value="${esc(u.name)}" oninput="markRowDirty('${u.id}')" style="min-width:80px"></td>
       <td><input class="inline-input" id="lid-${u.id}" value="${esc(u.loginId)}" oninput="markRowDirty('${u.id}')"></td>
       <td><div class="inline-pw-wrap">
-        <input class="inline-input" id="pw-${u.id}" type="password" value="${esc(u.password)}" oninput="markRowDirty('${u.id}')" readonly>
-        <button class="inline-lock" id="pwlock-${u.id}" type="button" onclick="toggleInlinePwLock('${u.id}')" title="クリックして編集解除">🔒</button>
-        <button class="inline-eye" type="button" onclick="toggleInlinePw('${u.id}')" title="表示/非表示">🙈</button>
-        <button class="inline-copy" type="button" onclick="copyInlinePw('${u.id}')" title="パスワードをコピー">📋</button>
+        <input class="inline-input" id="pw-${u.id}" type="text" value="" placeholder="発行時のみ入力" oninput="markRowDirty('${u.id}')" autocomplete="new-password">
         <button class="inline-eye" type="button" onclick="applyGenPassInline('${u.id}')" title="強力なパスワードを生成">🎲</button>
+        <button class="inline-copy" type="button" onclick="copyInlinePw('${u.id}')" title="パスワードをコピー">📋</button>
       </div></td>
       <td>${deptSel}</td>
       <td>${roleSel}</td>
@@ -9222,7 +9204,7 @@ function renderUserTable(){
     else{
       box.innerHTML=`<div style="margin-top:18px">
         <button onclick="toggleRetiredUsers()" style="background:#f1f5f9;border:1px solid #cbd5e1;color:#475569;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer">🗂 退職者一覧（${retiredUsers.length}名）${_showRetiredUsers?' ▲ 閉じる':' ▼ 展開'}</button>
-        ${_showRetiredUsers?`<div style="margin-top:10px;opacity:.85"><table class="data-table"><thead><tr><th>名前</th><th>ログインID</th><th>パスワード</th><th>部署</th><th>権限</th><th>状態</th><th>操作</th></tr></thead><tbody>${retiredUsers.map(_userRowHTML).join('')}</tbody></table></div>`:''}
+        ${_showRetiredUsers?`<div style="margin-top:10px;opacity:.85"><table class="data-table"><thead><tr><th>名前</th><th>ログインID</th><th>パスワード発行</th><th>部署</th><th>権限</th><th>状態</th><th>操作</th></tr></thead><tbody>${retiredUsers.map(_userRowHTML).join('')}</tbody></table></div>`:''}
       </div>`;
     }
   }
@@ -9244,10 +9226,10 @@ function _readInlineRow(uid, users){
   const newActive = activeEl?.value!=='0';
   const u = users.find(x=>x.id===uid);
   if(!u) return null;
-  // バリデーション
+  // バリデーション（パスワードは発行時のみ入力・空欄=変更なし）
   if(!newName) return {err: (u.name||uid)+': 名前が空です'};
   if(!newLid)  return {err: newName+': ログインIDが空です'};
-  if(!newPw)   return {err: newName+': パスワードが空です'};
+  if(newPw && newPw.length<6) return {err: newName+': パスワードは6文字以上にしてください'};
   if(newLid!==u.loginId && users.some(x=>x.id!==uid&&x.loginId===newLid))
     return {err: newName+': ログインID「'+newLid+'」は重複しています'};
   return {u, newName, newLid, newPw, newDept, newRole, newActive};
@@ -9260,24 +9242,28 @@ function saveAllInlineRows(){
     const r=_readInlineRow(u.id, users);
     if(!r) return;
     if(r.err){ errors.push(r.err); return; }
-    if(u.name!==r.newName||u.loginId!==r.newLid||u.password!==r.newPw||u.deptId!==r.newDept||u.role!==r.newRole||u.active!==r.newActive){
-      u.name=r.newName; u.loginId=r.newLid; u.password=r.newPw;
+    if(u.name!==r.newName||u.loginId!==r.newLid||r.newPw||u.deptId!==r.newDept||u.role!==r.newRole||u.active!==r.newActive){
+      u.name=r.newName; u.loginId=r.newLid;
+      u.password=''; // パスワードはDBに保存しない（Auth側でのみ管理）
       u.deptId=r.newDept; u.role=r.newRole; u.active=r.newActive;
       changed++;
-      if(r.newActive && r.newPw) toProvision.push({lid:r.newLid, pw:r.newPw, name:r.newName});
+      if(r.newActive && r.newPw) toProvision.push({lid:r.newLid, pw:r.newPw, name:r.newName, uid:u.id});
     }
   });
   if(errors.length){ alert('以下のエラーがあります：\n\n'+errors.join('\n')); return; }
   save('users', users);
-  // 変更があった有効ユーザーをAuthへ自動登録（未登録のみ。登録済みは無視）
+  // パスワード入力があった有効ユーザーをAuthへ登録（未登録のみ。登録済みの人は変更されない）
   if(toProvision.length){
     (async()=>{
-      let added=0;
+      let added=0; const already=[];
       for(const p of toProvision){
         const res=await _provisionAuth(p.lid, p.pw);
         if(res.ok && !res.existed) added++;
+        else if(res.ok && res.existed) already.push(p.name);
+        const inp=document.getElementById('pw-'+p.uid); if(inp) inp.value='';
       }
       if(added) showToast(`${added}名のログインが有効になりました ✓`);
+      if(already.length) alert('⚠ 次の方はすでにログイン登録済みのため、パスワードは変更されていません：\n\n'+already.join('、')+'\n\n変更するには再発行手順（Firebase側でアカウント削除→ここで再発行）が必要です。');
     })();
   }
   const btn=document.getElementById('bulkUpdBtn');
@@ -9298,21 +9284,21 @@ function saveInlineRow(uid){
   const r=_readInlineRow(uid, users);
   if(!r) return;
   if(r.err){ alert(r.err); return; }
-  r.u.name=r.newName; r.u.loginId=r.newLid; r.u.password=r.newPw;
+  r.u.name=r.newName; r.u.loginId=r.newLid;
+  r.u.password=''; // パスワードはDBに保存しない（Auth側でのみ管理）
   r.u.deptId=r.newDept; r.u.role=r.newRole; r.u.active=r.newActive;
   save('users', users);
-  // 有効ユーザーかつパスワードありなら、Authアカウントを自動作成（未登録なら登録／登録済みは無視）
+  // 有効ユーザーかつパスワード入力ありなら、Authアカウントを作成（未登録のみ。登録済みの人は変更されない）
   if(r.newActive && r.newPw){
     _provisionAuth(r.newLid, r.newPw).then(res=>{
       if(res.ok && !res.existed) showToast(`「${r.newName}」のログインが有効になりました ✓`);
+      else if(res.ok && res.existed) alert(`⚠「${r.newName}」さんはすでにログイン登録済みのため、パスワードは変更されていません。\n変更するには再発行手順（Firebase側でアカウント削除→ここで再発行）が必要です。`);
       else if(!res.ok && res.reason==='6文字未満') showToast('⚠ パスワードが6文字未満のため、この人はまだログインできません');
     });
   }
-  // 保存後にパスワードを再ロック
+  // 保存後に発行欄をクリア
   const pwInp = document.getElementById('pw-'+uid);
-  const lockBtn = document.getElementById('pwlock-'+uid);
-  if(pwInp){ pwInp.readOnly=true; pwInp.type='password'; }
-  if(lockBtn){ lockBtn.textContent='🔒'; lockBtn.classList.remove('unlocked'); lockBtn.title='クリックして編集解除'; }
+  if(pwInp) pwInp.value='';
   const updBtn=document.getElementById('upd-'+uid);
   if(updBtn){
     updBtn.textContent='✅ 保存済';
@@ -9321,19 +9307,6 @@ function saveInlineRow(uid){
   }
 }
 
-function toggleInlinePw(uid){
-  const inp = document.getElementById('pw-'+uid);
-  if(!inp) return;
-  const show = inp.type==='password';
-  inp.type = show ? 'text' : 'password';
-  // 🙈ボタンのみ更新（data属性で特定）
-  const wrap = inp.parentElement;
-  if(wrap){
-    const eyeBtns = wrap.querySelectorAll('.inline-eye');
-    // 最初の .inline-eye が🙈ボタン
-    if(eyeBtns[0]) eyeBtns[0].textContent = show ? '🐵' : '🙈';
-  }
-}
 function toggleUserActive(id){
   const users=load('users',[]);
   const u=users.find(x=>x.id===id);
@@ -9362,7 +9335,8 @@ function openUserModal(id){
   document.getElementById('u-name').value=u?u.name:'';
   document.getElementById('u-loginid').value=u?u.loginId:'';
   const passEl=document.getElementById('u-pass');
-  passEl.value=u?u.password:'';
+  passEl.value=''; // 保存済みパスワードは表示しない（Auth側でのみ管理）
+  passEl.placeholder=u?'発行し直す場合のみ入力':'パスワードを入力（🎲で生成）';
   passEl.type='text';
   const eyeBtn=passEl.parentElement&&passEl.parentElement.querySelector('.pass-eye');
   if(eyeBtn) eyeBtn.textContent='🙈';
@@ -9386,18 +9360,19 @@ function saveUser(){
     const u=users.find(x=>x.id===editUserId);
     if(!u){alert('ユーザーが見つかりません');return;}
     u.name=name; u.loginId=loginId;
-    if(passRaw) u.password=passRaw;
+    u.password=''; // パスワードはDBに保存しない（Auth側でのみ管理）
     u.role=document.getElementById('u-role').value;
     u.deptId=document.getElementById('u-dept').value;
     u.active=document.getElementById('u-active').value==='1';
   } else {
-    users.push({id:loginId.replace(/[^a-z0-9_]/gi,'_'),loginId,password:passRaw,name,deptId:document.getElementById('u-dept').value,role:document.getElementById('u-role').value,active:document.getElementById('u-active').value==='1'});
+    users.push({id:loginId.replace(/[^a-z0-9_]/gi,'_'),loginId,password:'',name,deptId:document.getElementById('u-dept').value,role:document.getElementById('u-role').value,active:document.getElementById('u-active').value==='1'});
   }
   save('users',users);closeModal('userModal');renderUserTable();
-  // 新規追加 or パスワード変更時：Authアカウントも自動作成（Firebaseコンソール不要）
+  // 新規追加時：Authアカウントを自動作成（登録済みの人のパスワードはここでは変更されない）
   if(passRaw){
     _provisionAuth(loginId, passRaw).then(r=>{
       if(r.ok && !r.existed) showToast(`「${name}」のログインが有効になりました ✓`);
+      else if(r.ok && r.existed) alert(`⚠「${name}」さんはすでにログイン登録済みのため、パスワードは変更されていません。\n変更するには再発行手順（Firebase側でアカウント削除→ここで再発行）が必要です。`);
       else if(!r.ok && r.reason==='6文字未満') showToast('⚠ パスワードが6文字未満のため、この人はまだログインできません');
     });
   }
