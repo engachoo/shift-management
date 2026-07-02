@@ -1333,6 +1333,10 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
         <label class="f-label" id="bl-target-sub-label">部署</label>
         <select class="f-select" id="bl-target-id"></select>
       </div>
+      <div class="f-row" id="bl-target-multi-row" style="display:none">
+        <label class="f-label">メンバー（複数選択可）</label>
+        <div id="bl-target-multi" style="flex:1;max-height:200px;overflow-y:auto;border:1px solid #d1d5db;border-radius:8px;padding:8px 12px;display:flex;flex-direction:column;gap:6px"></div>
+      </div>
       <div class="f-row" id="bl-target-role-row" style="display:none">
         <label class="f-label">対象権限</label>
         <select class="f-select" id="bl-target-role">
@@ -8478,7 +8482,12 @@ function blTargetLabel(b){
   if(t==='all') return '<span style="background:#e0f2fe;color:#0369a1;padding:1px 7px;border-radius:10px;font-size:11px">全体一斉</span>';
   if(t==='dept'){const d=getDept(b.targetId);return `<span style="background:#fef9c3;color:#854d0e;padding:1px 7px;border-radius:10px;font-size:11px">所属別: ${esc(d.name||b.targetId)}</span>`;}
   if(t==='hierarchy'){const d=getDept(b.targetId);const rl=b.targetRole==='manager'?'・責任者':b.targetRole==='user'?'・一般':'';return `<span style="background:#ede9fe;color:#5b21b6;padding:1px 7px;border-radius:10px;font-size:11px">階層別: ${esc(d.name||b.targetId)}配下${rl}</span>`;}
-  if(t==='individual'){const u=getUser(b.targetId);return `<span style="background:#dcfce7;color:#166534;padding:1px 7px;border-radius:10px;font-size:11px">個別: ${esc(u.name||b.targetId)}</span>`;}
+  if(t==='individual'){
+    const ids=_blIndivIds(b);
+    const names=ids.map(id=>getUser(id).name||id);
+    const label=names.length>3?names.slice(0,3).join('・')+' ほか'+(names.length-3)+'名':names.join('・');
+    return `<span style="background:#dcfce7;color:#166534;padding:1px 7px;border-radius:10px;font-size:11px">個別: ${esc(label)}</span>`;
+  }
   return '';
 }
 // 連絡事項の宛先対象ユーザー（確認人数の分母に使う）
@@ -8490,7 +8499,7 @@ function blTargetUsers(b){
     const tr=b.targetRole||'all';
     return users.filter(u=>(u.deptId===b.targetId||isDeptChild(u.deptId,b.targetId))&&(tr==='all'||u.role===tr));
   }
-  if(t==='individual') return users.filter(u=>u.id===b.targetId);
+  if(t==='individual'){const ids=_blIndivIds(b);return users.filter(u=>ids.includes(u.id));}
   return users;
 }
 function renderBl(){
@@ -8577,15 +8586,22 @@ function blTargetChange(){
   const subSel=document.getElementById('bl-target-id');
   const subLabel=document.getElementById('bl-target-sub-label');
   const roleRow=document.getElementById('bl-target-role-row');
-  if(t==='all'){sub.style.display='none';roleRow.style.display='none';return;}
-  sub.style.display='';
+  const multiRow=document.getElementById('bl-target-multi-row');
+  if(t==='all'){sub.style.display='none';roleRow.style.display='none';multiRow.style.display='none';return;}
   subSel.innerHTML='';
   // 階層別のみ権限フィルタを表示
   roleRow.style.display=(t==='hierarchy')?'':'none';
   if(t==='individual'){
-    subLabel.textContent='メンバー';
-    normalUsers().forEach(u=>{subSel.innerHTML+=`<option value="${u.id}">${esc(u.name)}</option>`;});
+    // 個別はチェックボックスで複数選択
+    sub.style.display='none';
+    multiRow.style.display='';
+    const box=document.getElementById('bl-target-multi');
+    box.innerHTML=normalUsers().map(u=>
+      `<label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" class="bl-target-chk" value="${u.id}"> ${esc(u.name)}</label>`
+    ).join('');
   } else {
+    multiRow.style.display='none';
+    sub.style.display='';
     subLabel.textContent='部署';
     load('depts',[]).forEach(d=>{subSel.innerHTML+=`<option value="${d.id}">${esc(d.name)}</option>`;});
   }
@@ -8654,7 +8670,10 @@ function openBlEdit(id){
   const target=b.target||'all';
   document.getElementById('bl-target').value=target;
   blTargetChange();
-  if(target!=='all'){
+  if(target==='individual'){
+    const ids=b.targetIds&&b.targetIds.length?b.targetIds:(b.targetId?[b.targetId]:[]);
+    document.querySelectorAll('.bl-target-chk').forEach(c=>{c.checked=ids.includes(c.value);});
+  } else if(target!=='all'){
     const sub=document.getElementById('bl-target-id');
     if(sub) sub.value=b.targetId||'';
   }
@@ -8681,19 +8700,26 @@ function saveBl(){
   const body=document.getElementById('bl-body').value.trim();
   if(!title||!body){alert('タイトルと本文を入力してください');return;}
   const target=document.getElementById('bl-target').value;
-  const targetId=target!=='all'?document.getElementById('bl-target-id').value:'';
+  let targetId='', targetIds=[];
+  if(target==='individual'){
+    targetIds=[...document.querySelectorAll('.bl-target-chk:checked')].map(c=>c.value);
+    if(!targetIds.length){alert('メンバーを1名以上選択してください');return;}
+    targetId=targetIds[0];
+  } else if(target!=='all'){
+    targetId=document.getElementById('bl-target-id').value;
+  }
   const targetRole=target==='hierarchy'?document.getElementById('bl-target-role').value:'all';
   const bls=load('bulletins',[]);
   if(_blEditId){
     // 編集モード：既存データを更新
     const idx=bls.findIndex(b=>b.id===_blEditId);
     if(idx>=0){
-      bls[idx]={...bls[idx],title,body,target,targetId,targetRole,
+      bls[idx]={...bls[idx],title,body,target,targetId,targetIds,targetRole,
         files:[..._blFiles],updatedAt:jstISO().slice(0,16).replace('T',' ')};
     }
   } else {
     // 新規投稿
-    bls.unshift({id:uid(),title,body,author:myId(),createdAt:jstISO().slice(0,16).replace('T',' '),reactions:{},target,targetId,targetRole,files:[..._blFiles]});
+    bls.unshift({id:uid(),title,body,author:myId(),createdAt:jstISO().slice(0,16).replace('T',' '),reactions:{},target,targetId,targetIds,targetRole,files:[..._blFiles]});
   }
   save('bulletins',bls);closeModal('blModal');renderBl();
 }
@@ -8710,8 +8736,12 @@ function blVisibleToMe(b){
     if(tr==='all') return true;
     return s.role===tr;
   }
-  if(t==='individual') return s.userId===b.targetId;
+  if(t==='individual') return _blIndivIds(b).includes(s.userId);
   return true;
+}
+// 個別宛先のID一覧（旧データはtargetId単体、新データはtargetIds配列）
+function _blIndivIds(b){
+  return (b.targetIds&&b.targetIds.length)?b.targetIds:(b.targetId?[b.targetId]:[]);
 }
 
 // =========================================================
