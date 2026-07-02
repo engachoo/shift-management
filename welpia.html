@@ -1474,7 +1474,7 @@ function initDefaultData(){
   }
   // 初期メンバーは岩清水（管理者）のみ。他は今後「＋新規ユーザー」で追加（Auth自動作成）
   const DEFAULT_USERS=[
-    {id:'kh_u1',name:'岩清水',loginId:'iwashimizu',password:'welpia1',role:'admin',  active:true}
+    {id:'kh_u1',name:'岩清水',loginId:'iwashimizu',role:'admin',  active:true}
   ];
   const existUsers=load('users',null);
   // loginId がないユーザーのみのデータ（旧形式）またはデータなし → デフォルトを保存
