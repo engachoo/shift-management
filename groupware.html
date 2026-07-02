@@ -2137,7 +2137,6 @@ function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 // パスワード：平文保存・平文比較（ローカル用途、最も確実）
-function chkPass(stored, input){ return stored === input; }
 
 // ===== 強力パスワード生成 =====
 function genStrongPassword(len){
@@ -2340,37 +2339,16 @@ async function doLogin(){
   const errEl = document.getElementById('loginError');
   errEl.textContent='';
   if(!lid||!lp){ errEl.textContent='IDとパスワードを入力してください'; return; }
-  // ① Firebase Auth で認証
+  // Firebase Auth で認証（旧方式のフォールバックは撤去済み・Auth一本化）
   try{
     await _auth.signInWithEmailAndPassword(_authEmail(lid), lp);
-    if(!load('users',[]).length){ await _bootLoadData(); }
-    const u=load('users',[]).find(x=>x.loginId===lid && x.active!==false);
-    if(!u){ errEl.textContent='ユーザー情報が見つかりません（管理者にご連絡ください）'; return; }
-    setS({userId:u.id, name:u.name, role:u.role, deptId:u.deptId});
-    startApp();
-    return;
   }catch(e){
-    // Auth未登録/不一致 → ② 従来方式へフォールバック（移行期間中・ルールが開いている間のみ機能）
+    errEl.textContent='IDまたはパスワードが正しくありません。ログインできない場合は管理者（総務経理）にご連絡ください。';
+    return;
   }
   if(!load('users',[]).length){ await _bootLoadData(); }
-  const u = load('users',[]).find(x=>x.loginId===lid && x.active!==false);
-  if(!u || !chkPass(u.password, lp)){ errEl.textContent='IDまたはパスワードが正しくありません'; return; }
-  setS({userId:u.id, name:u.name, role:u.role, deptId:u.deptId});
-  startApp();
-  // ③ 遅延移行：6文字以上ならこの機会にAuthアカウントを作成
-  if(lp.length>=6){
-    _auth.createUserWithEmailAndPassword(_authEmail(lid), lp)
-      .then(()=>console.log('[auth] Authへ移行:', lid))
-      .catch(err=>console.log('[auth] 移行スキップ:', lid, err.code));
-  }
-}
-function doLoginRetry(lid, lp, errEl){
-  const users = load('users',[]);
-  const u = users.find(x=>x.loginId===lid && x.active);
-  if(!u || !chkPass(u.password, lp)){
-    errEl.textContent='IDまたはパスワードが正しくありません';
-    return;
-  }
+  const u=load('users',[]).find(x=>x.loginId===lid && x.active!==false);
+  if(!u){ errEl.textContent='ユーザー情報が見つかりません（管理者にご連絡ください）'; return; }
   setS({userId:u.id, name:u.name, role:u.role, deptId:u.deptId});
   startApp();
 }
@@ -2464,21 +2442,22 @@ function initData(){
 
 
   // ---- ユーザー：不足分だけ追加 ----
+  // パスワードはFirebase Auth側で管理（コード内には持たない）。新規DBの場合は管理者が従業員管理から設定する。
   const defaultUsers = [
-    {id:'admin',       loginId:'admin',       password:'admin123', name:'システム管理者', deptId:'',    role:'system',  active:true},
-    {id:'iwashimizu',  loginId:'iwashimizu',  password:'pass123',  name:'岩清水 克尚',   deptId:'d1a', role:'admin',   active:true},
-    {id:'hayashi',     loginId:'hayashi',     password:'pass123',  name:'林 幹根',       deptId:'d1a', role:'user',    active:true},
-    {id:'onda',        loginId:'onda',        password:'pass123',  name:'恩田 賢一',     deptId:'d1a', role:'user',    active:true},
-    {id:'matsubara',   loginId:'matsubara',   password:'pass123',  name:'松原美沙子',    deptId:'d1a', role:'soumu',   active:true},
-    {id:'narita',      loginId:'narita',      password:'BL001',    name:'成田',          deptId:'d1b', role:'user',    active:true},
-    {id:'nakasima',    loginId:'nakasima',    password:'BL002',    name:'中島',          deptId:'d1b', role:'user',    active:true},
-    {id:'hanamura',    loginId:'hanamura',    password:'pass123',  name:'花村 現太',     deptId:'d2',  role:'user',    active:true},
-    {id:'noguchi',     loginId:'noguchi',     password:'pass123',  name:'野口',          deptId:'d2',  role:'user',    active:true},
-    {id:'owari',       loginId:'owari',       password:'pass123',  name:'尾張',          deptId:'d2',  role:'user',    active:true},
-    {id:'yamashita',   loginId:'yamashita',   password:'pass123',  name:'山下',          deptId:'d3',  role:'user',    active:true},
-    {id:'sasagihara',  loginId:'sasagihara',  password:'pass123',  name:'笹木原',        deptId:'d3',  role:'user',    active:true},
-    {id:'taki',        loginId:'taki',        password:'pass123',  name:'滝',            deptId:'d3',  role:'user',    active:true},
-    {id:'miura',       loginId:'miura',       password:'pass123',  name:'三浦',          deptId:'d3',  role:'user',    active:true},
+    {id:'admin',       loginId:'admin',       password:'', name:'システム管理者', deptId:'',    role:'system',  active:true},
+    {id:'iwashimizu',  loginId:'iwashimizu',  password:'', name:'岩清水 克尚',   deptId:'d1a', role:'admin',   active:true},
+    {id:'hayashi',     loginId:'hayashi',     password:'', name:'林 幹根',       deptId:'d1a', role:'user',    active:true},
+    {id:'onda',        loginId:'onda',        password:'', name:'恩田 賢一',     deptId:'d1a', role:'user',    active:true},
+    {id:'matsubara',   loginId:'matsubara',   password:'', name:'松原美沙子',    deptId:'d1a', role:'soumu',   active:true},
+    {id:'narita',      loginId:'narita',      password:'', name:'成田',          deptId:'d1b', role:'user',    active:true},
+    {id:'nakasima',    loginId:'nakasima',    password:'', name:'中島',          deptId:'d1b', role:'user',    active:true},
+    {id:'hanamura',    loginId:'hanamura',    password:'', name:'花村 現太',     deptId:'d2',  role:'user',    active:true},
+    {id:'noguchi',     loginId:'noguchi',     password:'', name:'野口',          deptId:'d2',  role:'user',    active:true},
+    {id:'owari',       loginId:'owari',       password:'', name:'尾張',          deptId:'d2',  role:'user',    active:true},
+    {id:'yamashita',   loginId:'yamashita',   password:'', name:'山下',          deptId:'d3',  role:'user',    active:true},
+    {id:'sasagihara',  loginId:'sasagihara',  password:'', name:'笹木原',        deptId:'d3',  role:'user',    active:true},
+    {id:'taki',        loginId:'taki',        password:'', name:'滝',            deptId:'d3',  role:'user',    active:true},
+    {id:'miura',       loginId:'miura',       password:'', name:'三浦',          deptId:'d3',  role:'user',    active:true},
   ];
   let users = load('users',[]);
   let usersChanged = false;
@@ -2495,19 +2474,6 @@ function initData(){
       if(u.loginId==='admin' && u.role==='admin') u.role='system';
     });
     if(_isSafeToSave('migrated_role_v2')) save('migrated_role_v2','1');
-    usersChanged=true;
-  }
-
-  // ---- パスワードリセット（BLOCK47以外を元の値に戻す・一回限り） ----
-  if(load('migrated_pw_reset','')!=='1'){
-    const pwDefaults = {
-      admin:'admin123', iwashimizu:'pass123', hayashi:'pass123',
-      onda:'pass123', matsubara:'pass123', hanamura:'pass123',
-      noguchi:'pass123', owari:'pass123', yamashita:'pass123',
-      sasagihara:'pass123', taki:'pass123', miura:'pass123',
-    };
-    users.forEach(u=>{ if(pwDefaults[u.id]) u.password=pwDefaults[u.id]; });
-    if(_isSafeToSave('migrated_pw_reset')) save('migrated_pw_reset','1');
     usersChanged=true;
   }
 
