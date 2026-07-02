@@ -408,8 +408,6 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
 .inline-pw-wrap .inline-input{min-width:70px;flex:1}
 .inline-eye{background:none;border:none;cursor:pointer;font-size:15px;color:#9ca3af;padding:0 2px;line-height:1;flex-shrink:0}
 .inline-eye:hover{color:#374151}
-.inline-lock{background:none;border:1px solid #e5e7eb;border-radius:4px;cursor:pointer;font-size:13px;padding:2px 4px;line-height:1;flex-shrink:0;transition:background .15s}
-.inline-lock:hover{background:#fef3c7}
 .inline-copy{background:none;border:1px solid #e5e7eb;border-radius:4px;cursor:pointer;font-size:12px;padding:2px 5px;line-height:1;flex-shrink:0;color:#6b7280;transition:background .15s}
 .inline-copy:hover{background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe}
 .btn-new{background:#1a56db;color:#fff;border:none;padding:6px 14px;border-radius:4px;cursor:pointer;font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:4px}
@@ -1014,7 +1012,6 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
           <div style="font-size:13px;color:var(--text-lt)">welbeにアクセスできるユーザーと権限を管理します。</div>
           <div style="display:flex;gap:8px;align-items:center">
-            <button onclick="bulkProvisionAuth()" title="既存メンバーをまとめてログイン認証に登録します" style="font-weight:700;background:#eef2ff;border:1px solid #6366f1;color:#3730a3;padding:5px 14px;border-radius:5px;cursor:pointer;font-size:12px">🔐 全員をAuthに登録</button>
             <button id="bulkUpdBtn" onclick="saveAllSysUsers()" style="font-weight:700;background:#fef9c3;border:1px solid #ca8a04;color:#78350f;padding:5px 14px;border-radius:5px;cursor:pointer;font-size:12px">⬆ 一括更新</button>
             <button class="btn-new" onclick="openAddSysUserModal()">＋ 新規ユーザー</button>
           </div>
@@ -1362,19 +1359,6 @@ async function _provisionAuth(loginId, password){
     return {ok:false, reason:e.code||'失敗'};
   }
 }
-// 既存ユーザーを一括でAuthに登録
-async function bulkProvisionAuth(){
-  if(!confirm('現在の全ユーザーをログイン認証(Auth)に登録します。\n（パスワード6文字以上が対象。既に登録済みの人はそのまま）\nよろしいですか？')) return;
-  const users=load('users',[]).filter(u=>u.active!==false && u.loginId && u.password);
-  let ok=0, existed=0, skip=0; const fail=[];
-  for(const u of users){
-    if(u.password.length<6){ skip++; continue; }
-    const r=await _provisionAuth(u.loginId, u.password);
-    if(r.ok){ r.existed?existed++:ok++; } else fail.push(`${u.loginId}(${r.reason})`);
-  }
-  alert(`Auth登録 完了\n・新規登録：${ok}名\n・登録済み：${existed}名\n・スキップ(6文字未満)：${skip}名`+(fail.length?`\n・失敗：${fail.join(', ')}`:'')+`\n\n※6文字未満の人は、パスワードを6文字以上に変更してから再実行してください。`);
-}
-
 // 永続化された認証状態の復元を待つ（ルール厳格化後の再読込で必要）
 function _authReady(){
   return new Promise(res=>{
@@ -1490,6 +1474,13 @@ function initDefaultData(){
     });
     if(changed) save('users', existUsers);
   }
+  // 保存済みの平文パスワードを一掃（Auth一本化済み・DBには保存しない）
+  {
+    const us=load('users',[]);
+    let pwChanged=false;
+    us.forEach(u=>{ if(u.password){ u.password=''; pwChanged=true; } });
+    if(pwChanged) save('users', us);
+  }
   // clients：facilityId が未設定の利用者にデフォルト事業所を自動付与
   if(!load('clients') && !hasExistingData){
     save('clients',[]);
@@ -1516,7 +1507,6 @@ let _sess = null;
 function getS(){ if(_sess) return _sess; try{const s=sessionStorage.getItem('welbe_s');if(s){_sess=JSON.parse(s);return _sess;}}catch(e){} return null; }
 function setS(s){ _sess=s; sessionStorage.setItem('welbe_s',JSON.stringify(s)); }
 function clearS(){ _sess=null; sessionStorage.removeItem('welbe_s'); }
-function chkPass(stored, input){ return stored===input; }
 function genStrongPassword(len){
   len=len||14;
   const upper='ABCDEFGHJKLMNPQRSTUVWXYZ', lower='abcdefghjkmnpqrstuvwxyz';
@@ -1535,36 +1525,18 @@ async function doLogin(){
   const err  = document.getElementById('loginErr');
   err.textContent='';
   if(!lid||!pass){ err.textContent='IDとパスワードを入力してください'; return; }
-  const findU=()=>load('users',[]).find(x=>x.loginId===lid && x.active!==false);
-
-  // ① Firebase Auth で照合（パスワードはGoogle側で安全に検証）
+  // Firebase Auth で認証（旧方式のフォールバックは撤去済み・Auth一本化）
   try{
     await _auth.signInWithEmailAndPassword(_authEmail(lid), pass);
-    await ensureData();   // 認証済みになったのでデータ読込（ルール厳格化後もここで成功）
-    const u=findU();
-    if(!u){ err.textContent='ユーザー情報が見つかりません（管理者にご連絡ください）'; return; }
-    setS({userId:u.id, name:u.name, loginId:u.loginId, role:u.role, facilityId:u.facilityId||''});
-    startApp();
-    return;
   }catch(e){
-    // Auth未登録/不一致 → ② 従来方式でフォールバック（誰も締め出さない）
-  }
-
-  // ② 従来方式（平文）で照合
-  await ensureData();
-  const u=findU();
-  if(!u || !chkPass(u.password, pass)){
-    err.textContent='IDまたはパスワードが正しくありません';
+    err.textContent='IDまたはパスワードが正しくありません。ログインできない場合は管理者にご連絡ください。';
     return;
   }
+  await ensureData();   // 認証済みになったのでデータ読込
+  const u=load('users',[]).find(x=>x.loginId===lid && x.active!==false);
+  if(!u){ err.textContent='ユーザー情報が見つかりません（管理者にご連絡ください）'; return; }
   setS({userId:u.id, name:u.name, loginId:u.loginId, role:u.role, facilityId:u.facilityId||''});
   startApp();
-  // ③ 遅延移行：未登録ならこの機会にAuthへ登録（6文字以上のみ）
-  if(pass.length>=6){
-    _auth.createUserWithEmailAndPassword(_authEmail(lid), pass)
-      .then(()=>console.log('[auth] Authへ移行:', lid))
-      .catch(e2=>console.log('[auth] 移行スキップ:', lid, e2.code));
-  }
 }
 
 function doLogout(){
@@ -5284,91 +5256,6 @@ function saveOutsideDays(){
   save('outside_days',outsideDays);
   showToast('施設外支援 累計日数を保存しました ✓');
 }
-
-// =========================================================
-// ユーザー管理
-// =========================================================
-function renderUsers(){
-  const users=load('users',[]);
-  document.getElementById('userTbody').innerHTML=users.map(u=>`
-    <tr>
-      <td>${esc(u.name)}</td>
-      <td style="font-family:monospace">${esc(u.loginId)}</td>
-      <td><span class="${u.role==='admin'?'role-admin':u.role==='manager'?'role-user':'role-user'}">${{admin:'管理者',manager:'責任者',staff:'スタッフ',user:'スタッフ',kiosk:'タイムカード端末'}[u.role]||'スタッフ'}</span></td>
-      <td><span class="${u.active!==false?'badge-active':'badge-inactive'}">${u.active!==false?'有効':'無効'}</span></td>
-      <td style="display:flex;gap:6px">
-        <button class="btn-edit2" onclick="openUserModal('${u.id}')">編集</button>
-        ${u.loginId!=='admin'?`<button class="btn-danger" onclick="deleteUser('${u.id}')">削除</button>`:''}
-      </td>
-    </tr>`).join('');
-}
-function openUserModal(id){
-  const u=id?load('users',[]).find(x=>x.id===id):null;
-  _mCtx={type:'user',id};
-  document.getElementById('modalTitle').textContent=id?'ユーザーを編集':'ユーザーを追加';
-  document.getElementById('modalBody').innerHTML=`
-    <div style="display:flex;flex-direction:column;gap:14px">
-      <div><label style="font-size:12px;font-weight:600;color:#4a5568;display:block;margin-bottom:4px">氏名 *</label>
-        <input class="f-input" id="u-name" value="${esc(u?.name||'')}"></div>
-      <div><label style="font-size:12px;font-weight:600;color:#4a5568;display:block;margin-bottom:4px">ログインID *</label>
-        <input class="f-input" id="u-lid" value="${esc(u?.loginId||'')}" ${u?.loginId==='admin'?'readonly':''}></div>
-      <div><label style="font-size:12px;font-weight:600;color:#4a5568;display:block;margin-bottom:4px">パスワード${id?' （変更する場合のみ）':' *'}</label>
-        <input class="f-input" id="u-pass" type="password" placeholder="${id?'変更しない場合は空白':'パスワードを入力'}"></div>
-      <div style="display:flex;gap:12px">
-        <div style="flex:1"><label style="font-size:12px;font-weight:600;color:#4a5568;display:block;margin-bottom:4px">権限</label>
-          <select class="f-select" id="u-role" ${u?.loginId==='admin'?'disabled':''}>
-            <option value="admin"   ${u?.role==='admin'  ?'selected':''}>管理者</option>
-            <option value="manager" ${u?.role==='manager'?'selected':''}>責任者</option>
-            <option value="staff"   ${(!u||u?.role==='staff'||u?.role==='user')?'selected':''}>スタッフ</option>
-          </select></div>
-        <div style="flex:1"><label style="font-size:12px;font-weight:600;color:#4a5568;display:block;margin-bottom:4px">状態</label>
-          <select class="f-select" id="u-active" ${u?.loginId==='admin'?'disabled':''}>
-            <option value="1" ${u?.active!==false?'selected':''}>有効</option>
-            <option value="0" ${u?.active===false?'selected':''}>無効</option>
-          </select></div>
-      </div>
-    </div>`;
-  document.getElementById('modalSaveBtn').onclick=saveUserModal;
-  document.getElementById('modalOverlay').classList.add('show');
-}
-function saveUserModal(){
-  const name=document.getElementById('u-name').value.trim();
-  const lid=document.getElementById('u-lid').value.trim();
-  const pass=document.getElementById('u-pass').value;
-  if(!name||!lid){alert('氏名とログインIDは必須です');return;}
-  const users=load('users',[]);
-  const {id}=_mCtx;
-  if(!id&&!pass){alert('新規ユーザーにはパスワードが必要です');return;}
-  if(users.find(u=>u.loginId===lid&&u.id!==id)){alert('そのログインIDは既に使用されています');return;}
-  if(id){
-    const i=users.findIndex(u=>u.id===id);
-    if(i>=0){
-      users[i].name=name;
-      if(!document.getElementById('u-lid').readOnly)users[i].loginId=lid;
-      if(pass)users[i].password=pass;
-      if(!document.getElementById('u-role').disabled)users[i].role=document.getElementById('u-role').value;
-      if(!document.getElementById('u-active').disabled)users[i].active=document.getElementById('u-active').value==='1';
-    }
-  }else{
-    users.push({id:`u${Date.now()}`,name,loginId:lid,password:pass,role:document.getElementById('u-role').value,active:document.getElementById('u-active').value==='1'});
-  }
-  save('users',users); closeModal(); renderUsers();
-  showToast(id?'ユーザーを更新しました ✓':'ユーザーを追加しました ✓');
-  // 新規追加 or パスワード設定時：Authアカウントも自動作成（コンソール不要）
-  if(pass){
-    _provisionAuth(lid, pass).then(r=>{
-      if(r.ok && !r.existed) showToast(`「${name}」がログインできるようになりました ✓`);
-      else if(!r.ok && r.reason==='6文字未満') showToast('⚠ パスワードが6文字未満のため、この人はまだログインできません');
-    });
-  }
-}
-function deleteUser(id){
-  const u=load('users',[]).find(x=>x.id===id);
-  if(!confirm(`「${u?.name}」を削除しますか？`))return;
-  save('users',load('users',[]).filter(x=>x.id!==id));
-  renderUsers(); showToast('削除しました');
-}
-
 // =========================================================
 // 情報モーダル（読み取り専用）
 // =========================================================
@@ -5520,11 +5407,9 @@ function renderSysUsers(){
       <td><input class="inline-input" id="name-su-${uid}" value="${esc(u.name||'')}" oninput="markSysUserDirty('${uid}')"></td>
       <td><input class="inline-input" id="lid-su-${uid}" value="${esc(u.loginId||'')}" oninput="markSysUserDirty('${uid}')" ${isAdmin?'readonly title="adminのログインIDは変更できません"':''}></td>
       <td><div class="inline-pw-wrap">
-        <input class="inline-input" id="pw-su-${uid}" type="password" value="${esc(u.password||'')}" oninput="markSysUserDirty('${uid}')" readonly style="min-width:80px;cursor:default">
-        <button class="inline-lock" id="pwlock-su-${uid}" type="button" onclick="toggleSuPwLock('${uid}')" title="クリックして編集解除">🔒</button>
-        <button class="inline-eye"  type="button" onclick="toggleSuPw('${uid}')" title="表示/非表示">🙈</button>
+        <input class="inline-input" id="pw-su-${uid}" type="text" value="" placeholder="発行時のみ入力" oninput="markSysUserDirty('${uid}')" autocomplete="new-password" style="min-width:80px">
+        <button class="inline-eye"  type="button" onclick="genSuPw('${uid}')" title="強力なパスワードを生成">🎲</button>
         <button class="inline-copy" type="button" onclick="copySuPw('${uid}')" title="パスワードをコピー">📋</button>
-        <button class="inline-eye"  type="button" onclick="genSuPw('${uid}')" title="パスワードを生成">🎲</button>
       </div></td>
       <td>${roleSel}</td>
       <td>${activeSel}</td>
@@ -5563,7 +5448,7 @@ function _readSysUserRow(uid,users){
   if(!u) return null;
   if(!newName) return {err:(u.name||uid)+': 名前が空です'};
   if(!newLid)  return {err:newName+': ログインIDが空です'};
-  if(!newPw)   return {err:newName+': パスワードが空です'};
+  if(newPw && newPw.length<6) return {err:newName+': パスワードは6文字以上にしてください'};
   if(newLid!==u.loginId && users.some(x=>x.id!==uid&&x.loginId===newLid))
     return {err:newName+': ログインID「'+newLid+'」は重複しています'};
   return {u,newName,newLid,newPw,newRole,newActive};
@@ -5571,18 +5456,35 @@ function _readSysUserRow(uid,users){
 
 function saveAllSysUsers(){
   const users=load('users',[]);
-  let errors=[],changed=0;
+  let errors=[],changed=0; const toProvision=[];
   users.forEach(u=>{
     const r=_readSysUserRow(u.id,users);
     if(!r) return;
     if(r.err){errors.push(r.err);return;}
-    if(u.name!==r.newName||u.loginId!==r.newLid||u.password!==r.newPw||u.role!==r.newRole||u.active!==r.newActive){
-      u.name=r.newName;u.loginId=r.newLid;u.password=r.newPw;u.role=r.newRole;u.active=r.newActive;
+    if(u.name!==r.newName||u.loginId!==r.newLid||r.newPw||u.role!==r.newRole||u.active!==r.newActive){
+      u.name=r.newName;u.loginId=r.newLid;
+      u.password=''; // パスワードはDBに保存しない（Auth側でのみ管理）
+      u.role=r.newRole;u.active=r.newActive;
       changed++;
+      if(r.newActive && r.newPw) toProvision.push({lid:r.newLid, pw:r.newPw, name:r.newName, uid:u.id});
     }
   });
   if(errors.length){alert('以下のエラーがあります：\n\n'+errors.join('\n'));return;}
   save('users',users);
+  // パスワード入力があった有効ユーザーをAuthへ登録（未登録のみ。登録済みの人は変更されない）
+  if(toProvision.length){
+    (async()=>{
+      let added=0; const already=[];
+      for(const p of toProvision){
+        const res=await _provisionAuth(p.lid, p.pw);
+        if(res.ok && !res.existed) added++;
+        else if(res.ok && res.existed) already.push(p.name);
+        const inp=document.getElementById('pw-su-'+p.uid); if(inp) inp.value='';
+      }
+      if(added) showToast(`${added}名のログインが有効になりました ✓`);
+      if(already.length) alert('⚠ 次の方はすでにログイン登録済みのため、パスワードは変更されていません：\n\n'+already.join('、')+'\n\n変更するには再発行手順（Firebase側でアカウント削除→ここで再発行）が必要です。');
+    })();
+  }
   const btn=document.getElementById('bulkUpdBtn');
   if(btn){
     btn.textContent='✅ '+changed+'件 更新完了';
@@ -5597,15 +5499,21 @@ function saveSysUser(uid){
   const r=_readSysUserRow(uid,users);
   if(!r) return;
   if(r.err){alert(r.err);return;}
-  r.u.name=r.newName;r.u.loginId=r.newLid;r.u.password=r.newPw;r.u.role=r.newRole;r.u.active=r.newActive;
-  // パスワードがあればAuthにも登録（未登録なら作成・登録済みなら無変更）
-  if(r.newPw){ _provisionAuth(r.newLid, r.newPw); }
-  // パスワード入力を再ロック
-  const pwInp=document.getElementById('pw-su-'+uid);
-  const lockBtn=document.getElementById('pwlock-su-'+uid);
-  if(pwInp){pwInp.readOnly=true;pwInp.style.cursor='default';pwInp.type='password';}
-  if(lockBtn){lockBtn.textContent='🔒';lockBtn.classList.remove('unlocked');lockBtn.title='クリックして編集解除';}
+  r.u.name=r.newName;r.u.loginId=r.newLid;
+  r.u.password=''; // パスワードはDBに保存しない（Auth側でのみ管理）
+  r.u.role=r.newRole;r.u.active=r.newActive;
   save('users',users);
+  // 有効ユーザーかつパスワード入力ありなら、Authアカウントを作成（未登録のみ。登録済みの人は変更されない）
+  if(r.newActive && r.newPw){
+    _provisionAuth(r.newLid, r.newPw).then(res=>{
+      if(res.ok && !res.existed) showToast(`「${r.newName}」のログインが有効になりました ✓`);
+      else if(res.ok && res.existed) alert(`⚠「${r.newName}」さんはすでにログイン登録済みのため、パスワードは変更されていません。\n変更するには再発行手順（Firebase側でアカウント削除→ここで再発行）が必要です。`);
+      else if(!res.ok && res.reason==='6文字未満') showToast('⚠ パスワードが6文字未満のため、この人はまだログインできません');
+    });
+  }
+  // 保存後に発行欄をクリア
+  const pwInp=document.getElementById('pw-su-'+uid);
+  if(pwInp) pwInp.value='';
   const updBtn=document.getElementById('upd-su-'+uid);
   if(updBtn){
     updBtn.textContent='✅ 保存済';updBtn.style.background='#d1fae5';updBtn.style.color='#065f46';
@@ -5624,26 +5532,7 @@ function deleteSysUser(uid){
   renderSysUsers();
 }
 
-// パスワード操作（グループウェアと同パターン）
-function toggleSuPwLock(uid){
-  const inp=document.getElementById('pw-su-'+uid);
-  const btn=document.getElementById('pwlock-su-'+uid);
-  if(!inp||!btn) return;
-  if(inp.readOnly){
-    if(!confirm('パスワードの編集ロックを解除しますか？\n解除後は「更新」ボタンで保存されます。')) return;
-    inp.readOnly=false;inp.style.cursor='';btn.textContent='🔓';btn.classList.add('unlocked');btn.title='ロック中（クリックで再ロック）';inp.focus();
-  }else{
-    inp.readOnly=true;inp.style.cursor='default';btn.textContent='🔒';btn.classList.remove('unlocked');btn.title='クリックして編集解除';
-  }
-}
-function toggleSuPw(uid){
-  const inp=document.getElementById('pw-su-'+uid);
-  if(!inp) return;
-  const show=inp.type==='password';
-  inp.type=show?'text':'password';
-  const wrap=inp.parentElement;
-  if(wrap){ const btns=wrap.querySelectorAll('.inline-eye'); if(btns[0]) btns[0].textContent=show?'🐵':'🙈'; }
-}
+// パスワード操作（グループウェアと同パターン：保存せず発行のみ）
 function copySuPw(uid){
   const inp=document.getElementById('pw-su-'+uid);
   if(!inp||!inp.value) return;
@@ -5651,12 +5540,9 @@ function copySuPw(uid){
 }
 function genSuPw(uid){
   const inp=document.getElementById('pw-su-'+uid);
-  const btn=document.getElementById('pwlock-su-'+uid);
   if(!inp) return;
-  inp.readOnly=false;
-  if(btn){btn.textContent='🔓';btn.classList.add('unlocked');btn.title='ロック中（クリックで再ロック）';}
   const pw=genStrongPassword(12);
-  inp.value=pw;inp.type='text';
+  inp.value=pw;
   markSysUserDirty(uid);
   navigator.clipboard.writeText(pw).then(()=>showToast('🎲 パスワードを生成・コピーしました 📋')).catch(()=>showToast('🎲 パスワードを生成しました（「更新」で保存）'));
 }
@@ -5720,7 +5606,7 @@ function _doAddSysUser(){
   if(!pw){ showToast('パスワードを入力してください'); return; }
   const users=load('users',[]);
   if(users.find(u=>u.loginId===lid)){ showToast('このログインIDはすでに使用されています'); return; }
-  users.push({id:'u'+Date.now(), name, loginId:lid, password:pw, role, active:true, facilityId});
+  users.push({id:'u'+Date.now(), name, loginId:lid, password:'', role, active:true, facilityId}); // パスワードはDBに保存しない（Auth側でのみ管理）
   save('users',users);
   closeModal();
   renderSysUsers();
