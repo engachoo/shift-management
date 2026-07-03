@@ -9076,21 +9076,49 @@ function switchAdminTab(tab){
 const _BACKUP_COL = 'gw_backups';
 const _BACKUP_DAILY_KEEP_DAYS = 60; // 日次は60日保持。毎月1日(月次)は永久保存
 
-// スナップショット対象データを収集（ci_file_ で始まる大きな添付は除外）
-// maxBytes 指定時は、小さいキーを優先して上限内に収める（重要データを確実に保護）
-function _snapshotData(maxBytes){
+// スナップショット対象データを分割収集（Firestore文書1MB上限のため約850KBごとに分割）
+// 分割方式のため、データが増えてもキーが除外されることはない
+function _snapshotChunks(){
+  const LIMIT = 850000;
   const entries = [];
   Object.keys(_cache).forEach(k=>{
-    if(k.startsWith('ci_file_')||k.startsWith('tk_file_')) return; // 添付ファイル本体は除外（サイズ大）
+    if(k.startsWith('ci_file_')||k.startsWith('tk_file_')) return; // 添付ファイル本体は除外（サイズ大・手動DLで保護）
     entries.push([k, JSON.stringify(_cache[k])]);
   });
   entries.sort((a,b)=>a[1].length - b[1].length); // 小さい順
-  const out = {}; const dropped = []; let total = 2;
+  const chunks = []; let cur = {}, size = 2; const oversize = [];
   for(const [k,v] of entries){
-    if(maxBytes && total + v.length + k.length + 5 > maxBytes){ dropped.push(k); continue; }
-    out[k] = _cache[k]; total += v.length + k.length + 5;
+    const len = v.length + k.length + 5;
+    if(len > LIMIT){ oversize.push(k); continue; } // 単一キーで上限超えは分割不可能
+    if(size + len > LIMIT){ chunks.push(cur); cur = {}; size = 2; }
+    cur[k] = _cache[k]; size += len;
   }
-  return { data: out, dropped };
+  chunks.push(cur);
+  return { chunks, oversize };
+}
+// スナップショット書き込み（2個目以降の分割分は「日付_p2」「日付_p3」…に保存）
+async function _writeSnapshot(today){
+  const { chunks, oversize } = _snapshotChunks();
+  for(let i=1;i<chunks.length;i++){
+    await _db.collection(_BACKUP_COL).doc(today+'_p'+(i+1)).set({ data: JSON.stringify(chunks[i]), at: new Date().toISOString() });
+  }
+  await _db.collection(_BACKUP_COL).doc(today).set({ data: JSON.stringify(chunks[0]), at: new Date().toISOString(), by: (getS()?.name||''), parts: chunks.length });
+  if(oversize.length){
+    console.warn('[backup] 1キーが大きすぎて保存不可:', oversize);
+    showToast('⚠️ バックアップに保存できない大きなデータがあります：'+oversize.join('、')+'（システム管理者に連絡してください）', 10000);
+  }
+}
+// スナップショット読み込み（分割分も結合して返す）
+async function _readSnapshot(date){
+  const doc = await _db.collection(_BACKUP_COL).doc(date).get();
+  if(!doc.exists) return null;
+  const d = doc.data();
+  const obj = JSON.parse(d.data);
+  for(let i=2;i<=(d.parts||1);i++){
+    const p = await _db.collection(_BACKUP_COL).doc(date+'_p'+i).get();
+    if(p.exists) Object.assign(obj, JSON.parse(p.data().data));
+  }
+  return obj;
 }
 
 // 自動スナップショット（1日1回・管理者ログイン時）
@@ -9101,9 +9129,7 @@ async function autoBackup(){
     const ref = _db.collection(_BACKUP_COL).doc(today);
     const snap = await ref.get();
     if(snap.exists) return; // 今日分は作成済み
-    const { data: snapObj, dropped } = _snapshotData(900000);
-    await ref.set({ data: JSON.stringify(snapObj), at: new Date().toISOString(), by: (getS()?.name||'') });
-    if(dropped.length) console.warn('[backup] サイズ上限で除外:', dropped);
+    await _writeSnapshot(today);
     // 古い「日次」のみ整理。毎月1日(月次)は永久保存し、絶対に消さない
     const cutoff = new Date(Date.now() - _BACKUP_DAILY_KEEP_DAYS*86400000)
                      .toLocaleDateString('sv',{timeZone:'Asia/Tokyo'});
@@ -9111,7 +9137,7 @@ async function autoBackup(){
     const toDelete = [];
     all.forEach(d=>{
       const id = d.id;
-      const isMonthly = /-01$/.test(id);   // 毎月1日のスナップショットは永久保存
+      const isMonthly = /-01(_p\d+)?$/.test(id);   // 毎月1日のスナップショット（分割分含む）は永久保存
       if(!isMonthly && id < cutoff) toDelete.push(id);
     });
     for(const old of toDelete){ await _db.collection(_BACKUP_COL).doc(old).delete(); }
@@ -9124,9 +9150,7 @@ async function backupCreateNow(){
   if(!_fbReady){ alert('データベースに接続していません'); return; }
   const today = new Date().toLocaleDateString('sv',{timeZone:'Asia/Tokyo'});
   try{
-    const { data: snapObj, dropped } = _snapshotData(900000);
-    await _db.collection(_BACKUP_COL).doc(today).set({ data: JSON.stringify(snapObj), at: new Date().toISOString(), by: (getS()?.name||'') });
-    if(dropped.length) console.warn('[backup] サイズ上限で除外:', dropped);
+    await _writeSnapshot(today);
     showToast('✅ 今日のスナップショットを保存しました');
     backupListSnapshots();
   }catch(e){ alert('スナップショット作成に失敗しました: '+e.message); }
@@ -9189,7 +9213,7 @@ async function backupListSnapshots(){
   try{
     const snap = await _db.collection(_BACKUP_COL).get();
     const rows = [];
-    snap.forEach(d=>{ const x=d.data(); rows.push({ id:d.id, at:x.at, by:x.by, size:(x.data||'').length }); });
+    snap.forEach(d=>{ if(/_p\d+$/.test(d.id)) return; const x=d.data(); rows.push({ id:d.id, at:x.at, by:x.by, size:(x.data||'').length }); });
     rows.sort((a,b)=>b.id.localeCompare(a.id));
     if(!rows.length){ el.innerHTML = '<div style="color:#9ca3af">まだ自動バックアップがありません。「📸 今すぐスナップショット」で作成できます。</div>'; return; }
     el.innerHTML = rows.map(r=>{
@@ -9206,9 +9230,8 @@ async function backupListSnapshots(){
 async function backupRestoreSnapshot(date){
   if(!confirm(`${date} のバックアップで現在のデータを上書きします。\nよろしいですか？`)) return;
   try{
-    const doc = await _db.collection(_BACKUP_COL).doc(date).get();
-    if(!doc.exists){ alert('バックアップが見つかりません'); return; }
-    const obj = JSON.parse(doc.data().data);
+    const obj = await _readSnapshot(date);
+    if(!obj){ alert('バックアップが見つかりません'); return; }
     let n=0; Object.keys(obj).forEach(k=>{ save(k, obj[k]); n++; });
     showToast(`✅ ${date} の状態に復元しました（${n}件）。再読み込みします`);
     setTimeout(()=>location.reload(), 1500);
@@ -9219,9 +9242,8 @@ async function backupRestoreSnapshot(date){
 // 上書きではなくマージ：今ある予定は残し、バックアップにあって現在消えている予定だけ追加する
 async function backupRestoreEventsOnly(date){
   try{
-    const doc = await _db.collection(_BACKUP_COL).doc(date).get();
-    if(!doc.exists){ alert('バックアップが見つかりません'); return; }
-    const obj = JSON.parse(doc.data().data);
+    const obj = await _readSnapshot(date);
+    if(!obj){ alert('バックアップが見つかりません'); return; }
     const bakEvents = obj.events;
     if(!Array.isArray(bakEvents)||!bakEvents.length){ alert('このバックアップには予定データが含まれていません'); return; }
     const cur = load('events',[]);
