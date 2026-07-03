@@ -2995,7 +2995,7 @@ function renderTop(){
     .sort((a,b)=>{const at=a.startTime||'',bt=b.startTime||'';if(!at&&!bt)return 0;if(!at)return -1;if(!bt)return 1;return at.localeCompare(bt);});
 
   // ---- 予定通知 ----
-  const evNotifs = load('evNotifs',[]).filter(n=>n.targetUserIds?.includes(uid)&&!n.readBy?.includes(uid));
+  const evNotifs = load('evNotifs',[]).filter(n=>n.targetUserIds?.includes(uid)&&!evnIsRead(n)&&!evnIsDeleted(n));
 
   // ---- バッジ更新（unreadBlsはこの後計算されるが、bulletinsから直接算出）----
   const unreadBlsCount = bulletins.filter(b=>!(b.reactions&&b.reactions[uid]?.confirmed)).length;
@@ -3284,7 +3284,7 @@ function updateBadges(){
     blBadge.style.display=unread?'':'none';
   }
   // 予定変更のお知らせバッジ
-  const evNotifCount=load('evNotifs',[]).filter(n=>n.targetUserIds?.includes(me)&&!n.readBy?.includes(me)&&!n.deletedBy?.includes(me)).length;
+  const evNotifCount=load('evNotifs',[]).filter(n=>n.targetUserIds?.includes(me)&&!evnIsRead(n)&&!evnIsDeleted(n)).length;
   const enBadge=document.getElementById('badge-en');
   if(enBadge){ enBadge.textContent=evNotifCount||''; enBadge.style.display=evNotifCount?'':'none'; }
   // ホームバッジに予定通知を加算
@@ -7472,12 +7472,27 @@ function sendEvNotif(targetUserIds, icon, message){
   // 古い通知は100件まで
   save('evNotifs', notifs.slice(0,100));
 }
+// ─── 通知の既読・削除は「自分専用の記録」(evns_ユーザーID) に保存 ───
+// 共有の evNotifs 本体には書き込まない（他ユーザーの古いキャッシュによる上書き巻き戻りを防ぐ）
+function _evnState(){
+  const st=load('evns_'+myId(),null);
+  return st&&Array.isArray(st.read)&&Array.isArray(st.deleted)?st:{read:[],deleted:[]};
+}
+function _evnSaveState(st){
+  // 現存する通知IDだけ残して肥大化を防ぐ
+  const ids=new Set(load('evNotifs',[]).map(n=>n.id));
+  st.read=st.read.filter(id=>ids.has(id));
+  st.deleted=st.deleted.filter(id=>ids.has(id));
+  save('evns_'+myId(),st);
+}
+// 旧方式(readBy/deletedBy)の印も読み取りだけは引き続き尊重する
+function evnIsRead(n){ return _evnState().read.includes(n.id)||!!n.readBy?.includes(myId()); }
+function evnIsDeleted(n){ return _evnState().deleted.includes(n.id)||!!n.deletedBy?.includes(myId()); }
 // 通知を既読（閉じる）
 function dismissEvNotif(notifId){
-  const notifs=load('evNotifs',[]);
-  const n=notifs.find(x=>x.id===notifId);
-  if(n){ if(!n.readBy) n.readBy=[]; if(!n.readBy.includes(myId())) n.readBy.push(myId()); }
-  save('evNotifs',notifs);
+  const st=_evnState();
+  if(!st.read.includes(notifId)) st.read.push(notifId);
+  _evnSaveState(st);
   const row=document.getElementById('evnotif-'+notifId);
   if(row){ row.style.transition='opacity .3s'; row.style.opacity='0'; setTimeout(()=>{ row.remove(); updateBadges(); },320); }
   updateBadges();
@@ -7488,7 +7503,7 @@ function renderEvNotif(){
   const me=myId();
   const allNotifs=load('evNotifs',[]);
   // 自分宛で、自分が削除していない通知のみ
-  const mine=allNotifs.filter(n=>n.targetUserIds?.includes(me)&&!n.deletedBy?.includes(me));
+  const mine=allNotifs.filter(n=>n.targetUserIds?.includes(me)&&!evnIsDeleted(n));
   const el=document.getElementById('evnotifList');
   if(!el) return;
   if(!mine.length){
@@ -7504,7 +7519,7 @@ function renderEvNotif(){
     return {label:'お知らせ', color:'#fffbea', border:'#fcd34d'};
   }
   el.innerHTML=mine.map(n=>{
-    const isRead=n.readBy?.includes(me);
+    const isRead=evnIsRead(n);
     const tl=_notifTypeLabel(n);
     const bg=isRead?'#f9fafb':tl.color;
     const bd=isRead?'#e5e7eb':tl.border;
@@ -7526,14 +7541,9 @@ function renderEvNotif(){
 }
 
 function deleteEvNotif(notifId){
-  const me=myId();
-  const notifs=load('evNotifs',[]);
-  const n=notifs.find(x=>x.id===notifId);
-  if(n){
-    if(!n.deletedBy) n.deletedBy=[];
-    if(!n.deletedBy.includes(me)) n.deletedBy.push(me);
-  }
-  save('evNotifs',notifs);
+  const st=_evnState();
+  if(!st.deleted.includes(notifId)) st.deleted.push(notifId);
+  _evnSaveState(st);
   const row=document.getElementById('evnotif-'+notifId);
   if(row){ row.style.opacity='0'; setTimeout(()=>renderEvNotif(),280); }
   else renderEvNotif();
@@ -7542,14 +7552,11 @@ function deleteEvNotif(notifId){
 // すべて既読にする
 function dismissAllEvNotifs(){
   const me=myId();
-  const notifs=load('evNotifs',[]);
-  notifs.forEach(n=>{
-    if(n.targetUserIds?.includes(me)){
-      if(!n.readBy) n.readBy=[];
-      if(!n.readBy.includes(me)) n.readBy.push(me);
-    }
+  const st=_evnState();
+  load('evNotifs',[]).forEach(n=>{
+    if(n.targetUserIds?.includes(me)&&!st.read.includes(n.id)) st.read.push(n.id);
   });
-  save('evNotifs',notifs);
+  _evnSaveState(st);
   renderEvNotif();
   updateBadges();
 }
@@ -7557,16 +7564,14 @@ function dismissAllEvNotifs(){
 function deleteAllEvNotifs(){
   const me=myId();
   const notifs=load('evNotifs',[]);
-  const mineCount=notifs.filter(n=>n.targetUserIds?.includes(me)&&!n.deletedBy?.includes(me)).length;
+  const mineCount=notifs.filter(n=>n.targetUserIds?.includes(me)&&!evnIsDeleted(n)).length;
   if(!mineCount){ showToast('削除する通知はありません'); return; }
   if(!confirm(`通知をすべて削除しますか？（${mineCount}件）`)) return;
+  const st=_evnState();
   notifs.forEach(n=>{
-    if(n.targetUserIds?.includes(me)){
-      if(!n.deletedBy) n.deletedBy=[];
-      if(!n.deletedBy.includes(me)) n.deletedBy.push(me);
-    }
+    if(n.targetUserIds?.includes(me)&&!st.deleted.includes(n.id)) st.deleted.push(n.id);
   });
-  save('evNotifs',notifs);
+  _evnSaveState(st);
   renderEvNotif();
   updateBadges();
   showToast('通知をすべて削除しました 🗑');
