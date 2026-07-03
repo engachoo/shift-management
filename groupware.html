@@ -5064,7 +5064,7 @@ function renderInvForm(editId){
     <div class="inv-form-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:14px">
       <div class="inv-field"><label>発行日</label><input type="date" id="inv-closing" onchange="invRecalcAll()" value="${inv.closingDate||''}"><div style="font-size:11px;color:#1a56db;margin-top:4px">※ 発行日・お支払期限は経理事務が記載します（未入力で構いません）</div></div>
       <div class="inv-field"><label class="req">＊ 発行部署</label>
-        <select id="inv-dept" onchange="invOnDeptChange();invRecalcAll()"><option value="">選択してください</option>${depts.map(d=>`<option value="${d.id}" ${inv.deptId===d.id?'selected':''}>${esc(d.name)}</option>`).join('')}</select>
+        <div style="display:flex;gap:6px;align-items:center"><select id="inv-dept" onchange="invOnDeptChange();invRecalcAll()" style="flex:1"><option value="">選択してください</option>${depts.map(d=>`<option value="${d.id}" ${inv.deptId===d.id?'selected':''}>${esc(d.name)}</option>`).join('')}</select><button type="button" onclick="invNewDeptFromForm()" style="white-space:nowrap;background:#f0fdf4;border:1px solid #86efac;color:#16a34a;border-radius:6px;padding:5px 10px;font-size:12px;font-weight:600;cursor:pointer">＋ 新規登録</button></div>
       </div>
     </div>
     <div id="inv-dept-info" style="display:none;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#166534;line-height:1.8"></div>
@@ -5681,7 +5681,7 @@ function renderInvDepts(){
     </div>`).join('')}
   </div>`}`;
 }
-function openInvDeptModal(id){
+function openInvDeptModal(id, onSaved){
   const d=id?load('inv_depts',[]).find(x=>x.id===id):null; const f=d||{};
   const html=`<div style="display:flex;flex-direction:column;gap:12px;min-width:440px">
     <div class="inv-field"><label>部署名 *</label><input id="idm-name" value="${esc(f.name||'')}"></div>
@@ -5695,18 +5695,32 @@ function openInvDeptModal(id){
   </div>`;
   document.getElementById('invModalTitle').textContent=id?'部署を編集':'部署を追加';
   document.getElementById('invModalBody').innerHTML=html;
-  document.getElementById('invModalSaveBtn').onclick=()=>saveInvDept(id);
+  document.getElementById('invModalSaveBtn').onclick=()=>saveInvDept(id,onSaved);
   document.getElementById('invModal').classList.add('open');
 }
-function saveInvDept(editId){
+function saveInvDept(editId, onSaved){
   const g=id=>document.getElementById(id)?.value?.trim()||'';
   const name=g('idm-name'); if(!name){alert('部署名は必須です');return;}
   const depts=load('inv_depts',[]);
   const obj={name,company:g('idm-company'),companyZip:g('idm-zip'),companyAddr:g('idm-addr'),companyTel:g('idm-tel'),companyFax:g('idm-fax'),regNo:g('idm-regno'),bankName:g('idm-bank'),bankBranch:g('idm-branch'),bankType:g('idm-btype'),bankNo:g('idm-bno'),bankHolder:g('idm-bholder')};
+  let savedId=editId;
   if(editId){const i=depts.findIndex(x=>x.id===editId);if(i>=0)depts[i]={...depts[i],...obj};}
-  else depts.push({id:uid(),...obj});
+  else {savedId=uid();depts.push({id:savedId,...obj});}
   save('inv_depts',depts); closeModal('invModal');
-  showToast('部署を保存しました'); renderInvDepts();
+  showToast('部署を保存しました');
+  if(onSaved){ onSaved(savedId); } else { renderInvDepts(); }
+}
+// 請求書フォームから発行部署を新規登録
+function invNewDeptFromForm(){
+  openInvDeptModal(null,(newId)=>{
+    const sel=document.getElementById('inv-dept'); if(!sel)return;
+    const d=load('inv_depts',[]).find(x=>x.id===newId);
+    if(d&&!sel.querySelector(`option[value="${newId}"]`)){
+      const o=document.createElement('option');o.value=newId;o.textContent=d.name;o.selected=true;sel.appendChild(o);
+    } else if(sel.querySelector(`option[value="${newId}"]`)) sel.value=newId;
+    invOnDeptChange(); invRecalcAll();
+    showToast('発行部署を登録しました。引き続き請求書を入力してください。');
+  });
 }
 function deleteInvDept(id){
   if(!confirm('この部署設定を削除しますか？'))return;
