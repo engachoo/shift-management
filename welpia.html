@@ -1082,6 +1082,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
             <b>日々の控えは60日分</b>を保持し、<b style="color:#4f46e5">毎月1日の控えは永久保存</b>します。万一データが消えても、ここから過去の状態に戻せます。
           </div>
           <button class="btn-save" onclick="backupCreateNow()">📸 今すぐ控えを作成</button>
+          <button class="btn-save" onclick="backupExportJSON()" style="background:#16a34a">💾 バックアップをダウンロード（PCに保存）</button>
           <div id="backupSnapList" style="font-size:13px;color:var(--text-lt);margin-top:14px">読み込み中...</div>
         </div>
 
@@ -1678,7 +1679,7 @@ function startApp(){
   renderAlertBanner();
   initBackButton();
   // ログイン毎・毎月1日の自動バックアップ（1日1回）
-  if(s && s.role!=='kiosk') setTimeout(()=>{ try{ autoBackup(); }catch(e){} }, 1500);
+  if(s && s.role!=='kiosk') setTimeout(()=>{ try{ autoBackup(); checkMonthlyBackupReminder(); }catch(e){} }, 1500);
 }
 
 // 戻るボタンで「サイト離脱」せず、アプリ内の前の画面へ戻す
@@ -3054,6 +3055,41 @@ async function backupCreateNow(){
     showToast('✅ 今日の控えを保存しました');
     backupListSnapshots();
   }catch(e){ showToast('控えの作成に失敗しました: '+e.message); }
+}
+
+// 全データをJSONファイルとしてダウンロード（PCに控えを保存）
+function backupExportJSON(){
+  const all={};
+  Object.keys(_cache).forEach(k=> all[k]=_cache[k]);
+  const blob=new Blob([JSON.stringify(all)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  const d=new Date().toLocaleDateString('sv',{timeZone:'Asia/Tokyo'});
+  const t=new Date().toLocaleTimeString('sv',{timeZone:'Asia/Tokyo'}).replace(/:/g,'');
+  a.href=url; a.download=`welbe_backup_${d}_${t}.json`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('💾 バックアップをダウンロードしました');
+}
+// 月1回のPCバックアップ・リマインダー（admin権限のみ・その月のDL完了まで表示）
+function checkMonthlyBackupReminder(){
+  const s=getS(); if(!s||s.role!=='admin') return;
+  const ym=new Date().toLocaleDateString('sv',{timeZone:'Asia/Tokyo'}).slice(0,7);
+  if(load('backup_last_dl','')===ym) return;
+  if(document.getElementById('bkRemindBar')) return;
+  const bar=document.createElement('div');
+  bar.id='bkRemindBar';
+  bar.style.cssText='position:fixed;top:0;left:0;right:0;z-index:9999;background:#fef3c7;border-bottom:2px solid #f59e0b;padding:10px 16px;display:flex;align-items:center;gap:12px;justify-content:center;flex-wrap:wrap;font-size:14px;color:#92400e;box-shadow:0 2px 8px rgba(0,0,0,.15)';
+  bar.innerHTML=`<span style="font-weight:600">💾 今月分のバックアップがまだパソコンに保存されていません（月1回の控え）</span>
+    <button onclick="monthlyBackupDownload()" style="background:#16a34a;color:#fff;border:none;border-radius:7px;padding:7px 16px;font-size:13px;font-weight:700;cursor:pointer">今すぐダウンロード</button>
+    <button onclick="document.getElementById('bkRemindBar').remove()" style="background:#fff;border:1px solid #d1d5db;border-radius:7px;padding:7px 12px;font-size:13px;cursor:pointer">あとで（次回ログイン時に再表示）</button>`;
+  document.body.appendChild(bar);
+}
+function monthlyBackupDownload(){
+  backupExportJSON();
+  const ym=new Date().toLocaleDateString('sv',{timeZone:'Asia/Tokyo'}).slice(0,7);
+  save('backup_last_dl',ym);
+  document.getElementById('bkRemindBar')?.remove();
 }
 
 // 自動スナップショット一覧を表示
