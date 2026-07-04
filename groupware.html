@@ -9256,7 +9256,7 @@ async function backupListSnapshots(){
       const monthly = /-01$/.test(r.id);
       return `<div style="display:flex;align-items:center;gap:10px;padding:9px 14px;border:1px solid ${monthly?'#c7d2fe':'#e2e8f0'};background:${monthly?'#eef2ff':'#fff'};border-radius:8px;margin-bottom:6px">
       <div style="flex:1"><span style="font-weight:700;font-size:14px">${r.id}</span>${monthly?'<span style="font-size:10px;background:#4f46e5;color:#fff;border-radius:4px;padding:1px 6px;margin-left:6px;font-weight:700">月次・永久保存</span>':''} <span style="font-size:11px;color:#9ca3af">${r.at?new Date(r.at).toLocaleString('sv',{timeZone:'Asia/Tokyo'}).slice(0,16):''}　${esc(r.by||'')}　${(r.size/1024).toFixed(0)}KB</span></div>
-      <button onclick="backupRestoreEventsOnly('${r.id}')" style="background:#0891b2;color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer">📅 予定だけ復元</button>
+      <button onclick="backupMergeMissing('${r.id}')" style="background:#0891b2;color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer">🧩 消えたデータを検査・復元</button>
       <button onclick="backupRestoreSnapshot('${r.id}')" style="background:#7c3aed;color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer">この日に戻す</button>
     </div>`;}).join('');
   }catch(e){ el.innerHTML = '<div style="color:#dc2626">読み込みエラー: '+esc(e.message)+'</div>'; }
@@ -9274,23 +9274,39 @@ async function backupRestoreSnapshot(date){
   }catch(e){ alert('復元に失敗しました: '+e.message); }
 }
 
-// スナップショットから「予定(events)だけ」を足し戻す
-// 上書きではなくマージ：今ある予定は残し、バックアップにあって現在消えている予定だけ追加する
-async function backupRestoreEventsOnly(date){
+// スナップショットと現在を照合し、消えたデータを種類ごとに検査して足し戻す
+// 上書きではなくマージ：今あるデータは残し、バックアップにあって現在消えているものだけ追加する
+const _MERGE_KEYS = {
+  events:'スケジュール予定', circulars:'承認申請', invoices:'請求書', bulletins:'連絡事項',
+  todoke_forms:'届出書', inv_vendors:'業者名簿', inv_depts:'発行部署', users:'ユーザー', depts:'部署'
+};
+async function backupMergeMissing(date){
   try{
     const obj = await _readSnapshot(date);
     if(!obj){ alert('バックアップが見つかりません'); return; }
-    const bakEvents = obj.events;
-    if(!Array.isArray(bakEvents)||!bakEvents.length){ alert('このバックアップには予定データが含まれていません'); return; }
-    const cur = load('events',[]);
-    const curIds = new Set(cur.map(e=>e.id));
-    const missing = bakEvents.filter(e=>e&&e.id&&!curIds.has(e.id));
-    if(!missing.length){ alert(`${date} のバックアップと比べて、消えている予定はありませんでした（復元不要）`); return; }
-    if(!confirm(`${date} のバックアップに ${missing.length} 件、現在存在しない予定が見つかりました。\nこの ${missing.length} 件を足し戻します（今ある予定はそのまま残ります）。よろしいですか？`)) return;
-    save('events', [...cur, ...missing]);
-    showToast(`✅ 予定を ${missing.length} 件復元しました。再読み込みします`);
+    // 承認申請は「アーカイブへ移動済み」のものを消えた扱いにしない
+    const archivedIds = new Set((load('circulars_archive',[])).map(c=>c&&c.id).filter(Boolean));
+    const found = []; // {k, label, missing:[...]}
+    Object.keys(_MERGE_KEYS).forEach(k=>{
+      const bak = obj[k];
+      if(!Array.isArray(bak)||!bak.length) return;
+      const cur = load(k,[]);
+      const curIds = new Set((Array.isArray(cur)?cur:[]).map(x=>x&&x.id).filter(Boolean));
+      const missing = bak.filter(x=>x&&x.id&&!curIds.has(x.id)&&!(k==='circulars'&&archivedIds.has(x.id)));
+      if(missing.length) found.push({k, label:_MERGE_KEYS[k], missing});
+    });
+    if(!found.length){ alert(`${date} のバックアップと比べて、消えているデータはありませんでした（復元不要）`); return; }
+    const summary = found.map(f=>`・${f.label}：${f.missing.length}件`).join('\n');
+    if(!confirm(`${date} のバックアップに、現在存在しないデータが見つかりました。\n\n${summary}\n\n上記を足し戻します（今あるデータはそのまま残ります）。よろしいですか？`)) return;
+    let total=0;
+    found.forEach(f=>{
+      const cur = load(f.k,[]);
+      save(f.k, [...(Array.isArray(cur)?cur:[]), ...f.missing]);
+      total += f.missing.length;
+    });
+    showToast(`✅ 合計 ${total} 件を復元しました。再読み込みします`);
     setTimeout(()=>location.reload(), 1500);
-  }catch(e){ alert('予定の復元に失敗しました: '+e.message); }
+  }catch(e){ alert('復元に失敗しました: '+e.message); }
 }
 
 function markRowDirty(uid){
