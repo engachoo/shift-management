@@ -2027,7 +2027,22 @@ let _fbReady = false;
 function load(k, d=null){
   return _cache.hasOwnProperty(k) ? _cache[k] : d;
 }
+// 大量消失ガード：重要データの件数が一度に大きく減る保存はその場で確認を求める
+// （誤操作・古いキャッシュによる丸ごと上書き事故からの最終防衛線）
+const _SHRINK_GUARD_KEYS = new Set(['events','circulars','invoices','users','bulletins','inv_vendors','inv_depts','todoke_forms','depts']);
 function save(k, v){
+  if(_SHRINK_GUARD_KEYS.has(k) && Array.isArray(v)){
+    const prev = _cache[k];
+    if(Array.isArray(prev)){
+      const drop = prev.length - v.length;
+      if(prev.length >= 10 && drop > 5 && drop > prev.length * 0.3){
+        if(!confirm(`⚠️ データ保護の警告\n\n「${k}」のデータが一度に ${drop} 件減ろうとしています（${prev.length}件 → ${v.length}件）。\n\n心当たりがない場合は必ず「キャンセル」を押して、システム管理者に連絡してください。\n\n本当に保存しますか？`)){
+          console.warn('[shrink-guard] 保存をキャンセル:', k, prev.length, '->', v.length);
+          return;
+        }
+      }
+    }
+  }
   _cache[k] = v;
   if(_fbReady){
     const json = JSON.stringify(v);
@@ -9179,6 +9194,27 @@ async function backupExportJSON(){
   showToast('💾 バックアップをダウンロードしました');
 }
 
+// 月1回のPCバックアップ・リマインダー（システム権限のみ・その月のDL完了まで表示）
+function checkMonthlyBackupReminder(){
+  const s=getS(); if(!s||s.role!=='system') return;
+  const ym=new Date().toLocaleDateString('sv',{timeZone:'Asia/Tokyo'}).slice(0,7); // YYYY-MM
+  if(load('backup_last_dl','')===ym) return;
+  if(document.getElementById('bkRemindBar')) return;
+  const bar=document.createElement('div');
+  bar.id='bkRemindBar';
+  bar.style.cssText='position:fixed;top:0;left:0;right:0;z-index:9999;background:#fef3c7;border-bottom:2px solid #f59e0b;padding:10px 16px;display:flex;align-items:center;gap:12px;justify-content:center;flex-wrap:wrap;font-size:14px;color:#92400e;box-shadow:0 2px 8px rgba(0,0,0,.15)';
+  bar.innerHTML=`<span style="font-weight:600">💾 今月分のバックアップがまだパソコンに保存されていません（月1回の控え）</span>
+    <button onclick="monthlyBackupDownload()" style="background:#16a34a;color:#fff;border:none;border-radius:7px;padding:7px 16px;font-size:13px;font-weight:700;cursor:pointer">今すぐダウンロード</button>
+    <button onclick="document.getElementById('bkRemindBar').remove()" style="background:#fff;border:1px solid #d1d5db;border-radius:7px;padding:7px 12px;font-size:13px;cursor:pointer">あとで（次回ログイン時に再表示）</button>`;
+  document.body.appendChild(bar);
+}
+async function monthlyBackupDownload(){
+  await backupExportJSON();
+  const ym=new Date().toLocaleDateString('sv',{timeZone:'Asia/Tokyo'}).slice(0,7);
+  save('backup_last_dl',ym);
+  document.getElementById('bkRemindBar')?.remove();
+}
+
 // JSONファイルから復元
 function backupImportJSON(input){
   const file = input.files[0];
@@ -9636,6 +9672,7 @@ function startApp(){
   // 誰がログインしても1日1回の自動バックアップ（バックグラウンド実行）
   // 全ユーザーが全データを読み込んでいるため、誰のログインでも完全なスナップショットになる
   autoBackup();
+  checkMonthlyBackupReminder(); // 月1回のPCバックアップ・リマインダー（system権限のみ）
   startActivityTimer(); // 自動ログアウトタイマー開始（管理者以外）
   markHelpNewSections(); // 説明書Newバッジ初期化
   // 初期履歴エントリを差し替え（ブラウザ戻るでアプリ内に留まる）
