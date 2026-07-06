@@ -7860,6 +7860,9 @@ function renderCiList(){
     if(ciAuthorFilter) list=list.filter(c=>c.author===ciAuthorFilter);
   }
 
+  // 申請日（作成日時）の新しい順に並べる：新しいものが上、古いものが下
+  list.sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
+
   const el=document.getElementById('ciItems');
   if(!list.length){el.innerHTML='<div style="padding:20px;text-align:center;color:#8899aa">該当なし</div>';return;}
   el.innerHTML=list.map(c=>{
