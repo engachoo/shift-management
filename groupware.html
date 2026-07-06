@@ -746,8 +746,8 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
       <div class="side-group side-group-toggle" data-grp="hr" onclick="toggleSideGroup('hr')"><span>人事・勤怠・労務</span><span class="side-group-arrow">▼</span></div>
       <div id="grpBody-hr">
         <div class="side-item" id="m-tk" onclick="showMod('todoke')"><span class="si-icon">📋</span>届出書ダウンロード</div>
-        <div class="side-item" id="m-emp" onclick="showMod('emp','docs')"><span class="si-icon">📄</span>入社書類<span style="font-size:10px;background:#fef3c7;color:#92400e;border:1px solid #fde68a;border-radius:10px;padding:1px 6px;margin-left:4px;font-weight:700">テスト</span></div>
-        <div class="side-item" id="m-empmgmt" onclick="showMod('emp','roster')"><span class="si-icon">🧑‍💼</span>従業員管理<span style="font-size:10px;background:#fef3c7;color:#92400e;border:1px solid #fde68a;border-radius:10px;padding:1px 6px;margin-left:4px;font-weight:700">テスト</span></div>
+        <div class="side-item" id="m-emp" onclick="showMod('emp','docs')"><span class="si-icon">📄</span>入社書類</div>
+        <div class="side-item" id="m-empmgmt" onclick="showMod('emp','roster')"><span class="si-icon">🧑‍💼</span>従業員管理</div>
       </div>
     </div>
     <div id="adminMenu" style="display:none">
@@ -3813,7 +3813,6 @@ function renderEmpApp(){
     ${themeOpen}
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
       <h2 style="font-size:18px;font-weight:700;color:${titleColor};margin:0">${isDocs?'📄 入社書類':'🧑‍💼 従業員管理'}</h2>
-      <span style="font-size:11px;background:#fef3c7;color:#92400e;border:1px solid #fde68a;border-radius:20px;padding:2px 10px;font-weight:700">開発中</span>
     </div>
     ${_empBranchBar()}
     <div id="empBody"></div>
