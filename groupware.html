@@ -1832,6 +1832,37 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
           </div>
         </div>
 
+        <!-- 従業員管理 -->
+        <div style="margin-bottom:20px" data-help-new="2026-07-06">
+          <div class="help-section-title" style="font-size:15px;font-weight:700;color:#1a2b4a;border-bottom:2px solid #dde3ec;padding-bottom:6px;margin-bottom:10px">🧑‍💼 従業員管理（従業員名簿）</div>
+          <div style="font-size:13px;color:#334;line-height:1.8">
+            <ul style="padding-left:18px;margin:0 0 12px 0">
+              <li>サイドバーの「人事・勤怠・労務」→「🧑‍💼 従業員管理」からアクセスします</li>
+              <li>従業員の <strong>登録・編集・退職処理・一括取込・Excel名簿出力</strong> ができます</li>
+              <li>個人情報を含むため、権限によって利用できる範囲が異なります</li>
+            </ul>
+
+            <!-- 権限別の利用範囲 -->
+            <div style="background:#eff6ff;border:1.5px solid #93c5fd;border-radius:6px;padding:12px;margin-bottom:12px">
+              <div style="font-weight:700;color:#1a3a6b;margin-bottom:8px">🔑 権限ごとの閲覧・編集範囲</div>
+              <div style="display:grid;grid-template-columns:130px 1fr;gap:5px 12px;font-size:12px;align-items:start">
+                <span style="font-weight:600;color:#7c3aed;white-space:nowrap">システム・総務経理</span><span>全社（大日産業・AMUSE JAPAN・ウェルピア）を横断して閲覧・編集できます</span>
+                <span style="font-weight:600;color:#1a56db">管理者・責任者</span><span>自社の従業員のみ閲覧・編集できます（他社のタブは表示されません）</span>
+                <span style="font-weight:600;color:#6b7280">一般</span><span>利用できません（メニューに表示されません）</span>
+              </div>
+            </div>
+
+            <!-- 個人情報の追加制限 -->
+            <div style="background:#fff1f2;border:1.5px solid #fecdd3;border-radius:6px;padding:12px">
+              <div style="font-weight:700;color:#be123c;margin-bottom:6px">🔒 さらに厳しい制限（個人情報保護）</div>
+              <ul style="margin:0;padding-left:18px;color:#334;line-height:2">
+                <li><strong>正社員・契約社員のデータ</strong>：総務経理・システムのみ閲覧・編集できます（管理者・責任者には表示されません）</li>
+                <li><strong>給与条件</strong>：システムのみ閲覧できます</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
         <!-- 権限 -->
         <div style="margin-bottom:20px">
           <div style="font-size:15px;font-weight:700;color:#1a2b4a;border-bottom:2px solid #dde3ec;padding-bottom:6px;margin-bottom:10px">🔐 権限について</div>
@@ -1864,14 +1895,15 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
                 <th style="padding:8px;border:1px solid #dde3ec;text-align:center">システム設定</th>
                 <th style="padding:8px;border:1px solid #dde3ec;text-align:center">スケジュール閲覧</th>
                 <th style="padding:8px;border:1px solid #dde3ec;text-align:center">連絡・申請・ToDo</th>
+                <th style="padding:8px;border:1px solid #dde3ec;text-align:center">従業員管理</th>
               </tr>
             </thead>
             <tbody>
-              <tr><td style="padding:7px 8px;border:1px solid #dde3ec;font-weight:600">システム</td><td style="text-align:center;border:1px solid #dde3ec">✅</td><td style="text-align:center;border:1px solid #dde3ec">全グループ</td><td style="text-align:center;border:1px solid #dde3ec">全体</td></tr>
-              <tr style="background:#f5f0ff"><td style="padding:7px 8px;border:1px solid #dde3ec;font-weight:600;color:#7c3aed">総務経理</td><td style="text-align:center;border:1px solid #dde3ec">—</td><td style="text-align:center;border:1px solid #dde3ec">全グループ</td><td style="text-align:center;border:1px solid #dde3ec">全体</td></tr>
-              <tr><td style="padding:7px 8px;border:1px solid #dde3ec;font-weight:600">管理者</td><td style="text-align:center;border:1px solid #dde3ec">—</td><td style="text-align:center;border:1px solid #dde3ec">全グループ</td><td style="text-align:center;border:1px solid #dde3ec">全体</td></tr>
-              <tr style="background:#f9fafb"><td style="padding:7px 8px;border:1px solid #dde3ec;font-weight:600">責任者</td><td style="text-align:center;border:1px solid #dde3ec">—</td><td style="text-align:center;border:1px solid #dde3ec">自グループのみ</td><td style="text-align:center;border:1px solid #dde3ec">全体</td></tr>
-              <tr><td style="padding:7px 8px;border:1px solid #dde3ec;font-weight:600">一般</td><td style="text-align:center;border:1px solid #dde3ec">—</td><td style="text-align:center;border:1px solid #dde3ec">自グループのみ</td><td style="text-align:center;border:1px solid #dde3ec">全体</td></tr>
+              <tr><td style="padding:7px 8px;border:1px solid #dde3ec;font-weight:600">システム</td><td style="text-align:center;border:1px solid #dde3ec">✅</td><td style="text-align:center;border:1px solid #dde3ec">全グループ</td><td style="text-align:center;border:1px solid #dde3ec">全体</td><td style="text-align:center;border:1px solid #dde3ec">全社</td></tr>
+              <tr style="background:#f5f0ff"><td style="padding:7px 8px;border:1px solid #dde3ec;font-weight:600;color:#7c3aed">総務経理</td><td style="text-align:center;border:1px solid #dde3ec">—</td><td style="text-align:center;border:1px solid #dde3ec">全グループ</td><td style="text-align:center;border:1px solid #dde3ec">全体</td><td style="text-align:center;border:1px solid #dde3ec">全社</td></tr>
+              <tr><td style="padding:7px 8px;border:1px solid #dde3ec;font-weight:600">管理者</td><td style="text-align:center;border:1px solid #dde3ec">—</td><td style="text-align:center;border:1px solid #dde3ec">全グループ</td><td style="text-align:center;border:1px solid #dde3ec">全体</td><td style="text-align:center;border:1px solid #dde3ec">自社のみ</td></tr>
+              <tr style="background:#f9fafb"><td style="padding:7px 8px;border:1px solid #dde3ec;font-weight:600">責任者</td><td style="text-align:center;border:1px solid #dde3ec">—</td><td style="text-align:center;border:1px solid #dde3ec">自グループのみ</td><td style="text-align:center;border:1px solid #dde3ec">全体</td><td style="text-align:center;border:1px solid #dde3ec">自社のみ</td></tr>
+              <tr><td style="padding:7px 8px;border:1px solid #dde3ec;font-weight:600">一般</td><td style="text-align:center;border:1px solid #dde3ec">—</td><td style="text-align:center;border:1px solid #dde3ec">自グループのみ</td><td style="text-align:center;border:1px solid #dde3ec">全体</td><td style="text-align:center;border:1px solid #dde3ec">✕</td></tr>
             </tbody>
           </table>
 
@@ -3537,7 +3569,7 @@ function renderDevApps(){
     { id:'petty_cash', name:'小口出納帳',       icon:'💰', desc:'各部門の小口現金の収支を記録・管理します', status:'運用中', color:'#f0fdf4', border:'#16a34a' },
     { id:'invoice',    name:'請求書発行フォーム', icon:'📄', desc:'請求書の作成・承認・PDF出力・ラベル印刷を管理します', status:'運用中', color:'#eff6ff', border:'#3b82f6' },
     { id:'todoke',     name:'届出書ダウンロード', icon:'📋', desc:'各社の届出書をExcel・PDFでダウンロード。書式変更は総務経理・システムのみ', status:'運用中', color:'#fff7ed', border:'#fb923c' },
-    { id:'emp',        name:'従業員管理',         icon:'🧑‍💼', desc:'入社書類のダウンロード・従業員名簿の登録。総務経理・システムのみ（個人情報）', status:'開発中', color:'#faf5ff', border:'#a855f7' },
+    { id:'emp',        name:'従業員管理',         icon:'🧑‍💼', desc:'入社書類のダウンロード・従業員名簿の登録。名簿はシステム・総務経理が全社、管理者・責任者は自社のみ（一般は利用不可）', status:'開発中', color:'#faf5ff', border:'#a855f7' },
   ];
   const el = document.getElementById('devAppsContent');
   if(!el) return;
@@ -3561,7 +3593,7 @@ function openDevApp(id){
 // =========================================================
 // =========================================================
 // 従業員管理アプリ — 会社×区分の分岐／権限制御／書類保管／一括印刷
-// 権限: system・soumu=全社／admin=全社のアルバイト・パートのみ／manager・user=自社のアルバイト・パートのみ
+// 権限: system・soumu=全社を横断して閲覧・編集／admin・manager=自社のみ閲覧・編集／user=利用不可
 //       社員(正社員・契約社員)=system・soumuのみ／給与条件=systemのみ
 // =========================================================
 const EMP_COMPANIES=[{id:'dainichi',name:'大日産業'},{id:'amuse',name:'AMUSE JAPAN'},{id:'welpia',name:'ウェルピア'}];
@@ -3694,15 +3726,16 @@ const EMP_BUNDLES={
 
 // ---- 権限ヘルパー ----
 function empRole(){ return getS()?.role; }
-function empCanEnter(){ return ['system','soumu','admin','manager','user'].includes(empRole()); }
+function empCanEnter(){ return ['system','soumu','admin','manager'].includes(empRole()); } // 一般(user)は利用不可
 function empUserCompany(){ const g=getUserDeptGroup(myId()); return g==='amuse'?'amuse':g==='welpia'?'welpia':'dainichi'; }
-function empVisibleCompanies(){ const r=empRole(); return (r==='system'||r==='soumu'||r==='admin')?['dainichi','amuse','welpia']:[empUserCompany()]; }
+function empVisibleCompanies(){ const r=empRole(); return (r==='system'||r==='soumu')?['dainichi','amuse','welpia']:[empUserCompany()]; }
 function empCanSeeShain(){ return ['system','soumu'].includes(empRole()); }
 function empCanSeeSalary(){ return empRole()==='system'; }
 function empCanEditRecord(rec){ const r=empRole();
   if(_empShainLevel(rec.empType)) return r==='system'||r==='soumu';
-  if(r==='system'||r==='soumu'||r==='admin') return true;
-  return (rec.company||'')===empUserCompany(); }
+  if(r==='system'||r==='soumu') return true;
+  if(r==='admin'||r==='manager') return (rec.company||'')===empUserCompany();
+  return false; }
 function empCoName(id){ return (EMP_COMPANIES.find(c=>c.id===id)||{}).name||id||'-'; }
 // 入社書類の区分ラベル（大日・AMUSEは パートアルバイト／正社員／正社員（店舗鍵保持））
 function _empCatLabel(cat, co){
@@ -9676,15 +9709,25 @@ function startApp(){
     el.textContent=ROLE_LABEL[s.role]||s.role;
     el.style.display='inline';
   }
+  // ロール別メニューを毎回リセット（ログアウト→別権限で再ログインしても前の表示が残らないように）
+  document.getElementById('m-inv').style.display='none';
+  document.getElementById('hrMenu').style.display='none';
+  document.getElementById('m-tk').style.display='';
+  document.getElementById('m-emp').style.display='';
+  document.getElementById('adminMenu').style.display='none';
   // 経理・事務メニューはログイン済み全ユーザーに表示
   document.getElementById('acctMenu').style.display='block';
   // 請求書フォームは system・soumu・admin（管理者）に表示
   if(s.role==='system'||s.role==='soumu'||s.role==='admin'){
     document.getElementById('m-inv').style.display='flex';
   }
-  // 人事勤怠労務（届出書）は system・soumu のみ表示（届出書はテスト中）
-  if(s.role==='system'||s.role==='soumu'){
+  // 人事勤怠労務メニュー：system・soumu は全項目／admin・manager は従業員管理のみ（自社）／user は非表示
+  if(s.role==='system'||s.role==='soumu'||s.role==='admin'||s.role==='manager'){
     document.getElementById('hrMenu').style.display='block';
+    if(s.role==='admin'||s.role==='manager'){
+      document.getElementById('m-tk').style.display='none';  // 届出書は system・soumu のみ
+      document.getElementById('m-emp').style.display='none'; // 入社書類は system・soumu のみ
+    }
   }
   // システム設定・開発中のアプリは system のみ表示
   if(isSystem()){
