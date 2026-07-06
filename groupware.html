@@ -1424,6 +1424,13 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
   <div class="modal">
     <div class="modal-hdr"><h3 id="userModalTitle">新規ユーザー登録</h3><button class="modal-close" onclick="closeModal('userModal')">×</button></div>
     <div class="modal-body">
+      <div id="u-newmember-guide" style="display:none;background:#fffbeb;border:1.5px solid #fcd34d;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:#92400e;line-height:1.9">
+        <div style="font-weight:700;margin-bottom:4px">🔑 新しいメンバーを追加する前に（大切な手順）</div>
+        セキュリティのため、普段は新規登録が閉じられています。追加するときだけ、一時的に開けてください。<br>
+        <b>① 事前準備：</b><a href="https://console.firebase.google.com/u/0/project/dainichi-001/authentication/settings" target="_blank" style="color:#b45309;font-weight:700;text-decoration:underline">Firebaseの設定画面を開く</a> →「作成（登録）を許可する」に<b>チェックを入れて保存</b><br>
+        <b>② このまま登録：</b>下の欄を入力し🎲でパスワード発行 →「登録する」<br>
+        <b>③ 追加後は必ず閉じる：</b>再びFirebaseで<b>チェックを外して保存</b>（穴を閉じ直す）
+      </div>
       <div class="f-row-2">
         <div><label class="f-label">名前 *</label><input class="f-input" id="u-name" placeholder="氏名"></div>
         <div><label class="f-label">ログインID *</label><input class="f-input" id="u-loginid" placeholder="英数字"></div>
@@ -9488,6 +9495,9 @@ function openUserModal(id){
   const users=load('users',[]);
   const u=id?users.find(x=>x.id===id):null;
   document.getElementById('userModalTitle').textContent=u?'ユーザー編集':'新規ユーザー登録';
+  // 新規追加のときだけ、サインアップ開閉の手順ガイドを表示
+  const guide=document.getElementById('u-newmember-guide');
+  if(guide) guide.style.display=u?'none':'block';
   document.getElementById('u-name').value=u?u.name:'';
   document.getElementById('u-loginid').value=u?u.loginId:'';
   const passEl=document.getElementById('u-pass');
