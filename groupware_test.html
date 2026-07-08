@@ -2096,12 +2096,44 @@ function _saveItems(k, arr){
     _db.collection(_COL).doc(_itemDocId(k,it.id)).set({ v: j })
       .catch(e=>console.error('item保存エラー:', k, it.id, e));
   });
+  const removed = [];
   Object.keys(shadow).forEach(id=>{
     if(seen.has(id)) return;
     delete shadow[id]; // 配列から消えた＝この画面で明示的に削除された1件のみ削除
+    removed.push(id);
     _db.collection(_COL).doc(_itemDocId(k,id)).delete()
       .catch(e=>console.error('item削除エラー:', k, id, e));
   });
+  if(removed.length){
+    // 削除の記録（墓標）：旧形式クライアントからの「復活」を防ぐため削除済みIDを覚えておく
+    const tombs = load('_tomb_'+k, []);
+    removed.forEach(id=>{ if(!tombs.includes(id)) tombs.push(id); });
+    while(tombs.length > 500) tombs.shift(); // 肥大化防止（直近500件）
+    save('_tomb_'+k, tombs);
+  }
+}
+// 旧形式（丸ごと配列）からの取り込み：切り替え後も古いタブで動いているクライアントが
+// 追加した「新規の1件」だけを拾い上げて保存する。既存データの変更・削除は
+// 巻き戻し事故と区別できないため取り込まない（安全側）。
+function _adoptLegacyItems(k, arr){
+  if(!Array.isArray(arr) || !_ITEM_KEYS.has(k)) return;
+  const shadow = _itemShadow[k] || (_itemShadow[k] = {});
+  const tombs = new Set(load('_tomb_'+k, []));
+  const cur = Array.isArray(_cache[k]) ? _cache[k] : (_cache[k] = []);
+  const have = new Set(cur.map(x=>x && String(x.id)).filter(Boolean));
+  let added = 0;
+  arr.forEach(it=>{
+    if(!it || !it.id) return;
+    const id = String(it.id);
+    if(have.has(id) || tombs.has(id) || shadow[id]) return;
+    const j = JSON.stringify(it);
+    shadow[id] = j;
+    cur.unshift(it);
+    added++;
+    _db.collection(_COL).doc(_itemDocId(k,id)).set({ v: j })
+      .catch(e=>console.error('旧形式取り込みエラー:', k, id, e));
+  });
+  if(added) console.log('[互換] 旧形式クライアントの新規入力を取り込み:', k, added+'件');
 }
 function _assembleItems(itemDocs){
   const byKey = {};
@@ -2241,8 +2273,10 @@ async function loadAllFromFirestore(){
     _fbDocCount = 0;
     const snaps = await Promise.all(queries.map(q=>q.get()));
     const itemDocs = [];
+    const legacyItemArrs = {};
     snaps.forEach(snap=> snap.forEach(doc => {
       if(doc.id.startsWith(_ITEM_PREFIX)){ itemDocs.push({id:doc.id, v:doc.data().v}); _fbDocCount++; return; }
+      if(_ITEM_KEYS.has(doc.id)){ try{ legacyItemArrs[doc.id] = JSON.parse(doc.data().v); _fbDocCount++; }catch(e){} return; }
       try { _cache[doc.id] = JSON.parse(doc.data().v); _fbDocCount++; } catch(e){}
     }));
     // 【テスト環境専用】本番コピー済みの印(_test_seeded)がない場合は、
@@ -2256,6 +2290,14 @@ async function loadAllFromFirestore(){
       return loadAllFromFirestore();
     }
     _assembleItems(itemDocs);
+    _ITEM_KEYS.forEach(k=>{
+      if(Object.keys(_itemShadow[k]||{}).length > 0){
+        // 1件ずつ形式が主。旧形式ドキュメントに「未知の新規1件」があれば取り込む
+        if(legacyItemArrs[k]) _adoptLegacyItems(k, legacyItemArrs[k]);
+      }else if(legacyItemArrs[k]){
+        _cache[k] = legacyItemArrs[k]; // まだ未移行 → この後 _migrateLegacyItems が変換する
+      }
+    });
     _fbReady = true;
     await _migrateLegacyItems();
     return true;
@@ -2266,9 +2308,11 @@ async function loadAllFromFirestore(){
       _fbDocCount = 0;
       const snap = await _db.collection(_COL).get();
       const itemDocs2 = [];
+      const legacyItemArrs2 = {};
       snap.forEach(doc => {
         if(doc.id.startsWith('ci_file_')||doc.id.startsWith('tk_file_')) return;
         if(doc.id.startsWith(_ITEM_PREFIX)){ itemDocs2.push({id:doc.id, v:doc.data().v}); _fbDocCount++; return; }
+        if(_ITEM_KEYS.has(doc.id)){ try{ legacyItemArrs2[doc.id] = JSON.parse(doc.data().v); _fbDocCount++; }catch(e2){} return; }
         try { _cache[doc.id] = JSON.parse(doc.data().v); _fbDocCount++; } catch(e2){}
       });
       if(!_seedTried && !_cache.hasOwnProperty('_test_seeded')){
@@ -2280,6 +2324,13 @@ async function loadAllFromFirestore(){
         return loadAllFromFirestore();
       }
       _assembleItems(itemDocs2);
+      _ITEM_KEYS.forEach(k=>{
+        if(Object.keys(_itemShadow[k]||{}).length > 0){
+          if(legacyItemArrs2[k]) _adoptLegacyItems(k, legacyItemArrs2[k]);
+        }else if(legacyItemArrs2[k]){
+          _cache[k] = legacyItemArrs2[k];
+        }
+      });
       _fbReady = true;
       await _migrateLegacyItems();
       return true;
@@ -2333,7 +2384,14 @@ function startRealtimeSync(){
         }
         return;
       }
-      if(_ITEM_KEYS.has(id)) return; // 旧形式の丸ごと上書きは受け取らない（巻き戻り防止）
+      if(_ITEM_KEYS.has(id)){
+        // 旧形式の丸ごと上書き：巻き戻りは受け取らないが、古いタブが追加した「新規の1件」だけは取り込む
+        if(change.type==='modified'||change.type==='added'){
+          try{ _adoptLegacyItems(id, JSON.parse(change.doc.data().v)); }catch(e){}
+          _db.collection(_COL).doc(id).delete().catch(()=>{}); // 受け皿を消して巻き戻りの温床を残さない
+        }
+        return;
+      }
       if(change.type==='modified'||change.type==='added'){
         try{ _cache[id]=JSON.parse(change.doc.data().v); }catch(e){}
       }
