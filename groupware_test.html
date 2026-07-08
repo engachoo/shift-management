@@ -926,6 +926,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
           <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:22px">
             <button onclick="backupExportJSON()" style="background:#16a34a;color:#fff;border:none;border-radius:8px;padding:10px 18px;font-size:13px;font-weight:700;cursor:pointer">💾 バックアップをダウンロード</button>
             <button onclick="backupCreateNow()" style="background:#1a56db;color:#fff;border:none;border-radius:8px;padding:10px 18px;font-size:13px;font-weight:700;cursor:pointer">📸 今すぐスナップショット</button>
+            <button onclick="testResetFromProd()" style="background:#e65100;color:#fff;border:none;border-radius:8px;padding:10px 18px;font-size:13px;font-weight:700;cursor:pointer">🧪 本番から再コピー（テスト初期化）</button>
             <label style="background:#f59e0b;color:#fff;border-radius:8px;padding:10px 18px;font-size:13px;font-weight:700;cursor:pointer;display:inline-block">↺ ファイルから復元<input type="file" accept="application/json" onchange="backupImportJSON(this)" style="display:none"></label>
           </div>
           <div style="font-size:13px;font-weight:700;margin-bottom:10px">📅 自動スナップショット一覧（クリックでその日に復元）</div>
@@ -2136,6 +2137,18 @@ async function _migrateLegacyItems(){
   }
 }
 let _seedTried = false;
+async function testResetFromProd(){
+  // 【テスト環境専用】テストデータを全消去し、いまの本番データをコピーし直す
+  if(!confirm('🧪 テスト環境を初期化します。\n\nテスト環境のデータをすべて消して、いまの本番データをコピーし直します。\n（本番には一切影響しません）\n\nよろしいですか？')) return;
+  try{
+    showToast('🧪 テスト環境を初期化中...しばらくお待ちください', 8000);
+    await _wipeTestCol();
+    const ok = await _seedTestFromProd();
+    if(!ok) return;
+    alert('✅ 本番データのコピーが完了しました。ページを再読み込みします。');
+    location.reload();
+  }catch(e){ alert('初期化に失敗しました: '+(e.message||e)); }
+}
 async function _wipeTestCol(){
   // 【テスト環境専用】テストコレクションを全消去（本番gw2dataには一切触れない）
   const snap = await _db.collection(_COL).get();
