@@ -2136,20 +2136,43 @@ async function _migrateLegacyItems(){
   }
 }
 let _seedTried = false;
+async function _wipeTestCol(){
+  // 【テスト環境専用】テストコレクションを全消去（本番gw2dataには一切触れない）
+  const snap = await _db.collection(_COL).get();
+  const jobs = [];
+  snap.forEach(doc=> jobs.push(_db.collection(_COL).doc(doc.id).delete()));
+  await Promise.all(jobs);
+  console.log('[テスト] テストデータを消去:', jobs.length+'件');
+}
 async function _seedTestFromProd(){
-  // 【テスト環境専用】テスト側が空のとき、本番(gw2data)を読み取り専用でコピーして初期データを作る。
+  // 【テスト環境専用】本番(gw2data)を読み取り専用でコピーして初期データを作る。
   // 本番コレクションへの書き込みは一切しない。
+  // 添付本体(ci_file_/tk_file_)は容量が大きく読み込み自体が失敗する原因になるため、
+  // 本番の起動時と同じ「範囲クエリで除外」した読み方でコピーする。
   try{
     console.log('[テスト] 本番データをコピー中...');
-    const snap = await _db.collection('gw2data').get();
+    const fp = firebase.firestore.FieldPath.documentId();
+    const src = _db.collection('gw2data');
+    const queries = [
+      src.where(fp,'<','ci_file_'),
+      src.where(fp,'>','ci_file_').where(fp,'<','tk_file_'),
+      src.where(fp,'>','tk_file_'),
+    ];
+    const snaps = await Promise.all(queries.map(q=>q.get()));
     const jobs = [];
-    snap.forEach(doc=>{
-      if(doc.id.startsWith('ci_file_')||doc.id.startsWith('tk_file_')) return; // 添付本体はコピーしない
+    snaps.forEach(snap=> snap.forEach(doc=>{
       jobs.push(_db.collection(_COL).doc(doc.id).set({ v: doc.data().v }));
-    });
+    }));
+    if(!jobs.length) throw new Error('本番データを1件も読み取れませんでした');
     await Promise.all(jobs);
+    await _db.collection(_COL).doc('_test_seeded').set({ v: JSON.stringify(new Date().toISOString()) });
     console.log('[テスト] コピー完了:', jobs.length+'件');
-  }catch(e){ console.error('[テスト] 本番コピー失敗:', e); }
+    return true;
+  }catch(e){
+    console.error('[テスト] 本番コピー失敗:', e);
+    alert('⚠️ テスト環境の初期化（本番データのコピー）に失敗しました。\n\n通信環境の良い場所でページを再読み込みしてください。\n\nエラー: '+(e.message||e));
+    return false;
+  }
 }
 
 function load(k, d=null){
@@ -2202,13 +2225,23 @@ async function loadAllFromFirestore(){
       col.where(fp,'>','ci_file_').where(fp,'<','tk_file_'),
       col.where(fp,'>','tk_file_'),
     ];
+    _fbDocCount = 0;
     const snaps = await Promise.all(queries.map(q=>q.get()));
     const itemDocs = [];
     snaps.forEach(snap=> snap.forEach(doc => {
       if(doc.id.startsWith(_ITEM_PREFIX)){ itemDocs.push({id:doc.id, v:doc.data().v}); _fbDocCount++; return; }
       try { _cache[doc.id] = JSON.parse(doc.data().v); _fbDocCount++; } catch(e){}
     }));
-    if(_fbDocCount === 0 && !_seedTried){ _seedTried = true; await _seedTestFromProd(); return loadAllFromFirestore(); }
+    // 【テスト環境専用】本番コピー済みの印(_test_seeded)がない場合は、
+    // サンプルデータ等の中途半端な状態とみなして全消去→本番から再コピーする
+    if(!_seedTried && !_cache.hasOwnProperty('_test_seeded')){
+      _seedTried = true;
+      if(_fbDocCount > 0) await _wipeTestCol();
+      Object.keys(_cache).forEach(k=>delete _cache[k]);
+      const ok = await _seedTestFromProd();
+      if(!ok) return false;
+      return loadAllFromFirestore();
+    }
     _assembleItems(itemDocs);
     _fbReady = true;
     await _migrateLegacyItems();
@@ -2217,6 +2250,7 @@ async function loadAllFromFirestore(){
     // 範囲クエリが失敗した場合でも、全件取得（添付はキャッシュ除外）にフォールバックして必ずデータを読む
     console.warn('範囲クエリ失敗→全件取得にフォールバック:', e);
     try {
+      _fbDocCount = 0;
       const snap = await _db.collection(_COL).get();
       const itemDocs2 = [];
       snap.forEach(doc => {
@@ -2224,7 +2258,14 @@ async function loadAllFromFirestore(){
         if(doc.id.startsWith(_ITEM_PREFIX)){ itemDocs2.push({id:doc.id, v:doc.data().v}); _fbDocCount++; return; }
         try { _cache[doc.id] = JSON.parse(doc.data().v); _fbDocCount++; } catch(e2){}
       });
-      if(_fbDocCount === 0 && !_seedTried){ _seedTried = true; await _seedTestFromProd(); return loadAllFromFirestore(); }
+      if(!_seedTried && !_cache.hasOwnProperty('_test_seeded')){
+        _seedTried = true;
+        if(_fbDocCount > 0) await _wipeTestCol();
+        Object.keys(_cache).forEach(k=>delete _cache[k]);
+        const ok = await _seedTestFromProd();
+        if(!ok) return false;
+        return loadAllFromFirestore();
+      }
       _assembleItems(itemDocs2);
       _fbReady = true;
       await _migrateLegacyItems();
