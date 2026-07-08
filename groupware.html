@@ -2072,6 +2072,101 @@ async function fileStoreDelete(idKey){
 const _cache = {}; // インメモリキャッシュ（Firestoreと同期）
 let _fbReady = false;
 
+// =========================================================
+// 1件ずつ保存方式
+// events / circulars は配列丸ごとではなく、1件ごとに独立ドキュメント（it~キー~ID）に保存。
+// 古いキャッシュのクライアントが保存しても触った1件しか書き込まれないため、
+// 他人の追加・変更を丸ごと巻き戻す事故が起きない。
+// =========================================================
+const _ITEM_KEYS = new Set(['events','circulars']);
+const _ITEM_PREFIX = 'it~';
+const _itemShadow = {}; // key -> { itemId: 最後に読み書きしたJSON }
+function _itemDocId(k,id){ return _ITEM_PREFIX+k+'~'+id; }
+function _saveItems(k, arr){
+  const shadow = _itemShadow[k] || (_itemShadow[k] = {});
+  const seen = new Set();
+  arr.forEach(it=>{
+    if(!it || !it.id) return;
+    seen.add(String(it.id));
+    const j = JSON.stringify(it);
+    if(shadow[it.id] === j) return; // 変更なし → 書き込まない
+    shadow[it.id] = j;
+    _db.collection(_COL).doc(_itemDocId(k,it.id)).set({ v: j })
+      .catch(e=>console.error('item保存エラー:', k, it.id, e));
+  });
+  const removed = [];
+  Object.keys(shadow).forEach(id=>{
+    if(seen.has(id)) return;
+    delete shadow[id]; // 配列から消えた＝この画面で明示的に削除された1件のみ削除
+    removed.push(id);
+    _db.collection(_COL).doc(_itemDocId(k,id)).delete()
+      .catch(e=>console.error('item削除エラー:', k, id, e));
+  });
+  if(removed.length){
+    // 削除の記録（墓標）：旧形式クライアントからの「復活」を防ぐため削除済みIDを覚えておく
+    const tombs = load('_tomb_'+k, []);
+    removed.forEach(id=>{ if(!tombs.includes(id)) tombs.push(id); });
+    while(tombs.length > 500) tombs.shift(); // 肥大化防止（直近500件）
+    save('_tomb_'+k, tombs);
+  }
+}
+// 旧形式（丸ごと配列）からの取り込み：切り替え後も古いタブで動いているクライアントが
+// 追加した「新規の1件」だけを拾い上げて保存する。既存データの変更・削除は
+// 巻き戻し事故と区別できないため取り込まない（安全側）。
+function _adoptLegacyItems(k, arr){
+  if(!Array.isArray(arr) || !_ITEM_KEYS.has(k)) return;
+  const shadow = _itemShadow[k] || (_itemShadow[k] = {});
+  const tombs = new Set(load('_tomb_'+k, []));
+  const cur = Array.isArray(_cache[k]) ? _cache[k] : (_cache[k] = []);
+  const have = new Set(cur.map(x=>x && String(x.id)).filter(Boolean));
+  let added = 0;
+  arr.forEach(it=>{
+    if(!it || !it.id) return;
+    const id = String(it.id);
+    if(have.has(id) || tombs.has(id) || shadow[id]) return;
+    const j = JSON.stringify(it);
+    shadow[id] = j;
+    cur.unshift(it);
+    added++;
+    _db.collection(_COL).doc(_itemDocId(k,id)).set({ v: j })
+      .catch(e=>console.error('旧形式取り込みエラー:', k, id, e));
+  });
+  if(added) console.log('[互換] 旧形式クライアントの新規入力を取り込み:', k, added+'件');
+}
+function _assembleItems(itemDocs){
+  const byKey = {};
+  itemDocs.forEach(d=>{
+    const rest = d.id.slice(_ITEM_PREFIX.length);
+    const sep = rest.indexOf('~');
+    if(sep < 0) return;
+    const k = rest.slice(0,sep), id = rest.slice(sep+1);
+    if(!_ITEM_KEYS.has(k)) return;
+    try{
+      const it = JSON.parse(d.v);
+      (byKey[k] || (byKey[k] = [])).push(it);
+      (_itemShadow[k] || (_itemShadow[k] = {}))[id] = d.v;
+    }catch(e){}
+  });
+  Object.keys(byKey).forEach(k=>{
+    byKey[k].sort((a,b)=>String(b.createdAt||b.id||'').localeCompare(String(a.createdAt||a.id||'')));
+    _cache[k] = byKey[k];
+  });
+}
+async function _migrateLegacyItems(){
+  for(const k of _ITEM_KEYS){
+    const hasItems = Object.keys(_itemShadow[k]||{}).length > 0;
+    if(!hasItems){
+      const arr = _cache[k];
+      if(Array.isArray(arr) && arr.length){
+        console.log('[移行] '+k+' を1件ずつ形式に変換:', arr.length+'件');
+        _saveItems(k, arr);
+      }
+    }
+    // 旧形式の丸ごとドキュメントは削除（古いクライアントの巻き戻り書き込みの受け皿を消す）
+    try{ await _db.collection(_COL).doc(k).delete(); }catch(e){}
+  }
+}
+
 function load(k, d=null){
   return _cache.hasOwnProperty(k) ? _cache[k] : d;
 }
@@ -2092,6 +2187,7 @@ function save(k, v){
     }
   }
   _cache[k] = v;
+  if(_ITEM_KEYS.has(k)){ if(_fbReady) _saveItems(k, Array.isArray(v)?v:[]); return; }
   if(_fbReady){
     const json = JSON.stringify(v);
     // Firestoreドキュメントは1MB上限。超過を事前検知（900KB超で警告）
@@ -2121,22 +2217,51 @@ async function loadAllFromFirestore(){
       col.where(fp,'>','ci_file_').where(fp,'<','tk_file_'),
       col.where(fp,'>','tk_file_'),
     ];
+    _fbDocCount = 0;
     const snaps = await Promise.all(queries.map(q=>q.get()));
+    const itemDocs = [];
+    const legacyItemArrs = {};
     snaps.forEach(snap=> snap.forEach(doc => {
+      if(doc.id.startsWith(_ITEM_PREFIX)){ itemDocs.push({id:doc.id, v:doc.data().v}); _fbDocCount++; return; }
+      if(_ITEM_KEYS.has(doc.id)){ try{ legacyItemArrs[doc.id] = JSON.parse(doc.data().v); _fbDocCount++; }catch(e){} return; }
       try { _cache[doc.id] = JSON.parse(doc.data().v); _fbDocCount++; } catch(e){}
     }));
+    _assembleItems(itemDocs);
+    _ITEM_KEYS.forEach(k=>{
+      if(Object.keys(_itemShadow[k]||{}).length > 0){
+        // 1件ずつ形式が主。旧形式ドキュメントに「未知の新規1件」があれば取り込む
+        if(legacyItemArrs[k]) _adoptLegacyItems(k, legacyItemArrs[k]);
+      }else if(legacyItemArrs[k]){
+        _cache[k] = legacyItemArrs[k]; // まだ未移行 → この後 _migrateLegacyItems が変換する
+      }
+    });
     _fbReady = true;
+    await _migrateLegacyItems();
     return true;
   } catch(e) {
     // 範囲クエリが失敗した場合でも、全件取得（添付はキャッシュ除外）にフォールバックして必ずデータを読む
     console.warn('範囲クエリ失敗→全件取得にフォールバック:', e);
     try {
+      _fbDocCount = 0;
       const snap = await _db.collection(_COL).get();
+      const itemDocs2 = [];
+      const legacyItemArrs2 = {};
       snap.forEach(doc => {
         if(doc.id.startsWith('ci_file_')||doc.id.startsWith('tk_file_')) return;
+        if(doc.id.startsWith(_ITEM_PREFIX)){ itemDocs2.push({id:doc.id, v:doc.data().v}); _fbDocCount++; return; }
+        if(_ITEM_KEYS.has(doc.id)){ try{ legacyItemArrs2[doc.id] = JSON.parse(doc.data().v); _fbDocCount++; }catch(e2){} return; }
         try { _cache[doc.id] = JSON.parse(doc.data().v); _fbDocCount++; } catch(e2){}
       });
+      _assembleItems(itemDocs2);
+      _ITEM_KEYS.forEach(k=>{
+        if(Object.keys(_itemShadow[k]||{}).length > 0){
+          if(legacyItemArrs2[k]) _adoptLegacyItems(k, legacyItemArrs2[k]);
+        }else if(legacyItemArrs2[k]){
+          _cache[k] = legacyItemArrs2[k];
+        }
+      });
       _fbReady = true;
+      await _migrateLegacyItems();
       return true;
     } catch(e3) {
       console.warn('Firestore読み込みエラー:', e3);
@@ -2163,9 +2288,41 @@ function _scheduleRefresh(){
 function startRealtimeSync(){
   const handle=snap=>{
     snap.docChanges().forEach(change=>{
+      const id = change.doc.id;
+      if(id.startsWith('ci_file_')||id.startsWith('tk_file_')) return; // 添付本体はキャッシュしない
+      if(id.startsWith(_ITEM_PREFIX)){
+        // 1件ずつ形式：該当の1件だけを配列に反映（追加・更新・削除）
+        const rest = id.slice(_ITEM_PREFIX.length), sep = rest.indexOf('~');
+        if(sep < 0) return;
+        const k = rest.slice(0,sep), itemId = rest.slice(sep+1);
+        if(!_ITEM_KEYS.has(k)) return;
+        const shadow = _itemShadow[k] || (_itemShadow[k] = {});
+        const arr = Array.isArray(_cache[k]) ? _cache[k] : (_cache[k] = []);
+        if(change.type==='removed'){
+          delete shadow[itemId];
+          _cache[k] = arr.filter(x=>!(x && String(x.id)===itemId));
+        }else{
+          try{
+            const j = change.doc.data().v;
+            if(shadow[itemId] === j) return; // 自分の書き込みのエコーは無視
+            shadow[itemId] = j;
+            const it = JSON.parse(j);
+            const i = arr.findIndex(x=>x && String(x.id)===itemId);
+            if(i>=0) arr[i]=it; else arr.unshift(it);
+          }catch(e){}
+        }
+        return;
+      }
+      if(_ITEM_KEYS.has(id)){
+        // 旧形式の丸ごと上書き：巻き戻りは受け取らないが、古いタブが追加した「新規の1件」だけは取り込む
+        if(change.type==='modified'||change.type==='added'){
+          try{ _adoptLegacyItems(id, JSON.parse(change.doc.data().v)); }catch(e){}
+          _db.collection(_COL).doc(id).delete().catch(()=>{}); // 受け皿を消して巻き戻りの温床を残さない
+        }
+        return;
+      }
       if(change.type==='modified'||change.type==='added'){
-        if(change.doc.id.startsWith('ci_file_')||change.doc.id.startsWith('tk_file_')) return; // 念のため添付本体はキャッシュしない
-        try{ _cache[change.doc.id]=JSON.parse(change.doc.data().v); }catch(e){}
+        try{ _cache[id]=JSON.parse(change.doc.data().v); }catch(e){}
       }
     });
     _scheduleRefresh();
@@ -8860,6 +9017,13 @@ function renderTd(){
   setCnt('td-cnt-del',  delegated.filter(t=>!t.done).length);
 
   const list = _tdTab==='mine'?mine : _tdTab==='requested'?requested : delegated;
+  // 期日が近いものを上に表示（期日なしは一番下・完了済みはさらに下）
+  list.sort((a,b)=>{
+    if((a.done?1:0)!==(b.done?1:0)) return (a.done?1:0)-(b.done?1:0);
+    const ad=a.due?(a.due+' '+(a.dueTime||'99:99')):'9999-12-31 99:99';
+    const bd=b.due?(b.due+' '+(b.dueTime||'99:99')):'9999-12-31 99:99';
+    return ad.localeCompare(bd);
+  });
 
   function tdRow(t){
     const assigneeName = t.userId!==me ? getUser(t.userId).name : '';
