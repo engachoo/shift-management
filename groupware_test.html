@@ -3578,9 +3578,15 @@ function updateBadges(){
   const invBadgeEl=document.getElementById('badge-inv');
   if(invBadgeEl){
     const invRole=getS()?.role; const invsB=load('invoices',[]);
-    let invN=invsB.filter(i=>i.status==='rejected'&&i.createdBy===me).length; // 差し戻しは申請者が対応
-    if(invRole==='soumu'||invRole==='admin'||invRole==='system') invN+=invsB.filter(i=>i.status==='submitted'||i.status==='approved').length; // 確認待ち・発送待ち
-    if(invRole==='system') invN+=invsB.filter(i=>i.status==='reviewing').length; // 承認待ち
+    let invN=0;
+    invsB.forEach(i=>{
+      if(i.status==='rejected'){ if(i.createdBy===me) invN++; return; } // 差し戻しは申請者が対応
+      if(!['submitted','reviewing','approved'].includes(i.status)) return;
+      if(i.assigneeId){ if(i.assigneeId===me) invN++; return; } // TOで選ばれた本人だけ
+      // TO未指定（旧データ）は権限で判定
+      if(i.status==='reviewing'){ if(invRole==='system') invN++; }
+      else if(invRole==='soumu'||invRole==='admin'||invRole==='system') invN++;
+    });
     invBadgeEl.textContent=invN||''; invBadgeEl.style.display=invN?'':'none';
   }
   // 予定変更のお知らせバッジ
@@ -5395,7 +5401,8 @@ function renderInvForm(editId){
       <div class="inv-field"><label>お支払期限</label><input type="date" id="inv-deadline" onchange="invRecalcAll()" value="${inv.paymentDeadline||''}"><div style="font-size:11px;color:#1a56db;margin-top:4px">※ 経理事務が記載します（未入力で構いません）</div></div>
     </div>
     <div class="inv-field" style="margin-bottom:24px"><label>備考</label><textarea id="inv-notes" oninput="invRecalcAll()" rows="2" placeholder="自由記述">${esc(inv.notes||'')}</textarea></div>
-    <div style="display:flex;gap:10px;justify-content:flex-end">
+    <div style="display:flex;gap:10px;justify-content:flex-end;align-items:center;flex-wrap:wrap">
+      ${invAssigneeSelect('inv-assignee-submit',['soumu','admin','system'],inv.assigneeId,'確認する人')}
       <button onclick="_invView='list';renderInvApp()" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#374151;border-radius:6px;padding:9px 20px;font-size:13px;cursor:pointer">キャンセル</button>
       <button onclick="saveInvDraft()" style="background:#6b7280;color:#fff;border:none;border-radius:6px;padding:9px 20px;font-size:13px;font-weight:700;cursor:pointer">💾 下書き保存</button>
       <button onclick="submitInvRequest()" style="background:#1a3a6b;color:#fff;border:none;border-radius:8px;padding:9px 22px;font-size:13px;font-weight:700;cursor:pointer">📤 発行依頼</button>
@@ -5526,13 +5533,15 @@ function submitInvRequest(){
   const items=invCollectItems();
   const errs=[]; if(!deptId)errs.push('発行部署'); if(!subject)errs.push('件名'); if(!items.length)errs.push('明細（1行以上）');
   if(errs.length){alert('以下の必須項目を入力してください：\n・'+errs.join('\n・'));return;}
+  const assigneeId=document.getElementById('inv-assignee-submit')?.value||'';
+  if(!assigneeId){alert('TO（確認する人）を選んでください');return;}
   if(!confirm('発行依頼を送信しますか？'))return;
   const deadline=document.getElementById('inv-deadline')?.value;
   const vendorId=document.getElementById('inv-vendor')?.value;
   const notes=document.getElementById('inv-notes')?.value?.trim();
   const t=invCalcTotals(items);
   const invs=load('invoices',[]); const now=new Date().toISOString();
-  const data={deptId,closingDate:closing,subject,description:subject,items,paymentDeadline:deadline,vendorId,notes,totalAmount:t.total,status:'submitted',submittedAt:now,updatedAt:now};
+  const data={deptId,closingDate:closing,subject,description:subject,items,paymentDeadline:deadline,vendorId,notes,totalAmount:t.total,status:'submitted',submittedAt:now,updatedAt:now,assigneeId};
   if(_invEditId){const i=invs.findIndex(x=>x.id===_invEditId);if(i>=0)invs[i]={...invs[i],...data};}
   else invs.push({id:uid(),invoiceNo:invNextNo(),createdBy:myId(),createdAt:now,...data});
   const saved=invs.find(i=>i.invoiceNo===data.invoiceNo)||invs[invs.length-1];
@@ -5547,8 +5556,8 @@ function renderInvDetail(invId){
   const users=load('users',[]); const uName=id=>users.find(u=>u.id===id)?.name||id||'';
   const t=invCalcTotals(inv.items||[]);
   let actions='';
-  if(inv.status==='submitted'&&canManage) actions=`<button onclick="invReview('${invId}')" style="background:#7c3aed;color:#fff;border:none;border-radius:7px;padding:9px 20px;font-size:13px;font-weight:700;cursor:pointer">📋 確認済み → 承認申請へ</button><button onclick="invReject('${invId}')" style="background:#dc2626;color:#fff;border:none;border-radius:7px;padding:9px 20px;font-size:13px;font-weight:700;cursor:pointer;margin-left:8px">↩ 差し戻し</button>`;
-  else if(inv.status==='reviewing'&&canApprove) actions=`<button onclick="invApprove('${invId}')" style="background:#16a34a;color:#fff;border:none;border-radius:7px;padding:10px 24px;font-size:14px;font-weight:700;cursor:pointer">✅ 承認する（電子押印）</button><button onclick="invReject('${invId}')" style="background:#dc2626;color:#fff;border:none;border-radius:7px;padding:9px 20px;font-size:13px;font-weight:700;cursor:pointer;margin-left:8px">↩ 差し戻し</button>`;
+  if(inv.status==='submitted'&&canManage) actions=`${invAssigneeSelect('inv-assignee-review',['system'],'','承認者')}<button onclick="invReview('${invId}')" style="background:#7c3aed;color:#fff;border:none;border-radius:7px;padding:9px 20px;font-size:13px;font-weight:700;cursor:pointer">📋 確認済み → 承認申請へ</button><button onclick="invReject('${invId}')" style="background:#dc2626;color:#fff;border:none;border-radius:7px;padding:9px 20px;font-size:13px;font-weight:700;cursor:pointer;margin-left:8px">↩ 差し戻し</button>`;
+  else if(inv.status==='reviewing'&&canApprove) actions=`${invAssigneeSelect('inv-assignee-send',['soumu','admin','system'],'','発送担当')}<button onclick="invApprove('${invId}')" style="background:#16a34a;color:#fff;border:none;border-radius:7px;padding:10px 24px;font-size:14px;font-weight:700;cursor:pointer">✅ 承認する（電子押印）</button><button onclick="invReject('${invId}')" style="background:#dc2626;color:#fff;border:none;border-radius:7px;padding:9px 20px;font-size:13px;font-weight:700;cursor:pointer;margin-left:8px">↩ 差し戻し</button>`;
   else if((inv.status==='approved'||inv.status==='sent')&&canManage) actions=`<button onclick="_invEditId='${invId}';_invView='print';renderInvApp()" style="background:#7c3aed;color:#fff;border:none;border-radius:7px;padding:9px 20px;font-size:13px;font-weight:700;cursor:pointer">🖨 PDF出力・印刷</button>${vendor?`<button onclick="_invEditId='${invId}';_invView='label';renderInvApp()" style="background:#16a34a;color:#fff;border:none;border-radius:7px;padding:9px 20px;font-size:13px;font-weight:700;cursor:pointer;margin-left:8px">🏷 封筒ラベル</button>`:''}${inv.status==='approved'?`<button onclick="invMarkSent('${invId}')" style="background:#7c3aed;color:#fff;border:none;border-radius:7px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;margin-left:8px">📮 発送済にする</button>`:''}`;
   if((inv.status==='draft'||inv.status==='rejected')&&(inv.createdBy===me||invCanEditAny())) actions+=`<button onclick="_invEditId='${invId}';_invView='form';renderInvApp()" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#374151;border-radius:7px;padding:9px 20px;font-size:13px;cursor:pointer;margin-left:8px">✏ 編集</button>`;
   el.innerHTML=`
@@ -5556,6 +5565,7 @@ function renderInvDetail(invId){
     <button onclick="_invView='list';renderInvApp()" style="background:#2563eb;border:none;color:#fff;border-radius:8px;padding:10px 22px;cursor:pointer;font-size:15px;font-weight:700;box-shadow:0 2px 6px rgba(37,99,235,.3)">← 一覧へ戻る</button>
     <h2 style="font-size:17px;font-weight:700;color:#1a2b4a;margin:0">📄 ${esc(inv.invoiceNo||'請求書')}</h2>
     <span class="inv-badge" style="background:${def.bg};color:${def.color};border-color:${def.border}">${def.icon} ${def.label}</span>
+    ${inv.assigneeId&&!['sent','draft'].includes(inv.status)?`<span style="font-size:12px;font-weight:700;color:#1a56db;background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:4px 10px">👤 担当：${esc(uName(inv.assigneeId))}さん</span>`:''}
   </div>
   <div class="inv-form-grid" style="display:grid;grid-template-columns:2fr 1fr;gap:16px;max-width:900px">
     <div>
@@ -5594,40 +5604,54 @@ function renderInvDetail(invId){
     if(ctx) invDrawSeal(ctx,dept.company||'大日産業㈱',inv.approvedAt);
   }
 }
+// ─── 請求書 TO（次の担当者）プルダウン ──────────────────────
+function invAssigneeSelect(selId, roles, current, roleLabel){
+  const users=load('users',[]).filter(u=>u.active&&roles.includes(u.role));
+  return `<label style="font-size:12px;color:#374151;font-weight:600;display:inline-flex;align-items:center;gap:4px">TO：<select id="${selId}" style="border:1.5px solid #d1d5db;border-radius:6px;padding:8px 10px;font-size:13px;background:#fff"><option value="">${roleLabel}を選ぶ…</option>${users.map(u=>`<option value="${u.id}" ${u.id===current?'selected':''}>${esc(u.name)}</option>`).join('')}</select></label>`;
+}
 // ─── 請求書ステータス変更通知 ──────────────────────────────
 function invStatusNotif(inv, icon, label){
   const users=load('users',[]);
   const me=myId();
   const idsByRole=(...roles)=>users.filter(u=>u.active&&roles.includes(u.role)).map(u=>u.id).filter(id=>id!==me);
   const subject=inv.subject||inv.description||inv.invoiceNo||'請求書';
-  // 次に対応すべき担当者だけに「お願い」通知を送る
+  // 次に対応すべき担当者だけに「お願い」通知を送る（TOで選ばれた人を最優先）
   let nextIds=[], nextMsg='';
-  if(inv.status==='submitted'){ nextIds=idsByRole('soumu','admin','system'); nextMsg=`【請求書】確認をお願いします：${subject}`; }
-  else if(inv.status==='reviewing'){ nextIds=idsByRole('system'); nextMsg=`【請求書】承認（電子押印）をお願いします：${subject}`; }
-  else if(inv.status==='approved'){ nextIds=idsByRole('soumu','admin','system'); nextMsg=`【請求書】PDF発送をお願いします：${subject}`; }
+  if(inv.status==='submitted') nextMsg=`【請求書】確認をお願いします：${subject}`;
+  else if(inv.status==='reviewing') nextMsg=`【請求書】承認（電子押印）をお願いします：${subject}`;
+  else if(inv.status==='approved') nextMsg=`【請求書】PDF発送をお願いします：${subject}`;
+  if(nextMsg){
+    if(inv.assigneeId) nextIds=inv.assigneeId===me?[]:[inv.assigneeId];
+    else if(inv.status==='reviewing') nextIds=idsByRole('system');
+    else nextIds=idsByRole('soumu','admin','system');
+  }
   if(nextIds.length) sendEvNotif(nextIds, icon, nextMsg);
   // 申請者へは進捗の結果通知（差し戻し・発送済など全段階）
   if(inv.createdBy&&inv.createdBy!==me) sendEvNotif([inv.createdBy], icon, `【請求書】${label}：${subject}`);
 }
 function invReview(invId){
   const memo=document.getElementById('inv-review-memo')?.value||'';
+  const assigneeId=document.getElementById('inv-assignee-review')?.value||'';
+  if(!assigneeId){alert('TO（承認者）を選んでください');return;}
   if(!confirm('確認済みにして「承認申請」へ進みますか？'))return;
   const invs=load('invoices',[]); const i=invs.findIndex(x=>x.id===invId); if(i<0)return;
-  invs[i]={...invs[i],status:'reviewing',reviewedBy:myId(),reviewedAt:new Date().toISOString(),reviewNotes:memo};
+  invs[i]={...invs[i],status:'reviewing',reviewedBy:myId(),reviewedAt:new Date().toISOString(),reviewNotes:memo,assigneeId};
   save('invoices',invs); invStatusNotif(invs[i],'📋','承認申請へ'); showToast('確認済みにしました 🔍'); renderInvDetail(invId);
 }
 function invApprove(invId){
   if(!invCanApprove()){ alert('承認（電子押印）はシステム権限のみ可能です'); return; }
+  const sendAssignee=document.getElementById('inv-assignee-send')?.value||'';
+  if(!sendAssignee){alert('TO（発送担当）を選んでください');return;}
   if(!confirm('この請求書を承認し、電子角印を押印しますか？'))return;
   const invs=load('invoices',[]); const i=invs.findIndex(x=>x.id===invId); if(i<0)return;
   const memo=document.getElementById('inv-review-memo')?.value||invs[i].reviewNotes||'';
-  invs[i]={...invs[i],status:'approved',approvedBy:myId(),approvedAt:new Date().toISOString(),reviewNotes:memo};
+  invs[i]={...invs[i],status:'approved',approvedBy:myId(),approvedAt:new Date().toISOString(),reviewNotes:memo,assigneeId:sendAssignee};
   save('invoices',invs); invStatusNotif(invs[i],'✅','承認済'); showToast('承認しました ✅'); renderInvDetail(invId);
 }
 function invReject(invId){
   const memo=prompt('差し戻し理由を入力してください');if(memo===null)return;
   const invs=load('invoices',[]); const i=invs.findIndex(x=>x.id===invId); if(i<0)return;
-  invs[i]={...invs[i],status:'rejected',reviewNotes:memo,rejectedAt:new Date().toISOString()};
+  invs[i]={...invs[i],status:'rejected',reviewNotes:memo,rejectedAt:new Date().toISOString(),assigneeId:invs[i].createdBy};
   save('invoices',invs); invStatusNotif(invs[i],'↩','差し戻し'); showToast('差し戻しました ↩'); _invView='list'; renderInvApp();
 }
 function deleteInvoice(invId){
@@ -5649,7 +5673,7 @@ function invPrint(){
 function invMarkSent(invId){
   if(!confirm('発送済みにしますか？'))return;
   const invs=load('invoices',[]); const i=invs.findIndex(x=>x.id===invId); if(i<0)return;
-  invs[i]={...invs[i],status:'sent',sentAt:new Date().toISOString()};
+  invs[i]={...invs[i],status:'sent',sentAt:new Date().toISOString(),assigneeId:''};
   save('invoices',invs); invStatusNotif(invs[i],'📮','発送済'); showToast('発送済みにしました 📮'); _invView='list'; renderInvApp();
 }
 function invDrawSeal(ctx, companyName, approvedAt){
