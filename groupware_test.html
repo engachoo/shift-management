@@ -740,7 +740,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
       <div class="side-group side-group-toggle" data-grp="acct" onclick="toggleSideGroup('acct')"><span>経理・事務</span><span class="side-group-arrow">▼</span></div>
       <div id="grpBody-acct">
         <div class="side-item" id="m-pc" onclick="showMod('pettycash')"><span class="si-icon">💰</span>現金出納簿</div>
-        <div class="side-item" id="m-inv" style="display:none" onclick="showInvoiceApp()"><span class="si-icon">📄</span>請求書フォーム</div>
+        <div class="side-item" id="m-inv" style="display:none" onclick="showInvoiceApp()"><span class="si-icon">📄</span>請求書フォーム<span class="side-badge" id="badge-inv" style="display:none"></span></div>
       </div>
     </div>
     <div id="hrMenu" style="display:none">
@@ -3574,6 +3574,15 @@ function updateBadges(){
     blBadge.textContent=unread||'';
     blBadge.style.display=unread?'':'none';
   }
+  // 請求書 要対応バッジ（自分が次に対応すべき件数）
+  const invBadgeEl=document.getElementById('badge-inv');
+  if(invBadgeEl){
+    const invRole=getS()?.role; const invsB=load('invoices',[]);
+    let invN=invsB.filter(i=>i.status==='rejected'&&i.createdBy===me).length; // 差し戻しは申請者が対応
+    if(invRole==='soumu'||invRole==='admin'||invRole==='system') invN+=invsB.filter(i=>i.status==='submitted'||i.status==='approved').length; // 確認待ち・発送待ち
+    if(invRole==='system') invN+=invsB.filter(i=>i.status==='reviewing').length; // 承認待ち
+    invBadgeEl.textContent=invN||''; invBadgeEl.style.display=invN?'':'none';
+  }
   // 予定変更のお知らせバッジ
   const evNotifCount=load('evNotifs',[]).filter(n=>n.targetUserIds?.includes(me)&&!evnIsRead(n)&&!evnIsDeleted(n)).length;
   const enBadge=document.getElementById('badge-en');
@@ -5588,16 +5597,17 @@ function renderInvDetail(invId){
 // ─── 請求書ステータス変更通知 ──────────────────────────────
 function invStatusNotif(inv, icon, label){
   const users=load('users',[]);
-  // 総務経理ユーザーのID一覧
-  const soumuIds=users.filter(u=>u.active&&u.role==='soumu').map(u=>u.id);
-  // 申請者（作成者）のID
-  const creatorId=inv.createdBy;
+  const me=myId();
+  const idsByRole=(...roles)=>users.filter(u=>u.active&&roles.includes(u.role)).map(u=>u.id).filter(id=>id!==me);
   const subject=inv.subject||inv.description||inv.invoiceNo||'請求書';
-  const msg=`【請求書】${label}：${subject}`;
-  // 総務経理へ通知（申請中・承認申請・承認済・発送済・差し戻し）
-  if(soumuIds.length) sendEvNotif(soumuIds, icon, msg);
-  // 申請者へも進捗通知（自分の案件のステータス変化）
-  if(creatorId&&creatorId!==myId()) sendEvNotif([creatorId], icon, msg);
+  // 次に対応すべき担当者だけに「お願い」通知を送る
+  let nextIds=[], nextMsg='';
+  if(inv.status==='submitted'){ nextIds=idsByRole('soumu','admin','system'); nextMsg=`【請求書】確認をお願いします：${subject}`; }
+  else if(inv.status==='reviewing'){ nextIds=idsByRole('system'); nextMsg=`【請求書】承認（電子押印）をお願いします：${subject}`; }
+  else if(inv.status==='approved'){ nextIds=idsByRole('soumu','admin','system'); nextMsg=`【請求書】PDF発送をお願いします：${subject}`; }
+  if(nextIds.length) sendEvNotif(nextIds, icon, nextMsg);
+  // 申請者へは進捗の結果通知（差し戻し・発送済など全段階）
+  if(inv.createdBy&&inv.createdBy!==me) sendEvNotif([inv.createdBy], icon, `【請求書】${label}：${subject}`);
 }
 function invReview(invId){
   const memo=document.getElementById('inv-review-memo')?.value||'';
