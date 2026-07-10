@@ -1794,16 +1794,27 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
                 <li><strong>請求先（取引先）</strong> を選びます。未登録の場合は新規入力できます</li>
                 <li><strong>発行部署・件名・お支払期限</strong> を設定します</li>
                 <li>明細（摘要・数量・単価）を入力すると <strong>金額・消費税・合計が自動計算</strong> されます</li>
-                <li><strong>「💾 下書き保存」</strong> で一時保存、<strong>「📤 発行依頼」</strong> で総務経理へ申請します</li>
+                <li><strong>TO（確認する人）</strong> をプルダウンで選び、<strong>「💾 下書き保存」</strong> で一時保存、<strong>「📤 発行依頼」</strong> で申請します</li>
               </ol>
+            </div>
+
+            <!-- TO方式の通知 -->
+            <div style="background:#eef2ff;border:1.5px solid #c7d2fe;border-radius:6px;padding:12px;margin-bottom:12px" data-help-new="2026-07-10">
+              <div style="font-weight:700;color:#3730a3;margin-bottom:6px">👤 TO（次の担当者）と通知・バッジ</div>
+              <ul style="margin:0;padding-left:18px;color:#334;line-height:2">
+                <li>各段階で <strong>「TO：次の担当者」をプルダウンで選ばないと先に進めません</strong>（発行依頼→確認する人、確認済み→承認者、承認→発送担当。差し戻しは自動で申請者宛て）</li>
+                <li>選ばれた人にだけ <strong>🔔「〜をお願いします」通知</strong> が届き、サイドバーの「📄 請求書フォーム」に <strong>自分が対応すべき件数のバッジ</strong> が付きます</li>
+                <li>請求書の詳細画面の上部に <strong>「👤 担当：○○さん」</strong> と表示され、いま誰の番かが一目でわかります</li>
+                <li>申請者には各段階の結果（承認済・差し戻し・発送済など）が通知されます</li>
+              </ul>
             </div>
 
             <!-- 確認・承認 -->
             <div style="background:#fff1f2;border:1.5px solid #fecdd3;border-radius:6px;padding:12px;margin-bottom:12px">
               <div style="font-weight:700;color:#be123c;margin-bottom:6px">✅ 確認・承認（総務経理・システムのみ）</div>
               <ul style="margin:0;padding-left:18px;color:#334;line-height:2">
-                <li>申請中の請求書を開き、内容を確認して <strong>「📋 確認済み → 承認申請へ」</strong> を押します</li>
-                <li>続いて <strong>「✅ 承認する（電子押印）」</strong> で会社印が自動的に押されます</li>
+                <li>申請中の請求書を開き、内容を確認し、<strong>TO（承認者）</strong>を選んで <strong>「📋 確認済み → 承認申請へ」</strong> を押します</li>
+                <li>続いて承認者が <strong>TO（発送担当）</strong>を選んで <strong>「✅ 承認する（電子押印）」</strong> を押すと会社印が自動的に押されます</li>
                 <li>内容に不備があれば <strong>「↩ 差し戻し」</strong> で作成者へ戻せます</li>
               </ul>
             </div>
