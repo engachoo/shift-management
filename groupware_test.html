@@ -2366,7 +2366,7 @@ function _scheduleRefresh(){
     else if(curMod==='todo') renderTd();
     else if(curMod==='circular') renderCiList();
     else if(curMod==='devapps'&&typeof _invView!=='undefined'&&_invView==='list') renderInvApp(); // 請求書一覧（編集中の画面は触らない）
-    else if(curMod==='emp'&&_empView!=='form') renderEmpApp(); // 従業員管理（編集フォーム入力中は触らない）
+    else if(curMod==='emp'&&_empView!=='form'&&!_empDocUpload) renderEmpApp(); // 従業員管理（編集・書類追加フォーム入力中は触らない）
   }, 800);
 }
 function startRealtimeSync(){
@@ -4397,41 +4397,71 @@ function empRemoveStdDoc(key,name){
   save('emp_doc_removed',rm); renderEmpApp(); showToast('削除しました');
 }
 // ===== 追加書類（総務経理が新規登録・差し替え・削除できる書類）=====
+// 届出書と同じ「フォーム画面」方式（書類名を入力 → ファイルを選ぶ → 保存）
+let _empDocUpload=null;
 function empAddCustomDoc(){
   if(!empCanEditDocs()){ alert('書類の追加は総務経理・システムのみ可能です'); return; }
-  const name=prompt('追加する書類の名前を入力してください（例：健康診断同意書）');
-  if(!name||!name.trim()) return;
-  const inp=document.createElement('input'); inp.type='file'; inp.accept='.pdf,.doc,.docx,.xls,.xlsx';
-  inp.onchange=async()=>{
-    const f=inp.files[0]; if(!f) return;
-    try{
-      showToast('📤 アップロード中...',5000);
-      const meta=await tkUploadFileToStore(f);
-      const docs=load('emp_custom_docs',[]);
-      const today=new Date().toLocaleDateString('sv',{timeZone:'Asia/Tokyo'});
-      docs.push({id:uid(),company:_empCo,cat:_empCat,name:name.trim(),ref:meta.ref,fname:meta.name,size:meta.size,revDate:today,history:[{date:today,by:getS()?.name||'',note:'新規登録',name:meta.name,size:meta.size}]});
-      save('emp_custom_docs',docs); showToast('✅ 書類を追加しました'); renderEmpApp();
-    }catch(e){ alert(e.message); }
-  };
-  inp.click();
+  _empDocUpload={ id:'', name:'', file:null };
+  renderEmpDocUpload();
 }
 function empReplaceCustomDoc(id){
   if(!empCanEditDocs()){ alert('権限がありません'); return; }
-  const docs=load('emp_custom_docs',[]); const d=docs.find(x=>x.id===id); if(!d) return;
-  const inp=document.createElement('input'); inp.type='file'; inp.accept='.pdf,.doc,.docx,.xls,.xlsx';
-  inp.onchange=async()=>{
-    const f=inp.files[0]; if(!f) return;
-    const info=await _askRevision(getS()?.name||''); if(!info) return;
-    try{
-      showToast('📤 アップロード中...',5000);
-      const meta=await tkUploadFileToStore(f);
-      const today=new Date().toLocaleDateString('sv',{timeZone:'Asia/Tokyo'});
+  const d=load('emp_custom_docs',[]).find(x=>x.id===id); if(!d) return;
+  _empDocUpload={ id:d.id, name:d.name, file:null };
+  renderEmpDocUpload();
+}
+function renderEmpDocUpload(){
+  const body=document.getElementById('empBody'); if(!body||!_empDocUpload) return;
+  const isNew=!_empDocUpload.id;
+  body.innerHTML=`
+    <div style="max-width:560px;margin:0 auto">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+        <button onclick="_empDocUpload=null;renderEmpApp()" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#475569;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:12px">← 一覧</button>
+        <h2 style="font-size:17px;font-weight:700;color:#1a2b4a;margin:0">${isNew?'入社書類を追加':'書類の差し替え'}（${esc(empCoName(_empCo))} ／ ${_empCatLabel(_empCat)}）</h2>
+      </div>
+      <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:20px">
+        <label style="display:block;font-size:13px;font-weight:700;color:#374151;margin-bottom:6px">書類名</label>
+        <input id="emp-doc-name" value="${esc(_empDocUpload.name)}" ${isNew?'':'readonly'} placeholder="例：健康診断同意書" style="width:100%;border:1.5px solid #d1d5db;border-radius:6px;padding:8px 10px;font-size:14px;box-sizing:border-box;margin-bottom:16px;${isNew?'':'background:#f3f4f6;color:#6b7280'}">
+        <label style="display:block;font-size:13px;font-weight:700;color:#374151;margin-bottom:6px">📎 ${isNew?'':'直した '}ファイルを選ぶ（PDF・Word・Excel）</label>
+        <input type="file" id="emp-doc-file" accept=".pdf,.doc,.docx,.xls,.xlsx" onchange="_empDocUpload.file=this.files[0]||null" style="margin-bottom:16px;font-size:13px;width:100%">
+        <div style="font-size:12px;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:8px 10px;margin-bottom:16px;line-height:1.8">※ ファイルは <strong>650KBくらいまで</strong>。<strong>「保存」を押すと、担当者名と改訂理由の入力画面が出ます。</strong>入力した内容は改訂履歴に残ります。</div>
+        <div style="display:flex;gap:10px;justify-content:flex-end">
+          <button onclick="_empDocUpload=null;renderEmpApp()" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#374151;border-radius:7px;padding:9px 18px;font-size:13px;cursor:pointer">キャンセル</button>
+          <button id="emp-doc-save" onclick="empDocUploadSave()" style="background:#1a3a6b;color:#fff;border:none;border-radius:7px;padding:9px 24px;font-size:14px;font-weight:700;cursor:pointer">💾 保存</button>
+        </div>
+      </div>
+    </div>`;
+}
+async function empDocUploadSave(){
+  if(!empCanEditDocs()||!_empDocUpload) return;
+  const isNew=!_empDocUpload.id;
+  const name=document.getElementById('emp-doc-name')?.value.trim();
+  if(!name){ alert('書類名を入力してください'); return; }
+  if(!_empDocUpload.file){ alert(isNew?'ファイルを選択してください':'直したファイルを選択してください'); return; }
+  const info=await _askRevision(getS()?.name||'');
+  if(!info) return; // キャンセル
+  const btn=document.getElementById('emp-doc-save');
+  if(btn){ btn.disabled=true; btn.textContent='保存中...'; }
+  try{
+    const meta=await tkUploadFileToStore(_empDocUpload.file);
+    const docs=load('emp_custom_docs',[]);
+    const today=new Date().toLocaleDateString('sv',{timeZone:'Asia/Tokyo'});
+    if(isNew){
+      docs.push({id:uid(),company:_empCo,cat:_empCat,name,ref:meta.ref,fname:meta.name,size:meta.size,revDate:today,history:[{date:today,by:info.by,note:info.note||'新規登録',name:meta.name,size:meta.size}]});
+    }else{
+      const d=docs.find(x=>x.id===_empDocUpload.id);
+      if(!d) throw new Error('対象の書類が見つかりません');
       d.ref=meta.ref; d.fname=meta.name; d.size=meta.size; d.revDate=today;
       d.history=[...(d.history||[]),{date:today,by:info.by,note:info.note,name:meta.name,size:meta.size}];
-      save('emp_custom_docs',docs); showToast('✅ 書類を差し替えました'); renderEmpApp();
-    }catch(e){ alert(e.message); }
-  };
-  inp.click();
+    }
+    save('emp_custom_docs',docs);
+    _empDocUpload=null;
+    showToast(isNew?'✅ 書類を追加しました':'✅ 書類を差し替えました');
+    renderEmpApp();
+  }catch(e){
+    alert(e.message);
+    if(btn){ btn.disabled=false; btn.textContent='💾 保存'; }
+  }
 }
 function empDeleteCustomDoc(id){
   if(!empCanEditDocs()){ alert('権限がありません'); return; }
