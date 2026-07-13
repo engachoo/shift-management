@@ -1376,28 +1376,224 @@ function _authReady(){
 const _cache = {};
 let _fbReady = false;
 function load(k,d=null){ return _cache.hasOwnProperty(k)?_cache[k]:d; }
+
+// =========================================================
+// 1件ずつ保存方式（グループウェアから移植）
+// clients / claims / facilities / claim_history は配列丸ごとではなく、
+// 1件ごとに独立ドキュメント（it~キー~ID）に保存。
+// 古いキャッシュのクライアントが保存しても触った1件しか書き込まれないため、
+// 他人の追加・変更を丸ごと巻き戻す事故が起きない。
+// =========================================================
+const _ITEM_KEYS = new Set(['clients','claims','facilities','claim_history']);
+const _ITEM_PREFIX = 'it~';
+const _itemShadow = {}; // key -> { itemId: 最後に読み書きしたJSON }
+function _itemDocId(k,id){ return _ITEM_PREFIX+k+'~'+id; }
+function _saveItems(k, arr){
+  const shadow = _itemShadow[k] || (_itemShadow[k] = {});
+  const seen = new Set();
+  arr.forEach(it=>{
+    if(!it || !it.id) return;
+    seen.add(String(it.id));
+    const j = JSON.stringify(it);
+    if(shadow[it.id] === j) return; // 変更なし → 書き込まない
+    shadow[it.id] = j;
+    _db.collection(_COL).doc(_itemDocId(k,it.id)).set({ v: j })
+      .catch(e=>console.error('item保存エラー:', k, it.id, e));
+  });
+  const removed = [];
+  Object.keys(shadow).forEach(id=>{
+    if(seen.has(id)) return;
+    delete shadow[id]; // 配列から消えた＝この画面で明示的に削除された1件のみ削除
+    removed.push(id);
+    _db.collection(_COL).doc(_itemDocId(k,id)).delete()
+      .catch(e=>console.error('item削除エラー:', k, id, e));
+  });
+  if(removed.length){
+    // 削除の記録（墓標）：旧形式クライアントからの「復活」を防ぐため削除済みIDを覚えておく
+    const tombs = load('_tomb_'+k, []);
+    removed.forEach(id=>{ if(!tombs.includes(id)) tombs.push(id); });
+    while(tombs.length > 500) tombs.shift(); // 肥大化防止（直近500件）
+    save('_tomb_'+k, tombs);
+  }
+}
+// 旧形式（丸ごと配列）からの取り込み：切り替え後も古いタブで動いているクライアントが
+// 追加した「新規の1件」だけを拾い上げて保存する。既存データの変更・削除は
+// 巻き戻し事故と区別できないため取り込まない（安全側）。
+function _adoptLegacyItems(k, arr){
+  if(!Array.isArray(arr) || !_ITEM_KEYS.has(k)) return;
+  const shadow = _itemShadow[k] || (_itemShadow[k] = {});
+  const tombs = new Set(load('_tomb_'+k, []));
+  const cur = Array.isArray(_cache[k]) ? _cache[k] : (_cache[k] = []);
+  const have = new Set(cur.map(x=>x && String(x.id)).filter(Boolean));
+  let added = 0;
+  arr.forEach(it=>{
+    if(!it || !it.id) return;
+    const id = String(it.id);
+    if(have.has(id) || tombs.has(id) || shadow[id]) return;
+    const j = JSON.stringify(it);
+    shadow[id] = j;
+    cur.unshift(it);
+    added++;
+    _db.collection(_COL).doc(_itemDocId(k,id)).set({ v: j })
+      .catch(e=>console.error('旧形式取り込みエラー:', k, id, e));
+  });
+  if(added) console.log('[互換] 旧形式クライアントの新規入力を取り込み:', k, added+'件');
+}
+function _assembleItems(itemDocs){
+  const byKey = {};
+  itemDocs.forEach(d=>{
+    const rest = d.id.slice(_ITEM_PREFIX.length);
+    const sep = rest.indexOf('~');
+    if(sep < 0) return;
+    const k = rest.slice(0,sep), id = rest.slice(sep+1);
+    if(!_ITEM_KEYS.has(k)) return;
+    try{
+      const it = JSON.parse(d.v);
+      (byKey[k] || (byKey[k] = [])).push(it);
+      (_itemShadow[k] || (_itemShadow[k] = {}))[id] = d.v;
+    }catch(e){}
+  });
+  Object.keys(byKey).forEach(k=>{
+    byKey[k].sort((a,b)=>String(b.createdAt||b.id||'').localeCompare(String(a.createdAt||a.id||'')));
+    _cache[k] = byKey[k];
+  });
+}
+// claim_history（請求DL履歴）は元々IDを持たないため、決め打ちのID（h_請求ID_ファイル種別）を付与する
+function _ensureHistIds(){
+  const hist = _cache['claim_history'];
+  if(!Array.isArray(hist)) return;
+  const seen = new Set();
+  hist.forEach(h=>{
+    if(!h) return;
+    if(!h.id){
+      const base = 'h_'+(h.claimId||'x')+'_'+(h.fileType||'x');
+      let id = base, n = 2;
+      while(seen.has(id)) id = base+'_'+(n++);
+      h.id = id;
+    }
+    seen.add(String(h.id));
+  });
+}
+async function _migrateLegacyItems(){
+  for(const k of _ITEM_KEYS){
+    const hasItems = Object.keys(_itemShadow[k]||{}).length > 0;
+    if(!hasItems){
+      const arr = _cache[k];
+      if(Array.isArray(arr) && arr.length){
+        console.log('[移行] '+k+' を1件ずつ形式に変換:', arr.length+'件');
+        _saveItems(k, arr);
+      }
+    }
+    // 旧形式の丸ごとドキュメントは削除（古いクライアントの巻き戻り書き込みの受け皿を消す）
+    try{ await _db.collection(_COL).doc(k).delete(); }catch(e){}
+  }
+}
+// 大量消失ガード：重要データの件数が一度に大きく減る保存はその場で確認を求める
+const _SHRINK_GUARD_KEYS = new Set(['clients','claims','facilities','claim_history','users']);
 function save(k,v){
+  if(_SHRINK_GUARD_KEYS.has(k) && Array.isArray(v)){
+    const prev = _cache[k];
+    if(Array.isArray(prev)){
+      const drop = prev.length - v.length;
+      if(prev.length >= 10 && drop > 5 && drop > prev.length * 0.3){
+        if(!confirm(`⚠️ データ保護の警告\n\n「${k}」のデータが一度に ${drop} 件減ろうとしています（${prev.length}件 → ${v.length}件）。\n\n心当たりがない場合は必ず「キャンセル」を押して、システム管理者に連絡してください。\n\n本当に保存しますか？`)){
+          console.warn('[shrink-guard] 保存をキャンセル:', k, prev.length, '->', v.length);
+          return;
+        }
+      }
+    }
+  }
   _cache[k]=v;
   if(!_fbReady) return;
+  if(_ITEM_KEYS.has(k)){ _saveItems(k, Array.isArray(v)?v:[]); return; }
   _db.collection(_COL).doc(k).set({v:JSON.stringify(v)}).catch(e=>console.error('Firestore書き込みエラー:',k,e));
 }
 async function loadAllFromFirestore(){
   try{
     const snap=await _db.collection(_COL).get();
-    snap.forEach(doc=>{ try{_cache[doc.id]=JSON.parse(doc.data().v);}catch(e){} });
-    _fbReady=true; return true;
-  }catch(e){ console.warn('Firestore読み込みエラー:',e); return false; }
-}
-function startRealtimeSync(){
-  _db.collection(_COL).onSnapshot(snap=>{
-    snap.docChanges().forEach(ch=>{
-      if(ch.type==='modified'||ch.type==='added'){
-        try{_cache[ch.doc.id]=JSON.parse(ch.doc.data().v);}catch(e){}
+    const itemDocs=[]; const legacyItemArrs={};
+    snap.forEach(doc=>{
+      if(doc.id.startsWith(_ITEM_PREFIX)){ itemDocs.push({id:doc.id, v:doc.data().v}); return; }
+      if(_ITEM_KEYS.has(doc.id)){ try{ legacyItemArrs[doc.id]=JSON.parse(doc.data().v); }catch(e){} return; }
+      try{_cache[doc.id]=JSON.parse(doc.data().v);}catch(e){}
+    });
+    _assembleItems(itemDocs);
+    _ITEM_KEYS.forEach(k=>{
+      if(Object.keys(_itemShadow[k]||{}).length > 0){
+        // 1件ずつ形式が主。旧形式ドキュメントに「未知の新規1件」があれば取り込む
+        if(legacyItemArrs[k]) _adoptLegacyItems(k, legacyItemArrs[k]);
+      }else if(legacyItemArrs[k]){
+        _cache[k] = legacyItemArrs[k]; // まだ未移行 → この後 _migrateLegacyItems が変換する
       }
     });
+    _fbReady=true;
+    _ensureHistIds();
+    await _migrateLegacyItems();
+    return true;
+  }catch(e){ console.warn('Firestore読み込みエラー:',e); return false; }
+}
+// リアルタイム同期（他ユーザーの変更を自動反映）
+let _refreshTimer = null;
+function _scheduleRefresh(){
+  clearTimeout(_refreshTimer);
+  _refreshTimer = setTimeout(()=>{
     if(curView==='daily') renderDaily();
     else if(curView==='monthly') renderMonthly();
+    else{
+      // 一覧系の画面は、入力モーダルを開いていない時だけ再描画する
+      const mo=document.getElementById('modalOverlay');
+      if(mo && mo.classList.contains('show')) return;
+      if(curView==='clients') renderClients();
+      else if(curView==='claim') renderClaim();
+      else if(curView==='facility') renderFacilityList();
+    }
+  }, 800);
+}
+function startRealtimeSync(){
+  _db.collection(_COL).onSnapshot(_rtHandle, err=>{
+    console.error('Firestoreリアルタイム同期エラー（自動反映が止まっています）:', err);
+    try{ showToast('⚠️ 自動反映が停止しました。ページを再読み込みしてください', 6000); }catch(e){}
   });
+}
+function _rtHandle(snap){
+    snap.docChanges().forEach(ch=>{
+      const id = ch.doc.id;
+      if(id.startsWith(_ITEM_PREFIX)){
+        // 1件ずつ形式：該当の1件だけを配列に反映（追加・更新・削除）
+        const rest = id.slice(_ITEM_PREFIX.length), sep = rest.indexOf('~');
+        if(sep < 0) return;
+        const k = rest.slice(0,sep), itemId = rest.slice(sep+1);
+        if(!_ITEM_KEYS.has(k)) return;
+        const shadow = _itemShadow[k] || (_itemShadow[k] = {});
+        const arr = Array.isArray(_cache[k]) ? _cache[k] : (_cache[k] = []);
+        if(ch.type==='removed'){
+          delete shadow[itemId];
+          _cache[k] = arr.filter(x=>!(x && String(x.id)===itemId));
+        }else{
+          try{
+            const j = ch.doc.data().v;
+            if(shadow[itemId] === j) return; // 自分の書き込みのエコーは無視
+            shadow[itemId] = j;
+            const it = JSON.parse(j);
+            const i = arr.findIndex(x=>x && String(x.id)===itemId);
+            if(i>=0) arr[i]=it; else arr.unshift(it);
+          }catch(e){}
+        }
+        return;
+      }
+      if(_ITEM_KEYS.has(id)){
+        // 旧形式の丸ごと上書き：巻き戻りは受け取らないが、古いタブが追加した「新規の1件」だけは取り込む
+        if(ch.type==='modified'||ch.type==='added'){
+          try{ _adoptLegacyItems(id, JSON.parse(ch.doc.data().v)); }catch(e){}
+          _db.collection(_COL).doc(id).delete().catch(()=>{}); // 受け皿を消して巻き戻りの温床を残さない
+        }
+        return;
+      }
+      if(ch.type==='modified'||ch.type==='added'){
+        try{_cache[id]=JSON.parse(ch.doc.data().v);}catch(e){}
+      }
+    });
+    _scheduleRefresh();
 }
 
 // =========================================================
@@ -2458,7 +2654,7 @@ function _seedClaimsIfEmpty(){
     const dlAt=`${dlDate.getFullYear()}/${String(dlDate.getMonth()+1).padStart(2,'0')}/${String(dlDate.getDate()).padStart(2,'0')} 10:20`;
     ['jisseki','seikyu'].forEach(ft=>{
       if(!hist.find(h=>h.claimId===c.id&&h.fileType===ft)){
-        hist.push({claimId:c.id,facilityId:fid,fileType:ft,dlAt});
+        hist.push({id:'h_'+c.id+'_'+ft,claimId:c.id,facilityId:fid,fileType:ft,dlAt});
       }
     });
   });
@@ -2581,7 +2777,7 @@ function downloadClaimFile(type){
   const dlAt=`${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
   const ex=hist.find(h=>h.claimId===id&&h.fileType===type);
   if(ex) ex.dlAt=dlAt;
-  else hist.push({claimId:id,facilityId:_curFacId,fileType:type,dlAt});
+  else hist.push({id:'h_'+id+'_'+type,claimId:id,facilityId:_curFacId,fileType:type,dlAt});
   save('claim_history',hist);
   // CSV生成
   const clients=load('clients',[]).filter(cl=>cl.active!==false&&cl.facilityId===_curFacId);
@@ -3594,7 +3790,7 @@ function execClaimHistImport(){
     // 履歴追加
     ['jisseki','seikyu'].forEach(ft=>{
       if(!hist.find(h=>h.claimId===id&&h.fileType===ft)){
-        hist.push({claimId:id,facilityId:fid,fileType:ft,dlAt});
+        hist.push({id:'h_'+id+'_'+ft,claimId:id,facilityId:fid,fileType:ft,dlAt});
         addedHist++;
       }
     });
