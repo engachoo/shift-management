@@ -1595,7 +1595,7 @@ function _scheduleRefresh(){
     else{
       // 一覧系の画面は、入力モーダルを開いていない時だけ再描画する
       const mo=document.getElementById('modalOverlay');
-      if(mo && mo.style.display && mo.style.display!=='none') return;
+      if(mo && mo.classList.contains('show')) return;
       if(curView==='clients') renderClients();
       else if(curView==='claim') renderClaim();
       else if(curView==='facility') renderFacilityList();
@@ -1603,7 +1603,12 @@ function _scheduleRefresh(){
   }, 800);
 }
 function startRealtimeSync(){
-  _db.collection(_COL).onSnapshot(snap=>{
+  _db.collection(_COL).onSnapshot(_rtHandle, err=>{
+    console.error('Firestoreリアルタイム同期エラー（自動反映が止まっています）:', err);
+    try{ showToast('⚠️ 自動反映が停止しました。ページを再読み込みしてください', 6000); }catch(e){}
+  });
+}
+function _rtHandle(snap){
     snap.docChanges().forEach(ch=>{
       const id = ch.doc.id;
       if(id.startsWith(_ITEM_PREFIX)){
@@ -1642,7 +1647,6 @@ function startRealtimeSync(){
       }
     });
     _scheduleRefresh();
-  });
 }
 
 // =========================================================
