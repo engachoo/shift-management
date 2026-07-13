@@ -2365,6 +2365,8 @@ function _scheduleRefresh(){
     else if(curMod==='evnotif') renderEvNotif();
     else if(curMod==='todo') renderTd();
     else if(curMod==='circular') renderCiList();
+    else if(curMod==='devapps'&&typeof _invView!=='undefined'&&_invView==='list') renderInvApp(); // 請求書一覧（編集中の画面は触らない）
+    else if(curMod==='emp'&&_empView!=='form') renderEmpApp(); // 従業員管理（編集フォーム入力中は触らない）
   }, 800);
 }
 function startRealtimeSync(){
