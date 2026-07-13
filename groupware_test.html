@@ -4316,8 +4316,32 @@ function renderEmpDocs(){
     </div>`;
   }
 
+  // ===== 追加書類（総務経理が新規登録した書類）=====
+  const customDocs=load('emp_custom_docs',[]).filter(d=>d.company===_empCo&&d.cat===_empCat);
+  let customHtml='';
+  if(customDocs.length||canEdit){
+    const crows=customDocs.map((d,i)=>{
+      const fe=esc(d.fname||d.name).replace(/'/g,"\\'");
+      return `<tr style="border-bottom:1px solid #eef2f7;background:${i%2?'#f8fafc':'#fff'}">
+        <td style="padding:10px 12px;text-align:center;font-size:12px;color:#94a3b8;font-weight:700;width:36px">${i+1}</td>
+        <td style="padding:10px 14px;font-size:13px;color:#1a2b4a"><strong>${esc(d.name)}</strong><div style="font-size:10px;color:#16a34a;margin-top:2px">改訂:${esc(d.revDate||'-')}</div></td>
+        <td style="padding:10px 10px;text-align:center;white-space:nowrap"><button onclick="empFileDownload('${d.ref}','${fe}')" style="background:#7c3aed;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer">📥 ダウンロード</button></td>
+        <td style="padding:10px 10px;text-align:center;white-space:nowrap"><button onclick="empCustomHistory('${d.id}')" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;border-radius:6px;padding:6px 10px;font-size:12px;cursor:pointer">📜 改訂履歴(${(d.history||[]).length})</button></td>
+        ${canEdit?`<td style="padding:10px 10px;text-align:center;white-space:nowrap"><button onclick="empReplaceCustomDoc('${d.id}')" style="background:#fff7ed;border:1px solid #fdba74;color:#c2410c;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer">✏️ 差し替え</button> <button onclick="empDeleteCustomDoc('${d.id}')" style="background:#fff;border:1px solid #fca5a5;color:#dc2626;border-radius:6px;padding:6px 10px;font-size:12px;cursor:pointer">🗑 削除</button></td>`:''}
+      </tr>`;}).join('');
+    customHtml=`<div style="margin-bottom:8px;margin-top:6px;display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span style="font-size:14px;font-weight:700;color:#1a2b4a">➕ 追加書類</span><span style="font-size:11px;color:#6b7280">総務経理が独自に追加した書類</span>${canEdit?`<button onclick="empAddCustomDoc()" style="margin-left:auto;background:#1a3a6b;color:#fff;border:none;border-radius:7px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer">＋ 新しい書類を追加</button>`:''}</div>`
+      +(customDocs.length?`<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;overflow-x:auto;margin-bottom:16px"><table style="width:100%;border-collapse:collapse;table-layout:fixed;min-width:${canEdit?'680':'540'}px">
+        <thead><tr style="background:#0f766e;color:#fff">
+          <th style="padding:10px 12px;text-align:center;font-size:12px;width:40px">No.</th>
+          <th style="padding:10px 14px;text-align:left;font-size:12px">書類名</th>
+          <th style="padding:10px 10px;text-align:center;font-size:12px;width:140px">ダウンロード</th>
+          <th style="padding:10px 10px;text-align:center;font-size:12px;width:120px">改訂履歴</th>
+          ${canEdit?'<th style="padding:10px 10px;text-align:center;font-size:12px;width:170px">書式編集</th>':''}
+        </tr></thead><tbody>${crows}</tbody></table></div>`:`<div style="background:#fff;border:1px dashed #cbd5e1;border-radius:12px;padding:16px;text-align:center;color:#9ca3af;font-size:12px;margin-bottom:16px">まだ追加書類はありません。</div>`);
+  }
+
   if(!items.length && !optItems.length){
-    body.innerHTML=html+'<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:28px;text-align:center;color:#9ca3af;font-size:13px">この区分の入社書類はまだ登録されていません。</div>';
+    body.innerHTML=html+customHtml+'<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:28px;text-align:center;color:#9ca3af;font-size:13px">この区分の入社書類はまだ登録されていません。</div>';
     return;
   }
 
@@ -4358,8 +4382,59 @@ function renderEmpDocs(){
 
   html+=buildTable('📂 標準様式','記入してもらう書類',items,'#4338ca');
   html+=buildTable('👕 必要に応じて（制服・社宅）','該当者のみ配布',optItems,'#475569');
+  html+=customHtml;
   if(!canEdit) html+='<div style="font-size:11px;color:#9ca3af;margin-top:2px">※ 書式の変更（書式編集）は総務経理・システム権限のみ可能です。</div>';
   body.innerHTML=html;
+}
+// ===== 追加書類（総務経理が新規登録・差し替え・削除できる書類）=====
+function empAddCustomDoc(){
+  if(!empCanEditDocs()){ alert('書類の追加は総務経理・システムのみ可能です'); return; }
+  const name=prompt('追加する書類の名前を入力してください（例：健康診断同意書）');
+  if(!name||!name.trim()) return;
+  const inp=document.createElement('input'); inp.type='file'; inp.accept='.pdf,.doc,.docx,.xls,.xlsx';
+  inp.onchange=async()=>{
+    const f=inp.files[0]; if(!f) return;
+    try{
+      showToast('📤 アップロード中...',5000);
+      const meta=await tkUploadFileToStore(f);
+      const docs=load('emp_custom_docs',[]);
+      const today=new Date().toLocaleDateString('sv',{timeZone:'Asia/Tokyo'});
+      docs.push({id:uid(),company:_empCo,cat:_empCat,name:name.trim(),ref:meta.ref,fname:meta.name,size:meta.size,revDate:today,history:[{date:today,by:getS()?.name||'',note:'新規登録',name:meta.name,size:meta.size}]});
+      save('emp_custom_docs',docs); showToast('✅ 書類を追加しました'); renderEmpApp();
+    }catch(e){ alert(e.message); }
+  };
+  inp.click();
+}
+function empReplaceCustomDoc(id){
+  if(!empCanEditDocs()){ alert('権限がありません'); return; }
+  const docs=load('emp_custom_docs',[]); const d=docs.find(x=>x.id===id); if(!d) return;
+  const inp=document.createElement('input'); inp.type='file'; inp.accept='.pdf,.doc,.docx,.xls,.xlsx';
+  inp.onchange=async()=>{
+    const f=inp.files[0]; if(!f) return;
+    const info=await _askRevision(getS()?.name||''); if(!info) return;
+    try{
+      showToast('📤 アップロード中...',5000);
+      const meta=await tkUploadFileToStore(f);
+      const today=new Date().toLocaleDateString('sv',{timeZone:'Asia/Tokyo'});
+      d.ref=meta.ref; d.fname=meta.name; d.size=meta.size; d.revDate=today;
+      d.history=[...(d.history||[]),{date:today,by:info.by,note:info.note,name:meta.name,size:meta.size}];
+      save('emp_custom_docs',docs); showToast('✅ 書類を差し替えました'); renderEmpApp();
+    }catch(e){ alert(e.message); }
+  };
+  inp.click();
+}
+function empDeleteCustomDoc(id){
+  if(!empCanEditDocs()){ alert('権限がありません'); return; }
+  const d=load('emp_custom_docs',[]).find(x=>x.id===id); if(!d) return;
+  if(!confirm(`追加書類「${d.name}」を削除しますか？`)) return;
+  save('emp_custom_docs',load('emp_custom_docs',[]).filter(x=>x.id!==id));
+  renderEmpApp(); showToast('削除しました');
+}
+function empCustomHistory(id){
+  const d=load('emp_custom_docs',[]).find(x=>x.id===id); if(!d) return;
+  const h=(d.history||[]);
+  if(!h.length){ alert('改訂履歴はまだありません'); return; }
+  alert(`「${d.name}」の改訂履歴\n\n`+h.map(x=>`${x.date}　${x.by||''}\n　${x.note||''}（${x.name||''}）`).join('\n\n'));
 }
 
 let _empShowRetired=false;
@@ -4847,6 +4922,7 @@ function renderTodokeApp(){
       </td>
       ${canManage?`<td style="padding:10px 10px;text-align:center;white-space:nowrap">
         <button onclick="tkOpenUpload('${f.id}')" style="background:#fff7ed;border:1px solid #fdba74;color:#c2410c;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer">✏️ 書式編集</button>
+        <button onclick="tkDeleteForm('${f.id}')" style="background:#fff;border:1px solid #fca5a5;color:#dc2626;border-radius:6px;padding:6px 10px;font-size:12px;cursor:pointer;margin-left:4px">🗑 削除</button>
       </td>`:''}
     </tr>`;
   }).join('');
@@ -4931,6 +5007,13 @@ async function tkDownload(formId, kind){
 
 // 印刷（手書き用）。同梱フォームは書式を保った印刷用HTMLを開く
 // アップロード画面を開く
+function tkDeleteForm(id){
+  if(!tkCanManage()){ alert('削除はシステム・総務経理のみ可能です'); return; }
+  const f=load('todoke_forms',[]).find(x=>x.id===id); if(!f) return;
+  if(!confirm(`届出書「${f.name}」を削除しますか？\n（登録済みファイル・改訂履歴も一覧から消えます）`)) return;
+  save('todoke_forms',load('todoke_forms',[]).filter(x=>x.id!==id));
+  renderTodokeApp(); showToast('届出書を削除しました');
+}
 function tkOpenUpload(formId){
   if(!tkCanManage()){ alert('フォーマット変更はシステム・総務経理のみ可能です'); return; }
   _tkUpload={ formId: formId||'', name:'', excelFile:null, pdfFile:null };
