@@ -2089,7 +2089,7 @@ let _fbReady = false;
 // 古いキャッシュのクライアントが保存しても触った1件しか書き込まれないため、
 // 他人の追加・変更を丸ごと巻き戻す事故が起きない。
 // =========================================================
-const _ITEM_KEYS = new Set(['events','circulars']);
+const _ITEM_KEYS = new Set(['events','circulars','invoices','todos','emp_staff','todoke_forms']);
 const _ITEM_PREFIX = 'it~';
 const _itemShadow = {}; // key -> { itemId: 最後に読み書きしたJSON }
 function _itemDocId(k,id){ return _ITEM_PREFIX+k+'~'+id; }
@@ -2294,6 +2294,8 @@ function _scheduleRefresh(){
     else if(curMod==='evnotif') renderEvNotif();
     else if(curMod==='todo') renderTd();
     else if(curMod==='circular') renderCiList();
+    else if(curMod==='devapps'&&typeof _invView!=='undefined'&&_invView==='list') renderInvApp(); // 請求書一覧（編集中の画面は触らない）
+    else if(curMod==='emp'&&_empView!=='form') renderEmpApp(); // 従業員管理（編集フォーム入力中は触らない）
   }, 800);
 }
 function startRealtimeSync(){
