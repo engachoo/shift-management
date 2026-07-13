@@ -4276,8 +4276,9 @@ function renderEmpDocs(){
 
   // 行データ。労働条件通知書・ワード一括は独立表記するため表には入れない。
   // 標準様式（others）と、必要に応じて配布（制服・社宅＝dl）を分けて表示する。
-  const items=others.map(d=>({n:d.n,f:d.f}));
-  const optItems=dl.map(d=>({n:d.n,f:d.f}));
+  const removedDocs=new Set(load('emp_doc_removed',[]));
+  const items=others.filter(d=>!removedDocs.has(d.f)).map(d=>({n:d.n,f:d.f}));
+  const optItems=dl.filter(d=>!removedDocs.has(d.f)).map(d=>({n:d.n,f:d.f}));
 
   let html=`<div style="background:#fff1f2;border:1.5px solid #fecdd3;border-radius:10px;padding:12px 16px;margin-bottom:14px;font-size:13px;color:#be123c;line-height:1.9">
       <strong>⚠️ ご注意</strong><br>
@@ -4363,7 +4364,8 @@ function renderEmpDocs(){
         <td style="padding:10px 10px;text-align:center;white-space:nowrap">
           <button onclick="empDocHistory('${pe}','${ne}')" style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;border-radius:6px;padding:6px 10px;font-size:12px;cursor:pointer">📜 改訂履歴${histN?`(${histN})`:''}</button></td>
         ${canEdit?`<td style="padding:10px 10px;text-align:center;white-space:nowrap">
-          <button onclick="empEditDocMaster('${pe}','${ne}')" style="background:#fff7ed;border:1px solid #fdba74;color:#c2410c;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer">✏️ 書式編集</button></td>`:''}
+          <button onclick="empEditDocMaster('${pe}','${ne}')" style="background:#fff7ed;border:1px solid #fdba74;color:#c2410c;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer">✏️ 書式編集</button>
+          <button onclick="empRemoveStdDoc('${pe}','${ne}')" style="background:#fff;border:1px solid #fca5a5;color:#dc2626;border-radius:6px;padding:6px 10px;font-size:12px;cursor:pointer;margin-left:4px">🗑 削除</button></td>`:''}
       </tr>`;
     }).join('');
     return `<div style="margin-bottom:8px;margin-top:6px"><span style="font-size:14px;font-weight:700;color:#1a2b4a">${title}</span>${desc?`<span style="font-size:11px;color:#6b7280;margin-left:8px">${desc}</span>`:''}</div>
@@ -4385,6 +4387,14 @@ function renderEmpDocs(){
   html+=customHtml;
   if(!canEdit) html+='<div style="font-size:11px;color:#9ca3af;margin-top:2px">※ 書式の変更（書式編集）は総務経理・システム権限のみ可能です。</div>';
   body.innerHTML=html;
+}
+// 標準様式の削除（一覧から非表示にする。総務経理・システムのみ）
+function empRemoveStdDoc(key,name){
+  if(!empCanEditDocs()){ alert('削除は総務経理・システムのみ可能です'); return; }
+  if(!confirm(`入社書類「${name}」を削除します。\n\n⚠️ 本当に削除してよろしいですか？\n削除すると元に戻せません（復元はできません）。`)) return;
+  const rm=load('emp_doc_removed',[]);
+  if(!rm.includes(key)) rm.push(key);
+  save('emp_doc_removed',rm); renderEmpApp(); showToast('削除しました');
 }
 // ===== 追加書類（総務経理が新規登録・差し替え・削除できる書類）=====
 function empAddCustomDoc(){
@@ -4426,7 +4436,7 @@ function empReplaceCustomDoc(id){
 function empDeleteCustomDoc(id){
   if(!empCanEditDocs()){ alert('権限がありません'); return; }
   const d=load('emp_custom_docs',[]).find(x=>x.id===id); if(!d) return;
-  if(!confirm(`追加書類「${d.name}」を削除しますか？`)) return;
+  if(!confirm(`追加書類「${d.name}」を削除します。\n\n⚠️ 本当に削除してよろしいですか？\n削除すると元に戻せません（復元はできません）。`)) return;
   save('emp_custom_docs',load('emp_custom_docs',[]).filter(x=>x.id!==id));
   renderEmpApp(); showToast('削除しました');
 }
@@ -4446,7 +4456,7 @@ function empToggleSel(id,ck){ if(ck)_empSel.add(id); else _empSel.delete(id);
   const b=document.getElementById('emp-bulkdel'); if(b)b.style.display=_empSel.size?'inline-block':'none'; }
 function empBulkDelete(){
   if(!_empSel.size) return;
-  if(!confirm(`選択した ${_empSel.size}名 を名簿から削除しますか？`)) return;
+  if(!confirm(`選択した ${_empSel.size}名 を名簿から削除します。\n\n⚠️ 本当に削除してよろしいですか？\n削除すると元に戻せません（復元はできません）。`)) return;
   const ids=new Set(_empSel);
   const staff=load('emp_staff',[]).filter(x=>!(ids.has(x.id)&&empCanEditRecord(x)));
   save('emp_staff',staff); _empSel.clear(); renderEmpApp(); showToast('選択した従業員を削除しました');
@@ -4808,7 +4818,7 @@ function saveEmpForm(){
 function deleteEmp(id){
   const s=load('emp_staff',[]).find(x=>x.id===id);
   if(s && !empCanEditRecord(s)){ alert('削除する権限がありません'); return; }
-  if(!confirm(`「${s?.name||''}」を名簿から削除しますか？`)) return;
+  if(!confirm(`「${s?.name||''}」を名簿から削除します。\n\n⚠️ 本当に削除してよろしいですか？\n削除すると元に戻せません（復元はできません）。保管書類も見られなくなります。`)) return;
   save('emp_staff',load('emp_staff',[]).filter(x=>x.id!==id));
   _empView='roster'; renderEmpApp(); showToast('削除しました');
 }
@@ -5010,7 +5020,7 @@ async function tkDownload(formId, kind){
 function tkDeleteForm(id){
   if(!tkCanManage()){ alert('削除はシステム・総務経理のみ可能です'); return; }
   const f=load('todoke_forms',[]).find(x=>x.id===id); if(!f) return;
-  if(!confirm(`届出書「${f.name}」を削除しますか？\n（登録済みファイル・改訂履歴も一覧から消えます）`)) return;
+  if(!confirm(`届出書「${f.name}」を削除します。\n\n⚠️ 本当に削除してよろしいですか？\n削除すると元に戻せません（復元はできません）。\n登録済みファイル・改訂履歴も一覧から消えます。`)) return;
   save('todoke_forms',load('todoke_forms',[]).filter(x=>x.id!==id));
   renderTodokeApp(); showToast('届出書を削除しました');
 }
