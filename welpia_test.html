@@ -343,7 +343,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
 /* ===== 打刻オーバーレイ ===== */
 #tcPunchView{display:none;position:fixed;inset:0;z-index:7000;background:#eef1f4;flex-direction:column}
 #tcPunchView.show{display:flex}
-.tcpv-head{background:var(--green);color:#fff;padding:18px 28px;font-size:17px;font-weight:600;cursor:pointer;flex-shrink:0;display:flex;align-items:center;gap:8px}
+.tcpv-head{background:var(--green);color:#fff;padding:24px 32px;font-size:28px;font-weight:700;cursor:pointer;flex-shrink:0;display:flex;align-items:center;gap:10px}
 .tcpv-head:hover{background:var(--green-dk)}
 .tcpv-body{flex:1;display:flex;align-items:center;justify-content:center;gap:56px;flex-wrap:wrap;padding:30px}
 .tcpv-left{text-align:center}
@@ -1141,7 +1141,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:var(
 
 <!-- ===== タイムカード 打刻画面（全画面オーバーレイ） ===== -->
 <div id="tcPunchView">
-  <div class="tcpv-head" onclick="closeTcPunch()">‹ 閉じる</div>
+  <div class="tcpv-head" onclick="closeTcPunch()">‹ もどる</div>
   <div class="tcpv-body">
     <div class="tcpv-left">
       <div class="tcpv-date" id="tcpvDate">―</div>
