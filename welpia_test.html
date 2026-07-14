@@ -2620,7 +2620,7 @@ function _tcPrevUsage(clientId){
     const tc=load(_tcKey(fid,y,m),{})[clientId]?.[d];
     const status=rec?.status;
     if(status){
-      const st=tc?.in||rec?.startTime||''; const en=tc?.out||rec?.endTime||'';
+      const st=tc?.in||rec?.start||rec?.startTime||''; const en=tc?.out||rec?.end||rec?.endTime||''; // startTime/endTimeは旧バグ期のデータ互換
       const tstr=(st||en)?`${st} 〜 ${en}`:'';
       return `前回の利用：${status}<br>${y}年${String(m).padStart(2,'0')}月${String(d).padStart(2,'0')}日 ${tstr}`;
     }
@@ -2696,7 +2696,7 @@ function tcPunch(clientId, type){
     // 実績が未設定のときだけ「通所」を自動セット（手動変更を保護）
     if(!rec[clientId][d].status){
       rec[clientId][d].status='通所';
-      rec[clientId][d].startTime=t;
+      rec[clientId][d].start=t;
       save(recKey,rec);
     }
   }
@@ -2704,7 +2704,7 @@ function tcPunch(clientId, type){
     const recKey=getRecKey(fid,y,m);
     const rec=load(recKey,{});
     if(rec[clientId]?.[d]?.status==='通所'){
-      rec[clientId][d].endTime=t;
+      rec[clientId][d].end=t;
       save(recKey,rec);
     }
   }
@@ -2739,9 +2739,9 @@ function tcEdit(clientId){
   if(!rec[clientId][d]) rec[clientId][d]={};
   if(newIn.trim()){
     if(!rec[clientId][d].status) rec[clientId][d].status='通所';
-    rec[clientId][d].startTime=newIn.trim();
+    rec[clientId][d].start=newIn.trim();
   }
-  if(newOut.trim()) rec[clientId][d].endTime=newOut.trim();
+  if(newOut.trim()) rec[clientId][d].end=newOut.trim();
   save(recKey,rec);
   renderTcGrid();
   showToast('打刻を修正しました ✓');
