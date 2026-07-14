@@ -2667,7 +2667,8 @@ function _renderTcpvCard(){
     body=`<div class="tcpv-done">本日の利用は終了しました<br>出勤 ${day.in} ／ 退勤 ${day.out}</div>
       ${can('timecard_edit')?`<button class="tcpv-edit" onclick="closeTcPunch();tcEdit('${cl.id}')">時刻を修正する</button>`:''}`;
   }
-  box.innerHTML=`<div class="tcpv-name">${esc(cl.name)} さん</div>${body}`;
+  box.innerHTML=`<div class="tcpv-name">${esc(cl.name)} さん</div>${body}
+    <button class="tcpv-edit" style="margin-top:14px" onclick="closeTcPunch()">‹ 一覧に戻る</button>`;
 }
 function tcDoPunch(type){
   if(!_tcpvClientId) return;
@@ -2832,9 +2833,32 @@ function _seedClaimsIfEmpty(){
   save('claim_history',hist);
 }
 
+// 利用実績が入っている月は、請求月の一覧に自動で追加する（タイムカード・手入力の月が請求に出ない問題の対策）
+function _ensureClaimMonthsFromRecords(fid){
+  if(!fid) return;
+  const claims=load('claims',[]);
+  let added=false;
+  Object.keys(_cache).forEach(k=>{
+    const mt=k.match(/^rec_(.+)_(\d{4})(\d{2})$/);
+    if(!mt||mt[1]!==fid) return;
+    const obj=_cache[k];
+    const hasData=obj&&typeof obj==='object'&&Object.keys(obj).some(cid=>obj[cid]&&Object.keys(obj[cid]).length);
+    if(!hasData) return;
+    const y=+mt[2], m=+mt[3];
+    if(m<1||m>12) return;
+    const id=`${fid}_${mt[2]}${mt[3]}`;
+    if(!claims.find(c=>c.id===id)){
+      claims.push({id,facilityId:fid,year:y,month:m,status:'draft',memo:''});
+      added=true;
+    }
+  });
+  if(added) save('claims',claims);
+}
+
 function renderClaim(){
   const fid=_curFacId;
   _seedClaimsIfEmpty();
+  _ensureClaimMonthsFromRecords(fid);
   const claims=load('claims',[]).filter(c=>c.facilityId===fid).sort((a,b)=>b.id.localeCompare(a.id));
   // ---- 月セレクタ更新 ----
   const sel=document.getElementById('claimMonthSel');
