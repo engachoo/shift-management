@@ -1461,6 +1461,82 @@ function _assembleItems(itemDocs){
     _cache[k] = byKey[k];
   });
 }
+// =========================================================
+// 実績・タイムカードの「1日1人分ずつ保存」方式
+// rec_事業所_年月 / tc_事業所_年月 は月まるごとのJSON上書きをやめ、
+// cf~キー のドキュメントに「利用者×日」のフィールド単位でマージ書き込みする。
+// 変更した日の分しかサーバーに送らないため、複数人の同時入力（打刻と実績入力など）でも
+// 互いのデータを消し合わない（サーバー側でフィールド単位に合成される）。
+// =========================================================
+const _CELL_RE = /^(rec|tc)_/;
+const _CF_PREFIX = 'cf~';
+const _cellShadow = {}; // k -> { '利用者ID~日': 最後に読み書きしたJSON }
+function _cellsOf(obj){
+  const out={};
+  if(obj&&typeof obj==='object') Object.keys(obj).forEach(cid=>{
+    const days=obj[cid];
+    if(days&&typeof days==='object') Object.keys(days).forEach(day=>{ out[cid+'~'+day]=days[day]; });
+  });
+  return out;
+}
+function _fillCellShadow(k,obj){
+  const s=_cellShadow[k]={};
+  const cells=_cellsOf(obj);
+  Object.keys(cells).forEach(ck=>{ s[ck]=JSON.stringify(cells[ck]); });
+}
+function _saveCells(k,obj){
+  const shadow=_cellShadow[k]||(_cellShadow[k]={});
+  const cells=_cellsOf(obj);
+  const upd={}; let changed=false;
+  Object.keys(cells).forEach(ck=>{
+    const j=JSON.stringify(cells[ck]);
+    if(shadow[ck]===j) return; // 変更なし → 送らない
+    shadow[ck]=j;
+    const sep=ck.indexOf('~'), cid=ck.slice(0,sep), day=ck.slice(sep+1);
+    (upd[cid]||(upd[cid]={}))[day]=cells[ck];
+    changed=true;
+  });
+  const removedCks=[];
+  Object.keys(shadow).forEach(ck=>{
+    if(cells.hasOwnProperty(ck)) return;
+    delete shadow[ck]; removedCks.push(ck); // この画面で明示的に消された1日分のみ削除
+    const sep=ck.indexOf('~'), cid=ck.slice(0,sep), day=ck.slice(sep+1);
+    (upd[cid]||(upd[cid]={}))[day]=firebase.firestore.FieldValue.delete();
+    changed=true;
+  });
+  if(removedCks.length){
+    // 削除の記録（墓標）：旧形式クライアントからの「復活」を防ぐ
+    const tombs=load('_tomb_'+k,[]);
+    removedCks.forEach(ck=>{ if(!tombs.includes(ck)) tombs.push(ck); });
+    while(tombs.length>300) tombs.shift();
+    save('_tomb_'+k,tombs);
+  }
+  if(changed) _db.collection(_COL).doc(_CF_PREFIX+k).set(upd,{merge:true})
+    .catch(e=>console.error('実績/打刻の保存エラー:',k,e));
+}
+// 旧形式（月まるごとJSON）からの取り込み：古いタブ・端末が書いた「新規の1日分」だけ拾う。
+// 既存セルの変更・削除は巻き戻し事故と区別できないため取り込まない（安全側）。
+function _adoptLegacyCells(k,obj){
+  const cur=(_cache[k]&&typeof _cache[k]==='object')?_cache[k]:(_cache[k]={});
+  const shadow=_cellShadow[k]||(_cellShadow[k]={});
+  const tombs=new Set(load('_tomb_'+k,[]));
+  const cells=_cellsOf(obj);
+  const upd={}; let added=0;
+  Object.keys(cells).forEach(ck=>{
+    if(shadow.hasOwnProperty(ck)||tombs.has(ck)) return;
+    const sep=ck.indexOf('~'), cid=ck.slice(0,sep), day=ck.slice(sep+1);
+    if(cur[cid]&&cur[cid].hasOwnProperty(day)) return;
+    shadow[ck]=JSON.stringify(cells[ck]);
+    (cur[cid]||(cur[cid]={}))[day]=cells[ck];
+    (upd[cid]||(upd[cid]={}))[day]=cells[ck];
+    added++;
+  });
+  if(added){
+    _db.collection(_COL).doc(_CF_PREFIX+k).set(upd,{merge:true})
+      .catch(e=>console.error('旧形式の実績/打刻 取り込みエラー:',k,e));
+    console.log('[互換] 旧形式クライアントの実績/打刻を取り込み:',k,added+'件');
+  }
+}
 // claim_history（請求DL履歴）は元々IDを持たないため、決め打ちのID（h_請求ID_ファイル種別）を付与する
 function _ensureHistIds(){
   const hist = _cache['claim_history'];
@@ -1509,16 +1585,23 @@ function save(k,v){
   _cache[k]=v;
   if(!_fbReady) return;
   if(_ITEM_KEYS.has(k)){ _saveItems(k, Array.isArray(v)?v:[]); return; }
+  if(_CELL_RE.test(k)){ _saveCells(k, v&&typeof v==='object'?v:{}); return; }
   _db.collection(_COL).doc(k).set({v:JSON.stringify(v)}).catch(e=>console.error('Firestore書き込みエラー:',k,e));
 }
 async function loadAllFromFirestore(){
   try{
     const snap=await _db.collection(_COL).get();
-    const itemDocs=[]; const legacyItemArrs={};
+    const itemDocs=[]; const legacyItemArrs={}; const legacyCellObjs={};
     let docCount=0;
     snap.forEach(doc=>{
       docCount++;
       if(doc.id.startsWith(_ITEM_PREFIX)){ itemDocs.push({id:doc.id, v:doc.data().v}); return; }
+      if(doc.id.startsWith(_CF_PREFIX)){
+        const k=doc.id.slice(_CF_PREFIX.length);
+        _cache[k]=doc.data(); _fillCellShadow(k,_cache[k]);
+        return;
+      }
+      if(_CELL_RE.test(doc.id)){ try{ legacyCellObjs[doc.id]=JSON.parse(doc.data().v); }catch(e){} return; }
       if(_ITEM_KEYS.has(doc.id)){ try{ legacyItemArrs[doc.id]=JSON.parse(doc.data().v); }catch(e){} return; }
       try{_cache[doc.id]=JSON.parse(doc.data().v);}catch(e){}
     });
@@ -1527,6 +1610,8 @@ async function loadAllFromFirestore(){
       _seedTried = true;
       if(docCount > 0) await _wipeTestCol();
       Object.keys(_cache).forEach(k=>delete _cache[k]);
+      Object.keys(_itemShadow).forEach(k=>delete _itemShadow[k]);
+      Object.keys(_cellShadow).forEach(k=>delete _cellShadow[k]);
       const ok = await _seedTestFromProd();
       if(!ok) return false;
       return loadAllFromFirestore();
@@ -1543,6 +1628,21 @@ async function loadAllFromFirestore(){
     _fbReady=true;
     _ensureHistIds();
     await _migrateLegacyItems();
+    // 実績・タイムカードの旧形式（月まるごとJSON）→ cf~形式への移行
+    for(const k of Object.keys(legacyCellObjs)){
+      if(_cache.hasOwnProperty(k)){
+        // 新形式が既に主 → 旧形式に残った「新規の1日分」だけ取り込む
+        _adoptLegacyCells(k, legacyCellObjs[k]);
+      }else{
+        _cache[k]=legacyCellObjs[k];
+        _fillCellShadow(k,_cache[k]);
+        console.log('[移行] '+k+' を1日ずつ形式に変換');
+        try{ await _db.collection(_COL).doc(_CF_PREFIX+k).set(_cache[k]); }
+        catch(e){ console.error('実績/打刻の移行エラー:',k,e); continue; } // 失敗時は旧ドキュメントを残す
+      }
+      // 旧形式の丸ごとドキュメントは削除（巻き戻り書き込みの受け皿を消す）
+      try{ await _db.collection(_COL).doc(k).delete(); }catch(e){}
+    }
     return true;
   }catch(e){ console.warn('Firestore読み込みエラー:',e); return false; }
 }
@@ -1573,7 +1673,7 @@ async function _seedTestFromProd(){
     console.log('[テスト] 本番データをコピー中...');
     const snap = await _db.collection('kokuhoren_data').get();
     const jobs = [];
-    snap.forEach(doc=>{ jobs.push(_db.collection(_COL).doc(doc.id).set({ v: doc.data().v })); });
+    snap.forEach(doc=>{ jobs.push(_db.collection(_COL).doc(doc.id).set(doc.data())); }); // cf~形式(実データ)も旧形式({v:JSON})もそのままコピー
     if(!jobs.length) throw new Error('本番データを1件も読み取れませんでした');
     await Promise.all(jobs);
     await _db.collection(_COL).doc('_test_seeded').set({ v: JSON.stringify(new Date().toISOString()) });
@@ -1599,6 +1699,7 @@ function _scheduleRefresh(){
       if(curView==='clients') renderClients();
       else if(curView==='claim') renderClaim();
       else if(curView==='facility') renderFacilityList();
+      else if(curView==='timecard'&&typeof renderTcGrid==='function') renderTcGrid(); // 他端末の打刻を反映
     }
   }, 800);
 }
@@ -1639,6 +1740,23 @@ function _rtHandle(snap){
         if(ch.type==='modified'||ch.type==='added'){
           try{ _adoptLegacyItems(id, JSON.parse(ch.doc.data().v)); }catch(e){}
           _db.collection(_COL).doc(id).delete().catch(()=>{}); // 受け皿を消して巻き戻りの温床を残さない
+        }
+        return;
+      }
+      if(id.startsWith(_CF_PREFIX)){
+        // 実績・タイムカードの新形式：サーバーがフィールド単位で合成した最新状態を受け取る
+        const k=id.slice(_CF_PREFIX.length);
+        if(!_CELL_RE.test(k)) return;
+        if(ch.type==='removed'){ delete _cache[k]; delete _cellShadow[k]; return; }
+        const data=ch.doc.data();
+        _cache[k]=data; _fillCellShadow(k,data);
+        return;
+      }
+      if(_CELL_RE.test(id)){
+        // 実績・タイムカードの旧形式丸ごと書き込み：新規の1日分だけ取り込み、受け皿を消す
+        if(ch.type==='modified'||ch.type==='added'){
+          try{ _adoptLegacyCells(id, JSON.parse(ch.doc.data().v)); }catch(e){}
+          _db.collection(_COL).doc(id).delete().catch(()=>{});
         }
         return;
       }
