@@ -9238,8 +9238,8 @@ function renderTd(){
         ${replyHtml}
       </div>
       <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">
-        ${canDel?`<button onclick="editTd('${t.id}')" style="background:none;border:none;color:#1a56db;cursor:pointer;font-size:15px;line-height:1" title="編集">✏️</button>`:''}
-        ${canDel?`<button onclick="delTd('${t.id}')" style="background:none;border:none;color:#c53030;cursor:pointer;font-size:18px;line-height:1" title="削除">×</button>`:''}
+        ${canDel?`<button onclick="editTd('${t.id}')" style="background:#eff6ff;border:1.5px solid #93c5fd;color:#1d4ed8;border-radius:6px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap" title="編集">✏️ 編集</button>`:''}
+        ${canDel?`<button onclick="delTd('${t.id}')" style="background:#fff;border:1.5px solid #fca5a5;color:#dc2626;border-radius:6px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap" title="削除">× 削除</button>`:''}
       </div>
     </div>`;
   }
