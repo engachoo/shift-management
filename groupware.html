@@ -3426,7 +3426,7 @@ function renderTopWeek(s){
         </div>`;
       });
       // ToDo表示
-      load('todos',[]).filter(t=>t.userId===uid&&t.due===ds).forEach(t=>{
+      load('todos',[]).filter(t=>t.userId===uid&&t.due===ds&&(t.userId===myId()||t.assignedBy===myId())).forEach(t=>{
         html+=`<span class="ev-todo ${t.done?'todo-done':''}" onclick="showMod('todo')" title="ToDo">${t.done?'✓ ':'☐ '}${esc(t.title)}</span>`;
       });
     }
@@ -7310,7 +7310,7 @@ function renderGW(){
             html+=`${recIcon}${spanIcon}${reactIcon}${warnIcon}${lbl}${esc(ev.title)}</span>`;
           });
           // ToDo（期日が一致するもの・完了済みも表示）
-          allTodos.filter(t=>t.userId===u.id&&t.due===ds).forEach(t=>{
+          allTodos.filter(t=>t.userId===u.id&&t.due===ds&&(t.userId===myId()||t.assignedBy===myId())).forEach(t=>{
             const icon=t.done?'✓ ':'☐ ';
             html+=`<span class="ev-todo ${t.done?'todo-done':''}" onclick="switchTdTab&&showMod('todo')" title="ToDo: ${esc(t.title)}">${icon}${esc(t.title)}</span>`;
           });
