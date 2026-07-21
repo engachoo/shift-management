@@ -3608,7 +3608,7 @@ function showInvoiceApp(){
 let _bulkRows=[];
 function _bulkEmptyRow(){ return {deptId:'',vendorId:'',subject:'',closing:'',deadline:'',notes:'',items:[{desc:'',qty:1,price:0,tax:10}]}; }
 function _bulkEmptyItem(){ return {desc:'',qty:1,price:0,tax:10}; }
-function _bulkRowTotal(r){ return r.items.reduce((s,it)=>s+Math.floor((it.qty||0)*(it.price||0)*(1+(it.tax||10)/100)),0); }
+function _bulkRowTotal(r){ return r.items.reduce((s,it)=>s+Math.round((it.qty||0)*(it.price||0)*(1+(it.tax||10)/100)),0); }
 function _bulkUpdateTotal(ri){
   const el=document.getElementById('bulk-total-'+ri);
   if(el){ const t=_bulkRowTotal(_bulkRows[ri]); el.textContent=t?'合計 ¥'+t.toLocaleString():''; }
@@ -3647,7 +3647,7 @@ function renderInvBulk(){
         <td style="padding:3px 4px;width:64px"><input type="number" style="${inSt}width:100%;text-align:right" value="${it.qty||''}" placeholder="数量" min="0" oninput="_bulkRows[${ri}].items[${ii}].qty=+this.value;_bulkUpdateTotal(${ri})"></td>
         <td style="padding:3px 4px;width:100px"><input type="number" style="${inSt}width:100%;text-align:right" value="${it.price||''}" placeholder="単価" min="0" oninput="_bulkRows[${ri}].items[${ii}].price=+this.value;_bulkUpdateTotal(${ri})"></td>
         <td style="padding:3px 4px;width:62px"><select style="${selSt}width:100%" onchange="_bulkRows[${ri}].items[${ii}].tax=+this.value;_bulkUpdateTotal(${ri})"><option value="10" ${it.tax===10?'selected':''}>10%</option><option value="8" ${it.tax===8?'selected':''}>8%</option><option value="0" ${it.tax===0?'selected':''}>非課税</option><option value="-1" ${it.tax===-1?'selected':''}>不課税</option></select></td>
-        <td style="padding:3px 4px;width:90px;text-align:right;font-size:12px;font-weight:600;color:#1a2b4a">¥${Math.floor((it.qty||0)*(it.price||0)).toLocaleString()}</td>
+        <td style="padding:3px 4px;width:90px;text-align:right;font-size:12px;font-weight:600;color:#1a2b4a">¥${Math.round((it.qty||0)*(it.price||0)).toLocaleString()}</td>
         <td style="padding:3px 2px;width:26px;text-align:center">${multi?`<button onclick="_bulkRows[${ri}].items.splice(${ii},1);renderInvBulk()" style="background:#fee2e2;border:none;color:#dc2626;border-radius:3px;padding:1px 5px;font-size:11px;cursor:pointer">✕</button>`:''}</td>
       </tr>`).join('');
     return `<div style="background:#fff;border:1.5px solid #e2e8f0;border-radius:10px;padding:10px 14px;margin-bottom:10px">
@@ -5201,7 +5201,7 @@ function invDeptInfo(deptId){ return (load('inv_depts',[])).find(d=>d.id===deptI
 function invCalcTotals(items){
   let sub=0,sub8=0,sub10=0,sub0=0;
   (items||[]).forEach(it=>{ const a=(it.qty||0)*(it.unitPrice||0); sub+=a; if(it.taxRate===8)sub8+=a; else if(it.taxRate===0||it.taxRate===-1)sub0+=a; else sub10+=a; });
-  const tax8=Math.floor(sub8*0.08); const tax10=Math.floor(sub10*0.10);
+  const tax8=Math.round(sub8*0.08); const tax10=Math.round(sub10*0.10);
   return {sub,sub8,tax8,sub10,tax10,sub0,total:sub+tax8+tax10};
 }
 function renderInvList(){
@@ -5503,7 +5503,7 @@ function invRecalcAll(){
     const t=Number(document.getElementById('inv-it-tax-'+i)?.value ?? 10);
     const a=q*p; sub+=a; if(t===8)sub8+=a; else if(t===0||t===-1){} else sub10+=a;
   }
-  const tax8=Math.floor(sub8*0.08); const tax10=Math.floor(sub10*0.10); const total=sub+tax8+tax10;
+  const tax8=Math.round(sub8*0.08); const tax10=Math.round(sub10*0.10); const total=sub+tax8+tax10;
   const s=id=>document.getElementById(id);
   if(s('inv-s-sub')) s('inv-s-sub').textContent='¥'+sub.toLocaleString();
   if(s('inv-s-tax8')) s('inv-s-tax8').textContent='¥'+tax8.toLocaleString();
