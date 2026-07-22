@@ -3608,7 +3608,7 @@ function showInvoiceApp(){
 let _bulkRows=[];
 function _bulkEmptyRow(){ return {deptId:'',vendorId:'',subject:'',closing:'',deadline:'',notes:'',items:[{desc:'',qty:1,price:0,tax:10}]}; }
 function _bulkEmptyItem(){ return {desc:'',qty:1,price:0,tax:10}; }
-function _bulkRowTotal(r){ return r.items.reduce((s,it)=>s+Math.round((it.qty||0)*(it.price||0)*(1+(it.tax||10)/100)),0); }
+function _bulkRowTotal(r){ return r.items.reduce((s,it)=>s+Math.floor((it.qty||0)*(it.price||0)*(1+(it.tax||10)/100)),0); }
 function _bulkUpdateTotal(ri){
   const el=document.getElementById('bulk-total-'+ri);
   if(el){ const t=_bulkRowTotal(_bulkRows[ri]); el.textContent=t?'合計 ¥'+t.toLocaleString():''; }
@@ -3647,7 +3647,7 @@ function renderInvBulk(){
         <td style="padding:3px 4px;width:64px"><input type="number" style="${inSt}width:100%;text-align:right" value="${it.qty||''}" placeholder="数量" min="0" oninput="_bulkRows[${ri}].items[${ii}].qty=+this.value;_bulkUpdateTotal(${ri})"></td>
         <td style="padding:3px 4px;width:100px"><input type="number" style="${inSt}width:100%;text-align:right" value="${it.price||''}" placeholder="単価" min="0" oninput="_bulkRows[${ri}].items[${ii}].price=+this.value;_bulkUpdateTotal(${ri})"></td>
         <td style="padding:3px 4px;width:62px"><select style="${selSt}width:100%" onchange="_bulkRows[${ri}].items[${ii}].tax=+this.value;_bulkUpdateTotal(${ri})"><option value="10" ${it.tax===10?'selected':''}>10%</option><option value="8" ${it.tax===8?'selected':''}>8%</option><option value="0" ${it.tax===0?'selected':''}>非課税</option><option value="-1" ${it.tax===-1?'selected':''}>不課税</option></select></td>
-        <td style="padding:3px 4px;width:90px;text-align:right;font-size:12px;font-weight:600;color:#1a2b4a">¥${Math.round((it.qty||0)*(it.price||0)).toLocaleString()}</td>
+        <td style="padding:3px 4px;width:90px;text-align:right;font-size:12px;font-weight:600;color:#1a2b4a">¥${Math.floor((it.qty||0)*(it.price||0)).toLocaleString()}</td>
         <td style="padding:3px 2px;width:26px;text-align:center">${multi?`<button onclick="_bulkRows[${ri}].items.splice(${ii},1);renderInvBulk()" style="background:#fee2e2;border:none;color:#dc2626;border-radius:3px;padding:1px 5px;font-size:11px;cursor:pointer">✕</button>`:''}</td>
       </tr>`).join('');
     return `<div style="background:#fff;border:1.5px solid #e2e8f0;border-radius:10px;padding:10px 14px;margin-bottom:10px">
@@ -5198,11 +5198,13 @@ function invNextNo(){
   return `INV-${yr}-${String(max+1).padStart(3,'0')}`;
 }
 function invDeptInfo(deptId){ return (load('inv_depts',[])).find(d=>d.id===deptId)||null; }
-function invCalcTotals(items){
+// 端数処理：'round'=四捨五入 / それ以外（既定）=切り捨て
+function _invRound(n, rounding){ return rounding==='round' ? Math.round(n) : Math.floor(n); }
+function invCalcTotals(items, rounding){
   let sub=0,sub8=0,sub10=0,sub0=0;
   (items||[]).forEach(it=>{ const a=(it.qty||0)*(it.unitPrice||0); sub+=a; if(it.taxRate===8)sub8+=a; else if(it.taxRate===0||it.taxRate===-1)sub0+=a; else sub10+=a; });
-  const tax8=Math.round(sub8*0.08); const tax10=Math.round(sub10*0.10);
-  return {sub,sub8,tax8,sub10,tax10,sub0,total:sub+tax8+tax10};
+  const tax8=_invRound(sub8*0.08,rounding); const tax10=_invRound(sub10*0.10,rounding);
+  return {sub,sub8,tax8,sub10,tax10,sub0,total:_invRound(sub+tax8+tax10,rounding)};
 }
 function renderInvList(){
   const el=document.getElementById('devAppsContent'); if(!el)return;
@@ -5352,7 +5354,7 @@ function renderInvList(){
       const def=INV_ST[inv.status]||INV_ST.draft;
       const dept=depts.find(d=>d.id===inv.deptId);
       const vendor=vendors.find(v=>v.id===inv.vendorId);
-      const t=invCalcTotals(inv.items||[]);
+      const t=invCalcTotals(inv.items||[], inv.rounding);
       return `<tr style="border-bottom:1px solid #f1f5f9" onmouseenter="this.style.background='#f8fafc'" onmouseleave="this.style.background=''">
         <td style="padding:9px 12px;font-family:monospace;font-size:12px;color:#1a2b4a;font-weight:600">${esc(inv.invoiceNo||'-')}</td>
         <td style="padding:9px 12px;white-space:nowrap;color:#475569">${esc(invUName(inv.createdBy))}</td>
@@ -5375,7 +5377,7 @@ function renderInvList(){
       const def=INV_ST[inv.status]||INV_ST.draft;
       const dept=depts.find(d=>d.id===inv.deptId);
       const vendor=vendors.find(v=>v.id===inv.vendorId);
-      const t=invCalcTotals(inv.items||[]);
+      const t=invCalcTotals(inv.items||[], inv.rounding);
       return `<div style="background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;padding:14px 16px;box-shadow:0 1px 4px rgba(0,0,0,.06)">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
           <div>
@@ -5454,6 +5456,13 @@ function renderInvForm(editId){
       </table></div>
       <button onclick="invAddRow()" style="margin-top:8px;background:#f1f5f9;border:1px solid #e2e8f0;color:#374151;border-radius:5px;padding:5px 14px;font-size:12px;cursor:pointer">＋ 行を追加</button>
     </div>
+    <div style="display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-bottom:8px">
+      <label style="font-size:12px;color:#6b7280;font-weight:600">1円未満の端数</label>
+      <select id="inv-rounding" onchange="invRecalcAll()" style="border:1px solid #e2e8f0;border-radius:5px;padding:5px 10px;font-size:12px">
+        <option value="floor" ${inv.rounding==='round'?'':'selected'}>切り捨て</option>
+        <option value="round" ${inv.rounding==='round'?'selected':''}>四捨五入</option>
+      </select>
+    </div>
     <div style="display:flex;justify-content:flex-end;margin-bottom:20px">
       <table style="font-size:13px;border-collapse:collapse;min-width:280px">
         <tr><td style="padding:5px 16px;color:#6b7280;text-align:right">小　計</td><td id="inv-s-sub" style="padding:5px 16px;text-align:right;font-weight:600;min-width:100px">¥0</td></tr>
@@ -5503,7 +5512,8 @@ function invRecalcAll(){
     const t=Number(document.getElementById('inv-it-tax-'+i)?.value ?? 10);
     const a=q*p; sub+=a; if(t===8)sub8+=a; else if(t===0||t===-1){} else sub10+=a;
   }
-  const tax8=Math.round(sub8*0.08); const tax10=Math.round(sub10*0.10); const total=sub+tax8+tax10;
+  const rd=document.getElementById('inv-rounding')?.value||'floor';
+  const tax8=_invRound(sub8*0.08,rd); const tax10=_invRound(sub10*0.10,rd); const total=_invRound(sub+tax8+tax10,rd);
   const s=id=>document.getElementById(id);
   if(s('inv-s-sub')) s('inv-s-sub').textContent='¥'+sub.toLocaleString();
   if(s('inv-s-tax8')) s('inv-s-tax8').textContent='¥'+tax8.toLocaleString();
@@ -5521,6 +5531,7 @@ function invFormData(){
     closingDate: document.getElementById('inv-closing')?.value||'',
     paymentDeadline: document.getElementById('inv-deadline')?.value||'',
     notes: document.getElementById('inv-notes')?.value||'',
+    rounding: document.getElementById('inv-rounding')?.value||'floor',
     items: invCollectItems()
   };
 }
@@ -5585,9 +5596,10 @@ function saveInvDraft(){
   const deadline=document.getElementById('inv-deadline')?.value;
   const vendorId=document.getElementById('inv-vendor')?.value;
   const notes=document.getElementById('inv-notes')?.value?.trim();
-  const t=invCalcTotals(items);
+  const rounding=document.getElementById('inv-rounding')?.value||'floor';
+  const t=invCalcTotals(items,rounding);
   const invs=load('invoices',[]); const now=new Date().toISOString();
-  const data={deptId,closingDate:closing,subject,description:subject,items,paymentDeadline:deadline,vendorId,notes,totalAmount:t.total,status:'draft',updatedAt:now};
+  const data={deptId,closingDate:closing,subject,description:subject,items,paymentDeadline:deadline,vendorId,notes,rounding,totalAmount:t.total,status:'draft',updatedAt:now};
   if(_invEditId){const i=invs.findIndex(x=>x.id===_invEditId);if(i>=0)invs[i]={...invs[i],...data};}
   else invs.push({id:uid(),invoiceNo:invNextNo(),createdBy:myId(),createdAt:now,...data});
   save('invoices',invs); showToast('下書きを保存しました'); _invView='list'; renderInvApp();
@@ -5605,9 +5617,10 @@ function submitInvRequest(){
   const deadline=document.getElementById('inv-deadline')?.value;
   const vendorId=document.getElementById('inv-vendor')?.value;
   const notes=document.getElementById('inv-notes')?.value?.trim();
-  const t=invCalcTotals(items);
+  const rounding=document.getElementById('inv-rounding')?.value||'floor';
+  const t=invCalcTotals(items,rounding);
   const invs=load('invoices',[]); const now=new Date().toISOString();
-  const data={deptId,closingDate:closing,subject,description:subject,items,paymentDeadline:deadline,vendorId,notes,totalAmount:t.total,status:'submitted',submittedAt:now,updatedAt:now,assigneeId};
+  const data={deptId,closingDate:closing,subject,description:subject,items,paymentDeadline:deadline,vendorId,notes,rounding,totalAmount:t.total,status:'submitted',submittedAt:now,updatedAt:now,assigneeId};
   if(_invEditId){const i=invs.findIndex(x=>x.id===_invEditId);if(i>=0)invs[i]={...invs[i],...data};}
   else invs.push({id:uid(),invoiceNo:invNextNo(),createdBy:myId(),createdAt:now,...data});
   const saved=invs.find(i=>i.invoiceNo===data.invoiceNo)||invs[invs.length-1];
@@ -5620,7 +5633,7 @@ function renderInvDetail(invId){
   const vendor=load('inv_vendors',[]).find(v=>v.id===inv.vendorId)||null;
   const me=myId(); const canManage=invCanManage(); const canApprove=invCanApprove();
   const users=load('users',[]); const uName=id=>users.find(u=>u.id===id)?.name||id||'';
-  const t=invCalcTotals(inv.items||[]);
+  const t=invCalcTotals(inv.items||[], inv.rounding);
   let actions='';
   if(inv.status==='submitted'&&canManage) actions=`${invAssigneeSelect('inv-assignee-review',['system'],'','承認者')}<button onclick="invReview('${invId}')" style="background:#7c3aed;color:#fff;border:none;border-radius:7px;padding:9px 20px;font-size:13px;font-weight:700;cursor:pointer">📋 確認済み → 承認申請へ</button><button onclick="invReject('${invId}')" style="background:#dc2626;color:#fff;border:none;border-radius:7px;padding:9px 20px;font-size:13px;font-weight:700;cursor:pointer;margin-left:8px">↩ 差し戻し</button>`;
   else if(inv.status==='reviewing'&&canApprove) actions=`${invAssigneeSelect('inv-assignee-send',['soumu','admin','system'],'','発送担当')}<button onclick="invApprove('${invId}')" style="background:#16a34a;color:#fff;border:none;border-radius:7px;padding:10px 24px;font-size:14px;font-weight:700;cursor:pointer">✅ 承認する（電子押印）</button><button onclick="invReject('${invId}')" style="background:#dc2626;color:#fff;border:none;border-radius:7px;padding:9px 20px;font-size:13px;font-weight:700;cursor:pointer;margin-left:8px">↩ 差し戻し</button>`;
@@ -5839,7 +5852,7 @@ function invDrawSeal(ctx, companyName, approvedAt){
 function invPrintBodyHTML(inv, opts){
   opts=opts||{};
   const dept=invDeptInfo(inv.deptId)||{}; const vendor=load('inv_vendors',[]).find(v=>v.id===inv.vendorId)||null;
-  const t=invCalcTotals(inv.items||[]); const today=new Date().toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric'});
+  const t=invCalcTotals(inv.items||[], inv.rounding); const today=new Date().toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric'});
   const issued=inv.closingDate?new Date(inv.closingDate+'T00:00:00').toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric'}):today;
   const rows10=Array.from({length:10},(_,i)=>(inv.items||[])[i]||null);
   const showSeal=opts.seal && ['approved','sent'].includes(inv.status);
