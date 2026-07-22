@@ -5200,6 +5200,8 @@ function invNextNo(){
 function invDeptInfo(deptId){ return (load('inv_depts',[])).find(d=>d.id===deptId)||null; }
 // 端数処理：'round'=四捨五入 / それ以外（既定）=切り捨て
 function _invRound(n, rounding){ return rounding==='round' ? Math.round(n) : Math.floor(n); }
+// 画面・帳票の表示用：小数点以下は出さない（内部の計算には元の値を使う）
+function _invYen(n, rounding){ return _invRound(n||0, rounding).toLocaleString(); }
 function invCalcTotals(items, rounding){
   let sub=0,sub8=0,sub10=0,sub0=0;
   (items||[]).forEach(it=>{ const a=(it.qty||0)*(it.unitPrice||0); sub+=a; if(it.taxRate===8)sub8+=a; else if(it.taxRate===0||it.taxRate===-1)sub0+=a; else sub10+=a; });
@@ -5412,7 +5414,7 @@ function renderInvForm(editId){
     <td style="padding:4px"><input type="number" oninput="invRowCalc(${i})" id="inv-it-qty-${i}" value="${it.qty||''}" style="width:100%;border:1px solid #e2e8f0;border-radius:4px;padding:5px 7px;font-size:13px;text-align:right" min="0"></td>
     <td style="padding:4px"><input type="number" oninput="invRowCalc(${i})" id="inv-it-price-${i}" value="${it.unitPrice||''}" style="width:100%;border:1px solid #e2e8f0;border-radius:4px;padding:5px 7px;font-size:13px;text-align:right" min="0"></td>
     <td style="padding:4px;text-align:center"><select id="inv-it-tax-${i}" onchange="invRowCalc(${i})" style="border:1px solid #e2e8f0;border-radius:4px;padding:5px 4px;font-size:12px"><option value="10" ${(it.taxRate||10)===10?'selected':''}>10%</option><option value="8" ${it.taxRate===8?'selected':''}>8%</option><option value="0" ${it.taxRate===0?'selected':''}>非課税</option><option value="-1" ${it.taxRate===-1?'selected':''}>不課税</option></select></td>
-    <td style="padding:4px;text-align:right;font-size:13px;font-weight:600;color:#1a2b4a;min-width:90px" id="inv-it-amt-${i}">¥${((it.qty||0)*(it.unitPrice||0)).toLocaleString()}</td>
+    <td style="padding:4px;text-align:right;font-size:13px;font-weight:600;color:#1a2b4a;min-width:90px" id="inv-it-amt-${i}">¥${_invYen((it.qty||0)*(it.unitPrice||0), inv.rounding)}</td>
   </tr>`;
   el.innerHTML=`
   <div style="display:flex;align-items:center;gap:8px;margin-bottom:20px">
@@ -5501,7 +5503,7 @@ function invAddRow(){
 function invRowCalc(i){
   const q=Number(document.getElementById('inv-it-qty-'+i)?.value)||0;
   const p=Number(document.getElementById('inv-it-price-'+i)?.value)||0;
-  const ad=document.getElementById('inv-it-amt-'+i); if(ad) ad.textContent='¥'+(q*p).toLocaleString();
+  const ad=document.getElementById('inv-it-amt-'+i); if(ad) ad.textContent='¥'+_invYen(q*p, document.getElementById('inv-rounding')?.value);
   invRecalcAll();
 }
 function invRecalcAll(){
@@ -5515,7 +5517,7 @@ function invRecalcAll(){
   const rd=document.getElementById('inv-rounding')?.value||'floor';
   const tax8=_invRound(sub8*0.08,rd); const tax10=_invRound(sub10*0.10,rd); const total=_invRound(sub+tax8+tax10,rd);
   const s=id=>document.getElementById(id);
-  if(s('inv-s-sub')) s('inv-s-sub').textContent='¥'+sub.toLocaleString();
+  if(s('inv-s-sub')) s('inv-s-sub').textContent='¥'+_invYen(sub,rd);
   if(s('inv-s-tax8')) s('inv-s-tax8').textContent='¥'+tax8.toLocaleString();
   if(s('inv-s-tax10')) s('inv-s-tax10').textContent='¥'+tax10.toLocaleString();
   if(s('inv-s-total')) s('inv-s-total').textContent='¥'+total.toLocaleString();
@@ -5574,7 +5576,7 @@ function invApplyRef(){
   invOnDeptChange();
   const tbody=document.getElementById('inv-rows'); if(!tbody)return;
   const items=ref.items||[{desc:ref.description||'',qty:1,unitPrice:ref.amount||0,taxRate:ref.taxRate||10}];
-  tbody.innerHTML=items.map((it,i)=>`<tr id="inv-row-${i}"><td style="padding:4px;text-align:center;color:#9ca3af;font-size:12px">${i+1}</td><td style="padding:4px"><input oninput="invRowCalc(${i})" id="inv-it-desc-${i}" value="${esc(it.desc||it.description||'')}" style="width:100%;border:1px solid #e2e8f0;border-radius:4px;padding:5px 7px;font-size:13px"></td><td style="padding:4px"><input type="number" oninput="invRowCalc(${i})" id="inv-it-qty-${i}" value="${it.qty||1}" style="width:100%;border:1px solid #e2e8f0;border-radius:4px;padding:5px 7px;font-size:13px;text-align:right" min="0"></td><td style="padding:4px"><input type="number" oninput="invRowCalc(${i})" id="inv-it-price-${i}" value="${it.unitPrice||0}" style="width:100%;border:1px solid #e2e8f0;border-radius:4px;padding:5px 7px;font-size:13px;text-align:right" min="0"></td><td style="padding:4px;text-align:center"><select id="inv-it-tax-${i}" onchange="invRowCalc(${i})" style="border:1px solid #e2e8f0;border-radius:4px;padding:5px 4px;font-size:12px"><option value="10" ${(it.taxRate||10)===10?'selected':''}>10%</option><option value="8" ${it.taxRate===8?'selected':''}>8%</option><option value="0" ${it.taxRate===0?'selected':''}>非課税</option><option value="-1" ${it.taxRate===-1?'selected':''}>不課税</option></select></td><td style="padding:4px;text-align:right;font-size:13px;font-weight:600;color:#1a2b4a;min-width:90px" id="inv-it-amt-${i}">¥${((it.qty||1)*(it.unitPrice||0)).toLocaleString()}</td></tr>`).join('');
+  tbody.innerHTML=items.map((it,i)=>`<tr id="inv-row-${i}"><td style="padding:4px;text-align:center;color:#9ca3af;font-size:12px">${i+1}</td><td style="padding:4px"><input oninput="invRowCalc(${i})" id="inv-it-desc-${i}" value="${esc(it.desc||it.description||'')}" style="width:100%;border:1px solid #e2e8f0;border-radius:4px;padding:5px 7px;font-size:13px"></td><td style="padding:4px"><input type="number" oninput="invRowCalc(${i})" id="inv-it-qty-${i}" value="${it.qty||1}" style="width:100%;border:1px solid #e2e8f0;border-radius:4px;padding:5px 7px;font-size:13px;text-align:right" min="0"></td><td style="padding:4px"><input type="number" oninput="invRowCalc(${i})" id="inv-it-price-${i}" value="${it.unitPrice||0}" style="width:100%;border:1px solid #e2e8f0;border-radius:4px;padding:5px 7px;font-size:13px;text-align:right" min="0"></td><td style="padding:4px;text-align:center"><select id="inv-it-tax-${i}" onchange="invRowCalc(${i})" style="border:1px solid #e2e8f0;border-radius:4px;padding:5px 4px;font-size:12px"><option value="10" ${(it.taxRate||10)===10?'selected':''}>10%</option><option value="8" ${it.taxRate===8?'selected':''}>8%</option><option value="0" ${it.taxRate===0?'selected':''}>非課税</option><option value="-1" ${it.taxRate===-1?'selected':''}>不課税</option></select></td><td style="padding:4px;text-align:right;font-size:13px;font-weight:600;color:#1a2b4a;min-width:90px" id="inv-it-amt-${i}">¥${_invYen((it.qty||1)*(it.unitPrice||0), document.getElementById('inv-rounding')?.value)}</td></tr>`).join('');
   invRecalcAll(); showToast('前回の請求書から引用しました');
 }
 function invCollectItems(){
@@ -5657,10 +5659,10 @@ function renderInvDetail(invId){
         <div style="font-weight:700;color:#1a2b4a;margin-bottom:12px;font-size:14px">明細</div>
         <table style="width:100%;border-collapse:collapse;font-size:13px">
           <thead><tr style="background:#f8fafc"><th style="padding:7px;border:1px solid #e2e8f0;text-align:center;font-size:11px">No.</th><th style="padding:7px;border:1px solid #e2e8f0;font-size:11px">摘要</th><th style="padding:7px;border:1px solid #e2e8f0;text-align:right;font-size:11px">数量</th><th style="padding:7px;border:1px solid #e2e8f0;text-align:right;font-size:11px">単価</th><th style="padding:7px;border:1px solid #e2e8f0;text-align:center;font-size:11px">税率</th><th style="padding:7px;border:1px solid #e2e8f0;text-align:right;font-size:11px">金額</th></tr></thead>
-          <tbody>${(inv.items||[]).map((it,i)=>`<tr style="border-bottom:1px solid #f1f5f9"><td style="padding:7px;text-align:center;color:#9ca3af">${i+1}</td><td style="padding:7px">${esc(it.desc||it.description||'')}</td><td style="padding:7px;text-align:right">${it.qty||0}</td><td style="padding:7px;text-align:right">¥${(it.unitPrice||0).toLocaleString()}</td><td style="padding:7px;text-align:center">${it.taxRate===-1?'不課税':it.taxRate===0?'非課税':(it.taxRate||10)+'%'}</td><td style="padding:7px;text-align:right;font-weight:600">¥${((it.qty||0)*(it.unitPrice||0)).toLocaleString()}</td></tr>`).join('')}</tbody>
+          <tbody>${(inv.items||[]).map((it,i)=>`<tr style="border-bottom:1px solid #f1f5f9"><td style="padding:7px;text-align:center;color:#9ca3af">${i+1}</td><td style="padding:7px">${esc(it.desc||it.description||'')}</td><td style="padding:7px;text-align:right">${it.qty||0}</td><td style="padding:7px;text-align:right">¥${(it.unitPrice||0).toLocaleString()}</td><td style="padding:7px;text-align:center">${it.taxRate===-1?'不課税':it.taxRate===0?'非課税':(it.taxRate||10)+'%'}</td><td style="padding:7px;text-align:right;font-weight:600">¥${_invYen((it.qty||0)*(it.unitPrice||0), inv.rounding)}</td></tr>`).join('')}</tbody>
         </table>
         <table style="margin-left:auto;margin-top:10px;font-size:13px;border-collapse:collapse">
-          <tr><td style="padding:4px 16px;color:#6b7280;text-align:right">小計</td><td style="padding:4px 16px;text-align:right">¥${t.sub.toLocaleString()}</td></tr>
+          <tr><td style="padding:4px 16px;color:#6b7280;text-align:right">小計</td><td style="padding:4px 16px;text-align:right">¥${_invYen(t.sub, inv.rounding)}</td></tr>
           <tr><td style="padding:4px 16px;color:#6b7280;text-align:right">8%消費税</td><td style="padding:4px 16px;text-align:right">¥${t.tax8.toLocaleString()}</td></tr>
           <tr><td style="padding:4px 16px;color:#6b7280;text-align:right">10%消費税</td><td style="padding:4px 16px;text-align:right">¥${t.tax10.toLocaleString()}</td></tr>
           <tr style="border-top:2px solid #1a2b4a"><td style="padding:7px 16px;font-weight:700;color:#1a2b4a;text-align:right">合計（税込）</td><td style="padding:7px 16px;text-align:right;font-size:16px;font-weight:700;color:#1a2b4a">¥${t.total.toLocaleString()}</td></tr>
@@ -5898,7 +5900,7 @@ function invPrintBodyHTML(inv, opts){
           <td style="padding:2mm 2.5mm;border:0.3mm solid #c5d0e8">${it?esc(it.desc||it.description||''):''}</td>
           <td style="padding:2mm 2.5mm;border:0.3mm solid #c5d0e8;text-align:right">${it&&it.qty?it.qty:''}</td>
           <td style="padding:2mm 2.5mm;border:0.3mm solid #c5d0e8;text-align:right">${it&&it.unitPrice?'¥'+it.unitPrice.toLocaleString():''}</td>
-          <td style="padding:2mm 2.5mm;border:0.3mm solid #c5d0e8;text-align:right;font-weight:${it?600:400};color:${it?'#1e3a6b':'inherit'}">${it?'¥'+((it.qty||0)*(it.unitPrice||0)).toLocaleString():''}</td>
+          <td style="padding:2mm 2.5mm;border:0.3mm solid #c5d0e8;text-align:right;font-weight:${it?600:400};color:${it?'#1e3a6b':'inherit'}">${it?'¥'+_invYen((it.qty||0)*(it.unitPrice||0), inv.rounding):''}</td>
         </tr>`).join('')}
       </tbody>
     </table>
@@ -5908,7 +5910,7 @@ function invPrintBodyHTML(inv, opts){
         <tr>
           <td style="padding:1.3mm 3mm;text-align:right;color:#4a6090">8％対象</td><td style="padding:1.3mm 3mm;text-align:right;width:24mm">¥${t.sub8.toLocaleString()}</td>
           <td style="padding:1.3mm 3mm;text-align:right;color:#4a6090">8％消費税額</td><td style="padding:1.3mm 3mm;text-align:right;width:24mm">¥${t.tax8.toLocaleString()}</td>
-          <td style="padding:1.3mm 3mm;text-align:right;border-left:0.3mm solid #c5d0e8;color:#4a6090">小　計</td><td style="padding:1.3mm 3mm;text-align:right;width:28mm">¥${t.sub.toLocaleString()}</td>
+          <td style="padding:1.3mm 3mm;text-align:right;border-left:0.3mm solid #c5d0e8;color:#4a6090">小　計</td><td style="padding:1.3mm 3mm;text-align:right;width:28mm">¥${_invYen(t.sub, inv.rounding)}</td>
         </tr>
         <tr style="border-top:0.3mm solid #c5d0e8">
           <td style="padding:1.3mm 3mm;text-align:right;color:#4a6090">10％対象</td><td style="padding:1.3mm 3mm;text-align:right">¥${t.sub10.toLocaleString()}</td>
