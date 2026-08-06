@@ -2123,20 +2123,40 @@ function _saveItems(k, arr){
     save('_tomb_'+k, tombs);
   }
 }
+// 項目の作成時刻を推定する（createdAt優先、無ければIDの先頭に埋まっている時刻を読む）。
+// uid() = Date.now().toString(36)（8文字）+ 乱数4文字 なので、先頭8文字が作成時刻。
+function _itemCreatedMs(it){
+  if(it && it.createdAt){
+    const t = Date.parse(String(it.createdAt).replace(' ','T'));
+    if(!isNaN(t)) return t;
+  }
+  const id = it && String(it.id||'');
+  if(/^[0-9a-z]{12}$/.test(id)){
+    const t = parseInt(id.slice(0,8), 36);
+    if(t > 1500000000000 && t < Date.now() + 86400000) return t; // 2017年〜明日まで
+  }
+  return NaN; // 判定できない＝古い既存データ扱い（取り込まない）
+}
 // 旧形式（丸ごと配列）からの取り込み：切り替え後も古いタブで動いているクライアントが
 // 追加した「新規の1件」だけを拾い上げて保存する。既存データの変更・削除は
 // 巻き戻し事故と区別できないため取り込まない（安全側）。
+// さらに「ごく最近つくられた項目」に限定する。切替前の古い項目は墓標が無いため
+// 未知の新規と区別できず、古いタブの書き込みで復活してしまう事故が起きたため。
+const _ADOPT_MAX_AGE_MS = 3*24*60*60*1000; // 3日
 function _adoptLegacyItems(k, arr){
   if(!Array.isArray(arr) || !_ITEM_KEYS.has(k)) return;
   const shadow = _itemShadow[k] || (_itemShadow[k] = {});
   const tombs = new Set(load('_tomb_'+k, []));
   const cur = Array.isArray(_cache[k]) ? _cache[k] : (_cache[k] = []);
   const have = new Set(cur.map(x=>x && String(x.id)).filter(Boolean));
-  let added = 0;
+  const limit = Date.now() - _ADOPT_MAX_AGE_MS;
+  let added = 0, skipped = 0;
   arr.forEach(it=>{
     if(!it || !it.id) return;
     const id = String(it.id);
     if(have.has(id) || tombs.has(id) || shadow[id]) return;
+    const ms = _itemCreatedMs(it);
+    if(!(ms >= limit)){ skipped++; return; } // 古い項目の復活を防ぐ
     const j = JSON.stringify(it);
     shadow[id] = j;
     cur.unshift(it);
@@ -2145,6 +2165,7 @@ function _adoptLegacyItems(k, arr){
       .catch(e=>console.error('旧形式取り込みエラー:', k, id, e));
   });
   if(added) console.log('[互換] 旧形式クライアントの新規入力を取り込み:', k, added+'件');
+  if(skipped) console.log('[互換] 古い項目の復活を防止:', k, skipped+'件');
 }
 function _assembleItems(itemDocs){
   const byKey = {};
