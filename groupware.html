@@ -5472,6 +5472,13 @@ function renderInvForm(editId){
       <div class="inv-field"><label class="req">＊ 件名</label><input id="inv-subject" oninput="invRecalcAll()" value="${esc(inv.subject||inv.description||'')}" placeholder="例：○月分 ○○業務委託費"></div>
       <div class="inv-field"><label>宛先業者</label><div style="display:flex;gap:6px;align-items:center"><select id="inv-vendor" onchange="invRecalcAll()" style="flex:1"><option value="">選択してください</option>${vendors.map(v=>`<option value="${v.id}" ${inv.vendorId===v.id?'selected':''}>${esc(v.name)}</option>`).join('')}</select><button type="button" onclick="invNewVendorFromForm()" style="white-space:nowrap;background:#f0fdf4;border:1px solid #86efac;color:#16a34a;border-radius:6px;padding:5px 10px;font-size:12px;font-weight:600;cursor:pointer">＋ 新規登録</button></div></div>
     </div>
+    <div style="display:grid;grid-template-columns:1fr 160px;gap:16px;margin-bottom:14px">
+      <div class="inv-field"><label>宛名の表記（任意）</label><textarea id="inv-totext" oninput="invRecalcAll()" rows="2" placeholder="空欄なら「業者名＋御中/様」を自動で1行表示。改行したいときはここに入力（Enterで改行）">${esc(inv.toText||'')}</textarea></div>
+      <div class="inv-field"><label>宛名の文字サイズ</label><select id="inv-tofont" onchange="invRecalcAll()">
+        <option value="">自動</option>
+        ${[16,15,14,13,12,11,10,9,8].map(p=>`<option value="${p}" ${Number(inv.toFontPt)===p?'selected':''}>${p}pt</option>`).join('')}
+      </select></div>
+    </div>
     <div style="margin-bottom:16px">
       <div style="font-size:12px;font-weight:600;color:#dc2626;margin-bottom:8px">＊ 明細</div>
       <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">
@@ -5556,6 +5563,8 @@ function invFormData(){
     paymentDeadline: document.getElementById('inv-deadline')?.value||'',
     notes: document.getElementById('inv-notes')?.value||'',
     rounding: document.getElementById('inv-rounding')?.value||'floor',
+    toText: document.getElementById('inv-totext')?.value||'',
+    toFontPt: document.getElementById('inv-tofont')?.value||'',
     items: invCollectItems()
   };
 }
@@ -5621,9 +5630,10 @@ function saveInvDraft(){
   const vendorId=document.getElementById('inv-vendor')?.value;
   const notes=document.getElementById('inv-notes')?.value?.trim();
   const rounding=document.getElementById('inv-rounding')?.value||'floor';
+  const toText=document.getElementById('inv-totext')?.value||''; const toFontPt=document.getElementById('inv-tofont')?.value||'';
   const t=invCalcTotals(items,rounding);
   const invs=load('invoices',[]); const now=new Date().toISOString();
-  const data={deptId,closingDate:closing,subject,description:subject,items,paymentDeadline:deadline,vendorId,notes,rounding,totalAmount:t.total,status:'draft',updatedAt:now};
+  const data={deptId,closingDate:closing,subject,description:subject,items,paymentDeadline:deadline,vendorId,notes,rounding,toText,toFontPt,totalAmount:t.total,status:'draft',updatedAt:now};
   if(_invEditId){const i=invs.findIndex(x=>x.id===_invEditId);if(i>=0)invs[i]={...invs[i],...data};}
   else invs.push({id:uid(),invoiceNo:invNextNo(),createdBy:myId(),createdAt:now,...data});
   save('invoices',invs); showToast('下書きを保存しました'); _invView='list'; renderInvApp();
@@ -5642,9 +5652,10 @@ function submitInvRequest(){
   const vendorId=document.getElementById('inv-vendor')?.value;
   const notes=document.getElementById('inv-notes')?.value?.trim();
   const rounding=document.getElementById('inv-rounding')?.value||'floor';
+  const toText=document.getElementById('inv-totext')?.value||''; const toFontPt=document.getElementById('inv-tofont')?.value||'';
   const t=invCalcTotals(items,rounding);
   const invs=load('invoices',[]); const now=new Date().toISOString();
-  const data={deptId,closingDate:closing,subject,description:subject,items,paymentDeadline:deadline,vendorId,notes,rounding,totalAmount:t.total,status:'submitted',submittedAt:now,updatedAt:now,assigneeId};
+  const data={deptId,closingDate:closing,subject,description:subject,items,paymentDeadline:deadline,vendorId,notes,rounding,toText,toFontPt,totalAmount:t.total,status:'submitted',submittedAt:now,updatedAt:now,assigneeId};
   if(_invEditId){const i=invs.findIndex(x=>x.id===_invEditId);if(i>=0)invs[i]={...invs[i],...data};}
   else invs.push({id:uid(),invoiceNo:invNextNo(),createdBy:myId(),createdAt:now,...data});
   const saved=invs.find(i=>i.invoiceNo===data.invoiceNo)||invs[invs.length-1];
@@ -5897,10 +5908,14 @@ function invPrintBodyHTML(inv, opts){
     <div style="display:flex;justify-content:space-between;margin-bottom:5mm;align-items:flex-start">
       <div style="flex:1;padding-right:10mm">
         ${(()=>{
-          const to = vendor
+          // 宛名：手入力（改行可）があればそれを優先、無ければ業者名＋敬称
+          const to = (inv.toText&&inv.toText.trim()) ? inv.toText.replace(/\s+$/,'') : (vendor
             ? vendor.name+'　'+(vendor.honorific||(vendor.vendorType==='individual'?'様':'御中'))
-            : '　　　　　　　　御中';
-          return `<div style="font-size:${_invAddrFontPt(to)}pt;font-weight:700;border-bottom:2.5px solid #1e3a6b;padding-bottom:2mm;margin-bottom:3mm;color:#000;white-space:nowrap;overflow:hidden">${esc(to)}</div>`;
+            : '　　　　　　　　御中');
+          const lines = to.split('\n');
+          const longest = lines.reduce((a,b)=>b.length>a.length?b:a,'');
+          const pt = Number(inv.toFontPt)||_invAddrFontPt(longest);
+          return `<div style="font-size:${pt}pt;font-weight:700;border-bottom:2.5px solid #1e3a6b;padding-bottom:2mm;margin-bottom:3mm;color:#000;white-space:nowrap;overflow:hidden;line-height:1.35">${lines.map(esc).join('<br>')}</div>`;
         })()}
         ${vendor?`<div style="font-size:9pt;color:#444;line-height:1.8">${esc(vendor.address||vendor.addr1||'')}</div>`:'' }
       </div>
