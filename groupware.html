@@ -5873,6 +5873,17 @@ function invDrawSeal(ctx, companyName, approvedAt){
   drawLines([name.slice(0,mid),name.slice(mid)]);
 }
 // 請求書A4本体の中身を生成（印刷・ライブプレビュー共通）。opts.seal=trueで電子印鑑欄を出す
+// 宛名は敬称まで含めて必ず1行に収める。長い社名は文字サイズを自動で縮める。
+const _INV_ADDR_WIDTH_MM = 92;   // 宛名欄のおよその横幅（A4・左ブロック）
+const _INV_ADDR_PT_MAX = 14, _INV_ADDR_PT_MIN = 8;
+function _invAddrFontPt(text){
+  // 全角=1文字ぶん、半角=0.5文字ぶんとして幅を見積もる
+  let w = 0;
+  for(const ch of String(text||'')){ w += /[\x20-\x7E｡-ﾟ]/.test(ch) ? 0.5 : 1; }
+  if(!(w > 0)) return _INV_ADDR_PT_MAX;
+  const fit = _INV_ADDR_WIDTH_MM / (w * 0.3528); // 1pt = 0.3528mm
+  return Math.max(_INV_ADDR_PT_MIN, Math.min(_INV_ADDR_PT_MAX, Math.floor(fit*10)/10));
+}
 function invPrintBodyHTML(inv, opts){
   opts=opts||{};
   const dept=invDeptInfo(inv.deptId)||{}; const vendor=load('inv_vendors',[]).find(v=>v.id===inv.vendorId)||null;
@@ -5885,7 +5896,12 @@ function invPrintBodyHTML(inv, opts){
     <div style="text-align:center;font-size:22pt;font-weight:700;letter-spacing:10px;margin-bottom:6mm;color:#1e3a6b">請　求　書</div>
     <div style="display:flex;justify-content:space-between;margin-bottom:5mm;align-items:flex-start">
       <div style="flex:1;padding-right:10mm">
-        <div style="font-size:14pt;font-weight:700;border-bottom:2.5px solid #1e3a6b;padding-bottom:2mm;margin-bottom:3mm;color:#000">${vendor?esc(vendor.name)+'　'+(vendor.honorific||(vendor.vendorType==='individual'?'様':'御中')):'　　　　　　　　御中'}</div>
+        ${(()=>{
+          const to = vendor
+            ? vendor.name+'　'+(vendor.honorific||(vendor.vendorType==='individual'?'様':'御中'))
+            : '　　　　　　　　御中';
+          return `<div style="font-size:${_invAddrFontPt(to)}pt;font-weight:700;border-bottom:2.5px solid #1e3a6b;padding-bottom:2mm;margin-bottom:3mm;color:#000;white-space:nowrap;overflow:hidden">${esc(to)}</div>`;
+        })()}
         ${vendor?`<div style="font-size:9pt;color:#444;line-height:1.8">${esc(vendor.address||vendor.addr1||'')}</div>`:'' }
       </div>
       <div style="text-align:right;font-size:9pt;min-width:72mm;position:relative;line-height:1.8">
