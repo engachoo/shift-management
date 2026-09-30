@@ -1782,7 +1782,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
                 <span style="font-weight:700;color:#6b7280">📝 下書き</span><span>作成途中。本人と総務経理が編集できます</span>
                 <span style="font-weight:700;color:#d97706">🔔 申請中</span><span>発行依頼を送信した状態。総務経理が内容を確認します</span>
                 <span style="font-weight:700;color:#7c3aed">📋 承認申請</span><span>確認が済み、承認（押印）待ちの状態です</span>
-                <span style="font-weight:700;color:#16a34a">✅ 承認済</span><span>電子押印が完了。PDF出力・印刷ができます</span>
+                <span style="font-weight:700;color:#16a34a">✅ 承認済</span><span>電子押印が完了。押印入りでPDF出力・印刷ができます</span>
                 <span style="font-weight:700;color:#7c3aed">📮 発送済</span><span>取引先へ送付済みとして記録した状態です</span>
                 <span style="font-weight:700;color:#dc2626">↩ 差し戻し</span><span>修正が必要なため作成者へ戻された状態です</span>
               </div>
@@ -1825,7 +1825,7 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
             <div style="background:#f5f3ff;border:1.5px solid #c4b5fd;border-radius:6px;padding:12px;margin-bottom:12px">
               <div style="font-weight:700;color:#5b21b6;margin-bottom:6px">🖨 PDF出力・印刷・発送</div>
               <ul style="margin:0;padding-left:18px;color:#334;line-height:2">
-                <li>承認済の請求書で <strong>「🖨 PDF出力・印刷」</strong> を押すとA4プレビューが開きます</li>
+                <li>下書き・申請中・承認申請・承認済の<strong>どの段階でも</strong> <strong>「🖨 PDF出力・印刷」</strong> を押すとA4プレビューが開きます（電子押印は承認済のときだけ付きます）</li>
                 <li>プレビュー上部の <strong>「🖨 印刷 / PDF保存」</strong> から印刷、またはPDFとして保存できます</li>
                 <li><strong>「🏷 封筒ラベル」</strong> で宛名ラベル（A4・2列×6行）を印刷できます</li>
                 <li>送付したら <strong>「📮 発送済にする」</strong> で記録します</li>
@@ -5674,6 +5674,8 @@ function renderInvDetail(invId){
   else if(inv.status==='reviewing'&&canApprove) actions=`${invAssigneeSelect('inv-assignee-send',['soumu','admin','system'],'','発送担当')}<button onclick="invApprove('${invId}')" style="background:#16a34a;color:#fff;border:none;border-radius:7px;padding:10px 24px;font-size:14px;font-weight:700;cursor:pointer">✅ 承認する（電子押印）</button><button onclick="invReject('${invId}')" style="background:#dc2626;color:#fff;border:none;border-radius:7px;padding:9px 20px;font-size:13px;font-weight:700;cursor:pointer;margin-left:8px">↩ 差し戻し</button>`;
   else if((inv.status==='approved'||inv.status==='sent')&&canManage) actions=`<button onclick="_invEditId='${invId}';_invView='print';renderInvApp()" style="background:#7c3aed;color:#fff;border:none;border-radius:7px;padding:9px 20px;font-size:13px;font-weight:700;cursor:pointer">🖨 PDF出力・印刷</button>${vendor?`<button onclick="_invEditId='${invId}';_invView='label';renderInvApp()" style="background:#16a34a;color:#fff;border:none;border-radius:7px;padding:9px 20px;font-size:13px;font-weight:700;cursor:pointer;margin-left:8px">🏷 封筒ラベル</button>`:''}${inv.status==='approved'?`<button onclick="invMarkSent('${invId}')" style="background:#7c3aed;color:#fff;border:none;border-radius:7px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;margin-left:8px">📮 発送済にする</button>`:''}`;
   if((inv.status==='draft'||inv.status==='rejected')&&(inv.createdBy===me||invCanEditAny())) actions+=`<button onclick="_invEditId='${invId}';_invView='form';renderInvApp()" style="background:#f1f5f9;border:1px solid #e2e8f0;color:#374151;border-radius:7px;padding:9px 20px;font-size:13px;cursor:pointer;margin-left:8px">✏ 編集</button>`;
+  // 下書き〜承認申請の各段階でもPDF出力できる（押印は承認済のときだけ付く）
+  if(!((inv.status==='approved'||inv.status==='sent')&&canManage)) actions+=`<button onclick="_invEditId='${invId}';_invView='print';renderInvApp()" style="background:#7c3aed;color:#fff;border:none;border-radius:7px;padding:9px 20px;font-size:13px;font-weight:700;cursor:pointer;margin-left:8px">🖨 PDF出力・印刷</button>`;
   el.innerHTML=`
   <div style="display:flex;align-items:center;gap:8px;margin-bottom:20px;flex-wrap:wrap">
     <button onclick="_invView='list';renderInvApp()" style="background:#2563eb;border:none;color:#fff;border-radius:8px;padding:10px 22px;cursor:pointer;font-size:15px;font-weight:700;box-shadow:0 2px 6px rgba(37,99,235,.3)">← 一覧へ戻る</button>
