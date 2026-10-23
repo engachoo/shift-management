@@ -5226,7 +5226,8 @@ function _invRound(n, rounding){ return rounding==='round' ? Math.round(n) : Mat
 function _invYen(n, rounding){ return _invRound(n||0, rounding).toLocaleString(); }
 function invCalcTotals(items, rounding){
   let sub=0,sub8=0,sub10=0,sub0=0;
-  (items||[]).forEach(it=>{ const a=(it.qty||0)*(it.unitPrice||0); sub+=a; if(it.taxRate===8)sub8+=a; else if(it.taxRate===0||it.taxRate===-1)sub0+=a; else sub10+=a; });
+  // 明細ごとに端数処理してから合計する（表示の金額と小計の縦計を一致させる）
+  (items||[]).forEach(it=>{ const a=_invRound((it.qty||0)*(it.unitPrice||0),rounding); sub+=a; if(it.taxRate===8)sub8+=a; else if(it.taxRate===0||it.taxRate===-1)sub0+=a; else sub10+=a; });
   const tax8=_invRound(sub8*0.08,rounding); const tax10=_invRound(sub10*0.10,rounding);
   return {sub,sub8,tax8,sub10,tax10,sub0,total:_invRound(sub+tax8+tax10,rounding)};
 }
@@ -5537,13 +5538,13 @@ function invRowCalc(i){
 }
 function invRecalcAll(){
   const rows=document.getElementById('inv-rows')?.rows||[]; let sub=0,sub8=0,sub10=0;
+  const rd=document.getElementById('inv-rounding')?.value||'floor';
   for(let i=0;i<rows.length;i++){
     const q=Number(document.getElementById('inv-it-qty-'+i)?.value)||0;
     const p=Number(document.getElementById('inv-it-price-'+i)?.value)||0;
     const t=Number(document.getElementById('inv-it-tax-'+i)?.value ?? 10);
-    const a=q*p; sub+=a; if(t===8)sub8+=a; else if(t===0||t===-1){} else sub10+=a;
+    const a=_invRound(q*p,rd); sub+=a; if(t===8)sub8+=a; else if(t===0||t===-1){} else sub10+=a;
   }
-  const rd=document.getElementById('inv-rounding')?.value||'floor';
   const tax8=_invRound(sub8*0.08,rd); const tax10=_invRound(sub10*0.10,rd); const total=_invRound(sub+tax8+tax10,rd);
   const s=id=>document.getElementById(id);
   if(s('inv-s-sub')) s('inv-s-sub').textContent='¥'+_invYen(sub,rd);
