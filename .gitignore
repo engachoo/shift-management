@@ -1,0 +1,17 @@
+# OS が勝手に作るファイル
+.DS_Store
+
+# 依存パッケージ（npm install で再生成できる）
+node_modules/
+
+# データベース・業務データ（GitHub に上げない）
+document-server/data/
+*.db
+/*.xlsx
+welbe_import.json
+
+# 旧バージョン退避用フォルダ
+old/
+
+# Claude Code の作業用ディレクトリ
+.claude/worktrees/
