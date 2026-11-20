@@ -1850,9 +1850,8 @@ body{font-family:'Hiragino Kaku Gothic ProN','Meiryo',sans-serif;background:#eef
           <div class="help-section-title" style="font-size:15px;font-weight:700;color:#1a2b4a;border-bottom:2px solid #dde3ec;padding-bottom:6px;margin-bottom:10px">🧑‍💼 従業員管理（従業員名簿）</div>
           <div style="font-size:13px;color:#334;line-height:1.8">
             <ul style="padding-left:18px;margin:0 0 12px 0">
-              <li>サイドバーの「人事・勤怠・労務」→「🧑‍💼 従業員管理」からアクセスします</li>
-              <li>従業員の <strong>登録・編集・退職処理・一括取込・Excel名簿出力</strong> ができます</li>
-              <li>個人情報を含むため、権限によって利用できる範囲が異なります</li>
+              <li style="color:#b91c1c;font-weight:700">⚠️ 従業員管理（名簿）は 2026年11月から停止しています。使っていなかったため、個人情報保護のためデータを削除しました（メニューも非表示）。以下は停止前の説明です</li>
+              <li>「入社書類」「届出書ダウンロード」（様式のダウンロード）はこれまでどおり使えます</li>
             </ul>
 
             <!-- 権限別の利用範囲 -->
@@ -4479,8 +4478,97 @@ function _empRosterTable(arr,retiredSection,emptyMsg){
   const rows=arr.map(s=>_empRosterRow(s,retiredSection)).join('')||`<tr><td colspan="7" style="padding:24px;text-align:center;color:#9ca3af;font-size:13px">${emptyMsg}</td></tr>`;
   return `<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:560px">${head}<tbody>${rows}</tbody></table></div>`;
 }
+// ===== 従業員名簿の停止・削除（2026-11 未使用のためセキュリティ上停止） =====
+// 名簿データ(emp_staff)と添付書類を控えに保存→削除し、バックアップからも名簿部分だけ取り除く。
+// 予定・ToDo・請求書など他のデータには触らない。システム権限のみ。
+let _empPurge={downloaded:false, staff:[], refs:[], backups:[]};
+function empRosterIsPurged(){ return !!load('emp_roster_purged',null); }
+async function _empPurgeScan(){
+  const staff=load('emp_staff',[])||[];
+  const refs=[]; staff.forEach(s=>(s.files||[]).forEach(f=>{ if(f&&f.ref) refs.push(String(f.ref).replace('fs://','')); }));
+  const backups=[];
+  const snap=await _db.collection(_BACKUP_COL).get();
+  snap.forEach(doc=>{
+    try{ const o=JSON.parse(doc.data().data||'{}');
+      if(o.hasOwnProperty('emp_staff')||o.hasOwnProperty('_tomb_emp_staff')) backups.push(doc.id);
+    }catch(e){}
+  });
+  _empPurge={downloaded:false, staff, refs, backups};
+}
+async function renderEmpPurgePanel(body){
+  if(!isSystem()){ body.innerHTML='<div style="padding:30px;text-align:center;color:#6b7280">従業員管理（名簿）は現在停止中です。</div>'; return; }
+  body.innerHTML='<div style="padding:30px;text-align:center;color:#6b7280">データを調べています…</div>';
+  try{ await _empPurgeScan(); }catch(e){ body.innerHTML='<div style="padding:30px;color:#dc2626">調査に失敗しました：'+esc(e.message||String(e))+'</div>'; return; }
+  const p=_empPurge;
+  body.innerHTML=`
+  <div style="max-width:640px;margin:20px auto;background:#fff;border:1.5px solid #fecaca;border-radius:12px;padding:24px">
+    <div style="font-size:16px;font-weight:700;color:#b91c1c;margin-bottom:10px">🔒 従業員名簿の停止と削除（システム権限のみ）</div>
+    <div style="font-size:13px;color:#334;line-height:1.9;margin-bottom:14px">
+      使っていない従業員名簿の個人情報を削除します。<strong>予定・ToDo・請求書などのデータには触りません。</strong><br>
+      「入社書類」「届出書ダウンロード」（様式のダウンロード）はそのまま使えます。
+    </div>
+    <table style="font-size:13px;border-collapse:collapse;margin-bottom:16px">
+      <tr><td style="padding:4px 14px 4px 0;color:#6b7280">名簿に登録されている人</td><td style="font-weight:700">${p.staff.length} 人</td></tr>
+      <tr><td style="padding:4px 14px 4px 0;color:#6b7280">添付されている書類</td><td style="font-weight:700">${p.refs.length} 件</td></tr>
+      <tr><td style="padding:4px 14px 4px 0;color:#6b7280">名簿が入っているバックアップ</td><td style="font-weight:700">${p.backups.length} 件（名簿の部分だけ取り除きます）</td></tr>
+    </table>
+    <div style="font-size:13px;font-weight:700;color:#1a2b4a;margin-bottom:6px">① 控えをパソコンに保存（必須）</div>
+    <button onclick="empPurgeDownload()" style="background:#2563eb;color:#fff;border:none;border-radius:7px;padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer">💾 控えをダウンロード</button>
+    <div id="emp-purge-dlmsg" style="font-size:12px;color:#6b7280;margin:6px 0 16px">保存したファイルは「書類（Documents）」フォルダに移してください。</div>
+    <div style="font-size:13px;font-weight:700;color:#1a2b4a;margin-bottom:6px">② 削除を実行（元に戻せません）</div>
+    <button id="emp-purge-run" onclick="empPurgeRun()" disabled style="background:#dc2626;color:#fff;border:none;border-radius:7px;padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer;opacity:.4">🗑 名簿データを削除する</button>
+    <div id="emp-purge-log" style="font-size:12px;color:#334;margin-top:12px;line-height:1.8"></div>
+  </div>`;
+}
+async function empPurgeDownload(){
+  const p=_empPurge; const msg=document.getElementById('emp-purge-dlmsg');
+  try{
+    if(msg) msg.textContent='添付書類を集めています…';
+    const files={};
+    for(const ref of p.refs){ try{ const d=await fileStoreGet('tk_file_'+ref); if(d) files[ref]=d; }catch(e){} }
+    const out={exportedAt:new Date().toISOString(), by:getS()?.name||'', emp_staff:p.staff, files};
+    const blob=new Blob([JSON.stringify(out)],{type:'application/json'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+    a.download='従業員名簿_控え_'+new Date().toLocaleDateString('sv',{timeZone:'Asia/Tokyo'})+'.json';
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),5000);
+    p.downloaded=true;
+    if(msg){ msg.innerHTML='✅ 控えを保存しました（名簿'+p.staff.length+'人・添付'+Object.keys(files).length+'件）。ファイルが保存できたことを確認してから②へ進んでください。'; msg.style.color='#166534'; }
+    const b=document.getElementById('emp-purge-run'); if(b){ b.disabled=false; b.style.opacity='1'; }
+  }catch(e){ if(msg){ msg.textContent='控えの保存に失敗しました：'+(e.message||e); msg.style.color='#dc2626'; } }
+}
+async function empPurgeRun(){
+  const p=_empPurge; if(!p.downloaded){ alert('先に①の控えを保存してください'); return; }
+  if(!confirm(`名簿 ${p.staff.length}人・添付 ${p.refs.length}件を削除し、バックアップ ${p.backups.length}件から名簿の部分を取り除きます。\n\n元に戻せません。よろしいですか？`)) return;
+  if(prompt('確認のため「削除」と入力してください')!=='削除') { alert('中止しました'); return; }
+  const log=document.getElementById('emp-purge-log'); const say=t=>{ if(log) log.innerHTML+=t+'<br>'; };
+  try{
+    // 1) 名簿（1人ずつのドキュメント）と墓標を削除
+    for(const s of p.staff){ if(s&&s.id) await _db.collection(_COL).doc(_itemDocId('emp_staff',s.id)).delete(); }
+    try{ await _db.collection(_COL).doc('emp_staff').delete(); }catch(e){}
+    try{ await _db.collection(_COL).doc('_tomb_emp_staff').delete(); }catch(e){}
+    _cache['emp_staff']=[]; _itemShadow['emp_staff']={}; delete _cache['_tomb_emp_staff'];
+    say('✅ 名簿 '+p.staff.length+'人を削除しました');
+    // 2) 添付書類の本体を削除
+    for(const ref of p.refs){ await fileStoreDelete('tk_file_'+ref); }
+    say('✅ 添付書類 '+p.refs.length+'件を削除しました');
+    // 3) バックアップから名簿の部分だけ取り除く（他のデータはそのまま）
+    let n=0;
+    for(const id of p.backups){
+      const ref=_db.collection(_BACKUP_COL).doc(id); const doc=await ref.get(); if(!doc.exists) continue;
+      const o=JSON.parse(doc.data().data||'{}'); delete o.emp_staff; delete o._tomb_emp_staff;
+      await ref.update({data:JSON.stringify(o)}); n++;
+    }
+    say('✅ バックアップ '+n+'件から名簿の部分を取り除きました');
+    save('emp_roster_purged',{at:new Date().toISOString(), by:getS()?.name||'', staff:p.staff.length, files:p.refs.length, backups:n});
+    say('<strong>完了しました。</strong>従業員管理のメニューは全員の画面から消えます（各自の再読み込み後）。');
+    const m=document.getElementById('m-empmgmt'); if(m) m.style.display='none';
+    showToast('🔒 従業員名簿を削除しました',6000);
+  }catch(e){ say('<span style="color:#dc2626">⚠️ 途中で失敗しました：'+esc(e.message||String(e))+'。もう一度開いてやり直してください（済んだ分は残りません）。</span>'); }
+}
 function renderEmpRoster(){
   const body=document.getElementById('empBody'); if(!body) return;
+  // 名簿は停止中（未使用・個人情報保護のため）。システム権限には削除パネルを出す
+  renderEmpPurgePanel(body); return;
   // 会社の全従業員。社員相当（正社員・契約社員）はsystem/soumuのみ閲覧可。
   let pool=load('emp_staff',[]).filter(s=>s.company===_empCo);
   if(!empCanSeeShain()) pool=pool.filter(s=>!_empShainLevel(s.empType));
@@ -9556,6 +9644,7 @@ function _snapshotChunks(){
   const entries = [];
   Object.keys(_cache).forEach(k=>{
     if(k.startsWith('ci_file_')||k.startsWith('tk_file_')) return; // 添付ファイル本体は除外（サイズ大・手動DLで保護）
+    if(k==='emp_staff'||k==='_tomb_emp_staff') return; // 従業員名簿は停止・削除済み（個人情報をバックアップに残さない）
     entries.push([k, JSON.stringify(_cache[k])]);
   });
   entries.sort((a,b)=>a[1].length - b[1].length); // 小さい順
@@ -10140,13 +10229,12 @@ function startApp(){
     document.getElementById('m-inv').style.display='flex';
   }
   // 人事勤怠労務メニュー：system・soumu は全項目／admin・manager は従業員管理のみ（自社）／user は非表示
-  if(s.role==='system'||s.role==='soumu'||s.role==='admin'||s.role==='manager'){
+  // ※従業員管理（名簿）は停止中。admin・manager は名簿しか使えなかったためメニューごと非表示
+  if(s.role==='system'||s.role==='soumu'){
     document.getElementById('hrMenu').style.display='block';
-    if(s.role==='admin'||s.role==='manager'){
-      document.getElementById('m-tk').style.display='none';  // 届出書は system・soumu のみ
-      document.getElementById('m-emp').style.display='none'; // 入社書類は system・soumu のみ
-    }
   }
+  // 名簿メニューは、削除が済むまでシステム権限にだけ出す（削除パネル用）。済んだら全員非表示
+  document.getElementById('m-empmgmt').style.display=(isSystem()&&!empRosterIsPurged())?'':'none';
   // システム設定・開発中のアプリは system のみ表示
   if(isSystem()){
     document.getElementById('adminMenu').style.display='block';
